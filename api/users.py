@@ -6,7 +6,14 @@ from datetime import timedelta
 from database import get_db
 from models.user import User
 from schemas.user import UserCreate, UserOut
-from utils.auth import verify_password, create_access_token
+from utils.auth import (
+    verify_password,
+    create_access_token,
+    get_current_user,
+    get_current_active_user,
+    get_current_active_admin,
+    get_current_active_supplier,
+)
 from config import ACCESS_TOKEN_EXPIRE_MINUTES
 
 router = APIRouter()
@@ -51,3 +58,15 @@ async def login_user(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
     )
 
     return {"access_token": access_token, "token_type": "bearer"}
+
+@router.get("/me", response_model=UserOut)
+async def read_users_me(current_user: User = Depends(get_current_user)):
+    return current_user
+
+@router.get("/admin")
+async def read_admin_data(current_user: User = Depends(get_current_active_admin)):
+    return {"message": f"Hello admin {current_user.email}"}
+
+@router.get("/supplier")
+async def read_supplier_data(current_user: User = Depends(get_current_active_supplier)):
+    return {"message": f"Hello supplier {current_user.email}"}
