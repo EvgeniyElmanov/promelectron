@@ -29,7 +29,7 @@ async def register_user(user_data: UserCreate, db: AsyncSession = Depends(get_db
         raise HTTPException(status_code=400, detail="Email already registered")
 
     hashed_pw = hash_password(user_data.password)
-    new_user = User(email=user_data.email, hashed_password=hashed_pw)
+    new_user = User(email=user_data.email, hashed_password=hashed_pw, role="user")
     db.add(new_user)
     await db.commit()
     await db.refresh(new_user)
