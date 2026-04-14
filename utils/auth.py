@@ -9,7 +9,7 @@ from sqlalchemy import select
 
 from config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 from database import get_db
-from models.user import User
+from models.user import User, RoleEnum  # ← Добавлен импорт RoleEnum
 
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 security = HTTPBearer()
@@ -36,7 +36,7 @@ async def get_current_user(token: HTTPAuthorizationCredentials = Depends(securit
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = jwt.decode(token.credentials, SECRET_KEY, algorithms=[ALGORITHM])  # ← Обрати внимание: token.credentials
+        payload = jwt.decode(token.credentials, SECRET_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("sub")
         if email is None:
             raise credentials_exception
@@ -48,6 +48,9 @@ async def get_current_user(token: HTTPAuthorizationCredentials = Depends(securit
     user = result.scalars().first()
     if user is None:
         raise credentials_exception
+
+    await db.refresh(user)
+
     return user
 
 async def get_current_active_user(current_user: User = Depends(get_current_user)):
@@ -56,7 +59,7 @@ async def get_current_active_user(current_user: User = Depends(get_current_user)
     return current_user
 
 async def get_current_active_admin(current_user: User = Depends(get_current_active_user)):
-    if current_user.role != "admin":
+    if current_user.role != RoleEnum.admin:  # ← Исправлено: используем RoleEnum.admin
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access denied"
@@ -64,7 +67,7 @@ async def get_current_active_admin(current_user: User = Depends(get_current_acti
     return current_user
 
 async def get_current_active_supplier(current_user: User = Depends(get_current_active_user)):
-    if current_user.role != "supplier":
+    if current_user.role != RoleEnum.supplier:  # ← Исправлено: используем RoleEnum.supplier
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access denied"

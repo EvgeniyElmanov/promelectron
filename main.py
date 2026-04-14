@@ -1,25 +1,29 @@
-from contextlib import asynccontextmanager
 from fastapi import FastAPI
-from database import engine, Base
+from contextlib import asynccontextmanager
+from sqlalchemy.ext.asyncio import create_async_engine
 
-from api.users import router as user_router
+from database import DATABASE_URL, Base
+from api.users import router as users_router
+from api.products import router as products_router
+from api.categories import router as categories_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Код, который выполнится при запуске
+    engine = create_async_engine(DATABASE_URL)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    yield  # Приложение запущено
-    # Код после yield выполнится при выключении (необязательно)
+    yield
+    await engine.dispose()
 
-app = FastAPI(title="My Shop Backend", lifespan=lifespan)
-
-# Подключаем роуты
-app.include_router(user_router, prefix="/api/v1", tags=["users"])
+app = FastAPI(lifespan=lifespan)
 
 @app.get("/")
-def read_root():
-    return {"message": "Welcome to My Shop API!"}
+async def read_root():
+    return {"message": "Welcome to My Shop Backend!"}
+
+app.include_router(users_router, prefix="/api/v1")
+app.include_router(products_router, prefix="/api/v1/products")
+app.include_router(categories_router, prefix="/api/v1/categories")
 
 if __name__ == "__main__":
     import uvicorn
