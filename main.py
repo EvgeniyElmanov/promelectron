@@ -6,6 +6,7 @@ from database import DATABASE_URL, Base
 from api.users import router as users_router
 from api.products import router as products_router
 from api.categories import router as categories_router
+from api.cart import router as cart_router  # ← Добавь эту строку
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -21,9 +22,10 @@ app = FastAPI(lifespan=lifespan)
 async def read_root():
     return {"message": "Welcome to My Shop Backend!"}
 
-app.include_router(users_router, prefix="/api/v1")
-app.include_router(products_router, prefix="/api/v1/products")
-app.include_router(categories_router, prefix="/api/v1/categories")
+app.include_router(users_router, prefix="/api/v1", tags=["users"])
+app.include_router(products_router, prefix="/api/v1", tags=["products"])
+app.include_router(categories_router, prefix="/api/v1", tags=["categories"])
+app.include_router(cart_router, prefix="/api/v1", tags=["cart"])  # ← Добавь эту строку
 
 if __name__ == "__main__":
     import uvicorn

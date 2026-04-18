@@ -10,26 +10,26 @@ from schemas.category import CategoryOut
 from utils.auth import get_current_active_supplier, get_current_active_admin
 from models.user import User
 
-router = APIRouter()
+router = APIRouter(prefix="/products", tags=["products"])
 
 @router.post("/", response_model=ProductOut)
 async def create_product(
-    product_data: ProductCreate,
+    product_: ProductCreate,
     current_user: User = Depends(get_current_active_supplier),
     db: AsyncSession = Depends(get_db)
 ):
     # Проверим, существует ли категория
-    if product_data.category_id:
+    if product_.category_id:
         category_result = await db.execute(
-            select(Category).where(Category.id == product_data.category_id)
+            select(Category).where(Category.id == product_.category_id)
         )
         category = category_result.scalars().first()
         if not category:
             raise HTTPException(status_code=404, detail="Category not found")
 
     # Создаём товар
-    new_product = Product(**product_data.model_dump())
-    # new_product.supplier_id = current_user.id  ← Удали эту строку
+    new_product = Product(**product_.model_dump())
+    # new_product.supplier_id = current_user.id  # ← Закомментировано
 
     db.add(new_product)
     await db.commit()
@@ -50,7 +50,7 @@ async def read_product(product_id: int, db: AsyncSession = Depends(get_db)):
 @router.put("/{product_id}", response_model=ProductOut)
 async def update_product(
     product_id: int,
-    product_data: ProductUpdate,
+    product_: ProductUpdate,
     current_user: User = Depends(get_current_active_supplier),
     db: AsyncSession = Depends(get_db)
 ):
@@ -63,7 +63,7 @@ async def update_product(
     if product.supplier_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized to modify this product")
 
-    for field, value in product_data.model_dump(exclude_unset=True).items():
+    for field, value in product_.model_dump(exclude_unset=True).items():
         setattr(product, field, value)
 
     await db.commit()
