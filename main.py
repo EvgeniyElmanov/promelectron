@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from sqlalchemy.ext.asyncio import create_async_engine
+from api.orders import router as orders_router
 
 from database import DATABASE_URL, Base
 from api.users import router as users_router
@@ -26,6 +27,7 @@ app.include_router(users_router, prefix="/api/v1", tags=["users"])
 app.include_router(products_router, prefix="/api/v1", tags=["products"])
 app.include_router(categories_router, prefix="/api/v1", tags=["categories"])
 app.include_router(cart_router, prefix="/api/v1", tags=["cart"])  # ← Добавь эту строку
+app.include_router(orders_router, prefix="/api/v1", tags=["orders"])
 
 if __name__ == "__main__":
     import uvicorn

@@ -1,8 +1,8 @@
 from sqlalchemy import Column, Integer, ForeignKey
 from sqlalchemy.orm import relationship
-from sqlalchemy.types import DateTime  # ← Добавлен
-from datetime import datetime, timezone  # ← Добавлен
-from database import Base  # ← Добавлен
+from sqlalchemy.types import DateTime
+from datetime import datetime, timezone
+from database import Base
 
 class Cart(Base):
     __tablename__ = "carts"
@@ -13,6 +13,8 @@ class Cart(Base):
 
     # Отношение: корзина → пользователь
     user = relationship("User")
+    # Отношение: корзина → элементы корзины
+    items = relationship("CartItem", back_populates="cart")  # ← Добавь это
 
 class CartItem(Base):
     __tablename__ = "cart_items"
@@ -23,5 +25,5 @@ class CartItem(Base):
     quantity = Column(Integer, default=1)
 
     # Отношения
-    cart = relationship("Cart")
+    cart = relationship("Cart", back_populates="items")  # ← Убедись, что это есть
     product = relationship("Product")
