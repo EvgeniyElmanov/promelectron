@@ -3,6 +3,7 @@ uvicorn[standard]
 sqlalchemy
 asyncpg
 pydantic
+pydantic-settings
 passlib[bcrypt]
 python-jose[cryptography]
 alembic
