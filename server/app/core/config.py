@@ -1,18 +1,23 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
+import os
+from dataclasses import dataclass
 
 
-class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
-
-    secret_key: str = "your-secret-key-here"
-    algorithm: str = "HS256"
-    access_token_expire_minutes: int = 30
-    database_url: str = (
-        "postgresql+asyncpg://shop_user:shop_password@localhost/shop_db"
-    )
+@dataclass(frozen=True)
+class Settings:
+    secret_key: str
+    algorithm: str
+    access_token_expire_minutes: int
+    database_url: str
 
 
-settings = Settings()
+settings = Settings(
+    secret_key=os.getenv("SECRET_KEY", "your-secret-key-here"),
+    algorithm=os.getenv("ALGORITHM", "HS256"),
+    access_token_expire_minutes=int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30")),
+    database_url=os.getenv(
+        "DATABASE_URL", "postgresql+asyncpg://shop_user:shop_password@localhost/shop_db"
+    ),
+)
 
 SECRET_KEY = settings.secret_key
 ALGORITHM = settings.algorithm
