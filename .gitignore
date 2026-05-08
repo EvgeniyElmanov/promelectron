@@ -61,3 +61,7 @@ htmlcov/
 .DS_Store
 Thumbs.db
 ehthumbs.db
+
+# Cursor AI IDE settings
+.cursor/
+.cursorrules
