@@ -34,7 +34,7 @@ const addToCart = async () => {
       product_id: props.product.id,
       quantity: 1,
     });
-    alert('Added to cart');
+    alert('Added to cart successfully!');
   } catch (err) {
     if (err?.response?.status === 401) {
       alert('Session expired. Please log in again.');
