@@ -14,11 +14,17 @@ router = APIRouter(prefix="/orders", tags=["orders"])
 
 @router.post("/create", response_model=OrderOut)
 async def create_order(
-    order_: OrderCreate,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
-    _ = order_
+    """
+    Create an order from the user's cart.
+    
+    - Gets the current user
+    - Transfers items from cart to order
+    - Clears the cart after creating the order
+    - Returns the created order
+    """
     return await OrderService.create_order(current_user=current_user, db=db)
 
 

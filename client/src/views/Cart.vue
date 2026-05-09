@@ -23,7 +23,7 @@
       <div class="cart-summary">
         <h3>Total: ${{ totalPrice.toFixed(2) }}</h3>
         <button @click="createOrder" :disabled="creatingOrder" class="checkout-btn">
-          {{ creatingOrder ? 'Creating Order...' : 'Checkout' }}
+          {{ creatingOrder ? 'Оформление заказа...' : 'Оформить заказ' }}
         </button>
       </div>
     </div>
@@ -84,8 +84,8 @@ const createOrder = async () => {
   creatingOrder.value = true;
   try {
     const response = await api.post('/orders/create');
-    alert('Order created successfully!');
-    router.push(`/orders/${response.data.id}`);
+    alert('Заказ успешно создан!');
+    router.push('/orders');
   } catch (err) {
     console.error('Failed to create order:', err);
     alert('Failed to create order. Please try again.');

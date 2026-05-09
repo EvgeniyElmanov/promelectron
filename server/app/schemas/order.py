@@ -18,6 +18,9 @@ class OrderItemOut(BaseModel):
 class OrderCreate(BaseModel):
     pass
 
+    class Config:
+        from_attributes = True
+
 
 class OrderUpdateStatus(BaseModel):
     status: str
