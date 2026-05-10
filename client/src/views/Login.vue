@@ -7,6 +7,9 @@
       <button type="submit">Login</button>
     </form>
     <p v-if="error">{{ error }}</p>
+    <p>
+      Нет аккаунта? <router-link to="/register">Зарегистрироваться</router-link>
+    </p>
   </div>
 </template>
 
