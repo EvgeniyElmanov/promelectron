@@ -29,6 +29,11 @@ async def read_users_me(current_user: User = Depends(get_current_user)):
     return current_user
 
 
+@router.get("/profile", response_model=UserOut)
+async def get_user_profile(current_user: User = Depends(get_current_user)):
+    return current_user
+
+
 @router.get("/admin")
 async def read_admin_data(current_user: User = Depends(get_current_active_admin)):
     return {"message": f"Hello admin {current_user.email}"}

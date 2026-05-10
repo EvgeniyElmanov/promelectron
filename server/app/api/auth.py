@@ -6,8 +6,9 @@ import httpx
 from server.app.db.database import get_db
 from server.app.models.user import User
 from server.app.models.social_account import SocialAccount
+from server.app.schemas.user import UserOut
 from server.app.core.config import settings
-from server.app.utils.auth import create_access_token
+from server.app.utils.auth import create_access_token, get_current_user
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -31,6 +32,14 @@ def get_provider_config(provider: str) -> dict:
     if provider not in OAUTH_PROVIDERS:
         raise HTTPException(status_code=400, detail="Unsupported provider")
     return OAUTH_PROVIDERS[provider]
+
+
+@router.get("/profile", response_model=UserOut)
+async def get_auth_profile(
+    current_user: User = Depends(get_current_user),
+):
+    """Получить профиль текущего пользователя."""
+    return current_user
 
 
 @router.get("/{provider}/login")
