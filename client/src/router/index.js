@@ -6,6 +6,7 @@ import Cart from '../views/Cart.vue';
 import Orders from '../views/Orders.vue';
 import Profile from '../views/Profile.vue';
 import Register from '../views/Register.vue';
+import AuthCallback from '../views/AuthCallback.vue';
 
 const routes = [
   { path: '/', component: Products },
@@ -15,6 +16,7 @@ const routes = [
   { path: '/cart', component: Cart },
   { path: '/orders', component: Orders },
   { path: '/profile', component: Profile },
+  { path: '/auth/callback', component: AuthCallback },
 ];
 
 export default createRouter({

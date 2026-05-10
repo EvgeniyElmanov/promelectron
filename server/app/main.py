@@ -9,6 +9,7 @@ from server.app.api.categories import router as categories_router
 from server.app.api.orders import router as orders_router
 from server.app.api.products import router as products_router
 from server.app.api.users import router as users_router
+from server.app.api.auth import router as auth_router  # ← НОВАЯ СТРОКА
 from server.app.db.database import DATABASE_URL, Base
 
 
@@ -31,6 +32,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Подключаем все роутеры
+app.include_router(users_router, prefix="/api/v1")
+app.include_router(products_router, prefix="/api/v1")
+app.include_router(categories_router, prefix="/api/v1")
+app.include_router(cart_router, prefix="/api/v1")
+app.include_router(orders_router, prefix="/api/v1")
+app.include_router(auth_router, prefix="/api/v1")  # ← НОВАЯ СТРОКА
 
 @app.get("/")
 async def read_root():
