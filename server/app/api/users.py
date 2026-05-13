@@ -14,7 +14,7 @@ from server.app.utils.auth import (
 router = APIRouter()
 
 
-@router.post("/register", response_model=UserOut)
+@router.post("/register")
 async def register_user(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
     return await UserService.register_user(user_data=user_data, db=db)
 

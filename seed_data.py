@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy import select
@@ -10,15 +10,20 @@ from server.app.db.database import SessionLocal
 from server.app.models.category import Category
 from server.app.models.product import Product
 from server.app.models.supplier import Supplier
-
+from server.app.models.user import RoleEnum, User
+from server.app.utils.auth import hash_password
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
 
 
-def utcnow_naive() -> datetime:
-    return datetime.utcnow()
-
+TEST_SUPPLIER_USER: dict[str, Any] = {
+    "email": "seed-supplier@example.com",
+    "password": "seedpassword123",
+    "full_name": "Тестовый поставщик",
+    "role": RoleEnum.supplier,
+    "is_active": True,
+}
 
 TEST_SUPPLIER: dict[str, Any] = {
     "name": "Тестовый поставщик",
@@ -72,7 +77,28 @@ TEST_PRODUCTS: list[dict[str, Any]] = [
 ]
 
 
-async def get_or_create_supplier(session: AsyncSession) -> Supplier:
+async def get_or_create_supplier_user(session: AsyncSession) -> User:
+    result = await session.execute(select(User).where(User.email == TEST_SUPPLIER_USER["email"]))
+    user = result.scalar_one_or_none()
+    if user:
+        logger.info(f"Пользователь-поставщик уже существует: {user.email}")
+        return user
+
+    user = User(
+        email=TEST_SUPPLIER_USER["email"],
+        hashed_password=hash_password(TEST_SUPPLIER_USER["password"]),
+        full_name=TEST_SUPPLIER_USER["full_name"],
+        role=TEST_SUPPLIER_USER["role"],
+        is_active=TEST_SUPPLIER_USER["is_active"],
+        created_at=datetime.now(timezone.utc),
+    )
+    session.add(user)
+    await session.flush()
+    logger.info(f"Создан пользователь-поставщик: {user.email}")
+    return user
+
+
+async def get_or_create_supplier(session: AsyncSession, user: User) -> Supplier:
     result = await session.execute(
         select(Supplier).where(Supplier.api_key == TEST_SUPPLIER["api_key"])
     )
@@ -81,7 +107,11 @@ async def get_or_create_supplier(session: AsyncSession) -> Supplier:
         logger.info(f"Поставщик уже существует: {supplier.name}")
         return supplier
 
-    supplier = Supplier(**TEST_SUPPLIER, created_at=utcnow_naive())
+    supplier = Supplier(
+        user_id=user.id,
+        **TEST_SUPPLIER,
+        created_at=datetime.now(timezone.utc),
+    )
     session.add(supplier)
     await session.flush()
     logger.info(f"Создан поставщик: {supplier.name}")
@@ -96,7 +126,7 @@ async def get_or_create_categories(session: AsyncSession) -> dict[str, Category]
         if category:
             logger.info(f"Категория уже существует: {category.name}")
         else:
-            category = Category(**payload, created_at=utcnow_naive())
+            category = Category(**payload, created_at=datetime.now(timezone.utc))
             session.add(category)
             await session.flush()
             logger.info(f"Создана категория: {category.name}")
@@ -118,6 +148,7 @@ async def create_products(
             continue
 
         category = categories_map[payload["category_name"]]
+        now = datetime.now(timezone.utc)
         product = Product(
             name=payload["name"],
             description=payload["description"],
@@ -126,8 +157,8 @@ async def create_products(
             category_id=category.id,
             supplier_id=supplier.id,
             is_active=True,
-            created_at=utcnow_naive(),
-            updated_at=utcnow_naive(),
+            created_at=now,
+            updated_at=now,
         )
         session.add(product)
         logger.info(f"Добавлен товар: {product.name}")
@@ -136,7 +167,8 @@ async def create_products(
 async def seed_data() -> None:
     async with SessionLocal() as session:
         try:
-            supplier = await get_or_create_supplier(session)
+            supplier_user = await get_or_create_supplier_user(session)
+            supplier = await get_or_create_supplier(session, supplier_user)
             categories_map = await get_or_create_categories(session)
             await create_products(session, supplier, categories_map)
             await session.commit()

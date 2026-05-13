@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import List
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class OrderItemOut(BaseModel):
@@ -11,15 +11,13 @@ class OrderItemOut(BaseModel):
     quantity: int
     price_at_time: Decimal
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class OrderCreate(BaseModel):
     pass
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class OrderUpdateStatus(BaseModel):
@@ -34,6 +32,4 @@ class OrderOut(BaseModel):
     created_at: datetime
     items: List[OrderItemOut]
 
-    class Config:
-        from_attributes = True
-
+    model_config = ConfigDict(from_attributes=True)

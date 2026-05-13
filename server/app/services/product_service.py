@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from server.app.models.category import Category
 from server.app.models.product import Product
+from server.app.models.supplier import Supplier
 from server.app.models.user import User
 from server.app.schemas.product import ProductCreate, ProductUpdate
 
@@ -28,7 +29,14 @@ class ProductService:
             if not category:
                 raise HTTPException(status_code=404, detail="Category not found")
 
-        new_product = Product(**product_data.model_dump())
+        supplier_result = await db.execute(
+            select(Supplier).where(Supplier.user_id == current_user.id)
+        )
+        supplier = supplier_result.scalars().first()
+        if not supplier:
+            raise HTTPException(status_code=403, detail="You are not registered as a supplier")
+
+        new_product = Product(**product_data.model_dump(), supplier_id=supplier.id)
         db.add(new_product)
         await db.commit()
         await db.refresh(new_product)
@@ -50,7 +58,12 @@ class ProductService:
         product = result.scalars().first()
         if not product:
             raise HTTPException(status_code=404, detail="Product not found")
-        if product.supplier_id != current_user.id:
+
+        supplier_result = await db.execute(
+            select(Supplier).where(Supplier.user_id == current_user.id)
+        )
+        supplier = supplier_result.scalars().first()
+        if not supplier or product.supplier_id != supplier.id:
             raise HTTPException(status_code=403, detail="Not authorized to modify this product")
 
         for field, value in product_data.model_dump(exclude_unset=True).items():

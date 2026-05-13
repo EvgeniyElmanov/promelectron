@@ -5,7 +5,13 @@ from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from server.app.db.database import Base, DATABASE_URL
+import os
+
+from server.app.db.database import Base
+# Импорт ВСЕХ моделей чтобы Alembic видел их в Base.metadata
+from server.app.models import *  # noqa: F401,F403
+
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://shop_user:shop_password@localhost/shop_db")
 
 config = context.config
 config.set_main_option("sqlalchemy.url", DATABASE_URL)

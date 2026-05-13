@@ -1,5 +1,10 @@
+import asyncio
+import os
 from contextlib import asynccontextmanager
+from logging import getLogger
 
+from alembic import command
+from alembic.config import Config
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import create_async_engine
@@ -10,16 +15,30 @@ from server.app.api.orders import router as orders_router
 from server.app.api.products import router as products_router
 from server.app.api.users import router as users_router
 from server.app.api.auth import router as auth_router
-from server.app.db.database import DATABASE_URL, Base
+from server.app.db.database import DATABASE_URL
+
+logger = getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     engine = create_async_engine(DATABASE_URL)
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+
+    # Применяем миграции Alembic при старте
+    alembic_cfg_path = os.path.join(os.path.dirname(__file__), "..", "..", "alembic.ini")
+    if os.path.exists(alembic_cfg_path):
+        try:
+            await asyncio.to_thread(_run_alembic_migrations, alembic_cfg_path)
+        except Exception as e:
+            logger.warning("Alembic migration skipped: %s", e)
+
     yield
     await engine.dispose()
+
+
+def _run_alembic_migrations(cfg_path: str) -> None:
+    alembic_cfg = Config(cfg_path)
+    command.upgrade(alembic_cfg, "head")
 
 
 app = FastAPI(lifespan=lifespan)
@@ -33,7 +52,7 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
-# Подключаем все роутеры — ТОЛЬКО ОДИН РАЗ
+# Подключаем все роутеры
 app.include_router(users_router, prefix="/api/v1", tags=["users"])
 app.include_router(products_router, prefix="/api/v1", tags=["products"])
 app.include_router(categories_router, prefix="/api/v1", tags=["categories"])
@@ -45,4 +64,3 @@ app.include_router(auth_router, prefix="/api/v1", tags=["auth"])
 @app.get("/")
 async def read_root():
     return {"message": "Welcome to My Shop Backend!"}
-
