@@ -1,6 +1,6 @@
 <template>
-  <div class="orders-container">
-    <h2>Мои заказы</h2>
+  <div class="orders-container" data-testid="orders-page">
+    <h2 data-testid="orders-title">Мои заказы</h2>
 
     <div v-if="loading" class="loading">
       <p>Загрузка заказов...</p>
@@ -17,7 +17,7 @@
     </div>
 
     <div v-else class="orders-list">
-      <div v-for="order in orders" :key="order.id" class="order-card">
+      <div v-for="order in orders" :key="order.id" class="order-card" data-testid="order-card">
         <div class="order-header">
           <span class="order-id">Заказ №{{ order.id }}</span>
           <span class="order-date">{{ formatDate(order.created_at) }}</span>

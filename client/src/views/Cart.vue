@@ -1,12 +1,12 @@
 <template>
-  <div class="cart">
-    <h2>Cart</h2>
+  <div class="cart" data-testid="cart-page">
+    <h2 data-testid="cart-title">Cart</h2>
     <div v-if="loading" class="loading">
       Loading cart...
     </div>
     <div v-else-if="cart.items && cart.items.length > 0">
       <div class="cart-items">
-        <div v-for="item in cart.items" :key="item.id" class="cart-item">
+        <div v-for="item in cart.items" :key="item.id" class="cart-item" data-testid="cart-item">
           <div class="item-details">
             <h3>{{ item.product?.name || 'Product' }}</h3>
             <p>{{ item.product?.description || 'No description' }}</p>
@@ -22,7 +22,7 @@
       </div>
       <div class="cart-summary">
         <h3>Total: ${{ totalPrice.toFixed(2) }}</h3>
-        <button @click="createOrder" :disabled="creatingOrder" class="checkout-btn">
+        <button @click="createOrder" :disabled="creatingOrder" class="checkout-btn" data-testid="checkout-button">
           {{ creatingOrder ? 'Оформление заказа...' : 'Оформить заказ' }}
         </button>
       </div>

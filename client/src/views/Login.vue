@@ -1,16 +1,16 @@
 <template>
   <div class="login-container">
-    <h2>Login</h2>
-    <form @submit.prevent="handleLogin">
-      <input v-model="email" type="email" placeholder="Email" required />
-      <input v-model="password" type="password" placeholder="Password" required />
-      <button type="submit">Login</button>
+    <h2>Вход</h2>
+    <form @submit.prevent="handleLogin" data-testid="login-form">
+      <input v-model="email" type="email" placeholder="Email" data-testid="login-email" required />
+      <input v-model="password" type="password" placeholder="Пароль" data-testid="login-password" required />
+      <button type="submit" data-testid="login-submit">Войти</button>
     </form>
     <div class="oauth-buttons">
       <button @click="loginWithGoogle" class="oauth-button google">Войти через Google</button>
       <button @click="loginWithYandex" class="oauth-button yandex">Войти через Яндекс</button>
     </div>
-    <p v-if="error">{{ error }}</p>
+    <p v-if="error" class="error" data-testid="login-error">{{ error }}</p>
     <p>
       Нет аккаунта? <router-link to="/register">Зарегистрироваться</router-link>
     </p>
@@ -21,11 +21,13 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '@/services/api';
+import { useAuth } from '@/composables/useAuth';
 
 const email = ref('');
 const password = ref('');
 const error = ref('');
 const router = useRouter();
+const { setAuth } = useAuth();
 
 const handleLogin = async () => {
   try {
@@ -34,10 +36,10 @@ const handleLogin = async () => {
       password: password.value,
     });
 
-    localStorage.setItem('access_token', response.data.access_token);
-    router.push('/'); // Перенаправим на главную
+    setAuth(response.data.access_token, response.data.user);
+    router.push('/');
   } catch (err) {
-    error.value = err.response?.data?.detail || 'Login failed';
+    error.value = err.response?.data?.detail || 'Ошибка входа';
   }
 };
 
@@ -46,7 +48,7 @@ const loginWithGoogle = async () => {
     const response = await api.get('/auth/google/login');
     window.location.href = response.data.url;
   } catch (err) {
-    error.value = err.response?.data?.detail || 'Google login failed';
+    error.value = err.response?.data?.detail || 'Ошибка входа через Google';
   }
 };
 
@@ -55,7 +57,7 @@ const loginWithYandex = async () => {
     const response = await api.get('/auth/yandex/login');
     window.location.href = response.data.url;
   } catch (err) {
-    error.value = err.response?.data?.detail || 'Yandex login failed';
+    error.value = err.response?.data?.detail || 'Ошибка входа через Яндекс';
   }
 };
 </script>
@@ -89,5 +91,10 @@ const loginWithYandex = async () => {
 
 .oauth-button.yandex {
   background-color: #FF0000;
+}
+
+.error {
+  color: #dc3545;
+  margin-top: 0.5rem;
 }
 </style>

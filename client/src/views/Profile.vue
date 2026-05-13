@@ -1,79 +1,77 @@
 <template>
-  <div class="profile-container">
-    <h2>User Profile</h2>
-    
-    <!-- Loading State -->
+  <div class="profile-container" data-testid="profile-page">
+    <h2 data-testid="profile-title">Профиль</h2>
+
     <div v-if="loading" class="loading-container">
       <div class="spinner"></div>
-      <span>Loading profile...</span>
+      <span>Загрузка профиля...</span>
     </div>
-    
-    <!-- Error State -->
+
     <div v-else-if="error" class="error-container">
-      <strong>Error! </strong>
+      <strong>Ошибка! </strong>
       <span>{{ error }}</span>
       <button @click="fetchUserProfile" class="retry-button">
-        Try Again
+        Попробовать снова
       </button>
     </div>
-    
-    <!-- User Data -->
+
     <div v-else-if="user" class="profile-card">
       <div class="profile-grid">
         <div class="profile-field">
-          <label>Full Name</label>
-          <p>{{ user.full_name || 'Not provided' }}</p>
+          <label>Имя</label>
+          <p>{{ user.full_name || 'Не указано' }}</p>
         </div>
-        
+
         <div class="profile-field">
           <label>Email</label>
-          <p>{{ user.email }}</p>
+          <p data-testid="profile-email">{{ user.email }}</p>
         </div>
-        
+
         <div class="profile-field">
-          <label>Role</label>
+          <label>Роль</label>
           <span class="role-badge" :class="user.role">
             {{ user.role }}
           </span>
         </div>
-        
+
         <div class="profile-field">
-          <label>Member Since</label>
+          <label>Дата регистрации</label>
           <p>{{ formatDate(user.created_at) }}</p>
         </div>
       </div>
-      
+
       <div class="logout-section">
-        <button
-          @click="logout"
-          class="logout-button"
-        >
-          Logout
+        <button @click="handleLogout" class="logout-button" data-testid="logout-button">
+          Выйти
         </button>
       </div>
     </div>
-    
-    <!-- Empty State -->
+
     <div v-else class="empty-state">
-      <p>No user data available</p>
+      <p>Нет данных пользователя</p>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import api from '@/services/api';
+import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
+import api from '@/services/api';
+import { useAuth } from '@/composables/useAuth';
 
-const user = ref(null);
+const router = useRouter();
+const { user: authUser, logout } = useAuth();
+
+const localUser = ref(null);
 const loading = ref(true);
 const error = ref(null);
-const router = useRouter();
+
+const user = computed(() => localUser.value || authUser.value);
 
 const formatDate = (dateString) => {
-  if (!dateString) return 'Not available';
+  if (!dateString) return '—';
   const options = { year: 'numeric', month: 'long', day: 'numeric' };
-  return new Date(dateString).toLocaleDateString(undefined, options);
+  return new Date(dateString).toLocaleDateString('ru-RU', options);
 };
 
 const fetchUserProfile = async () => {
@@ -81,19 +79,17 @@ const fetchUserProfile = async () => {
     loading.value = true;
     error.value = null;
     const response = await api.get('/auth/profile');
-    user.value = response.data;
+    localUser.value = response.data;
   } catch (err) {
     console.error('Failed to fetch user profile:', err);
-    error.value = err.response?.data?.detail || 'Failed to load profile. Please try again.';
+    error.value = err.response?.data?.detail || 'Не удалось загрузить профиль';
   } finally {
     loading.value = false;
   }
 };
 
-const logout = () => {
-  // Remove token from localStorage
-  localStorage.removeItem('access_token');
-  // Redirect to login page
+const handleLogout = () => {
+  logout();
   router.push('/login');
 };
 

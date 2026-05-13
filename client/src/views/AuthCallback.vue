@@ -10,10 +10,12 @@
 import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import api from '@/services/api';
+import { useAuth } from '@/composables/useAuth';
 
 const route = useRoute();
 const router = useRouter();
 const error = ref('');
+const { setAuth } = useAuth();
 
 onMounted(async () => {
   try {
@@ -25,15 +27,15 @@ onMounted(async () => {
       return;
     }
 
-    // Отправляем запрос на бэкенд для обмена кода на токен
     const response = await api.get(`/auth/${provider}/callback`, {
       params: { code }
     });
 
-    // Сохраняем токен в localStorage
-    localStorage.setItem('access_token', response.data.access_token);
+    setAuth(response.data.access_token, {
+      id: response.data.user_id,
+      email: response.data.email,
+    });
 
-    // Перенаправляем на главную страницу
     router.push('/');
   } catch (err) {
     error.value = err.response?.data?.detail || 'Ошибка авторизации';

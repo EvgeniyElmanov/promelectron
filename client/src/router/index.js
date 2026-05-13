@@ -13,13 +13,24 @@ const routes = [
   { path: '/login', component: Login },
   { path: '/register', component: Register },
   { path: '/admin', component: Admin },
-  { path: '/cart', component: Cart },
-  { path: '/orders', component: Orders },
-  { path: '/profile', component: Profile },
+  { path: '/cart', component: Cart, meta: { requiresAuth: true } },
+  { path: '/orders', component: Orders, meta: { requiresAuth: true } },
+  { path: '/profile', component: Profile, meta: { requiresAuth: true } },
   { path: '/auth/callback', component: AuthCallback },
 ];
 
-export default createRouter({
+const router = createRouter({
   history: createWebHistory(),
   routes,
 });
+
+router.beforeEach((to, from, next) => {
+  const token = localStorage.getItem('access_token');
+  if (to.meta.requiresAuth && !token) {
+    next('/login');
+  } else {
+    next();
+  }
+});
+
+export default router;

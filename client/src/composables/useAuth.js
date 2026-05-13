@@ -1,28 +1,52 @@
+import { ref, computed } from 'vue';
 import { jwtDecode } from 'jwt-decode';
 
+// Модульный уровень — единое состояние для всех компонентов
+const token = ref(localStorage.getItem('access_token') || null);
+const currentUser = ref(null);
+
 export const useAuth = () => {
-  const getToken = () => localStorage.getItem('access_token');
+  const isAuthenticated = computed(() => !!token.value);
+  const user = computed(() => currentUser.value);
+
+  const getToken = () => token.value;
 
   const getUserRole = () => {
-    const token = getToken();
-    if (!token) return null;
+    if (!token.value) return null;
     try {
-      const decoded = jwtDecode(token);
+      const decoded = jwtDecode(token.value);
       return decoded.role;
     } catch {
       return null;
     }
   };
 
-  const isAdmin = () => getUserRole() === 'admin';
-  const isSupplier = () => getUserRole() === 'supplier';
-  const isAuthenticated = () => !!getToken();
+  const isAdmin = computed(() => getUserRole() === 'admin');
+  const isSupplier = computed(() => getUserRole() === 'supplier');
+
+  const setAuth = (newToken, userData = null) => {
+    token.value = newToken;
+    currentUser.value = userData;
+    if (newToken) {
+      localStorage.setItem('access_token', newToken);
+    } else {
+      localStorage.removeItem('access_token');
+    }
+  };
+
+  const logout = () => {
+    setAuth(null, null);
+  };
 
   return {
-    getToken,
-    getUserRole,
+    token,
+    user,
+    isAuthenticated,
     isAdmin,
     isSupplier,
-    isAuthenticated,
+    getToken,
+    getUserRole,
+    setAuth,
+    logout,
   };
 };

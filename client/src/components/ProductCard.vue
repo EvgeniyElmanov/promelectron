@@ -1,48 +1,67 @@
 <template>
-  <div class="product-card">
-    <h3>{{ product.name }}</h3>
-    <p>{{ product.description }}</p>
-    <p>Price: ${{ product.price }}</p>
-    <p>Stock: {{ product.stock }}</p>
-    <button :disabled="isLoading" @click="addToCart">
-      {{ isLoading ? 'Adding...' : 'Add to Cart' }}
-    </button>
+  <div class="product-card" data-testid="product-card">
+    <div
+      class="product-card__image"
+      :style="{ background: placeholderBg }"
+    >
+      <span class="product-card__image-letter">{{ product.name.charAt(0) }}</span>
+    </div>
+    <div class="product-card__body">
+      <div class="product-card__price" data-testid="product-price">{{ formattedPrice }} ₽</div>
+      <div class="product-card__name" data-testid="product-name">{{ product.name }}</div>
+      <button
+        class="product-card__cart-btn"
+        data-testid="add-to-cart-button"
+        :disabled="isLoading"
+        @click="addToCart"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4H6z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <line x1="3" y1="6" x2="21" y2="6" stroke="currentColor" stroke-width="2"/>
+          <path d="M16 10a4 4 0 01-8 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <span>{{ isLoading ? '...' : 'В корзину' }}</span>
+      </button>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { defineProps, ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '@/services/api';
 
 const props = defineProps({
-  product: Object,
+  product: { type: Object, required: true },
 });
 
 const router = useRouter();
 const isLoading = ref(false);
 
+const placeholderColors = [
+  '#E3F2FD', '#FCE4EC', '#E8F5E9', '#FFF3E0',
+  '#F3E5F5', '#E0F7FA', '#FFF8E1', '#EDE7F6',
+];
+
+const placeholderBg = computed(() =>
+  placeholderColors[props.product.id % placeholderColors.length]
+);
+
+const formattedPrice = computed(() => {
+  const parts = props.product.price.toFixed(0);
+  return Number(parts).toLocaleString('ru-RU');
+});
+
 const addToCart = async () => {
-  if (isLoading.value) {
-    return;
-  }
-
+  if (isLoading.value) return;
   isLoading.value = true;
-
   try {
-    await api.post('/cart/add', {
-      product_id: props.product.id,
-      quantity: 1,
-    });
-    alert('Added to cart successfully!');
+    await api.post('/cart/add', { product_id: props.product.id, quantity: 1 });
   } catch (err) {
     if (err?.response?.status === 401) {
-      alert('Session expired. Please log in again.');
       router.push('/login');
       return;
     }
-
-    alert('Failed to add item to cart. Please try again.');
   } finally {
     isLoading.value = false;
   }
@@ -51,13 +70,72 @@ const addToCart = async () => {
 
 <style scoped>
 .product-card {
-  border: 1px solid #ccc;
-  padding: 1rem;
-  border-radius: 4px;
+  background: var(--color-bg-white);
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
-button:disabled {
-  opacity: 0.6;
+.product-card__image {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.product-card__image-letter {
+  font-size: 40px;
+  font-weight: 700;
+  color: rgba(0, 0, 0, 0.12);
+  user-select: none;
+}
+
+.product-card__body {
+  padding: 8px 10px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.product-card__price {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1;
+}
+
+.product-card__name {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 34px;
+}
+
+.product-card__cart-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 0;
+  margin-top: 4px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  transition: background 0.15s;
+}
+
+.product-card__cart-btn:hover {
+  background: #d4e4ff;
+}
+
+.product-card__cart-btn:disabled {
+  opacity: 0.5;
   cursor: not-allowed;
 }
 </style>
