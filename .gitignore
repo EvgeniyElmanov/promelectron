@@ -10,6 +10,7 @@ env/
 ENV/
 .env
 .env.*
+!.env.example
 
 # === Node.js / Frontend ===
 client/node_modules/
@@ -62,6 +63,13 @@ htmlcov/
 Thumbs.db
 ehthumbs.db
 
-# Cursor AI IDE settings
-.cursor/
-.cursorrules
+# Playwright / E2E
+playwright-report/
+test-results/
+e2e/test-results/
+e2e/screenshots/
+
+# SQLite
+*.db
+*.sqlite
+*.sqlite3
