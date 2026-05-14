@@ -34,9 +34,12 @@ api.interceptors.response.use(
   },
   (error) => {
     if (error.response?.status === 401) {
-      // Опционально: перенаправить на страницу входа или очистить токен
-      // localStorage.removeItem('access_token');
-      // window.location.href = '/login';
+      const isAuthPage = window.location.pathname === '/login' || window.location.pathname === '/register';
+      const isAuthRequest = error.config?.url?.includes('/login') || error.config?.url?.includes('/register');
+      if (!isAuthPage && !isAuthRequest) {
+        localStorage.removeItem('access_token');
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

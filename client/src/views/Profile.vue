@@ -162,6 +162,11 @@ const fetchUserProfile = async () => {
     const response = await api.get('/auth/profile');
     localUser.value = response.data;
   } catch (err) {
+    if (err.response?.status === 401) {
+      localStorage.removeItem('access_token');
+      router.push('/login');
+      return;
+    }
     error.value = err.response?.data?.detail || 'Не удалось загрузить профиль';
   } finally {
     loading.value = false;

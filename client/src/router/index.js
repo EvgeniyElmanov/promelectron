@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router';
+import { jwtDecode } from 'jwt-decode';
 import Products from '../views/Products.vue';
 import Login from '../views/Login.vue';
 import Admin from '../views/Admin.vue';
@@ -32,11 +33,28 @@ const router = createRouter({
 
 router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('access_token');
-  if (to.meta.requiresAuth && !token) {
-    next('/login');
-  } else {
-    next();
+
+  if (to.meta.requiresAuth) {
+    if (!token) {
+      next('/login');
+      return;
+    }
+    // Проверяем, не протух ли токен
+    try {
+      const decoded = jwtDecode(token);
+      if (decoded.exp && decoded.exp * 1000 < Date.now()) {
+        localStorage.removeItem('access_token');
+        next('/login');
+        return;
+      }
+    } catch {
+      localStorage.removeItem('access_token');
+      next('/login');
+      return;
+    }
   }
+
+  next();
 });
 
 export default router;
