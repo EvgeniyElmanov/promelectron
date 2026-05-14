@@ -112,6 +112,12 @@ const addToCart = async () => {
   display: flex;
   flex-direction: column;
   cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.product-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .product-card__image {

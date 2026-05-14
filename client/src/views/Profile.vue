@@ -384,4 +384,35 @@ onMounted(fetchUserProfile);
   color: var(--color-text-secondary);
   font-size: 15px;
 }
+
+/* Desktop */
+@media (min-width: 768px) {
+  .profile-page {
+    padding: 24px 20px 40px;
+  }
+  
+  .profile-content {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 16px;
+    align-items: start;
+  }
+  
+  .profile-card--avatar {
+    grid-column: 1;
+    flex-direction: column;
+    text-align: center;
+    padding: 28px 20px;
+  }
+  
+  .avatar {
+    width: 80px;
+    height: 80px;
+    font-size: 28px;
+  }
+  
+  .profile-card:not(.profile-card--avatar) {
+    grid-column: 2;
+  }
+}
 </style>

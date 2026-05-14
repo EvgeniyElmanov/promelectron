@@ -19,44 +19,51 @@
       </button>
     </div>
 
-    <div class="product-detail__gallery">
-      <div
-        class="product-detail__image"
-        :style="{ background: placeholderBg }"
-        data-testid="pdp-image"
-      >
-        <span class="product-detail__image-letter">{{ product.name?.charAt(0) }}</span>
+    <div class="product-detail__main">
+      <!-- Left: Gallery -->
+      <div class="product-detail__gallery">
+        <div
+          class="product-detail__image"
+          :style="{ background: placeholderBg }"
+          data-testid="pdp-image"
+        >
+          <span class="product-detail__image-letter">{{ product.name?.charAt(0) }}</span>
+        </div>
+      </div>
+
+      <!-- Right: Info -->
+      <div class="product-detail__info">
+        <div class="product-detail__price" data-testid="pdp-price">{{ formattedPrice }} ₽</div>
+
+        <div class="product-detail__rating" v-if="product.reviews_count > 0" data-testid="pdp-rating">
+          <span class="product-detail__stars">
+            <svg v-for="n in 5" :key="n" width="16" height="16" viewBox="0 0 24 24" :fill="n <= Math.round(product.average_rating) ? '#FFB800' : 'none'" :stroke="n <= Math.round(product.average_rating) ? '#FFB800' : '#ccc'" stroke-width="2">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+          </span>
+          <span class="product-detail__rating-text">{{ product.average_rating }} · {{ product.reviews_count }} отзывов</span>
+        </div>
+
+        <div class="product-detail__actions">
+          <button
+            class="product-detail__cart-btn"
+            data-testid="pdp-add-to-cart"
+            :disabled="cartLoading"
+            @click="addToCart"
+          >
+            {{ cartLoading ? '...' : 'В корзину' }}
+          </button>
+        </div>
+
+        <div class="product-detail__section" v-if="product.description" data-testid="pdp-description">
+          <h2 class="product-detail__section-title">Описание</h2>
+          <p class="product-detail__description">{{ product.description }}</p>
+        </div>
       </div>
     </div>
 
-    <div class="product-detail__info">
-      <div class="product-detail__price" data-testid="pdp-price">{{ formattedPrice }} ₽</div>
-
-      <div class="product-detail__rating" v-if="product.reviews_count > 0" data-testid="pdp-rating">
-        <span class="product-detail__stars">
-          <svg v-for="n in 5" :key="n" width="16" height="16" viewBox="0 0 24 24" :fill="n <= Math.round(product.average_rating) ? '#FFB800' : 'none'" :stroke="n <= Math.round(product.average_rating) ? '#FFB800' : '#ccc'" stroke-width="2">
-            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-          </svg>
-        </span>
-        <span class="product-detail__rating-text">{{ product.average_rating }} · {{ product.reviews_count }} отзывов</span>
-      </div>
-
-      <div class="product-detail__actions">
-        <button
-          class="product-detail__cart-btn"
-          data-testid="pdp-add-to-cart"
-          :disabled="cartLoading"
-          @click="addToCart"
-        >
-          {{ cartLoading ? '...' : 'В корзину' }}
-        </button>
-      </div>
-
-      <div class="product-detail__section" v-if="product.description" data-testid="pdp-description">
-        <h2 class="product-detail__section-title">Описание</h2>
-        <p class="product-detail__description">{{ product.description }}</p>
-      </div>
-
+    <!-- Reviews Section -->
+    <div class="product-detail__reviews-wrapper">
       <div class="product-detail__section" data-testid="pdp-reviews-section">
         <h2 class="product-detail__section-title">Отзывы</h2>
 
@@ -287,6 +294,11 @@ onMounted(fetchProduct);
   color: #ff4242;
 }
 
+.product-detail__main {
+  display: flex;
+  flex-direction: column;
+}
+
 .product-detail__gallery {
   background: var(--color-bg-white);
   padding: 16px;
@@ -377,6 +389,10 @@ onMounted(fetchProduct);
   line-height: 1.5;
 }
 
+.product-detail__reviews-wrapper {
+  padding: 0 12px;
+}
+
 .product-detail__review-form {
   display: flex;
   flex-direction: column;
@@ -465,5 +481,38 @@ onMounted(fetchProduct);
   font-size: 14px;
   color: var(--color-text);
   line-height: 1.4;
+}
+
+/* Desktop Layout */
+@media (min-width: 768px) {
+  .product-detail__main {
+    flex-direction: row;
+    gap: 20px;
+    padding: 20px;
+  }
+  
+  .product-detail__gallery {
+    flex: 0 0 45%;
+    max-width: 500px;
+    padding: 24px;
+    border-radius: 16px;
+  }
+  
+  .product-detail__image {
+    aspect-ratio: 4 / 3;
+  }
+  
+  .product-detail__info {
+    flex: 1;
+    padding: 0;
+  }
+  
+  .product-detail__price {
+    font-size: 32px;
+  }
+  
+  .product-detail__reviews-wrapper {
+    padding: 0 20px;
+  }
 }
 </style>

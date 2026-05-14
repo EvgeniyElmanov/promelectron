@@ -100,4 +100,29 @@ onMounted(fetchFavorites);
   grid-template-columns: 1fr 1fr;
   gap: 8px;
 }
+
+@media (min-width: 768px) {
+  .favorites {
+    padding: 16px;
+  }
+  
+  .favorites__grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .favorites__grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .favorites__grid {
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16px;
+  }
+}
 </style>

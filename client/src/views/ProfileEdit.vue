@@ -455,4 +455,18 @@ onMounted(fetchProfile);
   font-size: 14px;
   text-align: center;
 }
+
+/* Desktop */
+@media (min-width: 768px) {
+  .profile-edit-page {
+    padding: 24px 20px 40px;
+  }
+  
+  .profile-edit-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    align-items: start;
+  }
+}
 </style>

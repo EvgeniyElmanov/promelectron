@@ -1,7 +1,9 @@
 <template>
-  <Header />
-  <RouterView />
-  <BottomNav />
+  <div class="desktop-container">
+    <Header />
+    <RouterView />
+    <BottomNav />
+  </div>
 </template>
 
 <script setup>

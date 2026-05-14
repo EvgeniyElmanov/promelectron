@@ -53,7 +53,6 @@ const fetchProducts = async (append = false) => {
     } else {
       products.value = data;
     }
-    // Guess total based on result size — API doesn't return count
     if (data.length < limit) {
       total.value = skip.value + data.length;
     }
@@ -70,7 +69,7 @@ const loadMore = () => {
 };
 
 const handleCategorySelect = (_categoryId) => {
-  // Placeholder: backend doesn't support category filter yet
+  // Placeholder
 };
 
 onMounted(() => fetchProducts());
@@ -96,6 +95,31 @@ onMounted(() => fetchProducts());
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
+}
+
+@media (min-width: 768px) {
+  .home__grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+  
+  .home__section {
+    padding: 16px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .home__grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .home__grid {
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16px;
+  }
 }
 
 .home__loading {

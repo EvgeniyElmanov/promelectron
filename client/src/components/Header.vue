@@ -1,6 +1,17 @@
 <template>
   <header class="header">
-    <div class="header__logo" data-testid="header-logo" @click="$router.push('/')">MyShop</div>
+    <div class="header__left">
+      <div class="header__logo" data-testid="header-logo" @click="$router.push('/')">MyShop</div>
+      
+      <!-- Desktop Navigation -->
+      <nav class="header__nav" v-if="isDesktop">
+        <router-link to="/" class="header__nav-link" :class="{ 'header__nav-link--active': $route.path === '/' }">Главная</router-link>
+        <router-link to="/favorites" class="header__nav-link" :class="{ 'header__nav-link--active': $route.path.startsWith('/favorites') }">Избранное</router-link>
+        <router-link to="/cart" class="header__nav-link" :class="{ 'header__nav-link--active': $route.path.startsWith('/cart') }">Корзина</router-link>
+        <router-link to="/orders" class="header__nav-link" :class="{ 'header__nav-link--active': $route.path.startsWith('/orders') }">Заказы</router-link>
+      </nav>
+    </div>
+
     <div class="header__actions">
       <router-link to="/cart" class="header__icon" data-testid="cart-link" title="Корзина">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
@@ -26,9 +37,24 @@
 </template>
 
 <script setup>
+import { ref, onMounted, onUnmounted } from 'vue';
 import { useAuth } from '@/composables/useAuth';
 
 const { isAuthenticated } = useAuth();
+const isDesktop = ref(false);
+
+const checkWidth = () => {
+  isDesktop.value = window.innerWidth >= 768;
+};
+
+onMounted(() => {
+  checkWidth();
+  window.addEventListener('resize', checkWidth);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('resize', checkWidth);
+});
 </script>
 
 <style scoped>
@@ -44,12 +70,43 @@ const { isAuthenticated } = useAuth();
   border-bottom: 1px solid var(--color-border);
 }
 
+.header__left {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+
 .header__logo {
   font-size: 22px;
   font-weight: 700;
   color: var(--color-primary);
   cursor: pointer;
   letter-spacing: -0.5px;
+  flex-shrink: 0;
+}
+
+.header__nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.header__nav-link {
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text);
+  transition: background 0.15s, color 0.15s;
+}
+
+.header__nav-link:hover {
+  background: var(--color-bg);
+}
+
+.header__nav-link--active {
+  color: var(--color-primary);
+  background: var(--color-primary-light);
 }
 
 .header__actions {

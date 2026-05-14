@@ -102,4 +102,11 @@ const isActive = (to) => {
   font-size: 11px;
   line-height: 1;
 }
+
+/* Hide on desktop */
+@media (min-width: 768px) {
+  .bottom-nav {
+    display: none;
+  }
+}
 </style>

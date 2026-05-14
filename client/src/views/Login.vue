@@ -325,4 +325,19 @@ async function loginWithYandex() {
   font-size: 14px;
   color: var(--color-text-secondary);
 }
+
+/* Desktop */
+@media (min-width: 768px) {
+  .auth-page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+  }
+  
+  .auth-card {
+    width: 100%;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  }
+}
 </style>
