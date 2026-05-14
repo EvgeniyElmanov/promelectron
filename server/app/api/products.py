@@ -5,11 +5,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from server.app.db.database import get_db
 from server.app.models.user import User
-from server.app.schemas.product import ProductCreate, ProductOut, ProductUpdate
+from server.app.schemas.product import ProductCreate, ProductDetailOut, ProductOut, ProductUpdate
 from server.app.services.product_service import ProductService
 from server.app.utils.auth import (
     get_current_active_admin,
     get_current_active_supplier,
+    get_optional_user,
 )
 
 router = APIRouter(prefix="/products", tags=["products"])
@@ -36,6 +37,17 @@ async def create_product(
 @router.get("/{product_id}", response_model=ProductOut)
 async def read_product(product_id: int, db: AsyncSession = Depends(get_db)):
     return await ProductService.read_product(product_id=product_id, db=db)
+
+
+@router.get("/{product_id}/detail", response_model=ProductDetailOut)
+async def read_product_detail(
+    product_id: int,
+    current_user: User | None = Depends(get_optional_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return await ProductService.read_product_detail(
+        product_id=product_id, current_user=current_user, db=db
+    )
 
 
 @router.put("/{product_id}", response_model=ProductOut)

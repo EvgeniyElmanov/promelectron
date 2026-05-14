@@ -14,6 +14,7 @@ from server.app.models.user import RoleEnum, User
 
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 security = HTTPBearer()
+optional_security = HTTPBearer(auto_error=False)
 
 
 def verify_password(plain_password, hashed_password):
@@ -56,6 +57,27 @@ async def get_current_user(
 
     await db.refresh(user)
 
+    return user
+
+
+async def get_optional_user(
+    token: HTTPAuthorizationCredentials = Depends(optional_security),
+    db: AsyncSession = Depends(get_db),
+) -> User | None:
+    if token is None:
+        return None
+    try:
+        payload = jwt.decode(token.credentials, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            return None
+    except JWTError:
+        return None
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalars().first()
+    if user is None:
+        return None
+    await db.refresh(user)
     return user
 
 

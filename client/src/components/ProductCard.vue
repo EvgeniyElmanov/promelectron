@@ -1,10 +1,20 @@
 <template>
-  <div class="product-card" data-testid="product-card">
+  <div class="product-card" data-testid="product-card" @click="goToProduct">
     <div
       class="product-card__image"
       :style="{ background: placeholderBg }"
     >
       <span class="product-card__image-letter">{{ product.name.charAt(0) }}</span>
+      <button
+        class="product-card__heart"
+        :class="{ 'product-card__heart--active': isFavorite }"
+        data-testid="favorite-button"
+        @click.stop="toggleFavorite"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+          <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
     </div>
     <div class="product-card__body">
       <div class="product-card__price" data-testid="product-price">{{ formattedPrice }} ₽</div>
@@ -13,7 +23,7 @@
         class="product-card__cart-btn"
         data-testid="add-to-cart-button"
         :disabled="isLoading"
-        @click="addToCart"
+        @click.stop="addToCart"
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
           <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4H6z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -30,13 +40,17 @@
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '@/services/api';
+import { useAuth } from '@/composables/useAuth';
 
 const props = defineProps({
   product: { type: Object, required: true },
 });
 
 const router = useRouter();
+const { isAuthenticated } = useAuth();
+
 const isLoading = ref(false);
+const isFavorite = ref(props.product.is_favorite || false);
 
 const placeholderColors = [
   '#E3F2FD', '#FCE4EC', '#E8F5E9', '#FFF3E0',
@@ -51,6 +65,28 @@ const formattedPrice = computed(() => {
   const parts = props.product.price.toFixed(0);
   return Number(parts).toLocaleString('ru-RU');
 });
+
+const goToProduct = () => {
+  router.push(`/product/${props.product.id}`);
+};
+
+const toggleFavorite = async () => {
+  if (!isAuthenticated.value) {
+    router.push('/login');
+    return;
+  }
+  try {
+    if (isFavorite.value) {
+      await api.delete(`/favorites/remove/${props.product.id}`);
+      isFavorite.value = false;
+    } else {
+      await api.post(`/favorites/add/${props.product.id}`);
+      isFavorite.value = true;
+    }
+  } catch {
+    // silently fail
+  }
+};
 
 const addToCart = async () => {
   if (isLoading.value) return;
@@ -75,6 +111,7 @@ const addToCart = async () => {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  cursor: pointer;
 }
 
 .product-card__image {
@@ -82,6 +119,7 @@ const addToCart = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
 }
 
 .product-card__image-letter {
@@ -89,6 +127,26 @@ const addToCart = async () => {
   font-weight: 700;
   color: rgba(0, 0, 0, 0.12);
   user-select: none;
+}
+
+.product-card__heart {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary);
+  transition: color 0.15s;
+  cursor: pointer;
+}
+
+.product-card__heart--active {
+  color: #ff4242;
 }
 
 .product-card__body {
@@ -128,6 +186,7 @@ const addToCart = async () => {
   background: var(--color-primary-light);
   color: var(--color-primary);
   transition: background 0.15s;
+  cursor: pointer;
 }
 
 .product-card__cart-btn:hover {

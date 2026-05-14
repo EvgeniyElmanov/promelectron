@@ -1,7 +1,9 @@
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict
+
+from server.app.schemas.review import ReviewOut
 
 
 class ProductBase(BaseModel):
@@ -31,3 +33,10 @@ class ProductOut(ProductBase):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class ProductDetailOut(ProductOut):
+    reviews: List[ReviewOut] = []
+    average_rating: float = 0.0
+    reviews_count: int = 0
+    is_favorite: bool = False

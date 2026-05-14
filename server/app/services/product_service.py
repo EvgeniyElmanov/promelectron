@@ -3,10 +3,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from server.app.models.category import Category
+from server.app.models.favorite import Favorite
 from server.app.models.product import Product
+from server.app.models.review import Review
 from server.app.models.supplier import Supplier
 from server.app.models.user import User
 from server.app.schemas.product import ProductCreate, ProductUpdate
+from server.app.services.favorite_service import FavoriteService
+from server.app.services.review_service import ReviewService
 
 
 class ProductService:
@@ -72,6 +76,36 @@ class ProductService:
         await db.commit()
         await db.refresh(product)
         return product
+
+    @staticmethod
+    async def read_product_detail(
+        product_id: int, current_user: User | None, db: AsyncSession
+    ) -> dict:
+        product = await ProductService.read_product(product_id, db)
+
+        reviews = await ReviewService.get_reviews(product_id, db)
+        avg_rating = await ReviewService.get_average_rating(product_id, db)
+
+        is_favorite = False
+        if current_user:
+            is_favorite = await FavoriteService.is_favorite(product_id, current_user, db)
+
+        return {
+            "id": product.id,
+            "name": product.name,
+            "description": product.description,
+            "price": product.price,
+            "stock": product.stock,
+            "is_active": product.is_active,
+            "category_id": product.category_id,
+            "supplier_id": product.supplier_id,
+            "created_at": product.created_at,
+            "updated_at": product.updated_at,
+            "reviews": reviews,
+            "average_rating": avg_rating,
+            "reviews_count": len(reviews),
+            "is_favorite": is_favorite,
+        }
 
     @staticmethod
     async def delete_product(product_id: int, db: AsyncSession) -> dict[str, str]:

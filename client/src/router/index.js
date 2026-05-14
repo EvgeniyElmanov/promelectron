@@ -7,6 +7,8 @@ import Orders from '../views/Orders.vue';
 import Profile from '../views/Profile.vue';
 import Register from '../views/Register.vue';
 import AuthCallback from '../views/AuthCallback.vue';
+import ProductDetail from '../views/ProductDetail.vue';
+import Favorites from '../views/Favorites.vue';
 
 const routes = [
   { path: '/', component: Products },
@@ -17,6 +19,8 @@ const routes = [
   { path: '/orders', component: Orders, meta: { requiresAuth: true } },
   { path: '/profile', component: Profile, meta: { requiresAuth: true } },
   { path: '/auth/callback', component: AuthCallback },
+  { path: '/product/:id', component: ProductDetail },
+  { path: '/favorites', component: Favorites, meta: { requiresAuth: true } },
 ];
 
 const router = createRouter({
