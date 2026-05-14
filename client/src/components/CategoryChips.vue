@@ -12,6 +12,7 @@
       v-for="cat in categories"
       :key="cat.id"
       class="category-chips__chip"
+      :data-testid="'category-chip-' + cat.id"
       :class="{ 'category-chips__chip--active': selectedId === cat.id }"
       @click="select(cat.id)"
     >
@@ -36,7 +37,7 @@ const select = (id) => {
 
 onMounted(async () => {
   try {
-    const { data } = await api.get('/categories/');
+    const { data } = await api.get('/categories');
     categories.value = data;
   } catch {
     // silently fail — chips just won't show

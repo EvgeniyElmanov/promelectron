@@ -5,6 +5,43 @@
     <PromoBanner />
 
     <div class="home__section">
+      <div class="home__filters">
+        <select
+          v-model="selectedSort"
+          class="home__sort-select"
+          data-testid="sort-select"
+          @change="applyFilters"
+        >
+          <option value="">По умолчанию</option>
+          <option value="price_asc">Цена: по возрастанию</option>
+          <option value="price_desc">Цена: по убыванию</option>
+          <option value="newest">Сначала новые</option>
+        </select>
+
+        <div class="home__price-filter">
+          <input
+            v-model.number="minPrice"
+            type="number"
+            placeholder="От"
+            class="home__price-input"
+            data-testid="min-price-input"
+            min="0"
+          />
+          <span class="home__price-sep">—</span>
+          <input
+            v-model.number="maxPrice"
+            type="number"
+            placeholder="До"
+            class="home__price-input"
+            data-testid="max-price-input"
+            min="0"
+          />
+          <button class="home__price-btn" data-testid="apply-price-btn" @click="applyFilters">
+            OK
+          </button>
+        </div>
+      </div>
+
       <h2 class="home__section-title" data-testid="products-section-title">Популярные товары</h2>
       <div class="home__grid">
         <ProductCard
@@ -42,6 +79,9 @@ import api from '@/services/api';
 const products = ref([]);
 const searchQuery = ref('');
 const selectedCategory = ref(null);
+const selectedSort = ref('');
+const minPrice = ref(null);
+const maxPrice = ref(null);
 const loading = ref(false);
 const skip = ref(0);
 const limit = 20;
@@ -57,6 +97,9 @@ const fetchProducts = async (append = false) => {
     const params = { skip: skip.value, limit };
     if (searchQuery.value.trim()) params.q = searchQuery.value.trim();
     if (selectedCategory.value) params.category_id = selectedCategory.value;
+    if (selectedSort.value) params.sort_by = selectedSort.value;
+    if (minPrice.value !== null && minPrice.value !== '') params.min_price = minPrice.value;
+    if (maxPrice.value !== null && maxPrice.value !== '') params.max_price = maxPrice.value;
 
     const { data } = await api.get('/products/', { params });
     if (append) {
@@ -87,6 +130,11 @@ const handleCategorySelect = (categoryId) => {
   fetchProducts();
 };
 
+const applyFilters = () => {
+  skip.value = 0;
+  fetchProducts();
+};
+
 watch(searchQuery, () => {
   clearTimeout(searchTimeout);
   searchTimeout = setTimeout(() => {
@@ -105,6 +153,81 @@ onMounted(() => fetchProducts());
 
 .home__section {
   padding: 12px;
+}
+
+.home__filters {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.home__sort-select {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-white);
+  font-size: 14px;
+  color: var(--color-text);
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+}
+
+.home__price-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.home__price-input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-white);
+  font-size: 14px;
+  color: var(--color-text);
+}
+
+.home__price-input::placeholder {
+  color: var(--color-text-secondary);
+}
+
+.home__price-sep {
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+
+.home__price-btn {
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: var(--color-primary);
+  color: var(--color-white);
+  font-size: 14px;
+  font-weight: 500;
+  border: none;
+  flex-shrink: 0;
+}
+
+@media (min-width: 768px) {
+  .home__filters {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .home__sort-select {
+    width: auto;
+    min-width: 220px;
+  }
+
+  .home__price-filter {
+    flex: 1;
+    justify-content: flex-end;
+  }
 }
 
 .home__section-title {

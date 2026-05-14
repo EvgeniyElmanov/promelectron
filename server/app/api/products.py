@@ -24,6 +24,7 @@ async def read_products(
     category_id: int | None = None,
     min_price: float | None = None,
     max_price: float | None = None,
+    sort_by: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     return await ProductService.read_products(
@@ -34,6 +35,7 @@ async def read_products(
         category_id=category_id,
         min_price=min_price,
         max_price=max_price,
+        sort_by=sort_by,
     )
 
 

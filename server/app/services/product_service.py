@@ -23,6 +23,7 @@ class ProductService:
         category_id: int | None = None,
         min_price: float | None = None,
         max_price: float | None = None,
+        sort_by: str | None = None,
     ) -> list[Product]:
         query = select(Product).where(Product.is_active == True)
 
@@ -43,6 +44,16 @@ class ProductService:
 
         if max_price is not None:
             query = query.where(Product.price <= max_price)
+
+        match sort_by:
+            case "price_asc":
+                query = query.order_by(Product.price.asc())
+            case "price_desc":
+                query = query.order_by(Product.price.desc())
+            case "newest":
+                query = query.order_by(Product.created_at.desc())
+            case _:
+                query = query.order_by(Product.id.desc())
 
         result = await db.execute(query.offset(skip).limit(limit))
         return list(result.scalars().all())

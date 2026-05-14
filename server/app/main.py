@@ -55,9 +55,10 @@ app.add_middleware(
 )
 
 # Подключаем все роутеры
+# categories ДО products, иначе /products/{id} перехватит /categories
 app.include_router(users_router, prefix="/api/v1", tags=["users"])
-app.include_router(products_router, prefix="/api/v1", tags=["products"])
 app.include_router(categories_router, prefix="/api/v1", tags=["categories"])
+app.include_router(products_router, prefix="/api/v1", tags=["products"])
 app.include_router(cart_router, prefix="/api/v1", tags=["cart"])
 app.include_router(orders_router, prefix="/api/v1", tags=["orders"])
 app.include_router(auth_router, prefix="/api/v1", tags=["auth"])

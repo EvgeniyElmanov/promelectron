@@ -7,7 +7,7 @@ from server.app.schemas.category import CategoryCreate, CategoryOut
 from server.app.services.category_service import CategoryService
 from server.app.utils.auth import get_current_active_admin
 
-router = APIRouter()
+router = APIRouter(prefix="/categories", tags=["categories"])
 
 
 @router.post("/", response_model=CategoryOut)
