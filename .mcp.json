@@ -6,6 +6,25 @@
         "@playwright/mcp@latest",
         "--headless"
       ]
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "@modelcontextprotocol/server-filesystem",
+        "/home/evgeniy/project/my_shop_backend"
+      ]
+    },
+    "memory": {
+      "command": "npx",
+      "args": [
+        "@modelcontextprotocol/server-memory"
+      ]
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": [
+        "@modelcontextprotocol/server-sequential-thinking"
+      ]
     }
   }
 }
