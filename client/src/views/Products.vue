@@ -16,8 +16,12 @@
 
       <div v-if="loading" class="home__loading">Загрузка...</div>
 
+      <div v-if="products.length === 0 && !loading" class="home__empty">
+        Товары не найдены
+      </div>
+
       <button
-        v-if="hasMore && !loading"
+        v-if="hasMore && !loading && products.length > 0"
         class="home__load-more"
         @click="loadMore"
       >
@@ -28,7 +32,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import ProductCard from '@/components/ProductCard.vue';
 import SearchBar from '@/components/SearchBar.vue';
 import CategoryChips from '@/components/CategoryChips.vue';
@@ -37,6 +41,7 @@ import api from '@/services/api';
 
 const products = ref([]);
 const searchQuery = ref('');
+const selectedCategory = ref(null);
 const loading = ref(false);
 const skip = ref(0);
 const limit = 20;
@@ -44,10 +49,16 @@ const total = ref(null);
 
 const hasMore = computed(() => total.value === null || skip.value < total.value);
 
+let searchTimeout = null;
+
 const fetchProducts = async (append = false) => {
   loading.value = true;
   try {
-    const { data } = await api.get('/products/', { params: { skip: skip.value, limit } });
+    const params = { skip: skip.value, limit };
+    if (searchQuery.value.trim()) params.q = searchQuery.value.trim();
+    if (selectedCategory.value) params.category_id = selectedCategory.value;
+
+    const { data } = await api.get('/products/', { params });
     if (append) {
       products.value.push(...data);
     } else {
@@ -55,6 +66,8 @@ const fetchProducts = async (append = false) => {
     }
     if (data.length < limit) {
       total.value = skip.value + data.length;
+    } else {
+      total.value = null;
     }
   } catch {
     // silently fail
@@ -68,9 +81,19 @@ const loadMore = () => {
   fetchProducts(true);
 };
 
-const handleCategorySelect = (_categoryId) => {
-  // Placeholder
+const handleCategorySelect = (categoryId) => {
+  selectedCategory.value = categoryId;
+  skip.value = 0;
+  fetchProducts();
 };
+
+watch(searchQuery, () => {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    skip.value = 0;
+    fetchProducts();
+  }, 300);
+});
 
 onMounted(() => fetchProducts());
 </script>
@@ -127,6 +150,13 @@ onMounted(() => fetchProducts());
   padding: 16px;
   color: var(--color-text-secondary);
   font-size: 14px;
+}
+
+.home__empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--color-text-secondary);
+  font-size: 15px;
 }
 
 .home__load-more {

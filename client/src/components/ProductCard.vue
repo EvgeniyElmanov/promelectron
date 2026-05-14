@@ -41,6 +41,7 @@ import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '@/services/api';
 import { useAuth } from '@/composables/useAuth';
+import { useToast } from '@/composables/useToast';
 
 const props = defineProps({
   product: { type: Object, required: true },
@@ -48,6 +49,7 @@ const props = defineProps({
 
 const router = useRouter();
 const { isAuthenticated } = useAuth();
+const { add: toast } = useToast();
 
 const isLoading = ref(false);
 const isFavorite = ref(props.product.is_favorite || false);
@@ -79,12 +81,14 @@ const toggleFavorite = async () => {
     if (isFavorite.value) {
       await api.delete(`/favorites/remove/${props.product.id}`);
       isFavorite.value = false;
+      toast('Удалено из избранного', 'info');
     } else {
       await api.post(`/favorites/add/${props.product.id}`);
       isFavorite.value = true;
+      toast('Добавлено в избранное', 'success');
     }
   } catch {
-    // silently fail
+    toast('Не удалось обновить избранное', 'error');
   }
 };
 
@@ -93,11 +97,13 @@ const addToCart = async () => {
   isLoading.value = true;
   try {
     await api.post('/cart/add', { product_id: props.product.id, quantity: 1 });
+    toast('Добавлено в корзину', 'success');
   } catch (err) {
     if (err?.response?.status === 401) {
       router.push('/login');
       return;
     }
+    toast('Не удалось добавить в корзину', 'error');
   } finally {
     isLoading.value = false;
   }

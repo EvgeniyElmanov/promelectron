@@ -1,5 +1,5 @@
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from server.app.models.category import Category
@@ -15,10 +15,36 @@ from server.app.services.review_service import ReviewService
 
 class ProductService:
     @staticmethod
-    async def read_products(skip: int, limit: int, db: AsyncSession) -> list[Product]:
-        result = await db.execute(
-            select(Product).where(Product.is_active == True).offset(skip).limit(limit)
-        )
+    async def read_products(
+        skip: int,
+        limit: int,
+        db: AsyncSession,
+        search: str | None = None,
+        category_id: int | None = None,
+        min_price: float | None = None,
+        max_price: float | None = None,
+    ) -> list[Product]:
+        query = select(Product).where(Product.is_active == True)
+
+        if search:
+            search_term = f"%{search}%"
+            query = query.where(
+                or_(
+                    Product.name.ilike(search_term),
+                    Product.description.ilike(search_term),
+                )
+            )
+
+        if category_id is not None:
+            query = query.where(Product.category_id == category_id)
+
+        if min_price is not None:
+            query = query.where(Product.price >= min_price)
+
+        if max_price is not None:
+            query = query.where(Product.price <= max_price)
+
+        result = await db.execute(query.offset(skip).limit(limit))
         return list(result.scalars().all())
 
     @staticmethod

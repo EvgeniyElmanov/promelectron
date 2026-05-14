@@ -38,11 +38,13 @@
 import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '@/services/api';
+import { useToast } from '@/composables/useToast';
 
 const cart = ref({ items: [] });
 const loading = ref(true);
 const creatingOrder = ref(false);
 const router = useRouter();
+const { add: toast } = useToast();
 
 const fetchCart = async () => {
   try {
@@ -50,7 +52,7 @@ const fetchCart = async () => {
     cart.value = response.data;
   } catch (err) {
     console.error('Failed to fetch cart:', err);
-    alert('Failed to load cart. Please try again.');
+    toast('Не удалось загрузить корзину', 'error');
   } finally {
     loading.value = false;
   }
@@ -64,7 +66,7 @@ const updateQuantity = async (itemId, newQuantity) => {
     await fetchCart(); // Refresh cart data
   } catch (err) {
     console.error('Failed to update quantity:', err);
-    alert('Failed to update item quantity. Please try again.');
+    toast('Не удалось обновить количество', 'error');
   }
 };
 
@@ -74,7 +76,7 @@ const removeItem = async (itemId) => {
     await fetchCart(); // Refresh cart data
   } catch (err) {
     console.error('Failed to remove item:', err);
-    alert('Failed to remove item from cart. Please try again.');
+    toast('Не удалось удалить товар', 'error');
   }
 };
 
@@ -84,11 +86,11 @@ const createOrder = async () => {
   creatingOrder.value = true;
   try {
     const response = await api.post('/orders/create');
-    alert('Заказ успешно создан!');
+    toast('Заказ успешно создан!', 'success');
     router.push('/orders');
   } catch (err) {
     console.error('Failed to create order:', err);
-    alert('Failed to create order. Please try again.');
+    toast('Не удалось создать заказ', 'error');
   } finally {
     creatingOrder.value = false;
   }

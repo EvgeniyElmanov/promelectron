@@ -129,10 +129,12 @@ import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import api from '@/services/api';
 import { useAuth } from '@/composables/useAuth';
+import { useToast } from '@/composables/useToast';
 
 const route = useRoute();
 const router = useRouter();
 const { isAuthenticated } = useAuth();
+const { add: toast } = useToast();
 
 const product = ref({});
 const reviews = ref([]);
@@ -184,12 +186,14 @@ const toggleFavorite = async () => {
     if (isFavorite.value) {
       await api.delete(`/favorites/remove/${productId.value}`);
       isFavorite.value = false;
+      toast('Удалено из избранного', 'info');
     } else {
       await api.post(`/favorites/add/${productId.value}`);
       isFavorite.value = true;
+      toast('Добавлено в избранное', 'success');
     }
   } catch {
-    // silently fail
+    toast('Не удалось обновить избранное', 'error');
   }
 };
 
@@ -198,10 +202,13 @@ const addToCart = async () => {
   cartLoading.value = true;
   try {
     await api.post('/cart/add', { product_id: productId.value, quantity: 1 });
+    toast('Добавлено в корзину', 'success');
   } catch (err) {
     if (err?.response?.status === 401) {
       router.push('/login');
+      return;
     }
+    toast('Не удалось добавить в корзину', 'error');
   } finally {
     cartLoading.value = false;
   }
@@ -218,10 +225,13 @@ const submitReview = async () => {
     newRating.value = 0;
     newReviewText.value = '';
     await fetchProduct();
+    toast('Отзыв опубликован', 'success');
   } catch (err) {
     if (err?.response?.status === 401) {
       router.push('/login');
+      return;
     }
+    toast('Не удалось опубликовать отзыв', 'error');
   } finally {
     reviewLoading.value = false;
   }

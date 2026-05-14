@@ -18,9 +18,23 @@ router = APIRouter(prefix="/products", tags=["products"])
 
 @router.get("/", response_model=List[ProductOut])
 async def read_products(
-    skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)
+    skip: int = 0,
+    limit: int = 100,
+    q: str | None = None,
+    category_id: int | None = None,
+    min_price: float | None = None,
+    max_price: float | None = None,
+    db: AsyncSession = Depends(get_db),
 ):
-    return await ProductService.read_products(skip=skip, limit=limit, db=db)
+    return await ProductService.read_products(
+        skip=skip,
+        limit=limit,
+        db=db,
+        search=q,
+        category_id=category_id,
+        min_price=min_price,
+        max_price=max_price,
+    )
 
 
 @router.post("/", response_model=ProductOut)

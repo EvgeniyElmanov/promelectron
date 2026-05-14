@@ -29,7 +29,7 @@ test.describe('Checkout Flow', () => {
 
     // Place order
     await page.click('[data-testid="checkout-button"]');
-    await expect(page).toHaveURL('/orders');
+    await page.waitForURL('/orders', { timeout: 10000 });
 
     // Verify order exists
     await expect(page.locator('[data-testid="order-card"]').first()).toBeVisible();
