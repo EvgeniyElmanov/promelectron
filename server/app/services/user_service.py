@@ -60,3 +60,37 @@ class UserService:
             "token_type": "bearer",
             "user": UserOut.model_validate(user),
         }
+
+    @staticmethod
+    async def update_profile(user_id: int, user_data, db: AsyncSession) -> User:
+        result = await db.execute(select(User).where(User.id == user_id))
+        user = result.scalars().first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        if user_data.email is not None and user_data.email != user.email:
+            existing = await db.execute(select(User).where(User.email == user_data.email))
+            if existing.scalars().first():
+                raise HTTPException(status_code=400, detail="Email already in use")
+            user.email = user_data.email
+
+        if user_data.full_name is not None:
+            user.full_name = user_data.full_name
+
+        await db.commit()
+        await db.refresh(user)
+        return user
+
+    @staticmethod
+    async def change_password(user_id: int, password_data, db: AsyncSession) -> dict:
+        result = await db.execute(select(User).where(User.id == user_id))
+        user = result.scalars().first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        if not verify_password(password_data.old_password, user.hashed_password):
+            raise HTTPException(status_code=400, detail="Incorrect old password")
+
+        user.hashed_password = hash_password(password_data.new_password)
+        await db.commit()
+        return {"message": "Password updated successfully"}

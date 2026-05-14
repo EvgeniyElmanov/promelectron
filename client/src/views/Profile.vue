@@ -1,53 +1,113 @@
 <template>
-  <div class="profile-container" data-testid="profile-page">
-    <h2 data-testid="profile-title">Профиль</h2>
+  <div class="profile-page" data-testid="profile-page">
+    <!-- Header -->
+    <div class="profile-header">
+      <h1 class="profile-title" data-testid="profile-title">Профиль</h1>
+    </div>
 
-    <div v-if="loading" class="loading-container">
+    <!-- Loading -->
+    <div v-if="loading" class="profile-loading">
       <div class="spinner"></div>
       <span>Загрузка профиля...</span>
     </div>
 
-    <div v-else-if="error" class="error-container">
-      <strong>Ошибка! </strong>
-      <span>{{ error }}</span>
-      <button @click="fetchUserProfile" class="retry-button">
-        Попробовать снова
-      </button>
+    <!-- Error -->
+    <div v-else-if="error" class="profile-error">
+      <p>{{ error }}</p>
+      <button @click="fetchUserProfile" class="retry-btn">Попробовать снова</button>
     </div>
 
-    <div v-else-if="user" class="profile-card">
-      <div class="profile-grid">
-        <div class="profile-field">
-          <label>Имя</label>
-          <p>{{ user.full_name || 'Не указано' }}</p>
+    <!-- Content -->
+    <div v-else-if="user" class="profile-content">
+      <!-- Avatar Card -->
+      <div class="profile-card profile-card--avatar">
+        <div class="avatar" data-testid="profile-avatar">
+          {{ initials }}
         </div>
-
-        <div class="profile-field">
-          <label>Email</label>
-          <p data-testid="profile-email">{{ user.email }}</p>
-        </div>
-
-        <div class="profile-field">
-          <label>Роль</label>
-          <span class="role-badge" :class="user.role">
-            {{ user.role }}
-          </span>
-        </div>
-
-        <div class="profile-field">
-          <label>Дата регистрации</label>
-          <p>{{ formatDate(user.created_at) }}</p>
+        <div class="avatar-info">
+          <p class="avatar-name">{{ displayName }}</p>
+          <p class="avatar-email" data-testid="profile-email">{{ user.email }}</p>
         </div>
       </div>
 
-      <div class="logout-section">
-        <button @click="handleLogout" class="logout-button" data-testid="logout-button">
-          Выйти
-        </button>
+      <!-- Details Card -->
+      <div class="profile-card">
+        <h2 class="card-title">Личные данные</h2>
+        <div class="detail-list">
+          <div class="detail-item">
+            <span class="detail-label">Имя</span>
+            <span class="detail-value">{{ user.full_name || 'Не указано' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Email</span>
+            <span class="detail-value">{{ user.email }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Роль</span>
+            <span class="detail-value">
+              <span class="role-badge" :class="user.role" data-testid="profile-role">
+                {{ roleLabel }}
+              </span>
+            </span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Дата регистрации</span>
+            <span class="detail-value" data-testid="profile-date">{{ formatDate(user.created_at) }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Actions Card -->
+      <div class="profile-card">
+        <h2 class="card-title">Действия</h2>
+        <div class="action-list">
+          <button
+            class="action-btn action-btn--primary"
+            data-testid="profile-edit-btn"
+            @click="$router.push('/profile/edit')"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+            <span>Редактировать профиль</span>
+          </button>
+
+          <router-link to="/orders" class="action-btn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4H6z"/>
+              <line x1="3" y1="6" x2="21" y2="6"/>
+              <path d="M16 10a4 4 0 01-8 0"/>
+            </svg>
+            <span>Мои заказы</span>
+            <svg class="action-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 18l6-6-6-6"/>
+            </svg>
+          </router-link>
+
+          <router-link to="/favorites" class="action-btn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
+            </svg>
+            <span>Избранное</span>
+            <svg class="action-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 18l6-6-6-6"/>
+            </svg>
+          </router-link>
+
+          <button class="action-btn action-btn--danger" @click="handleLogout" data-testid="logout-button">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+            <span>Выйти</span>
+          </button>
+        </div>
       </div>
     </div>
 
-    <div v-else class="empty-state">
+    <div v-else class="profile-empty">
       <p>Нет данных пользователя</p>
     </div>
   </div>
@@ -68,10 +128,31 @@ const error = ref(null);
 
 const user = computed(() => localUser.value || authUser.value);
 
+const initials = computed(() => {
+  const name = user.value?.full_name || user.value?.email || '?';
+  const parts = name.split(' ').filter(Boolean);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return name.charAt(0).toUpperCase();
+});
+
+const displayName = computed(() => {
+  return user.value?.full_name || user.value?.email || 'Пользователь';
+});
+
+const roleLabel = computed(() => {
+  const map = { user: 'Покупатель', admin: 'Администратор', supplier: 'Поставщик' };
+  return map[user.value?.role] || user.value?.role;
+});
+
 const formatDate = (dateString) => {
   if (!dateString) return '—';
-  const options = { year: 'numeric', month: 'long', day: 'numeric' };
-  return new Date(dateString).toLocaleDateString('ru-RU', options);
+  return new Date(dateString).toLocaleDateString('ru-RU', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
 };
 
 const fetchUserProfile = async () => {
@@ -81,7 +162,6 @@ const fetchUserProfile = async () => {
     const response = await api.get('/auth/profile');
     localUser.value = response.data;
   } catch (err) {
-    console.error('Failed to fetch user profile:', err);
     error.value = err.response?.data?.detail || 'Не удалось загрузить профиль';
   } finally {
     loading.value = false;
@@ -97,148 +177,211 @@ onMounted(fetchUserProfile);
 </script>
 
 <style scoped>
-.profile-container {
-  max-width: 600px;
-  margin: 0 auto;
-  padding: 1rem;
+.profile-page {
+  background: var(--color-bg);
+  min-height: 100vh;
+  padding: 16px 12px 80px;
 }
 
-.profile-container h2 {
-  font-size: 1.5rem;
-  font-weight: bold;
-  margin-bottom: 1.5rem;
-  color: #333;
+.profile-header {
+  padding: 10px 0 16px;
 }
 
-.loading-container {
+.profile-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.profile-loading {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
   align-items: center;
-  height: 10rem;
+  justify-content: center;
+  padding: 60px 20px;
+  gap: 12px;
+  color: var(--color-text-secondary);
+  font-size: 14px;
 }
 
 .spinner {
-  border: 4px solid rgba(0, 0, 0, 0.1);
-  border-left-color: #007bff;
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-primary);
   border-radius: 50%;
-  width: 2rem;
-  height: 2rem;
-  animation: spin 1s linear infinite;
-  margin-right: 1rem;
+  animation: spin 0.8s linear infinite;
 }
 
 @keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+  to { transform: rotate(360deg); }
 }
 
-.error-container {
-  background-color: #f8d7da;
-  border: 1px solid #f5c6cb;
-  color: #721c24;
-  padding: 1rem;
-  border-radius: 0.375rem;
-  margin-bottom: 1rem;
+.profile-error {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--color-danger);
+  font-size: 14px;
 }
 
-.retry-button {
-  margin-top: 0.5rem;
-  background-color: #dc3545;
-  color: white;
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 0.25rem;
-  cursor: pointer;
+.retry-btn {
+  margin-top: 12px;
+  padding: 10px 20px;
+  border-radius: 10px;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
 }
 
-.retry-button:hover {
-  background-color: #c82333;
+.profile-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .profile-card {
-  background-color: white;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  border-radius: 0.5rem;
-  padding: 1.5rem;
+  background: var(--color-bg-white);
+  border-radius: 14px;
+  padding: 18px;
 }
 
-.profile-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
+.profile-card--avatar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 18px;
 }
 
-@media (max-width: 640px) {
-  .profile-grid {
-    grid-template-columns: 1fr;
-  }
+.avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 700;
+  flex-shrink: 0;
+  user-select: none;
 }
 
-.profile-field {
-  margin-bottom: 1rem;
+.avatar-info {
+  min-width: 0;
 }
 
-.profile-field label {
-  display: block;
-  font-weight: bold;
-  margin-bottom: 0.25rem;
-  color: #555;
-  font-size: 0.875rem;
+.avatar-name {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--color-text);
+  line-height: 1.3;
+  word-break: break-word;
 }
 
-.profile-field p {
-  color: #333;
-  font-size: 1rem;
+.avatar-email {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+
+.card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 14px;
+}
+
+.detail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.detail-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.detail-label {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+}
+
+.detail-value {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text);
+  text-align: right;
 }
 
 .role-badge {
   display: inline-block;
-  padding: 0.25rem 0.5rem;
-  font-size: 0.75rem;
-  border-radius: 9999px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
   font-weight: 500;
 }
 
 .role-badge.user {
-  background-color: #e1f0fa;
-  color: #1a56bb;
+  background: #e8f4fd;
+  color: #0066cc;
 }
 
 .role-badge.admin {
-  background-color: #e1f5ee;
-  color: #046c4e;
+  background: #e6f7ed;
+  color: #0d7a3e;
 }
 
 .role-badge.supplier {
-  background-color: #f0e1fa;
-  color: #6d28d9;
+  background: #f3e8ff;
+  color: #7c3aed;
 }
 
-.logout-section {
-  margin-top: 1.5rem;
-  padding-top: 1rem;
-  border-top: 1px solid #eee;
+.action-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
-.logout-button {
-  background-color: #dc3545;
-  color: white;
-  font-weight: bold;
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 0.25rem;
-  cursor: pointer;
-  transition: background-color 0.15s ease-in-out;
+.action-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--color-text);
+  background: transparent;
+  transition: background 0.15s;
+  text-align: left;
 }
 
-.logout-button:hover {
-  background-color: #c82333;
+.action-btn:hover {
+  background: var(--color-bg);
 }
 
-.empty-state {
+.action-btn--primary {
+  color: var(--color-primary);
+}
+
+.action-btn--danger {
+  color: var(--color-danger);
+}
+
+.action-chevron {
+  margin-left: auto;
+  color: var(--color-text-secondary);
+}
+
+.profile-empty {
   text-align: center;
-  padding: 2.5rem;
-  color: #666;
+  padding: 60px 20px;
+  color: var(--color-text-secondary);
+  font-size: 15px;
 }
 </style>

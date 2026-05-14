@@ -5,6 +5,7 @@ import Admin from '../views/Admin.vue';
 import Cart from '../views/Cart.vue';
 import Orders from '../views/Orders.vue';
 import Profile from '../views/Profile.vue';
+import ProfileEdit from '../views/ProfileEdit.vue';
 import Register from '../views/Register.vue';
 import AuthCallback from '../views/AuthCallback.vue';
 import ProductDetail from '../views/ProductDetail.vue';
@@ -18,6 +19,7 @@ const routes = [
   { path: '/cart', component: Cart, meta: { requiresAuth: true } },
   { path: '/orders', component: Orders, meta: { requiresAuth: true } },
   { path: '/profile', component: Profile, meta: { requiresAuth: true } },
+  { path: '/profile/edit', component: ProfileEdit, meta: { requiresAuth: true } },
   { path: '/auth/callback', component: AuthCallback },
   { path: '/product/:id', component: ProductDetail },
   { path: '/favorites', component: Favorites, meta: { requiresAuth: true } },
