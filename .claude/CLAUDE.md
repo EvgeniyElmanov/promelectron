@@ -146,5 +146,13 @@ cd client && npm run dev
 - `backend-dev` — FastAPI + SQLAlchemy + pytest
 - `frontend-dev` — Vue 3 + Vitest
 - `tester` — e2e тесты через Playwright MCP
-- `e2e-tester` — Playwright MCP E2E сценарии
+- `e2e-tester` — Playwright MCP E2E сценарии (нажимает кнопки в браузере как пользователь)
 - `integration-dev` — запуск dev-окружения
+
+## Правило: тестирование после каждой фичи
+
+После завершения любого frontend-изменения (новая страница, компонент, форма, кнопка, роут):
+1. Запустить `make test` (backend + frontend unit-тесты)
+2. **Обязательно вызвать агента `e2e-tester`** — он пройдёт сценарий через браузер, нажимая кнопки как реальный пользователь через Playwright MCP
+3. Если e2e-tester нашёл баг — сначала исправить, потом коммитить
+4. Только после зелёных тестов — коммит
