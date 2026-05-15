@@ -20,7 +20,6 @@ import { useRoute } from 'vue-router';
 import { useAuth } from '@/composables/useAuth';
 
 const route = useRoute();
-const { isSupplier } = useAuth();
 
 const baseNavItems = [
   {
@@ -58,21 +57,6 @@ const baseNavItems = [
 ];
 
 const navItems = computed(() => {
-  if (isSupplier.value) {
-    return [
-      ...baseNavItems.slice(0, 3),
-      {
-        to: '/my-products',
-        label: 'Мои товары',
-        icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-          <path d="M12 2L2 7l10 5 10-5-10-5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M2 17l10 5 10-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M2 12l10 5 10-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>`,
-      },
-      baseNavItems[3],
-    ];
-  }
   return baseNavItems;
 });
 

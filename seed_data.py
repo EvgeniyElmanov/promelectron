@@ -17,6 +17,14 @@ logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
 
 
+TEST_ADMIN_USER: dict[str, Any] = {
+    "email": "seed-admin@example.com",
+    "password": "seedpassword123",
+    "full_name": "Тестовый Админ",
+    "role": RoleEnum.admin,
+    "is_active": True,
+}
+
 TEST_SUPPLIER_USER: dict[str, Any] = {
     "email": "seed-supplier@example.com",
     "password": "seedpassword123",
@@ -75,6 +83,27 @@ TEST_PRODUCTS: list[dict[str, Any]] = [
         "category_name": "Аксессуары",
     },
 ]
+
+
+async def get_or_create_admin_user(session: AsyncSession) -> User:
+    result = await session.execute(select(User).where(User.email == TEST_ADMIN_USER["email"]))
+    user = result.scalar_one_or_none()
+    if user:
+        logger.info(f"Пользователь-админ уже существует: {user.email}")
+        return user
+
+    user = User(
+        email=TEST_ADMIN_USER["email"],
+        hashed_password=hash_password(TEST_ADMIN_USER["password"]),
+        full_name=TEST_ADMIN_USER["full_name"],
+        role=TEST_ADMIN_USER["role"],
+        is_active=TEST_ADMIN_USER["is_active"],
+        created_at=datetime.now(timezone.utc),
+    )
+    session.add(user)
+    await session.flush()
+    logger.info(f"Создан пользователь-админ: {user.email}")
+    return user
 
 
 async def get_or_create_supplier_user(session: AsyncSession) -> User:
@@ -167,6 +196,7 @@ async def create_products(
 async def seed_data() -> None:
     async with SessionLocal() as session:
         try:
+            admin_user = await get_or_create_admin_user(session)
             supplier_user = await get_or_create_supplier_user(session)
             supplier = await get_or_create_supplier(session, supplier_user)
             categories_map = await get_or_create_categories(session)

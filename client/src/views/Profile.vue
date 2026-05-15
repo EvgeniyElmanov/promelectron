@@ -95,6 +95,31 @@
             </svg>
           </router-link>
 
+          <router-link v-if="isAdmin" to="/admin" class="action-btn action-btn--primary" data-testid="profile-admin-link">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="7" height="7" rx="1"/>
+              <rect x="14" y="3" width="7" height="7" rx="1"/>
+              <rect x="3" y="14" width="7" height="7" rx="1"/>
+              <rect x="14" y="14" width="7" height="7" rx="1"/>
+            </svg>
+            <span>Админ-панель</span>
+            <svg class="action-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 18l6-6-6-6"/>
+            </svg>
+          </router-link>
+
+          <router-link v-if="isSupplier" to="/my-products" class="action-btn action-btn--primary" data-testid="profile-supplier-link">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2L2 7l10 5 10-5-10-5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M2 17l10 5 10-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M2 12l10 5 10-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span>Мои товары</span>
+            <svg class="action-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 18l6-6-6-6"/>
+            </svg>
+          </router-link>
+
           <button class="action-btn action-btn--danger" @click="handleLogout" data-testid="logout-button">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
@@ -120,7 +145,7 @@ import api from '@/services/api';
 import { useAuth } from '@/composables/useAuth';
 
 const router = useRouter();
-const { user: authUser, logout } = useAuth();
+const { user: authUser, logout, isAdmin, isSupplier } = useAuth();
 
 const localUser = ref(null);
 const loading = ref(true);

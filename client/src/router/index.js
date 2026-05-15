@@ -3,7 +3,6 @@ import { jwtDecode } from 'jwt-decode';
 import { useAuth } from '@/composables/useAuth';
 import Products from '../views/Products.vue';
 import Login from '../views/Login.vue';
-import Admin from '../views/Admin.vue';
 import Cart from '../views/Cart.vue';
 import Orders from '../views/Orders.vue';
 import Profile from '../views/Profile.vue';
@@ -13,6 +12,7 @@ import AuthCallback from '../views/AuthCallback.vue';
 import ProductDetail from '../views/ProductDetail.vue';
 import Favorites from '../views/Favorites.vue';
 import SupplierProducts from '../views/SupplierProducts.vue';
+import Admin from '../views/Admin.vue';
 
 const routes = [
   { path: '/', component: Products },
@@ -27,6 +27,7 @@ const routes = [
   { path: '/product/:id', component: ProductDetail },
   { path: '/favorites', component: Favorites, meta: { requiresAuth: true } },
   { path: '/my-products', component: SupplierProducts, meta: { requiresAuth: true, requiresSupplier: true } },
+  { path: '/admin', component: Admin, meta: { requiresAuth: true, requiresAdmin: true } },
 ];
 
 const router = createRouter({
@@ -59,6 +60,11 @@ router.beforeEach((to, from, next) => {
   }
 
   if (to.meta.requiresSupplier && getUserRole() !== 'supplier') {
+    next('/');
+    return;
+  }
+
+  if (to.meta.requiresAdmin && getUserRole() !== 'admin') {
     next('/');
     return;
   }

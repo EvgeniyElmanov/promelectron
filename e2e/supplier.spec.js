@@ -11,11 +11,10 @@ test.describe('Supplier Products', () => {
     await page.click('[data-testid="login-submit"]');
     await expect(page).toHaveURL('/');
 
-    // 2. Check "Мои товары" nav item exists
-    await expect(page.locator('[data-testid="nav-Мои товары"]')).toBeVisible();
-
-    // 3. Go to /my-products
-    await page.click('[data-testid="nav-Мои товары"]');
+    // 2. Go to profile and click "Мои товары"
+    await page.goto('/profile');
+    await expect(page.locator('[data-testid="profile-page"]')).toBeVisible();
+    await page.click('[data-testid="profile-supplier-link"]');
     await expect(page).toHaveURL('/my-products');
     await expect(page.locator('[data-testid="supplier-products"]')).toBeVisible();
 
