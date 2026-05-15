@@ -59,6 +59,21 @@ class ProductService:
         return list(result.scalars().all())
 
     @staticmethod
+    async def read_products_by_supplier(
+        supplier_id: int,
+        skip: int,
+        limit: int,
+        db: AsyncSession,
+    ) -> list[Product]:
+        query = (
+            select(Product)
+            .where(Product.supplier_id == supplier_id)
+            .order_by(Product.id.desc())
+        )
+        result = await db.execute(query.offset(skip).limit(limit))
+        return list(result.scalars().all())
+
+    @staticmethod
     async def create_product(
         product_data: ProductCreate, current_user: User, db: AsyncSession
     ) -> Product:
@@ -145,12 +160,21 @@ class ProductService:
         }
 
     @staticmethod
-    async def delete_product(product_id: int, db: AsyncSession) -> dict[str, str]:
+    async def delete_product(
+        product_id: int, current_user: User, db: AsyncSession
+    ) -> dict[str, str]:
         result = await db.execute(select(Product).where(Product.id == product_id))
         product = result.scalars().first()
         if not product:
             raise HTTPException(status_code=404, detail="Product not found")
 
-        await db.delete(product)
+        supplier_result = await db.execute(
+            select(Supplier).where(Supplier.user_id == current_user.id)
+        )
+        supplier = supplier_result.scalars().first()
+        if not supplier or product.supplier_id != supplier.id:
+            raise HTTPException(status_code=403, detail="Not authorized to delete this product")
+
+        product.is_active = False
         await db.commit()
-        return {"message": "Product deleted successfully"}
+        return {"message": "Product deactivated successfully"}

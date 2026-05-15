@@ -9,6 +9,7 @@
         <router-link to="/favorites" class="header__nav-link" :class="{ 'header__nav-link--active': $route.path.startsWith('/favorites') }">Избранное</router-link>
         <router-link to="/cart" class="header__nav-link" :class="{ 'header__nav-link--active': $route.path.startsWith('/cart') }">Корзина</router-link>
         <router-link to="/orders" class="header__nav-link" :class="{ 'header__nav-link--active': $route.path.startsWith('/orders') }">Заказы</router-link>
+        <router-link v-if="isSupplier" to="/my-products" class="header__nav-link" :class="{ 'header__nav-link--active': $route.path.startsWith('/my-products') }">Мои товары</router-link>
       </nav>
     </div>
 
@@ -40,7 +41,7 @@
 import { ref, onMounted, onUnmounted } from 'vue';
 import { useAuth } from '@/composables/useAuth';
 
-const { isAuthenticated } = useAuth();
+const { isAuthenticated, isSupplier } = useAuth();
 const isDesktop = ref(false);
 
 const checkWidth = () => {

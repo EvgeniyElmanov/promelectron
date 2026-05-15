@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { jwtDecode } from 'jwt-decode';
+import { useAuth } from '@/composables/useAuth';
 import Products from '../views/Products.vue';
 import Login from '../views/Login.vue';
 import Admin from '../views/Admin.vue';
@@ -11,6 +12,7 @@ import Register from '../views/Register.vue';
 import AuthCallback from '../views/AuthCallback.vue';
 import ProductDetail from '../views/ProductDetail.vue';
 import Favorites from '../views/Favorites.vue';
+import SupplierProducts from '../views/SupplierProducts.vue';
 
 const routes = [
   { path: '/', component: Products },
@@ -24,6 +26,7 @@ const routes = [
   { path: '/auth/callback', component: AuthCallback },
   { path: '/product/:id', component: ProductDetail },
   { path: '/favorites', component: Favorites, meta: { requiresAuth: true } },
+  { path: '/my-products', component: SupplierProducts, meta: { requiresAuth: true, requiresSupplier: true } },
 ];
 
 const router = createRouter({
@@ -33,6 +36,7 @@ const router = createRouter({
 
 router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('access_token');
+  const { getUserRole } = useAuth();
 
   if (to.meta.requiresAuth) {
     if (!token) {
@@ -52,6 +56,11 @@ router.beforeEach((to, from, next) => {
       next('/login');
       return;
     }
+  }
+
+  if (to.meta.requiresSupplier && getUserRole() !== 'supplier') {
+    next('/');
+    return;
   }
 
   next();

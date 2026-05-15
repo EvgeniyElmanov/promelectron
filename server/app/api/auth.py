@@ -140,7 +140,7 @@ async def oauth_callback(
         await db.commit()
 
     # 5. Генерация JWT
-    jwt_token = create_access_token(data={"sub": user.email})
+    jwt_token = create_access_token(data={"sub": user.email, "role": user.role.value})
 
     return {
         "access_token": jwt_token,

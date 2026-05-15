@@ -1,9 +1,11 @@
 from typing import List
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from server.app.db.database import get_db
+from server.app.models.supplier import Supplier
 from server.app.models.user import User
 from server.app.schemas.product import ProductCreate, ProductDetailOut, ProductOut, ProductUpdate
 from server.app.services.product_service import ProductService
@@ -50,6 +52,24 @@ async def create_product(
     )
 
 
+@router.get("/my", response_model=List[ProductOut])
+async def read_my_products(
+    skip: int = 0,
+    limit: int = 100,
+    current_user: User = Depends(get_current_active_supplier),
+    db: AsyncSession = Depends(get_db),
+):
+    supplier_result = await db.execute(
+        select(Supplier).where(Supplier.user_id == current_user.id)
+    )
+    supplier = supplier_result.scalars().first()
+    if not supplier:
+        raise HTTPException(status_code=403, detail="You are not registered as a supplier")
+    return await ProductService.read_products_by_supplier(
+        supplier_id=supplier.id, skip=skip, limit=limit, db=db
+    )
+
+
 @router.get("/{product_id}", response_model=ProductOut)
 async def read_product(product_id: int, db: AsyncSession = Depends(get_db)):
     return await ProductService.read_product(product_id=product_id, db=db)
@@ -81,9 +101,10 @@ async def update_product(
 @router.delete("/{product_id}")
 async def delete_product(
     product_id: int,
-    current_user: User = Depends(get_current_active_admin),
+    current_user: User = Depends(get_current_active_supplier),
     db: AsyncSession = Depends(get_db),
 ):
-    _ = current_user
-    return await ProductService.delete_product(product_id=product_id, db=db)
+    return await ProductService.delete_product(
+        product_id=product_id, current_user=current_user, db=db
+    )
 

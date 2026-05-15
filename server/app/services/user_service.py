@@ -13,7 +13,7 @@ from server.app.utils.auth import create_access_token, hash_password, verify_pas
 def _token_for_user(user: User) -> str:
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     return create_access_token(
-        data={"sub": user.email}, expires_delta=access_token_expires
+        data={"sub": user.email, "role": user.role.value}, expires_delta=access_token_expires
     )
 
 
