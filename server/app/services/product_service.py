@@ -92,7 +92,10 @@ class ProductService:
         if not supplier:
             raise HTTPException(status_code=403, detail="You are not registered as a supplier")
 
-        new_product = Product(**product_data.model_dump(), supplier_id=supplier.id)
+        data = product_data.model_dump()
+        if data.get("images") is None:
+            data["images"] = []
+        new_product = Product(**data, supplier_id=supplier.id)
         db.add(new_product)
         await db.commit()
         await db.refresh(new_product)
@@ -151,6 +154,7 @@ class ProductService:
             "is_active": product.is_active,
             "category_id": product.category_id,
             "supplier_id": product.supplier_id,
+            "images": product.images or [],
             "created_at": product.created_at,
             "updated_at": product.updated_at,
             "reviews": reviews,

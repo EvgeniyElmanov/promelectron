@@ -63,6 +63,30 @@
           </select>
         </div>
 
+        <!-- Images (edit only) -->
+        <div v-if="isEdit" class="field">
+          <label class="field__label">Фотографии</label>
+          <div class="image-grid">
+            <div v-for="(img, idx) in localImages" :key="img" class="image-thumb">
+              <img :src="img" alt="" />
+              <button type="button" class="image-thumb__remove" @click="removeImage(img)">&times;</button>
+            </div>
+            <label class="image-upload" v-if="localImages.length < 5 && !uploading">
+              <input type="file" accept="image/*" @change="onFileChange" hidden />
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 5v14M5 12h14"/>
+              </svg>
+            </label>
+          </div>
+          <!-- Upload Progress -->
+          <div v-if="uploading" class="upload-progress">
+            <div class="upload-progress__bar">
+              <div class="upload-progress__fill" :style="{ width: uploadProgress + '%' }"></div>
+            </div>
+            <span class="upload-progress__text">{{ uploadProgress }}%</span>
+          </div>
+        </div>
+
         <label class="checkbox">
           <input v-model="form.is_active" type="checkbox" />
           <span>Активен (виден на витрине)</span>
@@ -102,6 +126,9 @@ const form = ref({
 const categories = ref([]);
 const error = ref('');
 const submitting = ref(false);
+const uploading = ref(false);
+const uploadProgress = ref(0);
+const localImages = ref(props.product?.images || []);
 
 onMounted(async () => {
   try {
@@ -111,6 +138,48 @@ onMounted(async () => {
     // silently fail
   }
 });
+
+const onFileChange = async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (!file.type.startsWith('image/')) {
+    error.value = 'Выберите изображение';
+    return;
+  }
+  uploading.value = true;
+  error.value = '';
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    const { data } = await api.post(`/products/${props.product.id}/images`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: (progressEvent) => {
+        const percent = progressEvent.total
+          ? Math.round((progressEvent.loaded * 100) / progressEvent.total)
+          : 0;
+        uploadProgress.value = percent;
+      },
+    });
+    localImages.value = data.images || [];
+  } catch (err) {
+    error.value = err.response?.data?.detail || 'Ошибка загрузки фото';
+  } finally {
+    uploading.value = false;
+    uploadProgress.value = 0;
+    e.target.value = '';
+  }
+};
+
+const removeImage = async (url) => {
+  error.value = '';
+  const filename = url.split('/').pop();
+  try {
+    const { data } = await api.delete(`/products/${props.product.id}/images/${filename}`);
+    localImages.value = data.images || [];
+  } catch (err) {
+    error.value = err.response?.data?.detail || 'Ошибка удаления фото';
+  }
+};
 
 const handleSubmit = async () => {
   error.value = '';
@@ -276,5 +345,91 @@ const handleSubmit = async () => {
 
 .modal__submit:disabled {
   opacity: 0.6;
+}
+
+.image-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.image-thumb {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+}
+
+.image-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.image-thumb__remove {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.5);
+  color: #fff;
+  font-size: 14px;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.image-upload {
+  width: 72px;
+  height: 72px;
+  border-radius: 10px;
+  border: 2px dashed var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.image-upload:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.upload-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.upload-progress__bar {
+  flex: 1;
+  height: 6px;
+  background: var(--color-border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.upload-progress__fill {
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: 3px;
+  transition: width 0.2s ease;
+}
+
+.upload-progress__text {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-primary);
+  min-width: 36px;
+  text-align: right;
 }
 </style>

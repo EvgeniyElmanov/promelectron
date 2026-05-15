@@ -19,6 +19,30 @@
 
     <!-- Content -->
     <div v-else class="profile-edit-content">
+      <!-- Avatar Card -->
+      <div class="edit-card edit-card--avatar">
+        <div class="avatar-section">
+          <div class="avatar-preview">
+            <img v-if="avatarUrl" :src="avatarUrl" class="avatar-preview__img" alt="" />
+            <span v-else class="avatar-preview__fallback">{{ initials }}</span>
+          </div>
+          <label class="avatar-upload-btn">
+            <input type="file" accept="image/*" @change="onAvatarChange" hidden />
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+            <span>Сменить фото</span>
+          </label>
+        </div>
+        <div v-if="avatarUploading" class="avatar-progress">
+          <div class="avatar-progress__bar">
+            <div class="avatar-progress__fill" :style="{ width: avatarProgress + '%' }"></div>
+          </div>
+          <span class="avatar-progress__text">{{ avatarProgress }}%</span>
+        </div>
+      </div>
+
       <!-- Personal Data Card -->
       <div class="edit-card">
         <h2 class="edit-card-title">Личные данные</h2>
@@ -160,7 +184,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '@/services/api';
 import { useAuth } from '@/composables/useAuth';
@@ -183,6 +207,49 @@ const passwordErrors = ref({});
 const showOld = ref(false);
 const showNew = ref(false);
 const showConfirm = ref(false);
+const avatarUrl = ref('');
+const avatarUploading = ref(false);
+const avatarProgress = ref(0);
+
+const initials = computed(() => {
+  const name = form.value.full_name || form.value.email || '?';
+  const parts = name.split(' ').filter(Boolean);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return name.charAt(0).toUpperCase();
+});
+
+const onAvatarChange = async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (!file.type.startsWith('image/')) return;
+
+  avatarUploading.value = true;
+  avatarProgress.value = 0;
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    const { data } = await api.post('/me/avatar', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: (progressEvent) => {
+        const percent = progressEvent.total
+          ? Math.round((progressEvent.loaded * 100) / progressEvent.total)
+          : 0;
+        avatarProgress.value = percent;
+      },
+    });
+    avatarUrl.value = data.avatar_url || '';
+    // Update auth user
+    setAuth(localStorage.getItem('access_token'), data);
+  } catch (err) {
+    passwordError.value = err.response?.data?.detail || 'Ошибка загрузки фото';
+  } finally {
+    avatarUploading.value = false;
+    avatarProgress.value = 0;
+    e.target.value = '';
+  }
+};
 
 const fetchProfile = async () => {
   loading.value = true;
@@ -190,6 +257,7 @@ const fetchProfile = async () => {
     const { data } = await api.get('/auth/profile');
     form.value.full_name = data.full_name || '';
     form.value.email = data.email || '';
+    avatarUrl.value = data.avatar_url || '';
   } catch {
     // silently fail
   } finally {
@@ -343,6 +411,90 @@ onMounted(fetchProfile);
   background: var(--color-bg-white);
   border-radius: 14px;
   padding: 20px;
+}
+
+.edit-card--avatar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.avatar-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.avatar-preview {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36px;
+  font-weight: 700;
+  overflow: hidden;
+  user-select: none;
+}
+
+.avatar-preview__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-upload-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.avatar-upload-btn:hover {
+  background: var(--color-border);
+}
+
+.avatar-progress {
+  width: 100%;
+  max-width: 200px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.avatar-progress__bar {
+  flex: 1;
+  height: 6px;
+  background: var(--color-border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.avatar-progress__fill {
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: 3px;
+  transition: width 0.2s ease;
+}
+
+.avatar-progress__text {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-primary);
+  min-width: 36px;
+  text-align: right;
 }
 
 .edit-card-title {

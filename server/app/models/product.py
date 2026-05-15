@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, JSON, String, Text
 from sqlalchemy.orm import relationship
 
 from server.app.db.database import Base
@@ -24,6 +24,7 @@ class Product(Base):
     )
     category_id = Column(Integer, ForeignKey("categories.id"), nullable=True)
     supplier_id = Column(Integer, ForeignKey("suppliers.id"), nullable=False)
+    images = Column(JSON, default=list, nullable=True)
 
     category = relationship("Category")
     supplier = relationship("Supplier")

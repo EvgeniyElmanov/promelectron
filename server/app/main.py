@@ -7,6 +7,7 @@ from alembic import command
 from alembic.config import Config
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from server.app.api.auth import router as auth_router
@@ -54,8 +55,11 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
+# Static files for uploads
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
 # Подключаем все роутеры
-# categories ДО products, иначе /products/{id} перехватит /categories
+# categories ДО products, иначе /products/{id} перехватит /categories"
 app.include_router(users_router, prefix="/api/v1", tags=["users"])
 app.include_router(categories_router, prefix="/api/v1", tags=["categories"])
 app.include_router(products_router, prefix="/api/v1", tags=["products"])

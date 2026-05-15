@@ -22,7 +22,8 @@
       <!-- Avatar Card -->
       <div class="profile-card profile-card--avatar">
         <div class="avatar" data-testid="profile-avatar">
-          {{ initials }}
+          <img v-if="user.avatar_url" :src="user.avatar_url" class="avatar__img" alt="" />
+          <span v-else>{{ initials }}</span>
         </div>
         <div class="avatar-info">
           <p class="avatar-name">{{ displayName }}</p>
@@ -296,6 +297,13 @@ onMounted(fetchUserProfile);
   font-weight: 700;
   flex-shrink: 0;
   user-select: none;
+  overflow: hidden;
+}
+
+.avatar__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .avatar-info {

@@ -77,6 +77,9 @@ class UserService:
         if user_data.full_name is not None:
             user.full_name = user_data.full_name
 
+        if user_data.avatar_url is not None:
+            user.avatar_url = user_data.avatar_url
+
         await db.commit()
         await db.refresh(user)
         return user

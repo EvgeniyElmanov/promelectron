@@ -1,4 +1,5 @@
 import pytest
+from io import BytesIO
 
 
 class TestProductsAPI:
@@ -90,3 +91,68 @@ class TestProductsAPI:
             headers={"Authorization": f"Bearer {token}"},
         )
         assert response.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_upload_product_image(self, client, test_product, test_supplier):
+        """Загрузка изображения поставщиком — успешно."""
+        from server.app.utils.auth import create_access_token
+
+        token = create_access_token(data={"sub": test_supplier.email})
+        file_data = BytesIO(b"fake-image-data")
+        response = await client.post(
+            f"/api/v1/products/{test_product.id}/images",
+            files={"file": ("test.jpg", file_data, "image/jpeg")},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["images"]) == 1
+        assert "/uploads/products/" in data["images"][0]
+
+    @pytest.mark.asyncio
+    async def test_upload_image_unauthorized(self, client, test_product):
+        """Загрузка изображения без токена — 401/403."""
+        file_data = BytesIO(b"fake-image-data")
+        response = await client.post(
+            f"/api/v1/products/{test_product.id}/images",
+            files={"file": ("test.jpg", file_data, "image/jpeg")},
+        )
+        assert response.status_code in (401, 403)
+
+    @pytest.mark.asyncio
+    async def test_upload_invalid_file_type(self, client, test_product, test_supplier):
+        """Загрузка не-изображения — 400."""
+        from server.app.utils.auth import create_access_token
+
+        token = create_access_token(data={"sub": test_supplier.email})
+        file_data = BytesIO(b"not-an-image")
+        response = await client.post(
+            f"/api/v1/products/{test_product.id}/images",
+            files={"file": ("test.txt", file_data, "text/plain")},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("ext,mime", [
+        ("jpg", "image/jpeg"),
+        ("jpeg", "image/jpeg"),
+        ("png", "image/png"),
+        ("webp", "image/webp"),
+        ("gif", "image/gif"),
+    ])
+    async def test_upload_all_image_formats(self, client, test_product, test_supplier, ext, mime):
+        """Загрузка всех поддерживаемых форматов изображений."""
+        from server.app.utils.auth import create_access_token
+
+        token = create_access_token(data={"sub": test_supplier.email})
+        file_data = BytesIO(b"fake-image-data")
+        response = await client.post(
+            f"/api/v1/products/{test_product.id}/images",
+            files={"file": (f"test.{ext}", file_data, mime)},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["images"]) >= 1
+        assert data["images"][-1].endswith(f".{ext}")

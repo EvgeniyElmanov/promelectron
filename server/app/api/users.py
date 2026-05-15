@@ -1,4 +1,8 @@
-from fastapi import APIRouter, Depends
+import os
+import shutil
+import uuid
+
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from server.app.db.database import get_db
@@ -10,6 +14,9 @@ from server.app.utils.auth import (
     get_current_active_supplier,
     get_current_user,
 )
+
+AVATAR_UPLOAD_DIR = "uploads/avatars"
+AVATAR_ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
 
 router = APIRouter()
 
@@ -64,3 +71,39 @@ async def read_admin_data(current_user: User = Depends(get_current_active_admin)
 @router.get("/supplier")
 async def read_supplier_data(current_user: User = Depends(get_current_active_supplier)):
     return {"message": f"Hello supplier {current_user.email}"}
+
+
+@router.post("/me/avatar", response_model=UserOut)
+async def upload_avatar(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    ext = os.path.splitext(file.filename or "")[1].lower()
+    if ext not in AVATAR_ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid file type. Allowed: {', '.join(AVATAR_ALLOWED_EXTENSIONS)}",
+        )
+
+    user_dir = os.path.join(AVATAR_UPLOAD_DIR, str(current_user.id))
+    os.makedirs(user_dir, exist_ok=True)
+
+    # Remove old avatar file if exists
+    if current_user.avatar_url:
+        old_path = current_user.avatar_url.lstrip("/")
+        if os.path.exists(old_path):
+            os.remove(old_path)
+
+    filename = f"{uuid.uuid4().hex}{ext}"
+    filepath = os.path.join(user_dir, filename)
+
+    with open(filepath, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    avatar_url = f"/uploads/avatars/{current_user.id}/{filename}"
+    return await UserService.update_profile(
+        user_id=current_user.id,
+        user_data=UserUpdate(avatar_url=avatar_url),
+        db=db,
+    )

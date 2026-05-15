@@ -14,6 +14,7 @@ class UserOut(BaseModel):
     id: int
     email: str
     full_name: Optional[str] = None
+    avatar_url: Optional[str] = None
     role: str
     created_at: Optional[datetime] = None
 
@@ -23,6 +24,7 @@ class UserOut(BaseModel):
 class UserUpdate(BaseModel):
     full_name: Optional[str] = None
     email: Optional[str] = None
+    avatar_url: Optional[str] = None
 
 
 class PasswordChange(BaseModel):

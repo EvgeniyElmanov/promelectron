@@ -1,6 +1,9 @@
+import os
+import shutil
+import uuid
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -106,5 +109,93 @@ async def delete_product(
 ):
     return await ProductService.delete_product(
         product_id=product_id, current_user=current_user, db=db
+    )
+
+
+# --- Product Images ---
+
+UPLOAD_DIR = "uploads/products"
+ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
+MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
+
+
+def _validate_image(file: UploadFile) -> str:
+    ext = os.path.splitext(file.filename or "")[1].lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid file type. Allowed: {', '.join(ALLOWED_EXTENSIONS)}",
+        )
+    return ext
+
+
+@router.post("/{product_id}/images", response_model=ProductOut)
+async def upload_product_image(
+    product_id: int,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_active_supplier),
+    db: AsyncSession = Depends(get_db),
+):
+    ext = _validate_image(file)
+
+    # Verify product exists and belongs to supplier
+    product = await ProductService.read_product(product_id=product_id, db=db)
+    supplier_result = await db.execute(
+        select(Supplier).where(Supplier.user_id == current_user.id)
+    )
+    supplier = supplier_result.scalars().first()
+    if not supplier or product.supplier_id != supplier.id:
+        raise HTTPException(status_code=403, detail="Not your product")
+
+    # Save file
+    product_dir = os.path.join(UPLOAD_DIR, str(product_id))
+    os.makedirs(product_dir, exist_ok=True)
+    filename = f"{uuid.uuid4().hex}{ext}"
+    filepath = os.path.join(product_dir, filename)
+
+    with open(filepath, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    # Update product.images
+    image_url = f"/uploads/products/{product_id}/{filename}"
+    images = product.images or []
+    images.append(image_url)
+    return await ProductService.update_product(
+        product_id=product_id,
+        product_data=ProductUpdate(images=images),
+        current_user=current_user,
+        db=db,
+    )
+
+
+@router.delete("/{product_id}/images/{filename}", response_model=ProductOut)
+async def delete_product_image(
+    product_id: int,
+    filename: str,
+    current_user: User = Depends(get_current_active_supplier),
+    db: AsyncSession = Depends(get_db),
+):
+    # Verify product exists and belongs to supplier
+    product = await ProductService.read_product(product_id=product_id, db=db)
+    supplier_result = await db.execute(
+        select(Supplier).where(Supplier.user_id == current_user.id)
+    )
+    supplier = supplier_result.scalars().first()
+    if not supplier or product.supplier_id != supplier.id:
+        raise HTTPException(status_code=403, detail="Not your product")
+
+    # Remove from filesystem
+    filepath = os.path.join(UPLOAD_DIR, str(product_id), filename)
+    if os.path.exists(filepath):
+        os.remove(filepath)
+
+    # Update product.images
+    image_url = f"/uploads/products/{product_id}/{filename}"
+    images = [img for img in (product.images or []) if img != image_url]
+    return await ProductService.update_product(
+        product_id=product_id,
+        product_data=ProductUpdate(images=images),
+        current_user=current_user,
+        db=db,
     )
 

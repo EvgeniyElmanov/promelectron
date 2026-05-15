@@ -13,6 +13,7 @@ class ProductBase(BaseModel):
     stock: int = 0
     is_active: bool = True
     category_id: Optional[int] = None
+    images: List[str] = []
 
 
 class ProductCreate(ProductBase):

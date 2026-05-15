@@ -73,3 +73,4 @@ e2e/screenshots/
 *.db
 *.sqlite
 *.sqlite3
+uploads/

@@ -2,9 +2,16 @@
   <div class="product-card" data-testid="product-card" @click="goToProduct">
     <div
       class="product-card__image"
-      :style="{ background: placeholderBg }"
+      :style="product.images?.length ? {} : { background: placeholderBg }"
     >
-      <span class="product-card__image-letter">{{ product.name.charAt(0) }}</span>
+      <img
+        v-if="product.images?.length"
+        :src="product.images[0]"
+        class="product-card__img"
+        alt=""
+        loading="lazy"
+      />
+      <span v-else class="product-card__image-letter">{{ product.name.charAt(0) }}</span>
       <button
         class="product-card__heart"
         :class="{ 'product-card__heart--active': isFavorite }"
@@ -132,6 +139,12 @@ const addToCart = async () => {
   align-items: center;
   justify-content: center;
   position: relative;
+}
+
+.product-card__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .product-card__image-letter {

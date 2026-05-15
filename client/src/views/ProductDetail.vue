@@ -24,10 +24,27 @@
       <div class="product-detail__gallery">
         <div
           class="product-detail__image"
-          :style="{ background: placeholderBg }"
+          :style="product.images?.length ? {} : { background: placeholderBg }"
           data-testid="pdp-image"
         >
-          <span class="product-detail__image-letter">{{ product.name?.charAt(0) }}</span>
+          <img
+            v-if="product.images?.length"
+            :src="product.images[selectedImage || 0]"
+            class="product-detail__img"
+            alt=""
+          />
+          <span v-else class="product-detail__image-letter">{{ product.name?.charAt(0) }}</span>
+        </div>
+        <div v-if="product.images?.length > 1" class="product-detail__thumbs">
+          <button
+            v-for="(img, idx) in product.images"
+            :key="img"
+            class="product-detail__thumb"
+            :class="{ 'product-detail__thumb--active': selectedImage === idx }"
+            @click="selectedImage = idx"
+          >
+            <img :src="img" alt="" />
+          </button>
         </div>
       </div>
 
@@ -144,6 +161,7 @@ const cartLoading = ref(false);
 const reviewLoading = ref(false);
 const newRating = ref(0);
 const newReviewText = ref('');
+const selectedImage = ref(0);
 
 const productId = computed(() => Number(route.params.id));
 
@@ -320,6 +338,42 @@ onMounted(fetchProduct);
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.product-detail__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 12px;
+}
+
+.product-detail__thumbs {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  overflow-x: auto;
+}
+
+.product-detail__thumb {
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 2px solid transparent;
+  flex-shrink: 0;
+  cursor: pointer;
+  padding: 0;
+  background: none;
+}
+
+.product-detail__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.product-detail__thumb--active {
+  border-color: var(--color-primary);
 }
 
 .product-detail__image-letter {
