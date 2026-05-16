@@ -14,6 +14,10 @@
   --bottom-nav-height: 56px;
 }
 
+html {
+  overflow-x: hidden;
+}
+
 *,
 *::before,
 *::after {
@@ -41,4 +45,5 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   padding-bottom: var(--bottom-nav-height);
+  overflow-x: hidden;
 }

@@ -81,7 +81,13 @@ onMounted(fetchOrders);
 .orders-container {
   max-width: 800px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 1rem;
+}
+
+@media (min-width: 768px) {
+  .orders-container {
+    padding: 2rem;
+  }
 }
 
 .loading,
