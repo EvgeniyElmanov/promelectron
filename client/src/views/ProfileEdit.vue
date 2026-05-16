@@ -245,6 +245,9 @@ const onAvatarChange = async (e) => {
   } catch (err) {
     passwordError.value = err.response?.data?.detail || 'Ошибка загрузки фото';
   } finally {
+    // Доводим до 100% и показываем минимум 500мс, даже если загрузка моментальная
+    avatarProgress.value = 100;
+    await new Promise((r) => setTimeout(r, 500));
     avatarUploading.value = false;
     avatarProgress.value = 0;
     e.target.value = '';

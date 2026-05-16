@@ -147,6 +147,7 @@ const onFileChange = async (e) => {
     return;
   }
   uploading.value = true;
+  uploadProgress.value = 0;
   error.value = '';
   try {
     const formData = new FormData();
@@ -164,6 +165,9 @@ const onFileChange = async (e) => {
   } catch (err) {
     error.value = err.response?.data?.detail || 'Ошибка загрузки фото';
   } finally {
+    // Доводим до 100% и показываем минимум 500мс, даже если загрузка моментальная
+    uploadProgress.value = 100;
+    await new Promise((r) => setTimeout(r, 500));
     uploading.value = false;
     uploadProgress.value = 0;
     e.target.value = '';
