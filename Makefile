@@ -25,7 +25,12 @@ test-frontend: ## Запустить frontend тесты (vitest)
 	cd client && npx vitest run
 
 test-e2e: ## Запустить E2E тесты (playwright)
-	npx playwright test
+	npx playwright test --project=e2e
+
+test-visual: ## Визуальная проверка — скриншоты всех ключевых страниц
+	npx playwright test --project=visual-smoke
+
+test-full: test-backend test-frontend test-e2e test-visual ## Полный цикл: unit + e2e + visual smoke
 
 # --- База данных ---
 migrate: ## Применить Alembic миграции

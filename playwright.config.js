@@ -14,6 +14,17 @@ export default defineConfig({
     viewport: { width: 390, height: 844 },
     userAgent: 'Mozilla/5.0 (Linux; Android 10; SM-G960U) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36',
   },
+  projects: [
+    {
+      name: 'e2e',
+      testMatch: '*.spec.js',
+      testIgnore: 'visual-smoke.spec.js',
+    },
+    {
+      name: 'visual-smoke',
+      testMatch: 'visual-smoke.spec.js',
+    },
+  ],
   webServer: [
     {
       command: 'bash scripts/run_dev.sh',

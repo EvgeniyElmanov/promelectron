@@ -103,7 +103,11 @@ cd client && npm run dev
 1. **ТЕСТЫ ОБЯЗАТЕЛЬНЫ** — при написании нового функционала всегда создавай тесты:
    - Новый endpoint → `tests/test_<module>.py`
    - Новый Vue компонент → `client/src/__tests__/<Component>.spec.js`
-   - Новая страница / критический flow → e2e через Playwright MCP
+   - Новая страница / критический flow → e2e через Playwright
+2. **ДВОЙНАЯ ПРОВЕРКА (автотесты + visual smoke)** — после каждой фичи:
+   - `make test-e2e` — 19 автотестов (регрессия)
+   - `make test-visual` — скриншоты всех ключевых страниц (`test-results/visual-smoke/`)
+   - Эквивалентно «ручной проверке через браузер», но автоматизировано
 2. Type hints ВЕЗДЕ в Python
 3. Composition API + `<script setup>` во Vue
 4. Никаких `print()` — только `logging`
