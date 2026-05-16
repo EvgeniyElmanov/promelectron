@@ -35,6 +35,7 @@ test.describe('Product Detail Page', () => {
 
     // Add to cart
     await page.click('[data-testid="pdp-add-to-cart"]');
+    await page.waitForTimeout(500);
 
     // Verify cart
     await page.click('[data-testid="cart-link"]');

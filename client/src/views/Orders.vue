@@ -25,6 +25,7 @@
         <div class="order-body">
           <p>Статус: <strong>{{ order.status }}</strong></p>
           <p>Сумма: <strong>{{ order.total_price }} ₽</strong></p>
+          <p v-if="order.shipping_address">Адрес доставки: <strong>{{ order.shipping_address }}</strong></p>
           <div v-if="order.items && order.items.length" class="order-items">
             <p>Товары:</p>
             <ul>

@@ -29,6 +29,7 @@ test.describe('Catalog & Cart', () => {
     const firstProduct = page.locator('[data-testid="product-card"]').first();
     await expect(firstProduct).toBeVisible();
     await firstProduct.locator('[data-testid="add-to-cart-button"]').click();
+    await page.waitForTimeout(1000);
 
     // Go to cart
     await page.click('[data-testid="cart-link"]');

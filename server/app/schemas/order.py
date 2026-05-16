@@ -1,6 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import List
+from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict
 
@@ -14,8 +14,17 @@ class OrderItemOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class AddressDetails(BaseModel):
+    region: Optional[str] = None
+    district: Optional[str] = None
+    city: Optional[str] = None
+    street: Optional[str] = None
+    house: Optional[str] = None
+    apartment: Optional[str] = None
+
+
 class OrderCreate(BaseModel):
-    pass
+    shipping_address: Optional[AddressDetails] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -29,6 +38,7 @@ class OrderOut(BaseModel):
     user_id: int
     status: str
     total_price: Decimal
+    shipping_address: Optional[str] = None
     created_at: datetime
     items: List[OrderItemOut]
 

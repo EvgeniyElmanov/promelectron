@@ -9,12 +9,31 @@ from server.app.models.cart import Cart, CartItem
 from server.app.models.order import Order, OrderItem
 from server.app.models.product import Product
 from server.app.models.user import User
-from server.app.schemas.order import OrderUpdateStatus
+from server.app.schemas.order import AddressDetails, OrderCreate, OrderUpdateStatus
+
+
+def _format_address(address: AddressDetails | None) -> str | None:
+    if not address:
+        return None
+    parts = []
+    if address.region:
+        parts.append(f"обл. {address.region}")
+    if address.district:
+        parts.append(f"р-н {address.district}")
+    if address.city:
+        parts.append(address.city)
+    if address.street:
+        parts.append(f"ул. {address.street}")
+    if address.house:
+        parts.append(f"д. {address.house}")
+    if address.apartment:
+        parts.append(f"кв. {address.apartment}")
+    return ", ".join(parts) if parts else None
 
 
 class OrderService:
     @staticmethod
-    async def create_order(current_user: User, db: AsyncSession) -> Order:
+    async def create_order(current_user: User, order_data: OrderCreate, db: AsyncSession) -> Order:
         cart_result = await db.execute(
             select(Cart).where(Cart.user_id == current_user.id).options(selectinload(Cart.items))
         )
@@ -45,7 +64,11 @@ class OrderService:
             order_items.append(order_item)
 
         new_order = Order(
-            user_id=current_user.id, total_price=total_price, status="pending", items=order_items
+            user_id=current_user.id,
+            total_price=total_price,
+            status="pending",
+            shipping_address=_format_address(order_data.shipping_address),
+            items=order_items,
         )
         db.add(new_order)
         await db.execute(delete(CartItem).where(CartItem.cart_id == cart.id))

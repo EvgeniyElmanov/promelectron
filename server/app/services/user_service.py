@@ -80,6 +80,11 @@ class UserService:
         if user_data.avatar_url is not None:
             user.avatar_url = user_data.avatar_url
 
+        if user_data.shipping_address is not None:
+            user.shipping_address = (
+                user_data.shipping_address.model_dump() if user_data.shipping_address else None
+            )
+
         await db.commit()
         await db.refresh(user)
         return user

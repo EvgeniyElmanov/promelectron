@@ -73,6 +73,12 @@
             <span v-if="errors.email" class="field-error">{{ errors.email }}</span>
           </div>
 
+          <AddressForm
+            v-model="form.shipping_address"
+            label="Адрес доставки"
+            testid-prefix="edit-profile-"
+          />
+
           <button
             type="submit"
             class="save-btn"
@@ -188,6 +194,7 @@ import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '@/services/api';
 import { useAuth } from '@/composables/useAuth';
+import AddressForm from '@/components/AddressForm.vue';
 
 const router = useRouter();
 const { user: authUser, setAuth } = useAuth();
@@ -200,7 +207,11 @@ const profileError = ref('');
 const passwordSuccess = ref(false);
 const passwordError = ref('');
 
-const form = ref({ full_name: '', email: '' });
+const form = ref({
+  full_name: '',
+  email: '',
+  shipping_address: { region: '', district: '', city: '', street: '', house: '', apartment: '' },
+});
 const passwordForm = ref({ old_password: '', new_password: '', confirm_password: '' });
 const errors = ref({});
 const passwordErrors = ref({});
@@ -260,6 +271,9 @@ const fetchProfile = async () => {
     const { data } = await api.get('/auth/profile');
     form.value.full_name = data.full_name || '';
     form.value.email = data.email || '';
+    form.value.shipping_address = data.shipping_address || {
+      region: '', district: '', city: '', street: '', house: '', apartment: '',
+    };
     avatarUrl.value = data.avatar_url || '';
   } catch {
     // silently fail
@@ -289,6 +303,10 @@ async function handleSaveProfile() {
     const payload = {};
     if (form.value.full_name.trim()) payload.full_name = form.value.full_name.trim();
     if (form.value.email.trim()) payload.email = form.value.email.trim();
+
+    const addr = form.value.shipping_address;
+    const hasAny = addr && (addr.region || addr.district || addr.city || addr.street || addr.house || addr.apartment);
+    payload.shipping_address = hasAny ? { ...addr } : null;
 
     const { data } = await api.patch('/me', payload);
     setAuth(localStorage.getItem('access_token'), data);

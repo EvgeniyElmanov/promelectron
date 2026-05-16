@@ -4,6 +4,15 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 
+class AddressDetails(BaseModel):
+    region: Optional[str] = None      # Область/край
+    district: Optional[str] = None    # Район
+    city: Optional[str] = None        # Город/населённый пункт
+    street: Optional[str] = None      # Улица
+    house: Optional[str] = None       # Дом/строение
+    apartment: Optional[str] = None   # Квартира/офис
+
+
 class UserCreate(BaseModel):
     email: str
     password: str
@@ -15,6 +24,7 @@ class UserOut(BaseModel):
     email: str
     full_name: Optional[str] = None
     avatar_url: Optional[str] = None
+    shipping_address: Optional[AddressDetails] = None
     role: str
     created_at: Optional[datetime] = None
 
@@ -25,6 +35,7 @@ class UserUpdate(BaseModel):
     full_name: Optional[str] = None
     email: Optional[str] = None
     avatar_url: Optional[str] = None
+    shipping_address: Optional[AddressDetails] = None
 
 
 class PasswordChange(BaseModel):

@@ -21,6 +21,7 @@ test.describe('Favorites', () => {
     // Add first product to favorites
     const firstCard = page.locator('[data-testid="product-card"]').first();
     await firstCard.locator('[data-testid="favorite-button"]').click();
+    await page.waitForTimeout(500);
 
     // Go to favorites
     await page.click('[data-testid="nav-Избранное"]');

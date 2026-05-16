@@ -4,6 +4,15 @@ function uniqueEmail() {
   return `test_${Date.now()}@example.com`;
 }
 
+async function fillAddress(page, prefix) {
+  await page.fill(`[data-testid="${prefix}region"]`, 'Московская область');
+  await page.fill(`[data-testid="${prefix}district"]`, 'Одинцовский район');
+  await page.fill(`[data-testid="${prefix}city"]`, 'Москва');
+  await page.fill(`[data-testid="${prefix}street"]`, 'Ленина');
+  await page.fill(`[data-testid="${prefix}house"]`, '15');
+  await page.fill(`[data-testid="${prefix}apartment"]`, '42');
+}
+
 test.describe('Profile & Edit Profile', () => {
   test('user can view profile and edit name', async ({ page }) => {
     const email = uniqueEmail();
@@ -30,10 +39,40 @@ test.describe('Profile & Edit Profile', () => {
     // Edit name
     await page.fill('[data-testid="edit-profile-name"]', 'Updated Name');
     await page.click('[data-testid="edit-profile-save"]');
+    await page.waitForTimeout(1000);
 
     // Go back to profile and verify
     await page.goto('/profile');
     await expect(page.locator('.avatar-name')).toContainText('Updated Name');
+  });
+
+  test('user can update shipping address', async ({ page }) => {
+    const email = uniqueEmail();
+    const password = 'TestPassword123!';
+
+    // Register
+    await page.goto('/register');
+    await page.fill('[data-testid="register-name"]', 'Test User');
+    await page.fill('[data-testid="register-email"]', email);
+    await page.fill('[data-testid="register-password"]', password);
+    await page.fill('[data-testid="register-password-confirm"]', password);
+    await page.click('[data-testid="register-submit"]');
+    await expect(page).toHaveURL('/');
+
+    // Go to edit profile
+    await page.goto('/profile/edit');
+
+    // Fill shipping address
+    await fillAddress(page, 'edit-profile-');
+    await page.click('[data-testid="edit-profile-save"]');
+    await page.waitForTimeout(1000);
+
+    // Verify saved
+    await page.goto('/profile/edit');
+    await expect(page.locator('[data-testid="edit-profile-city"]')).toHaveValue('Москва');
+    await expect(page.locator('[data-testid="edit-profile-street"]')).toHaveValue('Ленина');
+    await expect(page.locator('[data-testid="edit-profile-house"]')).toHaveValue('15');
+    await expect(page.locator('[data-testid="edit-profile-apartment"]')).toHaveValue('42');
   });
 
   test('user can change password', async ({ page }) => {
@@ -58,6 +97,7 @@ test.describe('Profile & Edit Profile', () => {
     await page.fill('[data-testid="edit-profile-new-password"]', newPassword);
     await page.fill('[data-testid="edit-profile-confirm-password"]', newPassword);
     await page.click('[data-testid="edit-profile-password-save"]');
+    await page.waitForTimeout(1000);
 
     // Logout
     await page.goto('/profile');
