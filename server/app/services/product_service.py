@@ -1,5 +1,5 @@
 from fastapi import HTTPException
-from sqlalchemy import or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from server.app.models.category import Category
@@ -23,13 +23,14 @@ class ProductService:
         category_id: int | None = None,
         min_price: float | None = None,
         max_price: float | None = None,
+        min_rating: float | None = None,
         sort_by: str | None = None,
-    ) -> list[Product]:
-        query = select(Product).where(Product.is_active == True)
+    ) -> tuple[list[Product], int]:
+        filters = [Product.is_active == True]
 
         if search:
             search_term = f"%{search}%"
-            query = query.where(
+            filters.append(
                 or_(
                     Product.name.ilike(search_term),
                     Product.description.ilike(search_term),
@@ -37,13 +38,38 @@ class ProductService:
             )
 
         if category_id is not None:
-            query = query.where(Product.category_id == category_id)
+            filters.append(Product.category_id == category_id)
 
         if min_price is not None:
-            query = query.where(Product.price >= min_price)
+            filters.append(Product.price >= min_price)
 
         if max_price is not None:
-            query = query.where(Product.price <= max_price)
+            filters.append(Product.price <= max_price)
+
+        # Build count query with same filters
+        count_query = select(func.count(Product.id)).where(and_(*filters))
+
+        if min_rating is not None:
+            avg_subq = (
+                select(func.avg(Review.rating))
+                .where(Review.product_id == Product.id)
+                .scalar_subquery()
+            )
+            count_query = count_query.where(avg_subq >= min_rating)
+
+        total_result = await db.execute(count_query)
+        total = total_result.scalar() or 0
+
+        # Build select query
+        query = select(Product).where(and_(*filters))
+
+        if min_rating is not None:
+            avg_subq = (
+                select(func.avg(Review.rating))
+                .where(Review.product_id == Product.id)
+                .scalar_subquery()
+            )
+            query = query.where(avg_subq >= min_rating)
 
         match sort_by:
             case "price_asc":
@@ -52,11 +78,20 @@ class ProductService:
                 query = query.order_by(Product.price.desc())
             case "newest":
                 query = query.order_by(Product.created_at.desc())
+            case "name_asc":
+                query = query.order_by(Product.name.asc())
+            case "rating_desc":
+                avg_sort_subq = (
+                    select(func.coalesce(func.avg(Review.rating), 0))
+                    .where(Review.product_id == Product.id)
+                    .scalar_subquery()
+                )
+                query = query.order_by(avg_sort_subq.desc())
             case _:
                 query = query.order_by(Product.id.desc())
 
         result = await db.execute(query.offset(skip).limit(limit))
-        return list(result.scalars().all())
+        return list(result.scalars().all()), total
 
     @staticmethod
     async def read_products_by_supplier(

@@ -41,3 +41,8 @@ class ProductDetailOut(ProductOut):
     average_rating: float = 0.0
     reviews_count: int = 0
     is_favorite: bool = False
+
+
+class ProductListOut(BaseModel):
+    items: List[ProductOut]
+    total: int

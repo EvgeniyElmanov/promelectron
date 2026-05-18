@@ -50,12 +50,22 @@ test.describe('Checkout Flow', () => {
     await expect(page.locator('[data-testid="cart-city"]')).toHaveValue('Москва');
     await expect(page.locator('[data-testid="cart-street"]')).toHaveValue('Тестовая');
 
-    // Place order
+    // Place order → redirects to checkout page
     await page.click('[data-testid="checkout-button"]');
-    await page.waitForURL('/orders', { timeout: 10000 });
+    await page.waitForURL(/\/checkout\/\d+/, { timeout: 10000 });
 
-    // Verify order exists with shipping address
-    await expect(page.locator('[data-testid="order-card"]').first()).toBeVisible();
-    await expect(page.locator('[data-testid="order-card"]').first()).toContainText('Москва');
+    // Complete mock payment
+    await page.fill('[data-testid="card-holder"]', 'Test User');
+    await page.fill('[data-testid="card-number"]', '4242 4242 4242 4242');
+    await page.fill('[data-testid="card-expiry"]', '12/30');
+    await page.fill('[data-testid="card-cvv"]', '123');
+    await page.click('[data-testid="pay-button"]');
+
+    // After successful payment → redirect to order detail
+    await page.waitForURL(/\/orders\/\d+/, { timeout: 15000 });
+
+    // Verify order detail page is shown with shipping address
+    await expect(page.locator('[data-testid="order-detail-page"]')).toBeVisible();
+    await expect(page.locator('.order-detail')).toContainText('Москва');
   });
 });

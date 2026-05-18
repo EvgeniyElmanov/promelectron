@@ -76,6 +76,40 @@
           <span v-if="errors.password" class="field-error">{{ errors.password }}</span>
         </div>
 
+        <!-- Role Selector -->
+        <div class="field">
+          <label class="field-label">Тип аккаунта</label>
+          <div class="role-selector">
+            <button
+              type="button"
+              class="role-option"
+              :class="{ 'role-option--active': selectedRole === 'user' }"
+              data-testid="role-user"
+              @click="selectedRole = 'user'"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+              <span>Покупатель</span>
+            </button>
+            <button
+              type="button"
+              class="role-option"
+              :class="{ 'role-option--active': selectedRole === 'supplier' }"
+              data-testid="role-supplier"
+              @click="selectedRole = 'supplier'"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                <line x1="12" y1="22.08" x2="12" y2="12"/>
+              </svg>
+              <span>Поставщик</span>
+            </button>
+          </div>
+        </div>
+
         <!-- Confirm Password -->
         <div class="field">
           <label class="field-label">Повторите пароль <span class="required">*</span></label>
@@ -157,6 +191,7 @@ const fullName = ref('');
 const email = ref('');
 const password = ref('');
 const confirmPassword = ref('');
+const selectedRole = ref('user');
 const showPassword = ref(false);
 const showConfirm = ref(false);
 const isSubmitting = ref(false);
@@ -219,6 +254,7 @@ async function handleRegister() {
       email: email.value,
       password: password.value,
       full_name: fullName.value.trim() || null,
+      role: selectedRole.value,
     });
     setAuth(response.data.access_token, response.data.user);
     router.push('/');
@@ -442,6 +478,33 @@ async function loginWithYandex() {
   margin-top: 20px;
   font-size: 14px;
   color: var(--color-text-secondary);
+}
+
+.role-selector {
+  display: flex;
+  gap: 8px;
+}
+
+.role-option {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-white);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  transition: all 0.15s;
+}
+
+.role-option--active {
+  border-color: var(--color-primary);
+  background: #e8f0fe;
+  color: var(--color-primary);
 }
 
 /* Desktop */

@@ -17,7 +17,7 @@ vi.mock('@/services/api', () => ({
   default: {
     get: vi.fn((url) => {
       if (url === '/products/') {
-        return Promise.resolve({ data: mockProducts })
+        return Promise.resolve({ data: { items: mockProducts, total: mockProducts.length } })
       }
       if (url === '/categories/') {
         return Promise.resolve({ data: mockCategories })
@@ -81,5 +81,64 @@ describe('Products.vue', () => {
       expect(wrapper.text()).toContain('Product 1')
       expect(wrapper.text()).toContain('Product 2')
     })
+  })
+
+  it('отображает количество товаров', async () => {
+    const router = createRouter({
+      history: createWebHistory(),
+      routes: [{ path: '/', component: Products }],
+    })
+
+    const wrapper = mount(Products, {
+      global: {
+        plugins: [router],
+      },
+    })
+
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('2 товаров')
+    })
+  })
+
+  it('отображает фильтр по рейтингу', async () => {
+    const router = createRouter({
+      history: createWebHistory(),
+      routes: [{ path: '/', component: Products }],
+    })
+
+    const wrapper = mount(Products, {
+      global: {
+        plugins: [router],
+      },
+    })
+
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('Рейтинг:')
+    })
+
+    for (let i = 1; i <= 5; i++) {
+      expect(wrapper.find(`[data-testid="rating-filter-${i}"]`).exists()).toBe(true)
+    }
+  })
+
+  it('отображает селектор сортировки с новыми опциями', async () => {
+    const router = createRouter({
+      history: createWebHistory(),
+      routes: [{ path: '/', component: Products }],
+    })
+
+    const wrapper = mount(Products, {
+      global: {
+        plugins: [router],
+      },
+    })
+
+    const select = wrapper.find('[data-testid="sort-select"]')
+    expect(select.exists()).toBe(true)
+
+    const options = select.findAll('option')
+    const values = options.map(o => o.attributes('value'))
+    expect(values).toContain('rating_desc')
+    expect(values).toContain('name_asc')
   })
 })

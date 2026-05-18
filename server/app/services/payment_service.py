@@ -1,12 +1,11 @@
 from datetime import datetime, timezone
-from decimal import Decimal
 
 from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from server.app.models.order import Order, OrderItem
+from server.app.models.order import Order
 from server.app.models.payment import Payment
 from server.app.models.user import User
 from server.app.services.email_service import EmailService

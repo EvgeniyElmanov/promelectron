@@ -8,7 +8,7 @@ from passlib.context import CryptContext
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from server.app.core.config import ACCESS_TOKEN_EXPIRE_MINUTES, ALGORITHM, SECRET_KEY
+from server.app.core.config import ALGORITHM, SECRET_KEY
 from server.app.db.database import get_db
 from server.app.models.user import RoleEnum, User
 

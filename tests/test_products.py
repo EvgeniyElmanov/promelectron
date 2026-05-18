@@ -7,13 +7,257 @@ class TestProductsAPI:
 
     @pytest.mark.asyncio
     async def test_list_products(self, client, test_product):
-        """Получение списка активных товаров."""
+        """Получение списка активных товаров с пагинацией."""
         response = await client.get("/api/v1/products/")
         assert response.status_code == 200
         data = response.json()
-        assert isinstance(data, list)
-        assert len(data) >= 1
-        assert data[0]["name"] == "Test Product"
+        assert "items" in data
+        assert "total" in data
+        assert isinstance(data["items"], list)
+        assert data["total"] >= 1
+        assert data["items"][0]["name"] == "Test Product"
+
+    @pytest.mark.asyncio
+    async def test_list_products_pagination(self, client, test_session, test_category, test_supplier):
+        """Пагинация: limit и skip работают корректно."""
+        from server.app.models.product import Product
+
+        # Создаём 5 товаров
+        for i in range(5):
+            p = Product(
+                name=f"Pagination Product {i}",
+                price=10.0 + i,
+                stock=10,
+                supplier_id=test_supplier.id,
+                category_id=test_category.id,
+                is_active=True,
+            )
+            test_session.add(p)
+        await test_session.commit()
+
+        response = await client.get("/api/v1/products/?skip=0&limit=2")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["items"]) == 2
+        assert data["total"] >= 5
+
+        response = await client.get("/api/v1/products/?skip=2&limit=2")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["items"]) == 2
+
+    @pytest.mark.asyncio
+    async def test_list_products_sort_by_price(self, client, test_session, test_category, test_supplier):
+        """Сортировка по цене."""
+        from server.app.models.product import Product
+
+        for i, price in enumerate([100.0, 50.0, 150.0]):
+            p = Product(
+                name=f"Sort Product {i}",
+                price=price,
+                stock=10,
+                supplier_id=test_supplier.id,
+                category_id=test_category.id,
+                is_active=True,
+            )
+            test_session.add(p)
+        await test_session.commit()
+
+        response = await client.get("/api/v1/products/?sort_by=price_asc")
+        data = response.json()
+        prices = [p["price"] for p in data["items"]]
+        # Check that ascending prices appear in order
+        filtered = [p for p in prices if p in [50.0, 100.0, 150.0]]
+        assert filtered == sorted(filtered)
+
+        response = await client.get("/api/v1/products/?sort_by=price_desc")
+        data = response.json()
+        prices = [p["price"] for p in data["items"]]
+        filtered = [p for p in prices if p in [50.0, 100.0, 150.0]]
+        assert filtered == sorted(filtered, reverse=True)
+
+    @pytest.mark.asyncio
+    async def test_list_products_filter_by_price(self, client, test_session, test_category, test_supplier):
+        """Фильтрация по ценовому диапазону."""
+        from server.app.models.product import Product
+
+        for i, price in enumerate([30.0, 60.0, 90.0]):
+            p = Product(
+                name=f"Filter Product {i}",
+                price=price,
+                stock=10,
+                supplier_id=test_supplier.id,
+                category_id=test_category.id,
+                is_active=True,
+            )
+            test_session.add(p)
+        await test_session.commit()
+
+        response = await client.get("/api/v1/products/?min_price=40&max_price=80")
+        data = response.json()
+        for p in data["items"]:
+            if p["name"].startswith("Filter Product"):
+                assert 40 <= p["price"] <= 80
+
+    @pytest.mark.asyncio
+    async def test_list_products_search(self, client, test_session, test_category, test_supplier):
+        """Поиск по названию и описанию."""
+        from server.app.models.product import Product
+
+        p1 = Product(
+            name="Unique Searchable Name",
+            description="Some description",
+            price=10.0,
+            stock=10,
+            supplier_id=test_supplier.id,
+            category_id=test_category.id,
+            is_active=True,
+        )
+        p2 = Product(
+            name="Other Product",
+            description="Unique Searchable Description",
+            price=20.0,
+            stock=10,
+            supplier_id=test_supplier.id,
+            category_id=test_category.id,
+            is_active=True,
+        )
+        test_session.add_all([p1, p2])
+        await test_session.commit()
+
+        response = await client.get("/api/v1/products/?q=Searchable")
+        data = response.json()
+        names = [p["name"] for p in data["items"]]
+        assert any("Searchable" in n for n in names)
+
+    @pytest.mark.asyncio
+    async def test_list_products_filter_by_min_rating(self, client, test_session, test_category, test_supplier, test_user):
+        """Фильтрация по минимальному рейтингу."""
+        from server.app.models.product import Product
+        from server.app.models.review import Review
+
+        p1 = Product(
+            name="High Rated Product",
+            price=100.0,
+            stock=10,
+            supplier_id=test_supplier.id,
+            category_id=test_category.id,
+            is_active=True,
+        )
+        p2 = Product(
+            name="Low Rated Product",
+            price=50.0,
+            stock=10,
+            supplier_id=test_supplier.id,
+            category_id=test_category.id,
+            is_active=True,
+        )
+        test_session.add_all([p1, p2])
+        await test_session.commit()
+        await test_session.refresh(p1)
+        await test_session.refresh(p2)
+
+        # Create reviews: p1 has avg 4.5, p2 has avg 2.0
+        r1 = Review(product_id=p1.id, user_id=test_user.id, rating=5, text="Great")
+        r2 = Review(product_id=p1.id, user_id=test_user.id, rating=4, text="Good")
+        r3 = Review(product_id=p2.id, user_id=test_user.id, rating=2, text="Bad")
+        test_session.add_all([r1, r2, r3])
+        await test_session.commit()
+
+        response = await client.get("/api/v1/products/?min_rating=3")
+        data = response.json()
+        names = [p["name"] for p in data["items"]]
+        assert "High Rated Product" in names
+        assert "Low Rated Product" not in names
+
+        response = await client.get("/api/v1/products/?min_rating=4.5")
+        data = response.json()
+        names = [p["name"] for p in data["items"]]
+        assert "High Rated Product" in names
+
+    @pytest.mark.asyncio
+    async def test_list_products_sort_by_rating(self, client, test_session, test_category, test_supplier, test_user):
+        """Сортировка по рейтингу (убывание)."""
+        from server.app.models.product import Product
+        from server.app.models.review import Review
+
+        p1 = Product(
+            name="Medium Rated",
+            price=100.0,
+            stock=10,
+            supplier_id=test_supplier.id,
+            category_id=test_category.id,
+            is_active=True,
+        )
+        p2 = Product(
+            name="Top Rated",
+            price=50.0,
+            stock=10,
+            supplier_id=test_supplier.id,
+            category_id=test_category.id,
+            is_active=True,
+        )
+        p3 = Product(
+            name="No Reviews",
+            price=30.0,
+            stock=10,
+            supplier_id=test_supplier.id,
+            category_id=test_category.id,
+            is_active=True,
+        )
+        test_session.add_all([p1, p2, p3])
+        await test_session.commit()
+        await test_session.refresh(p1)
+        await test_session.refresh(p2)
+
+        r1 = Review(product_id=p1.id, user_id=test_user.id, rating=3, text="Ok")
+        r2 = Review(product_id=p2.id, user_id=test_user.id, rating=5, text="Excellent")
+        test_session.add_all([r1, r2])
+        await test_session.commit()
+
+        response = await client.get("/api/v1/products/?sort_by=rating_desc")
+        data = response.json()
+        names = [p["name"] for p in data["items"]]
+        # Top rated should come before medium rated
+        idx_top = names.index("Top Rated")
+        idx_medium = names.index("Medium Rated")
+        assert idx_top < idx_medium
+
+    @pytest.mark.asyncio
+    async def test_list_products_filter_by_category(self, client, test_session, test_category, test_supplier):
+        """Фильтрация по категории."""
+        from server.app.models.category import Category
+        from server.app.models.product import Product
+
+        cat2 = Category(name="Other Category")
+        test_session.add(cat2)
+        await test_session.commit()
+        await test_session.refresh(cat2)
+
+        p1 = Product(
+            name="Cat1 Product",
+            price=10.0,
+            stock=10,
+            supplier_id=test_supplier.id,
+            category_id=test_category.id,
+            is_active=True,
+        )
+        p2 = Product(
+            name="Cat2 Product",
+            price=20.0,
+            stock=10,
+            supplier_id=test_supplier.id,
+            category_id=cat2.id,
+            is_active=True,
+        )
+        test_session.add_all([p1, p2])
+        await test_session.commit()
+
+        response = await client.get(f"/api/v1/products/?category_id={test_category.id}")
+        data = response.json()
+        for p in data["items"]:
+            if p["name"].startswith("Cat"):
+                assert p["category_id"] == test_category.id
 
     @pytest.mark.asyncio
     async def test_get_product_by_id(self, client, test_product):

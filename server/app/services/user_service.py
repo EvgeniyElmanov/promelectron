@@ -1,10 +1,12 @@
 from datetime import timedelta
+from uuid import uuid4
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from server.app.core.config import ACCESS_TOKEN_EXPIRE_MINUTES
+from server.app.models.supplier import Supplier
 from server.app.models.user import User
 from server.app.schemas.user import UserCreate, UserOut
 from server.app.utils.auth import create_access_token, hash_password, verify_password
@@ -25,16 +27,33 @@ class UserService:
         if user:
             raise HTTPException(status_code=400, detail="Email already registered")
 
+        # Prevent self-registration as admin
+        role = user_data.role or "user"
+        if role == "admin":
+            role = "user"
+
         hashed_pw = hash_password(user_data.password)
         new_user = User(
             email=user_data.email,
             hashed_password=hashed_pw,
             full_name=user_data.full_name,
-            role="user",
+            role=role,
         )
         db.add(new_user)
         await db.commit()
         await db.refresh(new_user)
+
+        # Auto-create Supplier record for supplier role
+        if role == "supplier":
+            supplier = Supplier(
+                user_id=new_user.id,
+                name=new_user.full_name or new_user.email.split("@")[0],
+                description="",
+                api_key=str(uuid4()),
+                is_active=True,
+            )
+            db.add(supplier)
+            await db.commit()
 
         access_token = _token_for_user(new_user)
         return {
