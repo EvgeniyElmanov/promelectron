@@ -10,6 +10,7 @@ from server.app.models.order import Order, OrderItem
 from server.app.models.product import Product
 from server.app.models.user import User
 from server.app.schemas.order import AddressDetails, OrderCreate, OrderUpdateStatus
+from server.app.services.email_service import EmailService
 
 
 def _format_address(address: AddressDetails | None) -> str | None:
@@ -81,6 +82,25 @@ class OrderService:
         full_order = order_result.scalars().first()
         if not full_order:
             raise HTTPException(status_code=500, detail="Failed to create order")
+
+        # Send confirmation email
+        items_for_email = []
+        for oi in full_order.items:
+            prod_result = await db.execute(select(Product).where(Product.id == oi.product_id))
+            prod = prod_result.scalars().first()
+            items_for_email.append({
+                "product_name": prod.name if prod else "Товар",
+                "quantity": oi.quantity,
+                "price_at_time": float(oi.price_at_time),
+            })
+        await EmailService.send_order_confirmation(
+            to=current_user.email,
+            order_id=full_order.id,
+            total_price=float(full_order.total_price),
+            items=items_for_email,
+            shipping_address=full_order.shipping_address,
+        )
+
         return full_order
 
     @staticmethod
@@ -127,4 +147,15 @@ class OrderService:
         full_order = order_result.scalars().first()
         if not full_order:
             raise HTTPException(status_code=500, detail="Failed to update order")
+
+        # Send status update email
+        user_result = await db.execute(select(User).where(User.id == full_order.user_id))
+        user = user_result.scalars().first()
+        if user:
+            await EmailService.send_order_status_update(
+                to=user.email,
+                order_id=full_order.id,
+                status=full_order.status,
+            )
+
         return full_order

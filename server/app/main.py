@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.ext.asyncio import create_async_engine
 
+from server.app.api.admin import router as admin_router
 from server.app.api.auth import router as auth_router
 from server.app.api.cart import router as cart_router
 from server.app.api.categories import router as categories_router
@@ -61,6 +62,7 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 # Подключаем все роутеры
 # categories ДО products, иначе /products/{id} перехватит /categories"
 app.include_router(users_router, prefix="/api/v1", tags=["users"])
+app.include_router(admin_router, prefix="/api/v1", tags=["admin"])
 app.include_router(categories_router, prefix="/api/v1", tags=["categories"])
 app.include_router(products_router, prefix="/api/v1", tags=["products"])
 app.include_router(cart_router, prefix="/api/v1", tags=["cart"])

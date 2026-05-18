@@ -13,6 +13,12 @@ class Settings:
     yandex_client_id: str
     yandex_client_secret: str
     frontend_url: str
+    smtp_host: str
+    smtp_port: int
+    smtp_user: str
+    smtp_password: str
+    smtp_from: str
+    smtp_tls: bool
 
 
 settings = Settings(
@@ -27,6 +33,12 @@ settings = Settings(
     yandex_client_id=os.getenv("YANDEX_CLIENT_ID", ""),
     yandex_client_secret=os.getenv("YANDEX_CLIENT_SECRET", ""),
     frontend_url=os.getenv("FRONTEND_URL", "http://localhost:5173"),
+    smtp_host=os.getenv("SMTP_HOST", "smtp.gmail.com"),
+    smtp_port=int(os.getenv("SMTP_PORT", "587")),
+    smtp_user=os.getenv("SMTP_USER", ""),
+    smtp_password=os.getenv("SMTP_PASSWORD", ""),
+    smtp_from=os.getenv("SMTP_FROM", "noreply@myshop.ru"),
+    smtp_tls=os.getenv("SMTP_TLS", "true").lower() == "true",
 )
 
 SECRET_KEY = settings.secret_key

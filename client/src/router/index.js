@@ -13,6 +13,7 @@ import ProductDetail from '../views/ProductDetail.vue';
 import Favorites from '../views/Favorites.vue';
 import SupplierProducts from '../views/SupplierProducts.vue';
 import Admin from '../views/Admin.vue';
+import OrderDetail from '../views/OrderDetail.vue';
 
 const routes = [
   { path: '/', component: Products },
@@ -21,6 +22,7 @@ const routes = [
   { path: '/admin', component: Admin },
   { path: '/cart', component: Cart, meta: { requiresAuth: true } },
   { path: '/orders', component: Orders, meta: { requiresAuth: true } },
+  { path: '/orders/:id', component: OrderDetail, meta: { requiresAuth: true } },
   { path: '/profile', component: Profile, meta: { requiresAuth: true } },
   { path: '/profile/edit', component: ProfileEdit, meta: { requiresAuth: true } },
   { path: '/auth/callback', component: AuthCallback },

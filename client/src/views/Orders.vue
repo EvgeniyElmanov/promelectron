@@ -17,25 +17,39 @@
     </div>
 
     <div v-else class="orders-list">
-      <div v-for="order in orders" :key="order.id" class="order-card" data-testid="order-card">
+      <router-link
+        v-for="order in orders"
+        :key="order.id"
+        :to="`/orders/${order.id}`"
+        class="order-card"
+        data-testid="order-card"
+      >
         <div class="order-header">
           <span class="order-id">Заказ №{{ order.id }}</span>
           <span class="order-date">{{ formatDate(order.created_at) }}</span>
         </div>
         <div class="order-body">
-          <p>Статус: <strong>{{ order.status }}</strong></p>
-          <p>Сумма: <strong>{{ order.total_price }} ₽</strong></p>
-          <p v-if="order.shipping_address">Адрес доставки: <strong>{{ order.shipping_address }}</strong></p>
-          <div v-if="order.items && order.items.length" class="order-items">
-            <p>Товары:</p>
-            <ul>
-              <li v-for="item in order.items" :key="item.id">
-                {{ item.product?.name || 'Товар' }} × {{ item.quantity }} — {{ item.price_at_time }} ₽
-              </li>
-            </ul>
+          <div class="order-row">
+            <span class="order-label">Сумма</span>
+            <span class="order-value">{{ Number(order.total_price).toLocaleString('ru-RU') }} ₽</span>
+          </div>
+          <div class="order-row">
+            <span class="order-label">Статус</span>
+            <span class="status-badge" :class="'status-badge--' + order.status">{{ statusLabel(order.status) }}</span>
+          </div>
+          <div v-if="order.shipping_address" class="order-row">
+            <span class="order-label">Адрес</span>
+            <span class="order-value order-value--address">{{ order.shipping_address }}</span>
+          </div>
+          <div class="order-row">
+            <span class="order-label">Товаров</span>
+            <span class="order-value">{{ order.items?.length || 0 }} шт.</span>
           </div>
         </div>
-      </div>
+        <div class="order-footer">
+          <span class="order-detail-link">Подробнее →</span>
+        </div>
+      </router-link>
     </div>
   </div>
 </template>
@@ -48,6 +62,17 @@ import SkeletonOrderCard from '@/components/SkeletonOrderCard.vue';
 const orders = ref([]);
 const loading = ref(true);
 const error = ref(null);
+
+const statusLabel = (status) => {
+  const labels = {
+    pending: 'Ожидает обработки',
+    paid: 'Оплачен',
+    shipped: 'Отправлен',
+    delivered: 'Доставлен',
+    cancelled: 'Отменён',
+  };
+  return labels[status] || status;
+};
 
 const formatDate = (dateString) => {
   if (!dateString) return '';
@@ -105,69 +130,132 @@ onMounted(fetchOrders);
   border-radius: 8px;
 }
 
+.orders-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 .order-card {
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  padding: 1.5rem;
-  margin-bottom: 1rem;
-  background-color: #fff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  display: block;
+  border-radius: 14px;
+  padding: 16px;
+  background: var(--color-bg-white);
+  color: var(--color-text);
+  text-decoration: none;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.order-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
 }
 
 .order-header {
   display: flex;
   justify-content: space-between;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid #e2e8f0;
-  margin-bottom: 0.75rem;
+  align-items: center;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 10px;
 }
 
 .order-id {
-  font-weight: bold;
-  font-size: 1.1rem;
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--color-text);
 }
 
 .order-date {
-  color: #718096;
-  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+  font-size: 13px;
 }
 
-.order-body p {
-  margin: 0.5rem 0;
+.order-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.order-items {
-  margin-top: 0.75rem;
-  padding-top: 0.75rem;
-  border-top: 1px dashed #e2e8f0;
+.order-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
 }
 
-.order-items ul {
-  padding-left: 1.25rem;
-  margin: 0.5rem 0 0;
+.order-label {
+  font-size: 14px;
+  color: var(--color-text-secondary);
 }
 
-.order-items li {
-  margin-bottom: 0.25rem;
-  color: #4a5568;
+.order-value {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.order-value--address {
+  max-width: 60%;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.status-badge--pending {
+  background: #fff8e1;
+  color: #b28704;
+}
+
+.status-badge--paid {
+  background: #e8f0fe;
+  color: #005bff;
+}
+
+.status-badge--shipped {
+  background: #e3f2fd;
+  color: #0066cc;
+}
+
+.status-badge--delivered {
+  background: #e6f7ed;
+  color: #0d7a3e;
+}
+
+.status-badge--cancelled {
+  background: #fff0f0;
+  color: var(--color-danger);
+}
+
+.order-footer {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-border);
+  text-align: right;
+}
+
+.order-detail-link {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-primary);
 }
 
 button {
-  background-color: #007bff;
+  background-color: var(--color-primary);
   color: white;
   border: none;
   padding: 0.5rem 1rem;
-  border-radius: 4px;
+  border-radius: 8px;
   cursor: pointer;
   margin-top: 0.5rem;
-}
-
-a {
-  color: #007bff;
-  text-decoration: none;
-}
-
-a:hover {
-  text-decoration: underline;
 }
 </style>

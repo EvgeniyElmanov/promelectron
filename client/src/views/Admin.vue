@@ -2,48 +2,181 @@
   <div class="admin" data-testid="admin-page">
     <h1 class="admin__title">Панель администратора</h1>
 
-    <div class="admin__section">
-      <div class="admin__section-header">
-        <h2 class="admin__section-title">Категории</h2>
-        <button class="admin__btn admin__btn--primary" @click="openCreateModal">+ Добавить</button>
+    <!-- Tab Navigation (mobile) -->
+    <div class="admin__tabs" v-if="isMobile">
+      <button
+        v-for="tab in tabs"
+        :key="tab.key"
+        class="admin__tab"
+        :class="{ 'admin__tab--active': activeTab === tab.key }"
+        @click="activeTab = tab.key"
+      >
+        {{ tab.label }}
+      </button>
+    </div>
+
+    <!-- Dashboard Tab -->
+    <div v-show="!isMobile || activeTab === 'dashboard'" class="admin__tab-panel">
+      <!-- KPI Cards -->
+      <div class="admin__kpi-grid">
+        <div v-for="kpi in kpiData" :key="kpi.key" class="admin__kpi-card">
+          <div class="admin__kpi-icon" :style="{ background: kpi.bg }"></div>
+          <div class="admin__kpi-value">{{ kpi.value }}</div>
+          <div class="admin__kpi-label">{{ kpi.label }}</div>
+        </div>
       </div>
 
-      <SkeletonAdminTable v-if="loading" />
+      <!-- Charts Row -->
+      <div class="admin__charts-row">
+        <!-- Orders Chart -->
+        <div class="admin__section admin__chart-section">
+          <div class="admin__section-header">
+            <h2 class="admin__section-title">Заказы за 7 дней</h2>
+          </div>
+          <div v-if="loading.ordersByDay" class="admin__loading">Загрузка...</div>
+          <div v-else-if="ordersByDay.length === 0" class="admin__empty">Нет данных</div>
+          <div v-else class="admin__chart">
+            <div class="admin__chart-bars">
+              <div
+                v-for="item in ordersByDay"
+                :key="item.date"
+                class="admin__chart-bar-wrap"
+              >
+                <div class="admin__chart-bar-track">
+                  <div
+                    class="admin__chart-bar"
+                    :style="{ height: getBarHeight(item.orders) }"
+                  ></div>
+                </div>
+                <div class="admin__chart-label">{{ formatShortDate(item.date) }}</div>
+                <div class="admin__chart-tooltip">{{ item.orders }} заказов</div>
+              </div>
+            </div>
+          </div>
+        </div>
 
-      <div v-else-if="categories.length === 0" class="admin__empty">Нет категорий</div>
+        <!-- Top Products -->
+        <div class="admin__section admin__chart-section">
+          <div class="admin__section-header">
+            <h2 class="admin__section-title">Топ товаров</h2>
+          </div>
+          <div v-if="loading.topProducts" class="admin__loading">Загрузка...</div>
+          <div v-else-if="topProducts.length === 0" class="admin__empty">Нет данных</div>
+          <div v-else class="admin__top-products">
+            <div
+              v-for="(product, idx) in topProducts"
+              :key="product.id"
+              class="admin__top-product"
+            >
+              <div class="admin__top-product-rank">{{ idx + 1 }}</div>
+              <div class="admin__top-product-info">
+                <div class="admin__top-product-name">{{ product.name }}</div>
+                <div class="admin__top-product-meta">{{ product.sold }} продано</div>
+              </div>
+              <div class="admin__top-product-revenue">{{ formatPrice(product.revenue) }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
 
-      <div v-else class="admin__table-wrapper">
-        <table class="admin__table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Название</th>
-              <th>Описание</th>
-              <th class="admin__table-actions">Действия</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="cat in categories" :key="cat.id">
-              <td>{{ cat.id }}</td>
-              <td>{{ cat.name }}</td>
-              <td>{{ cat.description || '—' }}</td>
-              <td class="admin__table-actions">
-                <button class="admin__icon-btn admin__icon-btn--edit" @click="openEditModal(cat)">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
-                    <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                  </svg>
-                </button>
-                <button class="admin__icon-btn admin__icon-btn--delete" @click="deleteCategory(cat.id)">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="3 6 5 6 21 6"/>
-                    <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
-                  </svg>
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+    <!-- Users Tab -->
+    <div v-show="!isMobile || activeTab === 'users'" class="admin__tab-panel">
+      <div class="admin__section">
+        <div class="admin__section-header">
+          <h2 class="admin__section-title">Пользователи</h2>
+        </div>
+        <div v-if="loading.users" class="admin__loading">Загрузка...</div>
+        <div v-else-if="users.length === 0" class="admin__empty">Нет пользователей</div>
+        <div v-else class="admin__table-wrapper">
+          <table class="admin__table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Email</th>
+                <th>Имя</th>
+                <th>Роль</th>
+                <th>Статус</th>
+                <th class="admin__table-actions">Действия</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="u in users" :key="u.id">
+                <td>{{ u.id }}</td>
+                <td>{{ u.email }}</td>
+                <td>{{ u.full_name || '—' }}</td>
+                <td>
+                  <span class="admin__role-badge" :class="`admin__role-badge--${u.role}`">
+                    {{ roleLabel(u.role) }}
+                  </span>
+                </td>
+                <td>
+                  <span class="admin__status-badge" :class="u.is_active ? 'admin__status-badge--active' : 'admin__status-badge--inactive'">
+                    {{ u.is_active ? 'Активен' : 'Заблокирован' }}
+                  </span>
+                </td>
+                <td class="admin__table-actions">
+                  <button
+                    class="admin__btn admin__btn--small"
+                    :class="u.is_active ? 'admin__btn--danger' : 'admin__btn--success'"
+                    @click="toggleUser(u.id)"
+                    :disabled="submittingUser === u.id"
+                  >
+                    {{ u.is_active ? 'Заблокировать' : 'Разблокировать' }}
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Categories Tab -->
+    <div v-show="!isMobile || activeTab === 'categories'" class="admin__tab-panel">
+      <div class="admin__section">
+        <div class="admin__section-header">
+          <h2 class="admin__section-title">Категории</h2>
+          <button class="admin__btn admin__btn--primary" @click="openCreateModal">+ Добавить</button>
+        </div>
+
+        <SkeletonAdminTable v-if="loading.categories" />
+
+        <div v-else-if="categories.length === 0" class="admin__empty">Нет категорий</div>
+
+        <div v-else class="admin__table-wrapper">
+          <table class="admin__table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Название</th>
+                <th>Описание</th>
+                <th class="admin__table-actions">Действия</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="cat in categories" :key="cat.id">
+                <td>{{ cat.id }}</td>
+                <td>{{ cat.name }}</td>
+                <td>{{ cat.description || '—' }}</td>
+                <td class="admin__table-actions">
+                  <button class="admin__icon-btn admin__icon-btn--edit" @click="openEditModal(cat)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                      <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                    </svg>
+                  </button>
+                  <button class="admin__icon-btn admin__icon-btn--delete" @click="deleteCategory(cat.id)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="3 6 5 6 21 6"/>
+                      <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                    </svg>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -74,31 +207,175 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import api from '@/services/api';
 import { useToast } from '@/composables/useToast';
 import SkeletonAdminTable from '@/components/SkeletonAdminTable.vue';
 
+const { toast } = useToast();
+
+// Responsive
+const isMobile = ref(window.innerWidth < 768);
+window.addEventListener('resize', () => { isMobile.value = window.innerWidth < 768; });
+
+// Tabs
+const tabs = [
+  { key: 'dashboard', label: 'Дашборд' },
+  { key: 'users', label: 'Пользователи' },
+  { key: 'categories', label: 'Категории' },
+];
+const activeTab = ref('dashboard');
+
+// Loading states
+const loading = ref({
+  stats: false,
+  ordersByDay: false,
+  topProducts: false,
+  users: false,
+  categories: false,
+});
+
+// Data
+const stats = ref({ total_orders: 0, total_revenue: 0, total_users: 0, total_products: 0 });
+const ordersByDay = ref([]);
+const topProducts = ref([]);
+const users = ref([]);
 const categories = ref([]);
-const loading = ref(false);
+
+// Modal
 const showModal = ref(false);
 const isEdit = ref(false);
 const editingId = ref(null);
 const error = ref('');
 const submitting = ref(false);
-const { toast } = useToast();
-
 const form = ref({ name: '', description: '' });
+const submittingUser = ref(null);
+
+// KPI computed
+const kpiData = computed(() => [
+  {
+    key: 'orders',
+    label: 'Всего заказов',
+    value: stats.value.total_orders,
+    bg: '#e8f0fe',
+    icon: 'svg-orders',
+  },
+  {
+    key: 'revenue',
+    label: 'Выручка',
+    value: formatPrice(stats.value.total_revenue),
+    bg: '#e6f5e6',
+    icon: 'svg-revenue',
+  },
+  {
+    key: 'users',
+    label: 'Пользователей',
+    value: stats.value.total_users,
+    bg: '#fff3e0',
+    icon: 'svg-users',
+  },
+  {
+    key: 'products',
+    label: 'Товаров',
+    value: stats.value.total_products,
+    bg: '#f3e5f5',
+    icon: 'svg-products',
+  },
+]);
+
+const maxOrders = computed(() => {
+  if (!ordersByDay.value.length) return 1;
+  return Math.max(...ordersByDay.value.map((d) => d.orders), 1);
+});
+
+function getBarHeight(orders) {
+  return `${(orders / maxOrders.value) * 100}%`;
+}
+
+function formatShortDate(dateStr) {
+  const d = new Date(dateStr);
+  return `${d.getDate()}.${d.getMonth() + 1}`;
+}
+
+function formatPrice(value) {
+  if (value === undefined || value === null) return '—';
+  return new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 0 }).format(value);
+}
+
+function roleLabel(role) {
+  const labels = { user: 'Покупатель', admin: 'Админ', supplier: 'Поставщик' };
+  return labels[role] || role;
+}
+
+// Fetch data
+async function fetchDashboard() {
+  loading.value.stats = true;
+  loading.value.ordersByDay = true;
+  loading.value.topProducts = true;
+
+  try {
+    const { data } = await api.get('/admin/dashboard');
+    stats.value = data;
+  } catch {
+    toast('Не удалось загрузить статистику', 'error');
+  } finally {
+    loading.value.stats = false;
+  }
+
+  try {
+    const { data } = await api.get('/admin/orders-by-day');
+    ordersByDay.value = data;
+  } catch {
+    toast('Не удалось загрузить график заказов', 'error');
+  } finally {
+    loading.value.ordersByDay = false;
+  }
+
+  try {
+    const { data } = await api.get('/admin/top-products');
+    topProducts.value = data;
+  } catch {
+    toast('Не удалось загрузить топ товаров', 'error');
+  } finally {
+    loading.value.topProducts = false;
+  }
+}
+
+async function fetchUsers() {
+  loading.value.users = true;
+  try {
+    const { data } = await api.get('/admin/users');
+    users.value = data;
+  } catch {
+    toast('Не удалось загрузить пользователей', 'error');
+  } finally {
+    loading.value.users = false;
+  }
+}
+
+async function toggleUser(userId) {
+  submittingUser.value = userId;
+  try {
+    const { data } = await api.patch(`/admin/users/${userId}/toggle-active`);
+    const idx = users.value.findIndex((u) => u.id === userId);
+    if (idx !== -1) users.value[idx] = data;
+    toast(data.is_active ? 'Пользователь разблокирован' : 'Пользователь заблокирован', 'success');
+  } catch {
+    toast('Ошибка при изменении статуса', 'error');
+  } finally {
+    submittingUser.value = null;
+  }
+}
 
 const fetchCategories = async () => {
-  loading.value = true;
+  loading.value.categories = true;
   try {
     const { data } = await api.get('/categories');
     categories.value = data;
   } catch {
     toast('Не удалось загрузить категории', 'error');
   } finally {
-    loading.value = false;
+    loading.value.categories = false;
   }
 };
 
@@ -153,7 +430,11 @@ const deleteCategory = async (id) => {
   }
 };
 
-onMounted(fetchCategories);
+onMounted(() => {
+  fetchDashboard();
+  fetchUsers();
+  fetchCategories();
+});
 </script>
 
 <style scoped>
@@ -170,6 +451,219 @@ onMounted(fetchCategories);
   margin-bottom: 20px;
 }
 
+/* Tabs */
+.admin__tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  overflow-x: auto;
+}
+
+.admin__tab {
+  padding: 8px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-white);
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.admin__tab--active {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+
+/* KPI */
+.admin__kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+@media (min-width: 768px) {
+  .admin__kpi-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.admin__kpi-card {
+  background: var(--color-bg-white);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.admin__kpi-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primary);
+  margin-bottom: 10px;
+}
+
+.admin__kpi-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1.2;
+}
+
+.admin__kpi-label {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  margin-top: 4px;
+}
+
+/* Charts row */
+.admin__charts-row {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+@media (min-width: 1024px) {
+  .admin__charts-row {
+    grid-template-columns: 2fr 1fr;
+  }
+}
+
+/* Chart */
+.admin__chart {
+  padding: 8px 0;
+}
+
+.admin__chart-bars {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+  height: 160px;
+  padding-bottom: 24px;
+  position: relative;
+}
+
+.admin__chart-bar-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.admin__chart-bar-track {
+  width: 100%;
+  height: 140px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: var(--color-bg);
+  border-radius: 6px 6px 0 0;
+  overflow: hidden;
+}
+
+.admin__chart-bar {
+  width: 60%;
+  background: var(--color-primary);
+  border-radius: 6px 6px 0 0;
+  min-height: 4px;
+  transition: height 0.3s ease;
+}
+
+.admin__chart-label {
+  position: absolute;
+  bottom: 0;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.admin__chart-tooltip {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+  background: var(--color-text);
+  color: #fff;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+
+.admin__chart-bar-wrap:hover .admin__chart-tooltip {
+  opacity: 1;
+}
+
+/* Top Products */
+.admin__top-products {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.admin__top-product {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border-radius: 12px;
+  background: var(--color-bg);
+}
+
+.admin__top-product-rank {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.admin__top-product-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.admin__top-product-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin__top-product-meta {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+
+.admin__top-product-revenue {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
+}
+
+/* Section */
 .admin__section {
   background: var(--color-bg-white);
   border-radius: 16px;
@@ -189,19 +683,6 @@ onMounted(fetchCategories);
   color: var(--color-text);
 }
 
-.admin__btn {
-  padding: 10px 16px;
-  border-radius: 10px;
-  font-size: 14px;
-  font-weight: 500;
-  border: none;
-}
-
-.admin__btn--primary {
-  background: var(--color-primary);
-  color: #fff;
-}
-
 .admin__loading,
 .admin__empty {
   text-align: center;
@@ -209,6 +690,7 @@ onMounted(fetchCategories);
   color: var(--color-text-secondary);
 }
 
+/* Table */
 .admin__table-wrapper {
   overflow-x: auto;
 }
@@ -237,6 +719,83 @@ onMounted(fetchCategories);
   width: 1%;
 }
 
+/* Badges */
+.admin__role-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.admin__role-badge--admin {
+  background: #e8f0fe;
+  color: #1a73e8;
+}
+
+.admin__role-badge--supplier {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+.admin__role-badge--user {
+  background: #e6f5e6;
+  color: #2e7d32;
+}
+
+.admin__status-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.admin__status-badge--active {
+  background: #e6f5e6;
+  color: #2e7d32;
+}
+
+.admin__status-badge--inactive {
+  background: #fff0f0;
+  color: #c62828;
+}
+
+/* Buttons */
+.admin__btn {
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+}
+
+.admin__btn--primary {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.admin__btn--small {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.admin__btn--danger {
+  background: #fff0f0;
+  color: var(--color-danger);
+}
+
+.admin__btn--success {
+  background: #e6f5e6;
+  color: #2e7d32;
+}
+
+.admin__btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .admin__icon-btn {
   width: 32px;
   height: 32px;
@@ -246,6 +805,7 @@ onMounted(fetchCategories);
   align-items: center;
   justify-content: center;
   margin-right: 6px;
+  cursor: pointer;
 }
 
 .admin__icon-btn--edit {
@@ -313,6 +873,7 @@ onMounted(fetchCategories);
   border: none;
   font-size: 20px;
   color: var(--color-text);
+  cursor: pointer;
 }
 
 .modal__form {
@@ -374,6 +935,7 @@ onMounted(fetchCategories);
   font-size: 16px;
   font-weight: 600;
   border: none;
+  cursor: pointer;
 }
 
 .modal__submit:disabled {
