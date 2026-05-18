@@ -8,7 +8,7 @@
         <button class="admin__btn admin__btn--primary" @click="openCreateModal">+ Добавить</button>
       </div>
 
-      <div v-if="loading" class="admin__loading">Загрузка...</div>
+      <SkeletonAdminTable v-if="loading" />
 
       <div v-else-if="categories.length === 0" class="admin__empty">Нет категорий</div>
 
@@ -77,6 +77,7 @@
 import { ref, onMounted } from 'vue';
 import api from '@/services/api';
 import { useToast } from '@/composables/useToast';
+import SkeletonAdminTable from '@/components/SkeletonAdminTable.vue';
 
 const categories = ref([]);
 const loading = ref(false);

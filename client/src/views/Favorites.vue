@@ -4,7 +4,9 @@
       <h1 class="favorites__title" data-testid="favorites-title">Избранное</h1>
     </div>
 
-    <div v-if="loading" class="favorites__loading">Загрузка...</div>
+    <div v-if="loading" class="favorites__grid">
+      <SkeletonProductCard v-for="i in 4" :key="'sk' + i" />
+    </div>
 
     <div v-else-if="favorites.length === 0" class="favorites__empty" data-testid="favorites-empty">
       <p>У вас пока нет избранных товаров</p>
@@ -27,6 +29,7 @@ import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '@/services/api';
 import ProductCard from '@/components/ProductCard.vue';
+import SkeletonProductCard from '@/components/SkeletonProductCard.vue';
 
 const router = useRouter();
 

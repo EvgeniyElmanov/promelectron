@@ -2,8 +2,8 @@
   <div class="orders-container" data-testid="orders-page">
     <h2 data-testid="orders-title">Мои заказы</h2>
 
-    <div v-if="loading" class="loading">
-      <p>Загрузка заказов...</p>
+    <div v-if="loading" class="orders-list">
+      <SkeletonOrderCard v-for="i in 2" :key="'sk' + i" />
     </div>
 
     <div v-else-if="error" class="error">
@@ -43,6 +43,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import api from '@/services/api';
+import SkeletonOrderCard from '@/components/SkeletonOrderCard.vue';
 
 const orders = ref([]);
 const loading = ref(true);

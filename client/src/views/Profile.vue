@@ -6,10 +6,7 @@
     </div>
 
     <!-- Loading -->
-    <div v-if="loading" class="profile-loading">
-      <div class="spinner"></div>
-      <span>Загрузка профиля...</span>
-    </div>
+    <SkeletonProfile v-if="loading" />
 
     <!-- Error -->
     <div v-else-if="error" class="profile-error">
@@ -142,6 +139,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
+import SkeletonProfile from '@/components/SkeletonProfile.vue';
 import api from '@/services/api';
 import { useAuth } from '@/composables/useAuth';
 

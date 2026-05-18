@@ -11,7 +11,11 @@
       </button>
     </div>
 
-    <div v-if="loading" class="supplier-products__loading">Загрузка...</div>
+    <div v-if="loading" class="supplier-products__list">
+      <div class="supplier-product-card" v-for="i in 3" :key="'sk' + i">
+        <div style="width: 100%; height: 80px; border-radius: 14px; background: linear-gradient(90deg, var(--color-bg) 25%, #e8ecf1 50%, var(--color-bg) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite;" />
+      </div>
+    </div>
 
     <div v-else-if="products.length === 0" class="supplier-products__empty">
       <p>У вас пока нет товаров</p>

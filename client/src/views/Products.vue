@@ -51,7 +51,9 @@
         />
       </div>
 
-      <div v-if="loading" class="home__loading">Загрузка...</div>
+      <div v-if="loading" class="home__grid">
+        <SkeletonProductCard v-for="i in 6" :key="'sk' + i" />
+      </div>
 
       <div v-if="products.length === 0 && !loading" class="home__empty">
         Товары не найдены
@@ -74,6 +76,7 @@ import ProductCard from '@/components/ProductCard.vue';
 import SearchBar from '@/components/SearchBar.vue';
 import CategoryChips from '@/components/CategoryChips.vue';
 import PromoBanner from '@/components/PromoBanner.vue';
+import SkeletonProductCard from '@/components/SkeletonProductCard.vue';
 import api from '@/services/api';
 
 const products = ref([]);

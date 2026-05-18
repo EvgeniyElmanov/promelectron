@@ -19,7 +19,9 @@
       </button>
     </div>
 
-    <div class="product-detail__main">
+    <SkeletonProductDetail v-if="loading" />
+
+    <div v-if="!loading" class="product-detail__main">
       <!-- Left: Gallery -->
       <div class="product-detail__gallery">
         <div
@@ -147,6 +149,7 @@ import { useRoute, useRouter } from 'vue-router';
 import api from '@/services/api';
 import { useAuth } from '@/composables/useAuth';
 import { useToast } from '@/composables/useToast';
+import SkeletonProductDetail from '@/components/SkeletonProductDetail.vue';
 
 const route = useRoute();
 const router = useRouter();

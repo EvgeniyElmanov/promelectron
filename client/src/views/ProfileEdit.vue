@@ -11,11 +11,7 @@
       <div class="header-spacer"></div>
     </div>
 
-    <!-- Loading -->
-    <div v-if="loading" class="profile-edit-loading">
-      <div class="spinner"></div>
-      <span>Загрузка...</span>
-    </div>
+    <SkeletonProfile v-if="loading" />
 
     <!-- Content -->
     <div v-else class="profile-edit-content">
@@ -195,6 +191,7 @@ import { useRouter } from 'vue-router';
 import api from '@/services/api';
 import { useAuth } from '@/composables/useAuth';
 import AddressForm from '@/components/AddressForm.vue';
+import SkeletonProfile from '@/components/SkeletonProfile.vue';
 
 const router = useRouter();
 const { user: authUser, setAuth } = useAuth();

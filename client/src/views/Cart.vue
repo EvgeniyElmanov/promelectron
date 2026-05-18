@@ -9,9 +9,8 @@
     </div>
 
     <!-- Loading -->
-    <div v-if="loading" class="cart__loading">
-      <div class="spinner"></div>
-      <span>Загрузка корзины...</span>
+    <div v-if="loading" class="cart__items">
+      <SkeletonCartItem v-for="i in 3" :key="'sk' + i" />
     </div>
 
     <!-- Empty -->
@@ -161,6 +160,7 @@ import { useRouter } from 'vue-router';
 import api from '@/services/api';
 import { useToast } from '@/composables/useToast';
 import AddressForm from '@/components/AddressForm.vue';
+import SkeletonCartItem from '@/components/SkeletonCartItem.vue';
 
 const cart = ref({ items: [] });
 const loading = ref(true);
