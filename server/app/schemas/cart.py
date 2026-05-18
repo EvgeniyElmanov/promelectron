@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict
 
@@ -12,10 +12,21 @@ class CartItemUpdate(BaseModel):
     quantity: int
 
 
+class CartItemProductOut(BaseModel):
+    id: int
+    name: str
+    price: float
+    stock: int
+    images: List[str] = []
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class CartItemOut(BaseModel):
     id: int
     product_id: int
     quantity: int
+    product: Optional[CartItemProductOut] = None
 
     model_config = ConfigDict(from_attributes=True)
 

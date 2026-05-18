@@ -29,7 +29,9 @@ test.describe('Catalog & Cart', () => {
     const firstProduct = page.locator('[data-testid="product-card"]').first();
     await expect(firstProduct).toBeVisible();
     await firstProduct.locator('[data-testid="add-to-cart-button"]').click();
-    await page.waitForTimeout(1000);
+    // Wait for success toast (not error)
+    await expect(page.locator('.toast--success')).toBeVisible({ timeout: 5000 });
+    await page.waitForTimeout(300);
 
     // Go to cart
     await page.click('[data-testid="cart-link"]');

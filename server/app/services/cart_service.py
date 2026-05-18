@@ -1,6 +1,7 @@
 from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from server.app.models.cart import Cart, CartItem
 from server.app.models.user import User
@@ -38,8 +39,13 @@ class CartService:
             db.add(final_item)
 
         await db.commit()
-        await db.refresh(final_item)
-        return final_item
+
+        result = await db.execute(
+            select(CartItem)
+            .where(CartItem.id == final_item.id)
+            .options(selectinload(CartItem.product))
+        )
+        return result.scalars().first()
 
     @staticmethod
     async def update_cart_item(
@@ -55,8 +61,13 @@ class CartService:
 
         item.quantity = item_data.quantity
         await db.commit()
-        await db.refresh(item)
-        return item
+
+        result = await db.execute(
+            select(CartItem)
+            .where(CartItem.id == item.id)
+            .options(selectinload(CartItem.product))
+        )
+        return result.scalars().first()
 
     @staticmethod
     async def remove_from_cart(item_id: int, current_user: User, db: AsyncSession) -> dict[str, str]:
@@ -80,6 +91,10 @@ class CartService:
         if not cart:
             return {"id": 0, "user_id": current_user.id, "items": []}
 
-        items_result = await db.execute(select(CartItem).where(CartItem.cart_id == cart.id))
+        items_result = await db.execute(
+            select(CartItem)
+            .where(CartItem.cart_id == cart.id)
+            .options(selectinload(CartItem.product))
+        )
         items = list(items_result.scalars().all())
         return {"id": cart.id, "user_id": current_user.id, "items": items}
