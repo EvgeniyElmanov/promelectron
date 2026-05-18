@@ -21,7 +21,7 @@ vi.mock('@/services/api', () => ({
 
 const toastFn = vi.fn();
 vi.mock('@/composables/useToast', () => ({
-  useToast: () => ({ toast: toastFn }),
+  useToast: () => ({ add: toastFn }),
 }));
 
 vi.mock('@/components/SkeletonAdminTable.vue', () => ({

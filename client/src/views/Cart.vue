@@ -253,11 +253,11 @@ const createOrder = async () => {
   }
   creatingOrder.value = true;
   try {
-    await api.post('/orders/create', {
+    const { data: order } = await api.post('/orders/create', {
       shipping_address: { ...shippingAddress.value },
     });
     toast('Заказ успешно создан!', 'success');
-    router.push('/orders');
+    await router.push(`/checkout/${order.id}`);
   } catch (err) {
     console.error('Failed to create order:', err);
     const detail = err.response?.data?.detail;

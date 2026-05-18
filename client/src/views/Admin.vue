@@ -212,7 +212,7 @@ import api from '@/services/api';
 import { useToast } from '@/composables/useToast';
 import SkeletonAdminTable from '@/components/SkeletonAdminTable.vue';
 
-const { toast } = useToast();
+const { add: toast } = useToast();
 
 // Responsive
 const isMobile = ref(window.innerWidth < 768);

@@ -74,7 +74,7 @@ const products = ref([]);
 const loading = ref(false);
 const showModal = ref(false);
 const editingProduct = ref(null);
-const { toast } = useToast();
+const { add: toast } = useToast();
 
 const formatPrice = (price) => {
   return new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 0 }).format(price);

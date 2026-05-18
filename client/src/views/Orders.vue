@@ -37,6 +37,11 @@
             <span class="order-label">Статус</span>
             <span class="status-badge" :class="'status-badge--' + order.status">{{ statusLabel(order.status) }}</span>
           </div>
+          <div v-if="order.status === 'pending'" class="order-row order-row--action">
+            <router-link :to="`/checkout/${order.id}`" class="order-pay-btn">
+              Оплатить
+            </router-link>
+          </div>
           <div v-if="order.shipping_address" class="order-row">
             <span class="order-label">Адрес</span>
             <span class="order-value order-value--address">{{ order.shipping_address }}</span>
@@ -65,7 +70,7 @@ const error = ref(null);
 
 const statusLabel = (status) => {
   const labels = {
-    pending: 'Ожидает обработки',
+    pending: 'Ожидает оплаты',
     paid: 'Оплачен',
     shipped: 'Отправлен',
     delivered: 'Доставлен',
@@ -234,6 +239,23 @@ onMounted(fetchOrders);
 .status-badge--cancelled {
   background: #fff0f0;
   color: var(--color-danger);
+}
+
+.order-row--action {
+  margin-top: 8px;
+  justify-content: flex-end;
+}
+
+.order-pay-btn {
+  display: inline-block;
+  padding: 10px 20px;
+  border-radius: 12px;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  text-align: center;
 }
 
 .order-footer {

@@ -74,6 +74,11 @@
             <span class="info-label">Адрес доставки</span>
             <span class="info-value">{{ order.shipping_address }}</span>
           </div>
+          <div v-if="order.status === 'pending'" class="info-row info-row--action">
+            <router-link :to="`/checkout/${order.id}`" class="order-pay-btn">
+              Оплатить {{ formatPrice(order.total_price) }} ₽
+            </router-link>
+          </div>
         </div>
       </div>
 
@@ -113,14 +118,14 @@ const loading = ref(true);
 const error = ref(null);
 
 const statusSteps = [
-  { value: 'pending', label: 'Ожидает обработки' },
+  { value: 'pending', label: 'Ожидает оплаты' },
   { value: 'paid', label: 'Оплачен' },
   { value: 'shipped', label: 'Отправлен' },
   { value: 'delivered', label: 'Доставлен' },
 ];
 
 const statusLabels = {
-  pending: 'Ожидает обработки',
+  pending: 'Ожидает оплаты',
   paid: 'Оплачен',
   shipped: 'Отправлен',
   delivered: 'Доставлен',
@@ -389,6 +394,23 @@ onMounted(fetchOrder);
 .status-badge--cancelled {
   background: #fff0f0;
   color: var(--color-danger);
+}
+
+.info-row--action {
+  margin-top: 12px;
+  justify-content: flex-end;
+}
+
+.order-pay-btn {
+  display: inline-block;
+  padding: 12px 24px;
+  border-radius: 12px;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  text-align: center;
 }
 
 /* Items */
