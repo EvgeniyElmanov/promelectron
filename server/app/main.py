@@ -14,6 +14,7 @@ from server.app.api.admin import router as admin_router
 from server.app.api.auth import router as auth_router
 from server.app.api.cart import router as cart_router
 from server.app.api.categories import router as categories_router
+from server.app.api.delivery_methods import router as delivery_methods_router
 from server.app.api.favorites import router as favorites_router
 from server.app.api.notifications import router as notifications_router
 from server.app.api.orders import router as orders_router
@@ -76,6 +77,7 @@ app.include_router(ws_router)
 app.include_router(auth_router, prefix="/api/v1", tags=["auth"])
 app.include_router(reviews_router, prefix="/api/v1", tags=["reviews"])
 app.include_router(favorites_router, prefix="/api/v1", tags=["favorites"])
+app.include_router(delivery_methods_router, prefix="/api/v1", tags=["delivery-methods"])
 
 
 @app.get("/health")

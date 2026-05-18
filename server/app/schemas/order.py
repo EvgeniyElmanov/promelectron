@@ -25,6 +25,7 @@ class AddressDetails(BaseModel):
 
 class OrderCreate(BaseModel):
     shipping_address: Optional[AddressDetails] = None
+    delivery_method_id: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -33,13 +34,27 @@ class OrderUpdateStatus(BaseModel):
     status: str
 
 
+class DeliveryMethodOut(BaseModel):
+    id: int
+    name: str
+    description: Optional[str] = None
+    base_price: float
+    estimated_days: Optional[str] = None
+    is_active: bool = True
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class OrderOut(BaseModel):
     id: int
     user_id: int
     status: str
     total_price: Decimal
+    delivery_method_id: Optional[int] = None
+    delivery_price: Optional[Decimal] = None
     shipping_address: Optional[str] = None
     created_at: datetime
     items: List[OrderItemOut]
+    delivery_method: Optional[DeliveryMethodOut] = None
 
     model_config = ConfigDict(from_attributes=True)

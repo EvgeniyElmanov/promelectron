@@ -13,6 +13,8 @@ class Order(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     status = Column(String, default="pending", nullable=False)
     total_price = Column(Numeric(precision=10, scale=2), nullable=False)
+    delivery_method_id = Column(Integer, ForeignKey("delivery_methods.id"), nullable=True)
+    delivery_price = Column(Numeric(precision=10, scale=2), nullable=True, default=0.0)
     shipping_address = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(
@@ -24,6 +26,7 @@ class Order(Base):
     user = relationship("User")
     items = relationship("OrderItem", back_populates="order")
     payment = relationship("Payment", back_populates="order", uselist=False)
+    delivery_method = relationship("DeliveryMethod")
 
 
 class OrderItem(Base):

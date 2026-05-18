@@ -76,6 +76,7 @@ describe('Cart.vue', () => {
     mockGet.mockImplementation((url) => {
       if (url === '/cart/') return Promise.resolve({ data: mockCartWithItems });
       if (url === '/auth/profile') return Promise.resolve({ data: mockProfile });
+      if (url === '/delivery-methods/') return Promise.resolve({ data: [] });
       return Promise.resolve({ data: {} });
     });
   });
@@ -105,6 +106,7 @@ describe('Cart.vue', () => {
     mockGet.mockImplementation((url) => {
       if (url === '/cart/') return Promise.resolve({ data: { id: 1, user_id: 1, items: [] } });
       if (url === '/auth/profile') return Promise.resolve({ data: mockProfile });
+      if (url === '/delivery-methods/') return Promise.resolve({ data: [] });
       return Promise.resolve({ data: {} });
     });
 

@@ -180,7 +180,63 @@
       </div>
     </div>
 
-    <!-- Modal -->
+    <!-- Delivery Tab -->
+    <div v-show="!isMobile || activeTab === 'delivery'" class="admin__tab-panel">
+      <div class="admin__section">
+        <div class="admin__section-header">
+          <h2 class="admin__section-title">Способы доставки</h2>
+          <button class="admin__btn admin__btn--primary" @click="openCreateDeliveryModal">+ Добавить</button>
+        </div>
+
+        <SkeletonAdminTable v-if="loading.delivery" />
+
+        <div v-else-if="deliveryMethods.length === 0" class="admin__empty">Нет способов доставки</div>
+
+        <div v-else class="admin__table-wrapper">
+          <table class="admin__table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Название</th>
+                <th>Цена</th>
+                <th>Срок</th>
+                <th>Статус</th>
+                <th class="admin__table-actions">Действия</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="method in deliveryMethods" :key="method.id">
+                <td>{{ method.id }}</td>
+                <td>{{ method.name }}</td>
+                <td>{{ method.base_price > 0 ? formatPrice(method.base_price) : 'Бесплатно' }}</td>
+                <td>{{ method.estimated_days || '—' }}</td>
+                <td>
+                  <span class="admin__status-badge" :class="method.is_active ? 'admin__status-badge--active' : 'admin__status-badge--inactive'">
+                    {{ method.is_active ? 'Активен' : 'Неактивен' }}
+                  </span>
+                </td>
+                <td class="admin__table-actions">
+                  <button class="admin__icon-btn admin__icon-btn--edit" @click="openEditDeliveryModal(method)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                      <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                    </svg>
+                  </button>
+                  <button class="admin__icon-btn admin__icon-btn--delete" @click="deleteDeliveryMethod(method.id)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="3 6 5 6 21 6"/>
+                      <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                    </svg>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Category Modal -->
     <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
       <div class="modal">
         <div class="modal__header">
@@ -199,6 +255,44 @@
           <div v-if="error" class="form-error">{{ error }}</div>
           <button type="submit" class="modal__submit" :disabled="submitting">
             {{ submitting ? 'Сохранение...' : (isEdit ? 'Сохранить' : 'Создать') }}
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Delivery Modal -->
+    <div v-if="showDeliveryModal" class="modal-overlay" @click.self="closeDeliveryModal">
+      <div class="modal">
+        <div class="modal__header">
+          <h3>{{ isEditDelivery ? 'Редактировать доставку' : 'Новый способ доставки' }}</h3>
+          <button class="modal__close" @click="closeDeliveryModal">&times;</button>
+        </div>
+        <form class="modal__form" @submit.prevent="handleDeliverySubmit">
+          <div class="field">
+            <label class="field__label">Название <span class="required">*</span></label>
+            <input v-model="deliveryForm.name" class="field__input" placeholder="Например, Курьер" required />
+          </div>
+          <div class="field">
+            <label class="field__label">Описание</label>
+            <textarea v-model="deliveryForm.description" class="field__input field__input--textarea" rows="2" placeholder="Описание..." />
+          </div>
+          <div class="field">
+            <label class="field__label">Цена (₽)</label>
+            <input v-model.number="deliveryForm.base_price" type="number" min="0" step="0.01" class="field__input" placeholder="0" />
+          </div>
+          <div class="field">
+            <label class="field__label">Срок доставки</label>
+            <input v-model="deliveryForm.estimated_days" class="field__input" placeholder="Например, 1-3 дня" />
+          </div>
+          <div class="field">
+            <label class="field__label">
+              <input v-model="deliveryForm.is_active" type="checkbox" />
+              Активен
+            </label>
+          </div>
+          <div v-if="deliveryError" class="form-error">{{ deliveryError }}</div>
+          <button type="submit" class="modal__submit" :disabled="submittingDelivery">
+            {{ submittingDelivery ? 'Сохранение...' : (isEditDelivery ? 'Сохранить' : 'Создать') }}
           </button>
         </form>
       </div>
@@ -223,6 +317,7 @@ const tabs = [
   { key: 'dashboard', label: 'Дашборд' },
   { key: 'users', label: 'Пользователи' },
   { key: 'categories', label: 'Категории' },
+  { key: 'delivery', label: 'Доставка' },
 ];
 const activeTab = ref('dashboard');
 
@@ -233,6 +328,7 @@ const loading = ref({
   topProducts: false,
   users: false,
   categories: false,
+  delivery: false,
 });
 
 // Data
@@ -241,6 +337,7 @@ const ordersByDay = ref([]);
 const topProducts = ref([]);
 const users = ref([]);
 const categories = ref([]);
+const deliveryMethods = ref([]);
 
 // Modal
 const showModal = ref(false);
@@ -250,6 +347,14 @@ const error = ref('');
 const submitting = ref(false);
 const form = ref({ name: '', description: '' });
 const submittingUser = ref(null);
+
+// Delivery Modal
+const showDeliveryModal = ref(false);
+const isEditDelivery = ref(false);
+const editingDeliveryId = ref(null);
+const deliveryError = ref('');
+const submittingDelivery = ref(false);
+const deliveryForm = ref({ name: '', description: '', base_price: 0, estimated_days: '', is_active: true });
 
 // KPI computed
 const kpiData = computed(() => [
@@ -430,10 +535,85 @@ const deleteCategory = async (id) => {
   }
 };
 
+// Delivery methods
+const fetchDeliveryMethodsAdmin = async () => {
+  loading.value.delivery = true;
+  try {
+    const { data } = await api.get('/delivery-methods/');
+    deliveryMethods.value = data;
+  } catch {
+    toast('Не удалось загрузить способы доставки', 'error');
+  } finally {
+    loading.value.delivery = false;
+  }
+};
+
+const openCreateDeliveryModal = () => {
+  isEditDelivery.value = false;
+  editingDeliveryId.value = null;
+  deliveryForm.value = { name: '', description: '', base_price: 0, estimated_days: '', is_active: true };
+  deliveryError.value = '';
+  showDeliveryModal.value = true;
+};
+
+const openEditDeliveryModal = (method) => {
+  isEditDelivery.value = true;
+  editingDeliveryId.value = method.id;
+  deliveryForm.value = {
+    name: method.name,
+    description: method.description || '',
+    base_price: method.base_price,
+    estimated_days: method.estimated_days || '',
+    is_active: method.is_active,
+  };
+  deliveryError.value = '';
+  showDeliveryModal.value = true;
+};
+
+const closeDeliveryModal = () => {
+  showDeliveryModal.value = false;
+};
+
+const handleDeliverySubmit = async () => {
+  deliveryError.value = '';
+  submittingDelivery.value = true;
+  try {
+    const payload = {
+      ...deliveryForm.value,
+      base_price: Number(deliveryForm.value.base_price),
+    };
+    if (isEditDelivery.value) {
+      await api.put(`/delivery-methods/${editingDeliveryId.value}`, payload);
+      toast('Способ доставки обновлён', 'success');
+    } else {
+      await api.post('/delivery-methods/', payload);
+      toast('Способ доставки создан', 'success');
+    }
+    closeDeliveryModal();
+    fetchDeliveryMethodsAdmin();
+  } catch (err) {
+    deliveryError.value = err.response?.data?.detail || 'Ошибка сохранения';
+  } finally {
+    submittingDelivery.value = false;
+  }
+};
+
+const deleteDeliveryMethod = async (id) => {
+  if (!confirm('Удалить способ доставки?')) return;
+  try {
+    await api.delete(`/delivery-methods/${id}`);
+    toast('Способ доставки удалён', 'success');
+    fetchDeliveryMethodsAdmin();
+  } catch (err) {
+    toast(err.response?.data?.detail || 'Ошибка удаления', 'error');
+  }
+};
+
 onMounted(() => {
   fetchDashboard();
   fetchUsers();
   fetchCategories();
+  fetchDeliveryMethodsAdmin();
 });
 </script>
 

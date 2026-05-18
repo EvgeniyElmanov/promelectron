@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from server.app.models.cart import Cart, CartItem
+from server.app.models.delivery_method import DeliveryMethod
 from server.app.models.order import Order, OrderItem
 from server.app.models.product import Product
 from server.app.models.user import User
@@ -65,10 +66,24 @@ class OrderService:
             total_price += Decimal(product.price) * cart_item.quantity
             order_items.append(order_item)
 
+        delivery_price = Decimal(0)
+        if order_data.delivery_method_id:
+            dm_result = await db.execute(
+                select(DeliveryMethod).where(
+                    DeliveryMethod.id == order_data.delivery_method_id,
+                    DeliveryMethod.is_active == True,
+                )
+            )
+            dm = dm_result.scalars().first()
+            if dm:
+                delivery_price = Decimal(dm.base_price)
+
         new_order = Order(
             user_id=current_user.id,
-            total_price=total_price,
+            total_price=total_price + delivery_price,
             status="pending",
+            delivery_method_id=order_data.delivery_method_id,
+            delivery_price=delivery_price,
             shipping_address=_format_address(order_data.shipping_address),
             items=order_items,
         )
@@ -78,7 +93,10 @@ class OrderService:
         await db.refresh(new_order)
 
         order_result = await db.execute(
-            select(Order).where(Order.id == new_order.id).options(selectinload(Order.items))
+            select(Order).where(Order.id == new_order.id).options(
+                selectinload(Order.items),
+                selectinload(Order.delivery_method),
+            )
         )
         full_order = order_result.scalars().first()
         if not full_order:
@@ -119,7 +137,7 @@ class OrderService:
         result = await db.execute(
             select(Order)
             .where(Order.id == order_id, Order.user_id == current_user.id)
-            .options(selectinload(Order.items))
+            .options(selectinload(Order.items), selectinload(Order.delivery_method))
         )
         order = result.scalars().first()
 
@@ -130,14 +148,18 @@ class OrderService:
     @staticmethod
     async def get_orders(current_user: User, db: AsyncSession) -> list[Order]:
         result = await db.execute(
-            select(Order).where(Order.user_id == current_user.id).options(selectinload(Order.items))
+            select(Order)
+            .where(Order.user_id == current_user.id)
+            .options(selectinload(Order.items), selectinload(Order.delivery_method))
         )
         return list(result.scalars().all())
 
     @staticmethod
     async def cancel_order(order_id: int, current_user: User, db: AsyncSession) -> Order:
         result = await db.execute(
-            select(Order).where(Order.id == order_id, Order.user_id == current_user.id).options(selectinload(Order.items))
+            select(Order)
+            .where(Order.id == order_id, Order.user_id == current_user.id)
+            .options(selectinload(Order.items), selectinload(Order.delivery_method))
         )
         order = result.scalars().first()
 
@@ -160,7 +182,9 @@ class OrderService:
 
         # Reload order with items for response
         order_result = await db.execute(
-            select(Order).where(Order.id == order_id).options(selectinload(Order.items))
+            select(Order)
+            .where(Order.id == order_id)
+            .options(selectinload(Order.items), selectinload(Order.delivery_method))
         )
         order = order_result.scalars().first()
 

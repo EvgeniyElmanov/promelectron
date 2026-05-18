@@ -74,6 +74,19 @@
             <span class="info-label">Адрес доставки</span>
             <span class="info-value">{{ order.shipping_address }}</span>
           </div>
+          <div v-if="order.delivery_method" class="info-row">
+            <span class="info-label">Способ доставки</span>
+            <span class="info-value">
+              {{ order.delivery_method.name }}
+              <span v-if="order.delivery_method.estimated_days" class="delivery-days">
+                ({{ order.delivery_method.estimated_days }} {{ order.delivery_method.estimated_days === 1 ? 'день' : order.delivery_method.estimated_days < 5 ? 'дня' : 'дней' }})
+              </span>
+            </span>
+          </div>
+          <div v-if="order.delivery_price !== null && order.delivery_price !== undefined" class="info-row">
+            <span class="info-label">Стоимость доставки</span>
+            <span class="info-value">{{ Number(order.delivery_price) > 0 ? formatPrice(order.delivery_price) + ' ₽' : 'Бесплатно' }}</span>
+          </div>
           <div v-if="order.status === 'pending'" class="info-row info-row--action">
             <router-link :to="`/checkout/${order.id}`" class="order-pay-btn">
               Оплатить {{ formatPrice(order.total_price) }} ₽
@@ -499,5 +512,10 @@ onMounted(fetchOrder);
   font-size: 18px;
   font-weight: 700;
   color: var(--color-text);
+}
+
+.delivery-days {
+  color: var(--color-text-secondary);
+  font-size: 13px;
 }
 </style>

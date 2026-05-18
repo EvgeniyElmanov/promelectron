@@ -23,7 +23,7 @@ test.describe('Admin Panel', () => {
     }
 
     // 5. Create a test category
-    await page.click('.admin__btn--primary');
+    await page.locator('.admin__btn--primary').first().click();
     await page.fill('.field__input[placeholder*="Например"]', 'E2E Test Category');
     await page.fill('.field__input--textarea', 'Test description');
     await page.click('.modal__submit');
@@ -32,6 +32,6 @@ test.describe('Admin Panel', () => {
     await expect(page.locator('.admin__table td').filter({ hasText: 'E2E Test Category' }).first()).toBeVisible();
 
     // 7. Verify "Add" button exists
-    await expect(page.locator('.admin__btn--primary')).toBeVisible();
+    await expect(page.locator('.admin__btn--primary').first()).toBeVisible();
   });
 });

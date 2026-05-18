@@ -22,6 +22,15 @@
         <div class="checkout__section-title">Сумма к оплате</div>
         <div class="checkout__amount">{{ formatPrice(order.total_price) }} ₽</div>
         <div class="checkout__items-count">{{ order.items?.length || 0 }} товаров</div>
+        <div v-if="order.delivery_method" class="checkout__delivery-info">
+          <div class="checkout__delivery-row">
+            <span>Доставка: {{ order.delivery_method.name }}</span>
+            <span>{{ Number(order.delivery_method.base_price) > 0 ? formatPrice(order.delivery_method.base_price) + ' ₽' : 'Бесплатно' }}</span>
+          </div>
+          <div v-if="order.delivery_method.estimated_days" class="checkout__delivery-days">
+            Срок: {{ order.delivery_method.estimated_days }} {{ order.delivery_method.estimated_days === 1 ? 'день' : order.delivery_method.estimated_days < 5 ? 'дня' : 'дней' }}
+          </div>
+        </div>
       </div>
 
       <!-- Payment Form -->
@@ -378,5 +387,25 @@ onMounted(fetchOrder);
   border: none;
   font-size: 15px;
   cursor: pointer;
+}
+
+.checkout__delivery-info {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+}
+
+.checkout__delivery-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+  color: var(--color-text);
+}
+
+.checkout__delivery-days {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin-top: 4px;
 }
 </style>

@@ -117,12 +117,40 @@
           </div>
           <div class="cart__summary-row">
             <span>Доставка</span>
-            <span class="cart__summary-free">Бесплатно</span>
+            <span>{{ deliveryPrice > 0 ? formatPrice(deliveryPrice) + ' ₽' : 'Бесплатно' }}</span>
           </div>
           <div class="cart__summary-divider"></div>
           <div class="cart__summary-row cart__summary-row--total">
             <span>Итого</span>
-            <span>{{ formatPrice(itemsTotal) }} ₽</span>
+            <span>{{ formatPrice(orderTotal) }} ₽</span>
+          </div>
+        </div>
+
+        <div class="cart__summary-section">
+          <h3 class="cart__summary-title">Способ доставки</h3>
+          <div class="cart__delivery-list">
+            <label
+              v-for="method in deliveryMethods"
+              :key="method.id"
+              class="cart__delivery-option"
+              :class="{ 'cart__delivery-option--active': selectedDeliveryMethodId === method.id }"
+            >
+              <input
+                v-model="selectedDeliveryMethodId"
+                type="radio"
+                :value="method.id"
+                class="cart__delivery-radio"
+              />
+              <div class="cart__delivery-info">
+                <span class="cart__delivery-name">{{ method.name }}</span>
+                <span v-if="method.estimated_days" class="cart__delivery-days">
+                  {{ method.estimated_days }} {{ method.estimated_days === 1 ? 'день' : method.estimated_days < 5 ? 'дня' : 'дней' }}
+                </span>
+              </div>
+              <span class="cart__delivery-price">
+                {{ Number(method.base_price) > 0 ? formatPrice(method.base_price) + ' ₽' : 'Бесплатно' }}
+              </span>
+            </label>
           </div>
         </div>
 
@@ -140,7 +168,7 @@
     <div v-if="cart.items && cart.items.length > 0" class="cart__checkout-bar">
       <div class="cart__checkout-info">
         <span class="cart__checkout-label">Итого</span>
-        <span class="cart__checkout-price">{{ formatPrice(itemsTotal) }} ₽</span>
+        <span class="cart__checkout-price">{{ formatPrice(orderTotal) }} ₽</span>
       </div>
       <button
         class="cart__checkout-btn"
@@ -169,6 +197,8 @@ const updatingId = ref(null);
 const shippingAddress = ref({
   region: '', district: '', city: '', street: '', house: '', apartment: ''
 });
+const deliveryMethods = ref([]);
+const selectedDeliveryMethodId = ref(null);
 const router = useRouter();
 const { add: toast } = useToast();
 
@@ -192,6 +222,13 @@ const itemsTotal = computed(() => {
   }, 0);
 });
 
+const deliveryPrice = computed(() => {
+  const method = deliveryMethods.value.find(m => m.id === selectedDeliveryMethodId.value);
+  return method ? Number(method.base_price) : 0;
+});
+
+const orderTotal = computed(() => itemsTotal.value + deliveryPrice.value);
+
 const formatPrice = (price) => {
   return Number(price).toLocaleString('ru-RU');
 };
@@ -212,6 +249,18 @@ const fetchCart = async () => {
     toast('Не удалось загрузить корзину', 'error');
   } finally {
     loading.value = false;
+  }
+};
+
+const fetchDeliveryMethods = async () => {
+  try {
+    const { data } = await api.get('/delivery-methods/');
+    deliveryMethods.value = data;
+    if (data.length > 0 && !selectedDeliveryMethodId.value) {
+      selectedDeliveryMethodId.value = data[0].id;
+    }
+  } catch (err) {
+    console.error('Failed to fetch delivery methods:', err);
   }
 };
 
@@ -255,6 +304,7 @@ const createOrder = async () => {
   try {
     const { data: order } = await api.post('/orders/create', {
       shipping_address: { ...shippingAddress.value },
+      delivery_method_id: selectedDeliveryMethodId.value,
     });
     toast('Заказ успешно создан!', 'success');
     await router.push(`/checkout/${order.id}`);
@@ -287,7 +337,10 @@ const handleTouchEnd = () => {
   touchStartX.value = 0;
 };
 
-onMounted(fetchCart);
+onMounted(() => {
+  fetchCart();
+  fetchDeliveryMethods();
+});
 </script>
 
 <style scoped>
@@ -598,6 +651,60 @@ onMounted(fetchCart);
 .cart__summary-free {
   color: #0d7a3e;
   font-weight: 500;
+}
+
+/* Delivery selection */
+.cart__delivery-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cart__delivery-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 2px solid var(--color-border);
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.cart__delivery-option--active {
+  border-color: var(--color-primary);
+}
+
+.cart__delivery-radio {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.cart__delivery-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cart__delivery-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.cart__delivery-days {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.cart__delivery-price {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
 }
 
 .cart__summary-divider {
