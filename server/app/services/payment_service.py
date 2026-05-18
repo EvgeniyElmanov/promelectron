@@ -10,6 +10,7 @@ from server.app.models.order import Order, OrderItem
 from server.app.models.payment import Payment
 from server.app.models.user import User
 from server.app.services.email_service import EmailService
+from server.app.services.notification_service import NotificationService
 
 
 class PaymentService:
@@ -94,6 +95,15 @@ class PaymentService:
                 total_price=float(payment.order.total_price),
                 items=items_for_email,
                 shipping_address=payment.order.shipping_address,
+            )
+
+            await NotificationService.create_notification(
+                db=db,
+                user_id=user.id,
+                type="order_paid",
+                title="Заказ оплачен",
+                message=f"Заказ №{payment.order.id} на сумму {float(payment.order.total_price):,.0f} ₽ успешно оплачен.",
+                order_id=payment.order.id,
             )
 
         return payment

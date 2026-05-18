@@ -14,6 +14,38 @@
     </div>
 
     <div class="header__actions">
+      <!-- Notifications -->
+      <div v-if="isAuthenticated" class="header__notif-wrap">
+        <button class="header__icon header__icon--notif" data-testid="notifications-btn" title="Уведомления" @click="toggleNotif">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 01-3.46 0"/>
+          </svg>
+          <span v-if="unreadCount > 0" class="header__notif-badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
+        </button>
+        <!-- Dropdown -->
+        <div v-if="notifOpen" class="notif-dropdown" v-click-outside="closeNotif">
+          <div class="notif-dropdown__header">
+            <span class="notif-dropdown__title">Уведомления</span>
+            <button v-if="unreadCount > 0" class="notif-dropdown__read-all" @click="markAllAsRead">Прочитать все</button>
+          </div>
+          <div v-if="unreadNotifications.length === 0" class="notif-dropdown__empty">Нет новых уведомлений</div>
+          <div v-else class="notif-dropdown__list">
+            <div
+              v-for="n in unreadNotifications.slice(0, 5)"
+              :key="n.id"
+              class="notif-dropdown__item notif-dropdown__item--unread"
+              @click="onNotifClick(n)"
+            >
+              <div class="notif-dropdown__item-title">{{ n.title }}</div>
+              <div class="notif-dropdown__item-msg">{{ n.message }}</div>
+              <div class="notif-dropdown__item-time">{{ formatTime(n.created_at) }}</div>
+            </div>
+          </div>
+          <router-link to="/notifications" class="notif-dropdown__footer" @click="closeNotif">Все уведомления</router-link>
+        </div>
+      </div>
+
       <router-link to="/cart" class="header__icon" data-testid="cart-link" title="Корзина">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
           <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4H6z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -38,11 +70,21 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { useRouter } from 'vue-router';
 import { useAuth } from '@/composables/useAuth';
+import { useNotifications } from '@/composables/useNotifications';
 
-const { isAuthenticated, isSupplier, isAdmin } = useAuth();
+const { isAuthenticated } = useAuth();
 const isDesktop = ref(false);
+const notifOpen = ref(false);
+const router = useRouter();
+
+// Always call useNotifications — it handles auth internally
+const notifApi = useNotifications();
+const notifications = computed(() => notifApi.notifications.value);
+const unreadCount = computed(() => notifApi.unreadCount.value);
+const unreadNotifications = computed(() => notifications.value.filter((n) => !n.is_read));
 
 const checkWidth = () => {
   isDesktop.value = window.innerWidth >= 768;
@@ -56,6 +98,50 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('resize', checkWidth);
 });
+
+function toggleNotif(e) {
+  e.stopPropagation();
+  notifOpen.value = !notifOpen.value;
+}
+
+function closeNotif() {
+  notifOpen.value = false;
+}
+
+function markAllAsRead() {
+  notifApi.markAllAsRead?.();
+}
+
+function onNotifClick(n) {
+  if (!n.is_read) {
+    notifApi.markAsRead?.(n.id);
+  }
+  closeNotif();
+  if (n.order_id) {
+    router.push(`/orders/${n.order_id}`);
+  }
+}
+
+function formatTime(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+
+// Simple click-outside directive (captures, so it runs before bubble)
+const vClickOutside = {
+  mounted(el, binding) {
+    el._clickOutside = (e) => {
+      if (!el.contains(e.target) && !el.previousElementSibling?.contains(e.target)) {
+        binding.value();
+      }
+    };
+    document.addEventListener('click', el._clickOutside);
+  },
+  unmounted(el) {
+    document.removeEventListener('click', el._clickOutside);
+  },
+};
 </script>
 
 <style scoped>
@@ -129,5 +215,132 @@ onUnmounted(() => {
 
 .header__icon:hover {
   background: var(--color-bg);
+}
+
+.header__icon--notif {
+  position: relative;
+}
+
+.header__notif-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--color-danger);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.header__notif-wrap {
+  position: relative;
+}
+
+.notif-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 320px;
+  max-height: 400px;
+  background: var(--color-bg-white);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+  z-index: 150;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.notif-dropdown__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.notif-dropdown__title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.notif-dropdown__read-all {
+  font-size: 12px;
+  color: var(--color-primary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.notif-dropdown__list {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.notif-dropdown__empty {
+  padding: 24px;
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+
+.notif-dropdown__item {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--color-border);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.notif-dropdown__item:hover {
+  background: var(--color-bg);
+}
+
+.notif-dropdown__item--unread {
+  background: #f0f7ff;
+}
+
+.notif-dropdown__item--unread:hover {
+  background: #e0efff;
+}
+
+.notif-dropdown__item-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 2px;
+}
+
+.notif-dropdown__item-msg {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.notif-dropdown__item-time {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  margin-top: 4px;
+}
+
+.notif-dropdown__footer {
+  padding: 12px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-primary);
+  text-decoration: none;
+  border-top: 1px solid var(--color-border);
 }
 </style>

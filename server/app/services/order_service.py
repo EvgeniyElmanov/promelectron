@@ -11,6 +11,7 @@ from server.app.models.product import Product
 from server.app.models.user import User
 from server.app.schemas.order import AddressDetails, OrderCreate, OrderUpdateStatus
 from server.app.services.email_service import EmailService
+from server.app.services.notification_service import NotificationService
 
 
 def _format_address(address: AddressDetails | None) -> str | None:
@@ -101,6 +102,16 @@ class OrderService:
             shipping_address=full_order.shipping_address,
         )
 
+        # Create notification
+        await NotificationService.create_notification(
+            db=db,
+            user_id=current_user.id,
+            type="order_created",
+            title="Заказ оформлен",
+            message=f"Ваш заказ №{full_order.id} на сумму {float(full_order.total_price):,.0f} ₽ успешно создан и ожидает оплаты.",
+            order_id=full_order.id,
+        )
+
         return full_order
 
     @staticmethod
@@ -122,6 +133,48 @@ class OrderService:
             select(Order).where(Order.user_id == current_user.id).options(selectinload(Order.items))
         )
         return list(result.scalars().all())
+
+    @staticmethod
+    async def cancel_order(order_id: int, current_user: User, db: AsyncSession) -> Order:
+        result = await db.execute(
+            select(Order).where(Order.id == order_id, Order.user_id == current_user.id).options(selectinload(Order.items))
+        )
+        order = result.scalars().first()
+
+        if not order:
+            raise HTTPException(status_code=404, detail="Order not found")
+
+        if order.status != "pending":
+            raise HTTPException(status_code=400, detail="Only pending orders can be cancelled")
+
+        order.status = "cancelled"
+
+        # Return stock
+        for item in order.items:
+            product_result = await db.execute(select(Product).where(Product.id == item.product_id))
+            product = product_result.scalars().first()
+            if product:
+                product.stock += item.quantity
+
+        await db.commit()
+
+        # Reload order with items for response
+        order_result = await db.execute(
+            select(Order).where(Order.id == order_id).options(selectinload(Order.items))
+        )
+        order = order_result.scalars().first()
+
+        # Send notification
+        await NotificationService.create_notification(
+            db=db,
+            user_id=current_user.id,
+            type="order_cancelled",
+            title="Заказ отменён",
+            message=f"Заказ №{order.id} отменён.",
+            order_id=order.id,
+        )
+
+        return order
 
     @staticmethod
     async def update_order_status(
@@ -156,6 +209,23 @@ class OrderService:
                 to=user.email,
                 order_id=full_order.id,
                 status=full_order.status,
+            )
+
+            status_labels = {
+                "pending": "Ожидает оплаты",
+                "paid": "Оплачен",
+                "shipped": "Отправлен",
+                "delivered": "Доставлен",
+                "cancelled": "Отменён",
+            }
+            label = status_labels.get(full_order.status, full_order.status)
+            await NotificationService.create_notification(
+                db=db,
+                user_id=user.id,
+                type="status_changed",
+                title=f"Статус заказа изменён",
+                message=f"Заказ №{full_order.id}: {label}",
+                order_id=full_order.id,
             )
 
         return full_order

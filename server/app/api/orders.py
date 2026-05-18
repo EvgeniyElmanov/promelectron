@@ -46,6 +46,16 @@ async def get_orders(
     return await OrderService.get_orders(current_user=current_user, db=db)
 
 
+@router.patch("/{order_id}/cancel", response_model=OrderOut)
+async def cancel_order(
+    order_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Отменить заказ (только если статус pending)."""
+    return await OrderService.cancel_order(order_id=order_id, current_user=current_user, db=db)
+
+
 @router.put("/{order_id}/status", response_model=OrderOut)
 async def update_order_status(
     order_id: int,

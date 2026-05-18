@@ -1,6 +1,7 @@
 from .cart import Cart, CartItem
 from .category import Category
 from .favorite import Favorite
+from .notification import Notification
 from .order import Order, OrderItem
 from .payment import Payment
 from .product import Product

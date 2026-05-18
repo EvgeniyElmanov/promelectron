@@ -41,6 +41,9 @@
             <router-link :to="`/checkout/${order.id}`" class="order-pay-btn">
               Оплатить
             </router-link>
+            <button class="order-cancel-btn" @click.prevent="cancelOrder(order.id)">
+              Отменить
+            </button>
           </div>
           <div v-if="order.shipping_address" class="order-row">
             <span class="order-label">Адрес</span>
@@ -102,6 +105,17 @@ const fetchOrders = async () => {
     error.value = err.response?.data?.detail || err.message || 'Не удалось загрузить заказы';
   } finally {
     loading.value = false;
+  }
+};
+
+const cancelOrder = async (orderId) => {
+  if (!confirm('Отменить заказ?')) return;
+  try {
+    await api.patch(`/orders/${orderId}/cancel`);
+    const order = orders.value.find((o) => o.id === orderId);
+    if (order) order.status = 'cancelled';
+  } catch (err) {
+    alert(err.response?.data?.detail || 'Не удалось отменить заказ');
   }
 };
 
@@ -256,6 +270,25 @@ onMounted(fetchOrders);
   font-weight: 600;
   text-decoration: none;
   text-align: center;
+}
+
+.order-cancel-btn {
+  display: inline-block;
+  padding: 10px 20px;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+  text-align: center;
+}
+
+.order-cancel-btn:hover {
+  background: #fff0f0;
+  color: var(--color-danger);
+  border-color: #ffcdd2;
 }
 
 .order-footer {

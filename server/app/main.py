@@ -15,7 +15,9 @@ from server.app.api.auth import router as auth_router
 from server.app.api.cart import router as cart_router
 from server.app.api.categories import router as categories_router
 from server.app.api.favorites import router as favorites_router
+from server.app.api.notifications import router as notifications_router
 from server.app.api.orders import router as orders_router
+from server.app.api.ws import router as ws_router
 from server.app.api.payments import router as payments_router
 from server.app.api.products import router as products_router
 from server.app.api.reviews import router as reviews_router
@@ -69,6 +71,8 @@ app.include_router(products_router, prefix="/api/v1", tags=["products"])
 app.include_router(cart_router, prefix="/api/v1", tags=["cart"])
 app.include_router(orders_router, prefix="/api/v1", tags=["orders"])
 app.include_router(payments_router, prefix="/api/v1", tags=["payments"])
+app.include_router(notifications_router, prefix="/api/v1", tags=["notifications"])
+app.include_router(ws_router)
 app.include_router(auth_router, prefix="/api/v1", tags=["auth"])
 app.include_router(reviews_router, prefix="/api/v1", tags=["reviews"])
 app.include_router(favorites_router, prefix="/api/v1", tags=["favorites"])

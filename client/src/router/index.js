@@ -15,6 +15,7 @@ import SupplierProducts from '../views/SupplierProducts.vue';
 import Admin from '../views/Admin.vue';
 import OrderDetail from '../views/OrderDetail.vue';
 import Checkout from '../views/Checkout.vue';
+import Notifications from '../views/Notifications.vue';
 
 const routes = [
   { path: '/', component: Products },
@@ -25,6 +26,7 @@ const routes = [
   { path: '/orders', component: Orders, meta: { requiresAuth: true } },
   { path: '/orders/:id', component: OrderDetail, meta: { requiresAuth: true } },
   { path: '/checkout/:id', component: Checkout, meta: { requiresAuth: true } },
+  { path: '/notifications', component: Notifications, meta: { requiresAuth: true } },
   { path: '/profile', component: Profile, meta: { requiresAuth: true } },
   { path: '/profile/edit', component: ProfileEdit, meta: { requiresAuth: true } },
   { path: '/auth/callback', component: AuthCallback },

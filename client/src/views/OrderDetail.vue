@@ -78,6 +78,9 @@
             <router-link :to="`/checkout/${order.id}`" class="order-pay-btn">
               Оплатить {{ formatPrice(order.total_price) }} ₽
             </router-link>
+            <button class="order-cancel-btn" @click="cancelOrder">
+              Отменить заказ
+            </button>
           </div>
         </div>
       </div>
@@ -164,6 +167,17 @@ const fetchOrder = async () => {
     toast(error.value, 'error');
   } finally {
     loading.value = false;
+  }
+};
+
+const cancelOrder = async () => {
+  if (!confirm('Отменить заказ?')) return;
+  try {
+    const response = await api.patch(`/orders/${orderId.value}/cancel`);
+    order.value = response.data;
+    toast('Заказ отменён', 'info');
+  } catch (err) {
+    toast(err.response?.data?.detail || 'Не удалось отменить заказ', 'error');
   }
 };
 
@@ -411,6 +425,25 @@ onMounted(fetchOrder);
   font-weight: 600;
   text-decoration: none;
   text-align: center;
+}
+
+.order-cancel-btn {
+  display: inline-block;
+  padding: 12px 24px;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 15px;
+  font-weight: 500;
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+  text-align: center;
+}
+
+.order-cancel-btn:hover {
+  background: #fff0f0;
+  color: var(--color-danger);
+  border-color: #ffcdd2;
 }
 
 /* Items */
