@@ -140,6 +140,15 @@ jobs:
           echo "=== All deployments ==="
           kubectl get deployments -n myshop-test || true
           echo ""
+          echo "=== All services ==="
+          kubectl get services -n myshop-test || true
+          echo ""
+          echo "=== Ingress in namespace ==="
+          kubectl get ingress -n myshop-test -o yaml || true
+          echo ""
+          echo "=== All ingresses in cluster ==="
+          kubectl get ingress --all-namespaces || true
+          echo ""
           echo "=== Recent events ==="
           kubectl get events -n myshop-test --sort-by='.lastTimestamp' | tail -20 || true
 
