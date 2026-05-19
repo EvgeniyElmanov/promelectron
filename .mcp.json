@@ -1,11 +1,15 @@
 {
+  "$schema": "https://json.schemastore.org/mcp-server.json",
   "mcpServers": {
     "playwright": {
       "command": "npx",
       "args": [
         "@playwright/mcp@latest",
         "--headless"
-      ]
+      ],
+      "env": {
+        "PLAYWRIGHT_HEADLESS": "true"
+      }
     },
     "filesystem": {
       "command": "npx",

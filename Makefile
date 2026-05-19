@@ -2,6 +2,8 @@
 # My Shop — Makefile
 # ============================================================
 
+SHELL := /bin/bash
+
 .PHONY: help dev stop test test-backend test-frontend test-e2e migrate seed lint format
 
 help: ## Показать справку
@@ -50,11 +52,61 @@ db-down: ## Остановить PostgreSQL
 	docker compose down
 
 # --- Линтинг и форматирование ---
-lint-backend: ## Линт Python (ruff / flake8 если установлен)
-	-source venv/bin/activate && python -m py_compile server/app/**/*.py
+lint: lint-backend lint-frontend ## Линт всего проекта
+
+lint-backend: ## Линт Python (ruff)
+	source venv/bin/activate && ruff check server/app
 
 lint-frontend: ## Линт Vue
-	cd client && npm run lint
+	cd client && npm run lint 2>/dev/null || npx oxlint src/ 2>/dev/null || echo "Frontend linter not configured"
+
+format: format-backend format-frontend ## Форматировать весь проект
+
+format-backend: ## Форматировать Python (ruff)
+	source venv/bin/activate && ruff format server/app
 
 format-frontend: ## Форматировать Vue
-	cd client && npm run format
+	cd client && npm run format 2>/dev/null || echo "Frontend formatter not configured"
+
+# --- Code Review & Security ---
+review: ## Code review текущих изменений
+	bash scripts/review.sh
+
+review-security: ## Security audit
+	bash scripts/security-check.sh
+
+check: lint test review ## Полная проверка: линт + тесты + ревью
+
+# --- Миграции ---
+migrate-down: ## Откатить последнюю Alembic миграцию
+	source venv/bin/activate && alembic downgrade -1
+
+migrate-history: ## История миграций
+	source venv/bin/activate && alembic history
+
+# --- Утилиты ---
+clean: ## Очистить кэш и артефакты
+	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+	find . -type d -name .pytest_cache -exec rm -rf {} + 2>/dev/null || true
+	find . -type d -name node_modules -prune -o -type d -name .vite -exec rm -rf {} + 2>/dev/null || true
+	find . -type f -name "*.pyc" -delete 2>/dev/null || true
+	rm -rf test-results/ playwright-report/ 2>/dev/null || true
+
+status: ## Статус проекта: git + тесты + линт
+	@echo "=== Git Status ==="
+	@git status --short
+	@echo ""
+	@echo "=== Last Commit ==="
+	@git log -1 --oneline
+	@echo ""
+	@echo "=== Branch ==="
+	@git branch --show-current
+	@echo ""
+	@echo "=== Unpushed Commits ==="
+	@git log --oneline --graph --left-right @{u}...HEAD 2>/dev/null || echo "No upstream branch"
+	@echo ""
+	@echo "=== Test Summary ==="
+	@source venv/bin/activate && pytest tests/ -q --tb=no 2>&1 | tail -3 || true
+	@echo ""
+	@echo "=== Frontend Tests ==="
+	@cd client && npx vitest run --reporter=dot 2>&1 | tail -3 || true

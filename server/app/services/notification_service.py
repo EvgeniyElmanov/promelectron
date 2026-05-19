@@ -47,7 +47,7 @@ class NotificationService:
     ) -> list[Notification]:
         query = select(Notification).where(Notification.user_id == user_id)
         if unread_only:
-            query = query.where(Notification.is_read == False)
+            query = query.where(Notification.is_read.is_(False))
         query = query.order_by(desc(Notification.created_at)).offset(skip).limit(limit)
         result = await db.execute(query)
         return list(result.scalars().all())
@@ -69,7 +69,7 @@ class NotificationService:
     async def mark_all_as_read(user_id: int, db: AsyncSession) -> int:
         result = await db.execute(
             select(Notification)
-            .where(Notification.user_id == user_id, Notification.is_read == False)
+            .where(Notification.user_id == user_id, Notification.is_read.is_(False))
         )
         notifications = result.scalars().all()
         count = 0
@@ -84,7 +84,7 @@ class NotificationService:
     async def get_unread_count(user_id: int, db: AsyncSession) -> int:
         result = await db.execute(
             select(func.count(Notification.id))
-            .where(Notification.user_id == user_id, Notification.is_read == False)
+            .where(Notification.user_id == user_id, Notification.is_read.is_(False))
         )
         return result.scalar() or 0
 

@@ -41,7 +41,7 @@ class ReviewService:
     async def get_reviews(product_id: int, db: AsyncSession) -> list[Review]:
         result = await db.execute(
             select(Review)
-            .where(Review.product_id == product_id, Review.is_approved == True)
+            .where(Review.product_id == product_id, Review.is_approved.is_(True))
             .order_by(Review.created_at.desc())
         )
         return list(result.scalars().all())
@@ -83,7 +83,7 @@ class ReviewService:
     async def get_average_rating(product_id: int, db: AsyncSession) -> float:
         result = await db.execute(
             select(func.avg(Review.rating)).where(
-                Review.product_id == product_id, Review.is_approved == True
+                Review.product_id == product_id, Review.is_approved.is_(True)
             )
         )
         avg = result.scalar()

@@ -71,7 +71,7 @@ class OrderService:
             dm_result = await db.execute(
                 select(DeliveryMethod).where(
                     DeliveryMethod.id == order_data.delivery_method_id,
-                    DeliveryMethod.is_active == True,
+                    DeliveryMethod.is_active.is_(True),
                 )
             )
             dm = dm_result.scalars().first()
@@ -332,7 +332,7 @@ class OrderService:
                 db=db,
                 user_id=user.id,
                 type="status_changed",
-                title=f"Статус заказа изменён",
+                title="Статус заказа изменён",
                 message=f"Заказ №{full_order.id}: {label}",
                 order_id=full_order.id,
             )

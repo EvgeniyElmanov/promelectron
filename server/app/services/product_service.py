@@ -3,7 +3,6 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from server.app.models.category import Category
-from server.app.models.favorite import Favorite
 from server.app.models.product import Product
 from server.app.models.review import Review
 from server.app.models.supplier import Supplier
@@ -26,7 +25,7 @@ class ProductService:
         min_rating: float | None = None,
         sort_by: str | None = None,
     ) -> tuple[list[Product], int]:
-        filters = [Product.is_active == True]
+        filters = [Product.is_active.is_(True)]
 
         if search:
             search_term = f"%{search}%"

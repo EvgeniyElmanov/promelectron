@@ -9,7 +9,7 @@ from server.app.schemas.delivery_method import DeliveryMethodCreate, DeliveryMet
 class DeliveryMethodService:
     @staticmethod
     async def get_methods(db: AsyncSession) -> list[DeliveryMethod]:
-        result = await db.execute(select(DeliveryMethod).where(DeliveryMethod.is_active == True))
+        result = await db.execute(select(DeliveryMethod).where(DeliveryMethod.is_active.is_(True)))
         return list(result.scalars().all())
 
     @staticmethod
