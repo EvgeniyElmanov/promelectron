@@ -61,7 +61,8 @@ app.add_middleware(
 )
 
 # Static files for uploads
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+if os.path.isdir("uploads"):
+    app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # Подключаем все роутеры
 # categories ДО products, иначе /products/{id} перехватит /categories"

@@ -1,9 +1,8 @@
 # 🤖 Kimi Agent System — My Shop
 
 > **Адаптация агентов под наш проект:** Vue 3 + FastAPI + PostgreSQL
-> 
-> Оригинальная система агентов находится в `.claude/` (Claude Code format).
-> Эта папка `.kimi/` — адаптированная версия под наш стек.
+>
+> Папка `.kimi/` — адаптированная версия агентов под Kimi Code CLI.
 
 ## Команды
 
@@ -53,14 +52,14 @@ make status       # git + tests + lint
 - Deny: `rm -rf`, `git push --force`, `git reset --hard`, `DROP`
 - Hook: `ruff check --fix` после каждого Edit/Write
 
-## Отличия от `.claude/`
+## Стек проекта
 
-| | `.claude/` (оригинал) | `.kimi/` (адаптация) |
-|---|----------------------|---------------------|
-| Backend path | `backend/` | `server/` |
-| Frontend | React + TypeScript | Vue 3 + JavaScript |
-| Package manager | `uv` | `venv` |
-| CI/CD | GitHub Actions + Helm | Пока не настроено |
+| | Параметр | Значение |
+|---|----------|----------|
+| Backend path | `server/` | FastAPI + SQLAlchemy 2.0 |
+| Frontend | Vue 3 + JavaScript | Composition API, Vite |
+| Package manager | `venv` | Python 3.12 |
+| CI/CD | Пока не настроено | |
 
 ## Workflow
 

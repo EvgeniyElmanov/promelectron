@@ -20,7 +20,7 @@ function connect() {
     ws = new WebSocket(`${WS_URL}?token=${token}`);
 
     ws.onopen = () => {
-      console.log('[WS] Connected');
+      // Connected
     };
 
     ws.onmessage = (event) => {

@@ -28,12 +28,13 @@ if [[ "$1" == "--security-only" ]]; then
 fi
 
 echo "=== Running Tests ==="
-cd server && python -m pytest ../tests/ -q 2>&1 | tail -5 || true
-cd ../client && npm test -- --run 2>&1 | tail -5 || true
+. venv/bin/activate && python -m pytest tests/ -q 2>&1 | tail -5 || true
+cd client && npm test -- --run 2>&1 | tail -5 || true
+cd ..
 echo ""
 
 echo "=== Lint Check ==="
-cd server && ruff check app --quiet 2>&1 || true
+. venv/bin/activate && ruff check server/app --quiet 2>&1 || true
 echo ""
 
 echo "=== Review Complete ==="
