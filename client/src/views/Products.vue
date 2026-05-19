@@ -136,8 +136,17 @@ const loadMoreTrigger = ref(null);
 const hasMore = computed(() => total.value === null || products.value.length < total.value);
 
 let searchTimeout = null;
+let abortController = null;
+let fetchId = 0;
 
 const fetchProducts = async (append = false) => {
+  // Cancel previous request
+  if (abortController) {
+    abortController.abort();
+  }
+  abortController = new AbortController();
+  const currentFetchId = ++fetchId;
+
   loading.value = true;
   try {
     const params = { skip: skip.value, limit };
@@ -148,17 +157,24 @@ const fetchProducts = async (append = false) => {
     if (maxPrice.value !== null && maxPrice.value !== '') params.max_price = maxPrice.value;
     if (minRating.value !== null) params.min_rating = minRating.value;
 
-    const { data } = await api.get('/products/', { params });
+    const { data } = await api.get('/products/', { params, signal: abortController.signal });
+    // Ignore stale responses
+    if (currentFetchId !== fetchId) return;
+
     if (append) {
       products.value.push(...data.items);
     } else {
       products.value = data.items;
     }
     total.value = data.total;
-  } catch {
-    // silently fail
+  } catch (err) {
+    if (err.name !== 'AbortError' && err.code !== 'ERR_CANCELED') {
+      console.error('Failed to fetch products:', err);
+    }
   } finally {
-    loading.value = false;
+    if (currentFetchId === fetchId) {
+      loading.value = false;
+    }
   }
 };
 
@@ -192,16 +208,16 @@ watch(searchQuery, () => {
   }, 300);
 });
 
-onMounted(() => {
-  fetchProducts();
+onMounted(async () => {
+  await fetchProducts();
 
   // Infinite scroll via IntersectionObserver
   if (loadMoreTrigger.value && 'IntersectionObserver' in window) {
     const observer = new IntersectionObserver((entries) => {
-      if (entries[0].isIntersecting && hasMore.value && !loading.value) {
+      if (entries[0].isIntersecting && hasMore.value && !loading.value && products.value.length > 0) {
         loadMore();
       }
-    }, { rootMargin: '200px' });
+    }, { rootMargin: '100px' });
     observer.observe(loadMoreTrigger.value);
   }
 });

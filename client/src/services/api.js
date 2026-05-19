@@ -36,7 +36,11 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       const isAuthPage = window.location.pathname === '/login' || window.location.pathname === '/register';
       const isAuthRequest = error.config?.url?.includes('/login') || error.config?.url?.includes('/register');
-      if (!isAuthPage && !isAuthRequest) {
+      const url = error.config?.url || '';
+      const isPublicRequest = url.includes('/products/')
+        || url.includes('/categories')
+        || url.includes('/reviews');
+      if (!isAuthPage && !isAuthRequest && !isPublicRequest) {
         localStorage.removeItem('access_token');
         window.location.href = '/login';
       }

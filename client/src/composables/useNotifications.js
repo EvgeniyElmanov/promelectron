@@ -107,8 +107,11 @@ async function deleteNotification(id) {
 
 export function useNotifications() {
   onMounted(() => {
-    fetchNotifications();
-    connect();
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      fetchNotifications();
+      connect();
+    }
   });
 
   onUnmounted(() => {

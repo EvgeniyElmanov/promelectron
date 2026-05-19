@@ -9,7 +9,9 @@
         :src="product.images[0]"
         class="product-card__img"
         alt=""
-        loading="lazy"
+        width="400"
+        height="400"
+        decoding="async"
       />
       <span v-else class="product-card__image-letter">{{ product.name.charAt(0) }}</span>
       <button
@@ -145,6 +147,7 @@ const addToCart = async () => {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  display: block;
 }
 
 .product-card__image-letter {

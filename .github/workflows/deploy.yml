@@ -159,6 +159,48 @@ jobs:
           echo "=== Recent events ==="
           kubectl get events -n promelectron-test --sort-by='.lastTimestamp' | tail -20 || true
 
+      - name: Run database migrations
+        env:
+          KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
+        run: |
+          echo "Waiting for postgres to be ready..."
+          kubectl wait --for=condition=ready pod -l app=myshop-postgres -n promelectron-test --timeout=300s || true
+          
+          echo "Running alembic migrations..."
+          kubectl delete job myshop-migrations -n promelectron-test --ignore-not-found=true
+          sleep 5
+          cat <<EOF | kubectl apply -f -
+          apiVersion: batch/v1
+          kind: Job
+          metadata:
+            name: myshop-migrations
+            namespace: promelectron-test
+          spec:
+            ttlSecondsAfterFinished: 3600
+            template:
+              spec:
+                restartPolicy: OnFailure
+                imagePullSecrets:
+                  - name: harborcred
+                containers:
+                  - name: alembic
+                    image: ${{ env.API_IMAGE }}:${{ github.sha }}
+                    command: ['alembic', 'upgrade', 'head']
+                    envFrom:
+                      - configMapRef:
+                          name: myshop-config
+                      - secretRef:
+                          name: myshop-secrets
+          EOF
+          
+          kubectl wait --for=condition=complete job/myshop-migrations -n promelectron-test --timeout=300s || {
+            echo "=== Migration Job Logs ==="
+            kubectl logs job/myshop-migrations -n promelectron-test --tail=50 || true
+            echo "=== Migration Job Describe ==="
+            kubectl describe job/myshop-migrations -n promelectron-test || true
+            exit 1
+          }
+
       - name: Wait for API rollout
         env:
           KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
@@ -173,7 +215,7 @@ jobs:
             exit 1
           fi
           
-          kubectl rollout status deployment/myshop-api -n promelectron-test --timeout=300s || {
+          kubectl rollout status deployment/myshop-api -n promelectron-test --timeout=600s || {
             echo "=== API Pod Logs ==="
             kubectl logs -n promelectron-test -l app=myshop-api --tail=100 || true
             echo "=== API Pod Describe ==="

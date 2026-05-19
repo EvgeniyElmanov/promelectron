@@ -41,7 +41,7 @@ const select = (id) => {
 
 onMounted(async () => {
   try {
-    const { data } = await api.get('/categories');
+    const { data } = await api.get('/categories/');
     categories.value = data;
   } catch {
     // silently fail — chips just won't show
