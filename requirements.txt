@@ -10,3 +10,4 @@ alembic
 httpx
 aiofiles
 python-multipart
+aiosmtplib
