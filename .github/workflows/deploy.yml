@@ -79,11 +79,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Fix namespace ownership for Helm
+        env:
+          KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
+        run: |
+          if kubectl get namespace myshop-test &>/dev/null; then
+            echo "Namespace exists, ensuring Helm ownership labels..."
+            kubectl label namespace myshop-test app.kubernetes.io/managed-by=Helm --overwrite
+            kubectl annotate namespace myshop-test meta.helm.sh/release-name=myshop-test --overwrite
+            kubectl annotate namespace myshop-test meta.helm.sh/release-namespace=myshop-test --overwrite
+          fi
+
       - name: Create Harbor imagePullSecret
         env:
           KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
         run: |
-          kubectl create namespace myshop-test --dry-run=client -o yaml | kubectl apply -f -
           kubectl create secret docker-registry harborcred \
             --docker-server=${{ env.REGISTRY }} \
             --docker-username=${{ secrets.HARBOR_USERNAME }} \
