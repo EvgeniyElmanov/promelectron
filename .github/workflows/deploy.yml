@@ -114,6 +114,13 @@ jobs:
           echo "=== Previous API Pod Status ==="
           kubectl get pods -n promelectron-test -l app=promelectron-test-api || true
 
+      - name: Remove conflicting ingresses
+        env:
+          KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
+        run: |
+          echo "Removing old conflicting ingresses..."
+          kubectl delete ingress promelectron-frontend promelectron-api -n promelectron-test --ignore-not-found=true
+
       - name: Deploy to test
         env:
           KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
