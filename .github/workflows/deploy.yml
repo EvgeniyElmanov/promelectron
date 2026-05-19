@@ -110,8 +110,30 @@ jobs:
             --set frontend.image=${{ env.FRONTEND_IMAGE }}:${{ github.sha }} \
             --namespace myshop-test \
             --create-namespace
-          kubectl rollout status deployment/myshop-api -n myshop-test --timeout=120s
-          kubectl rollout status deployment/myshop-frontend -n myshop-test --timeout=120s
+
+      - name: Wait for API rollout
+        env:
+          KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
+        run: |
+          kubectl rollout status deployment/myshop-api -n myshop-test --timeout=300s || {
+            echo "=== API Pod Logs ==="
+            kubectl logs -n myshop-test -l app=myshop-test-api --tail=50 || true
+            echo "=== API Pod Events ==="
+            kubectl get events -n myshop-test --field-selector reason=Failed --sort-by='.lastTimestamp' | tail -20 || true
+            echo "=== API Pod Status ==="
+            kubectl get pods -n myshop-test -l app=myshop-test-api -o yaml | grep -A 5 "containerStatuses" || true
+            exit 1
+          }
+
+      - name: Wait for frontend rollout
+        env:
+          KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
+        run: |
+          kubectl rollout status deployment/myshop-frontend -n myshop-test --timeout=300s || {
+            echo "=== Frontend Pod Logs ==="
+            kubectl logs -n myshop-test -l app=myshop-test-frontend --tail=50 || true
+            exit 1
+          }
 
   test-smoke:
     needs: deploy-test
