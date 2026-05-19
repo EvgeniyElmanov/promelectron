@@ -101,6 +101,19 @@ jobs:
             --namespace myshop-test \
             --dry-run=client -o yaml | kubectl apply -f -
 
+      - name: Check prerequisites
+        env:
+          KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
+        run: |
+          echo "=== Secrets ==="
+          kubectl get secrets -n myshop-test || true
+          echo ""
+          echo "=== PostgreSQL Pod ==="
+          kubectl get pods -n myshop-test -l app=myshop-test-postgresql || true
+          echo ""
+          echo "=== Previous API Pod Status ==="
+          kubectl get pods -n myshop-test -l app=myshop-test-api || true
+
       - name: Deploy to test
         env:
           KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
@@ -110,18 +123,35 @@ jobs:
             --set frontend.image=${{ env.FRONTEND_IMAGE }}:${{ github.sha }} \
             --namespace myshop-test \
             --create-namespace
+          echo ""
+          echo "=== Pods after deploy ==="
+          kubectl get pods -n myshop-test
+          echo ""
+          echo "=== API Pod describe ==="
+          kubectl describe pods -n myshop-test -l app=myshop-test-api | head -40
 
       - name: Wait for API rollout
         env:
           KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
         run: |
+          echo "Checking API pod status..."
+          kubectl get pods -n myshop-test -l app=myshop-test-api
+          
+          # If pod is in CrashLoopBackOff, show logs immediately
+          if kubectl get pods -n myshop-test -l app=myshop-test-api | grep -q CrashLoopBackOff; then
+            echo "=== API Pod is in CrashLoopBackOff ==="
+            kubectl logs -n myshop-test -l app=myshop-test-api --tail=100 || true
+            kubectl describe pods -n myshop-test -l app=myshop-test-api | grep -A 10 "Events:" || true
+            exit 1
+          fi
+          
           kubectl rollout status deployment/myshop-api -n myshop-test --timeout=300s || {
             echo "=== API Pod Logs ==="
-            kubectl logs -n myshop-test -l app=myshop-test-api --tail=50 || true
+            kubectl logs -n myshop-test -l app=myshop-test-api --tail=100 || true
             echo "=== API Pod Events ==="
             kubectl get events -n myshop-test --field-selector reason=Failed --sort-by='.lastTimestamp' | tail -20 || true
-            echo "=== API Pod Status ==="
-            kubectl get pods -n myshop-test -l app=myshop-test-api -o yaml | grep -A 5 "containerStatuses" || true
+            echo "=== API Pod Describe ==="
+            kubectl describe pods -n myshop-test -l app=myshop-test-api | tail -30 || true
             exit 1
           }
 
@@ -129,6 +159,15 @@ jobs:
         env:
           KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
         run: |
+          echo "Checking frontend pod status..."
+          kubectl get pods -n myshop-test -l app=myshop-test-frontend
+          
+          if kubectl get pods -n myshop-test -l app=myshop-test-frontend | grep -q CrashLoopBackOff; then
+            echo "=== Frontend Pod is in CrashLoopBackOff ==="
+            kubectl logs -n myshop-test -l app=myshop-test-frontend --tail=50 || true
+            exit 1
+          fi
+          
           kubectl rollout status deployment/myshop-frontend -n myshop-test --timeout=300s || {
             echo "=== Frontend Pod Logs ==="
             kubectl logs -n myshop-test -l app=myshop-test-frontend --tail=50 || true
