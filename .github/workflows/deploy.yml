@@ -130,28 +130,38 @@ jobs:
           echo "=== API Pod describe ==="
           kubectl describe pods -n myshop-test -l app=myshop-test-api | head -40
 
+      - name: Debug all pods before rollout
+        env:
+          KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
+        run: |
+          echo "=== All pods in namespace ==="
+          kubectl get pods -n myshop-test -o wide || true
+          echo ""
+          echo "=== All deployments ==="
+          kubectl get deployments -n myshop-test || true
+          echo ""
+          echo "=== Recent events ==="
+          kubectl get events -n myshop-test --sort-by='.lastTimestamp' | tail -20 || true
+
       - name: Wait for API rollout
         env:
           KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
         run: |
           echo "Checking API pod status..."
-          kubectl get pods -n myshop-test -l app=myshop-test-api
+          kubectl get pods -n myshop-test -l app=myshop-api
           
-          # If pod is in CrashLoopBackOff, show logs immediately
-          if kubectl get pods -n myshop-test -l app=myshop-test-api | grep -q CrashLoopBackOff; then
-            echo "=== API Pod is in CrashLoopBackOff ==="
-            kubectl logs -n myshop-test -l app=myshop-test-api --tail=100 || true
-            kubectl describe pods -n myshop-test -l app=myshop-test-api | grep -A 10 "Events:" || true
+          if kubectl get pods -n myshop-test -l app=myshop-api | grep -Eq "CrashLoopBackOff|ImagePullBackOff|ErrImagePull"; then
+            echo "=== API Pod is failing ==="
+            kubectl logs -n myshop-test -l app=myshop-api --tail=100 || true
+            kubectl describe pods -n myshop-test -l app=myshop-api | tail -30 || true
             exit 1
           fi
           
           kubectl rollout status deployment/myshop-api -n myshop-test --timeout=300s || {
             echo "=== API Pod Logs ==="
-            kubectl logs -n myshop-test -l app=myshop-test-api --tail=100 || true
-            echo "=== API Pod Events ==="
-            kubectl get events -n myshop-test --field-selector reason=Failed --sort-by='.lastTimestamp' | tail -20 || true
+            kubectl logs -n myshop-test -l app=myshop-api --tail=100 || true
             echo "=== API Pod Describe ==="
-            kubectl describe pods -n myshop-test -l app=myshop-test-api | tail -30 || true
+            kubectl describe pods -n myshop-test -l app=myshop-api | tail -30 || true
             exit 1
           }
 
@@ -160,17 +170,20 @@ jobs:
           KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
         run: |
           echo "Checking frontend pod status..."
-          kubectl get pods -n myshop-test -l app=myshop-test-frontend
+          kubectl get pods -n myshop-test -l app=myshop-frontend
           
-          if kubectl get pods -n myshop-test -l app=myshop-test-frontend | grep -q CrashLoopBackOff; then
-            echo "=== Frontend Pod is in CrashLoopBackOff ==="
-            kubectl logs -n myshop-test -l app=myshop-test-frontend --tail=50 || true
+          if kubectl get pods -n myshop-test -l app=myshop-frontend | grep -Eq "CrashLoopBackOff|ImagePullBackOff|ErrImagePull"; then
+            echo "=== Frontend Pod is failing ==="
+            kubectl logs -n myshop-test -l app=myshop-frontend --tail=50 || true
+            kubectl describe pods -n myshop-test -l app=myshop-frontend | tail -30 || true
             exit 1
           fi
           
           kubectl rollout status deployment/myshop-frontend -n myshop-test --timeout=300s || {
             echo "=== Frontend Pod Logs ==="
-            kubectl logs -n myshop-test -l app=myshop-test-frontend --tail=50 || true
+            kubectl logs -n myshop-test -l app=myshop-frontend --tail=50 || true
+            echo "=== Frontend Pod Describe ==="
+            kubectl describe pods -n myshop-test -l app=myshop-frontend | tail -30 || true
             exit 1
           }
 
