@@ -35,7 +35,7 @@ jobs:
       - name: Validate Helm charts
         run: |
           helm lint ./infra/helm
-          helm template myshop-test ./infra/helm > /dev/null
+          helm template promelectron-test ./infra/helm > /dev/null
 
       - name: Validate Dockerfiles syntax
         run: |
@@ -83,11 +83,11 @@ jobs:
         env:
           KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
         run: |
-          if kubectl get namespace myshop-test &>/dev/null; then
+          if kubectl get namespace promelectron-test &>/dev/null; then
             echo "Namespace exists, ensuring Helm ownership labels..."
-            kubectl label namespace myshop-test app.kubernetes.io/managed-by=Helm --overwrite
-            kubectl annotate namespace myshop-test meta.helm.sh/release-name=myshop-test --overwrite
-            kubectl annotate namespace myshop-test meta.helm.sh/release-namespace=myshop-test --overwrite
+            kubectl label namespace promelectron-test app.kubernetes.io/managed-by=Helm --overwrite
+            kubectl annotate namespace promelectron-test meta.helm.sh/release-name=promelectron-test --overwrite
+            kubectl annotate namespace promelectron-test meta.helm.sh/release-namespace=promelectron-test --overwrite
           fi
 
       - name: Create Harbor imagePullSecret
@@ -98,7 +98,7 @@ jobs:
             --docker-server=${{ env.REGISTRY }} \
             --docker-username=${{ secrets.HARBOR_USERNAME }} \
             --docker-password=${{ secrets.HARBOR_PASSWORD }} \
-            --namespace myshop-test \
+            --namespace promelectron-test \
             --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Check prerequisites
@@ -106,71 +106,71 @@ jobs:
           KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
         run: |
           echo "=== Secrets ==="
-          kubectl get secrets -n myshop-test || true
+          kubectl get secrets -n promelectron-test || true
           echo ""
           echo "=== PostgreSQL Pod ==="
-          kubectl get pods -n myshop-test -l app=myshop-test-postgresql || true
+          kubectl get pods -n promelectron-test -l app=promelectron-test-postgresql || true
           echo ""
           echo "=== Previous API Pod Status ==="
-          kubectl get pods -n myshop-test -l app=myshop-test-api || true
+          kubectl get pods -n promelectron-test -l app=promelectron-test-api || true
 
       - name: Deploy to test
         env:
           KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
         run: |
-          helm upgrade --install myshop-test ./infra/helm \
+          helm upgrade --install promelectron-test ./infra/helm \
             --set api.image=${{ env.API_IMAGE }}:${{ github.sha }} \
             --set frontend.image=${{ env.FRONTEND_IMAGE }}:${{ github.sha }} \
-            --namespace myshop-test \
+            --namespace promelectron-test \
             --create-namespace
           echo ""
           echo "=== Pods after deploy ==="
-          kubectl get pods -n myshop-test
+          kubectl get pods -n promelectron-test
           echo ""
           echo "=== API Pod describe ==="
-          kubectl describe pods -n myshop-test -l app=myshop-test-api | head -40
+          kubectl describe pods -n promelectron-test -l app=promelectron-test-api | head -40
 
       - name: Debug all pods before rollout
         env:
           KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
         run: |
           echo "=== All pods in namespace ==="
-          kubectl get pods -n myshop-test -o wide || true
+          kubectl get pods -n promelectron-test -o wide || true
           echo ""
           echo "=== All deployments ==="
-          kubectl get deployments -n myshop-test || true
+          kubectl get deployments -n promelectron-test || true
           echo ""
           echo "=== All services ==="
-          kubectl get services -n myshop-test || true
+          kubectl get services -n promelectron-test || true
           echo ""
           echo "=== Ingress in namespace ==="
-          kubectl get ingress -n myshop-test -o yaml || true
+          kubectl get ingress -n promelectron-test -o yaml || true
           echo ""
           echo "=== All ingresses in cluster ==="
           kubectl get ingress --all-namespaces || true
           echo ""
           echo "=== Recent events ==="
-          kubectl get events -n myshop-test --sort-by='.lastTimestamp' | tail -20 || true
+          kubectl get events -n promelectron-test --sort-by='.lastTimestamp' | tail -20 || true
 
       - name: Wait for API rollout
         env:
           KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
         run: |
           echo "Checking API pod status..."
-          kubectl get pods -n myshop-test -l app=myshop-api
+          kubectl get pods -n promelectron-test -l app=myshop-api
           
-          if kubectl get pods -n myshop-test -l app=myshop-api | grep -Eq "CrashLoopBackOff|ImagePullBackOff|ErrImagePull"; then
+          if kubectl get pods -n promelectron-test -l app=myshop-api | grep -Eq "CrashLoopBackOff|ImagePullBackOff|ErrImagePull"; then
             echo "=== API Pod is failing ==="
-            kubectl logs -n myshop-test -l app=myshop-api --tail=100 || true
-            kubectl describe pods -n myshop-test -l app=myshop-api | tail -30 || true
+            kubectl logs -n promelectron-test -l app=myshop-api --tail=100 || true
+            kubectl describe pods -n promelectron-test -l app=myshop-api | tail -30 || true
             exit 1
           fi
           
-          kubectl rollout status deployment/myshop-api -n myshop-test --timeout=300s || {
+          kubectl rollout status deployment/myshop-api -n promelectron-test --timeout=300s || {
             echo "=== API Pod Logs ==="
-            kubectl logs -n myshop-test -l app=myshop-api --tail=100 || true
+            kubectl logs -n promelectron-test -l app=myshop-api --tail=100 || true
             echo "=== API Pod Describe ==="
-            kubectl describe pods -n myshop-test -l app=myshop-api | tail -30 || true
+            kubectl describe pods -n promelectron-test -l app=myshop-api | tail -30 || true
             exit 1
           }
 
@@ -179,20 +179,20 @@ jobs:
           KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
         run: |
           echo "Checking frontend pod status..."
-          kubectl get pods -n myshop-test -l app=myshop-frontend
+          kubectl get pods -n promelectron-test -l app=myshop-frontend
           
-          if kubectl get pods -n myshop-test -l app=myshop-frontend | grep -Eq "CrashLoopBackOff|ImagePullBackOff|ErrImagePull"; then
+          if kubectl get pods -n promelectron-test -l app=myshop-frontend | grep -Eq "CrashLoopBackOff|ImagePullBackOff|ErrImagePull"; then
             echo "=== Frontend Pod is failing ==="
-            kubectl logs -n myshop-test -l app=myshop-frontend --tail=50 || true
-            kubectl describe pods -n myshop-test -l app=myshop-frontend | tail -30 || true
+            kubectl logs -n promelectron-test -l app=myshop-frontend --tail=50 || true
+            kubectl describe pods -n promelectron-test -l app=myshop-frontend | tail -30 || true
             exit 1
           fi
           
-          kubectl rollout status deployment/myshop-frontend -n myshop-test --timeout=300s || {
+          kubectl rollout status deployment/myshop-frontend -n promelectron-test --timeout=300s || {
             echo "=== Frontend Pod Logs ==="
-            kubectl logs -n myshop-test -l app=myshop-frontend --tail=50 || true
+            kubectl logs -n promelectron-test -l app=myshop-frontend --tail=50 || true
             echo "=== Frontend Pod Describe ==="
-            kubectl describe pods -n myshop-test -l app=myshop-frontend | tail -30 || true
+            kubectl describe pods -n promelectron-test -l app=myshop-frontend | tail -30 || true
             exit 1
           }
 
