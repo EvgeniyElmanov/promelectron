@@ -236,6 +236,62 @@
       </div>
     </div>
 
+    <!-- Orders Tab -->
+    <div v-show="!isMobile || activeTab === 'orders'" class="admin__tab-panel">
+      <div class="admin__section">
+        <div class="admin__section-header">
+          <h2 class="admin__section-title">Заказы</h2>
+          <select v-model="orderFilterStatus" class="admin__filter-select" @change="fetchOrders">
+            <option v-for="s in orderStatuses" :key="s.value" :value="s.value">{{ s.label }}</option>
+          </select>
+        </div>
+
+        <SkeletonAdminTable v-if="loading.orders" />
+
+        <div v-else-if="orders.length === 0" class="admin__empty">Нет заказов</div>
+
+        <div v-else class="admin__table-wrapper">
+          <table class="admin__table">
+            <thead>
+              <tr>
+                <th>№</th>
+                <th>Пользователь</th>
+                <th>Сумма</th>
+                <th>Статус</th>
+                <th>Доставка</th>
+                <th>Трек-номер</th>
+                <th>Дата</th>
+                <th class="admin__table-actions">Действия</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="order in orders" :key="order.id">
+                <td>{{ order.id }}</td>
+                <td>{{ order.user_id }}</td>
+                <td>{{ formatPrice(order.total_price) }}</td>
+                <td>
+                  <span class="admin__status-badge" :class="'admin__status-badge--' + order.status">
+                    {{ statusLabel(order.status) }}
+                  </span>
+                </td>
+                <td>{{ order.delivery_method?.name || '—' }}</td>
+                <td>{{ order.tracking_number || '—' }}</td>
+                <td>{{ formatShortDate(order.created_at) }}</td>
+                <td class="admin__table-actions">
+                  <button class="admin__icon-btn admin__icon-btn--edit" @click="openEditOrderModal(order)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                      <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                    </svg>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <!-- Category Modal -->
     <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
       <div class="modal">
@@ -297,6 +353,35 @@
         </form>
       </div>
     </div>
+
+    <!-- Order Status Modal -->
+    <div v-if="showOrderModal" class="modal-overlay" @click.self="closeOrderModal">
+      <div class="modal">
+        <div class="modal__header">
+          <h3>Заказ №{{ editingOrder?.id }}</h3>
+          <button class="modal__close" @click="closeOrderModal">&times;</button>
+        </div>
+        <form class="modal__form" @submit.prevent="handleOrderSubmit">
+          <div class="field">
+            <label class="field__label">Статус</label>
+            <select v-model="orderForm.status" class="field__input">
+              <option value="pending">Ожидает оплаты</option>
+              <option value="paid">Оплачен</option>
+              <option value="shipped">Отправлен</option>
+              <option value="delivered">Доставлен</option>
+              <option value="cancelled">Отменён</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="field__label">Трек-номер</label>
+            <input v-model="orderForm.tracking_number" class="field__input" placeholder="Например, 1234567890" />
+          </div>
+          <button type="submit" class="modal__submit" :disabled="submittingOrderStatus">
+            {{ submittingOrderStatus ? 'Сохранение...' : 'Сохранить' }}
+          </button>
+        </form>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -315,6 +400,7 @@ window.addEventListener('resize', () => { isMobile.value = window.innerWidth < 7
 // Tabs
 const tabs = [
   { key: 'dashboard', label: 'Дашборд' },
+  { key: 'orders', label: 'Заказы' },
   { key: 'users', label: 'Пользователи' },
   { key: 'categories', label: 'Категории' },
   { key: 'delivery', label: 'Доставка' },
@@ -329,6 +415,7 @@ const loading = ref({
   users: false,
   categories: false,
   delivery: false,
+  orders: false,
 });
 
 // Data
@@ -338,6 +425,16 @@ const topProducts = ref([]);
 const users = ref([]);
 const categories = ref([]);
 const deliveryMethods = ref([]);
+const orders = ref([]);
+const orderFilterStatus = ref('');
+const orderStatuses = [
+  { value: '', label: 'Все' },
+  { value: 'pending', label: 'Ожидает оплаты' },
+  { value: 'paid', label: 'Оплачен' },
+  { value: 'shipped', label: 'Отправлен' },
+  { value: 'delivered', label: 'Доставлен' },
+  { value: 'cancelled', label: 'Отменён' },
+];
 
 // Modal
 const showModal = ref(false);
@@ -355,6 +452,12 @@ const editingDeliveryId = ref(null);
 const deliveryError = ref('');
 const submittingDelivery = ref(false);
 const deliveryForm = ref({ name: '', description: '', base_price: 0, estimated_days: '', is_active: true });
+
+// Order Status Modal
+const showOrderModal = ref(false);
+const editingOrder = ref(null);
+const orderForm = ref({ status: '', tracking_number: '' });
+const submittingOrderStatus = ref(false);
 
 // KPI computed
 const kpiData = computed(() => [
@@ -410,6 +513,17 @@ function formatPrice(value) {
 function roleLabel(role) {
   const labels = { user: 'Покупатель', admin: 'Админ', supplier: 'Поставщик' };
   return labels[role] || role;
+}
+
+function statusLabel(status) {
+  const labels = {
+    pending: 'Ожидает оплаты',
+    paid: 'Оплачен',
+    shipped: 'Отправлен',
+    delivered: 'Доставлен',
+    cancelled: 'Отменён',
+  };
+  return labels[status] || status;
 }
 
 // Fetch data
@@ -609,11 +723,55 @@ const deleteDeliveryMethod = async (id) => {
   }
 };
 
+// Orders
+const fetchOrders = async () => {
+  loading.value.orders = true;
+  try {
+    const params = {};
+    if (orderFilterStatus.value) params.status = orderFilterStatus.value;
+    const { data } = await api.get('/admin/orders', { params });
+    orders.value = data;
+  } catch {
+    toast('Не удалось загрузить заказы', 'error');
+  } finally {
+    loading.value.orders = false;
+  }
+};
+
+const openEditOrderModal = (order) => {
+  editingOrder.value = order;
+  orderForm.value = {
+    status: order.status,
+    tracking_number: order.tracking_number || '',
+  };
+  showOrderModal.value = true;
+};
+
+const closeOrderModal = () => {
+  showOrderModal.value = false;
+  editingOrder.value = null;
+};
+
+const handleOrderSubmit = async () => {
+  submittingOrderStatus.value = true;
+  try {
+    await api.put(`/admin/orders/${editingOrder.value.id}`, orderForm.value);
+    toast('Заказ обновлён', 'success');
+    closeOrderModal();
+    fetchOrders();
+  } catch (err) {
+    toast(err.response?.data?.detail || 'Ошибка обновления заказа', 'error');
+  } finally {
+    submittingOrderStatus.value = false;
+  }
+};
+
 onMounted(() => {
   fetchDashboard();
   fetchUsers();
   fetchCategories();
   fetchDeliveryMethodsAdmin();
+  fetchOrders();
 });
 </script>
 
@@ -939,6 +1097,41 @@ onMounted(() => {
 .admin__status-badge--inactive {
   background: #fff0f0;
   color: #c62828;
+}
+
+.admin__status-badge--pending {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+.admin__status-badge--paid {
+  background: #e8f0fe;
+  color: #1a73e8;
+}
+
+.admin__status-badge--shipped {
+  background: #e6f5e6;
+  color: #2e7d32;
+}
+
+.admin__status-badge--delivered {
+  background: #e0f2f1;
+  color: #00695c;
+}
+
+.admin__status-badge--cancelled {
+  background: #fce4ec;
+  color: #c62828;
+}
+
+.admin__filter-select {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-white);
+  color: var(--color-text);
+  font-size: 14px;
+  cursor: pointer;
 }
 
 /* Buttons */

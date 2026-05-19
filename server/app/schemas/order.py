@@ -34,6 +34,11 @@ class OrderUpdateStatus(BaseModel):
     status: str
 
 
+class AdminOrderUpdate(BaseModel):
+    status: Optional[str] = None
+    tracking_number: Optional[str] = None
+
+
 class DeliveryMethodOut(BaseModel):
     id: int
     name: str
@@ -55,6 +60,7 @@ class OrderOut(BaseModel):
     shipping_address: Optional[str] = None
     created_at: datetime
     items: List[OrderItemOut]
+    tracking_number: Optional[str] = None
     delivery_method: Optional[DeliveryMethodOut] = None
 
     model_config = ConfigDict(from_attributes=True)

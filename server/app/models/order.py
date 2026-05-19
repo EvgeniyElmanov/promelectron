@@ -16,6 +16,7 @@ class Order(Base):
     delivery_method_id = Column(Integer, ForeignKey("delivery_methods.id"), nullable=True)
     delivery_price = Column(Numeric(precision=10, scale=2), nullable=True, default=0.0)
     shipping_address = Column(JSON, nullable=True)
+    tracking_number = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(
         DateTime(timezone=True),

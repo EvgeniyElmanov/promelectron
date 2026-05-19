@@ -1,6 +1,6 @@
-from typing import List
+from typing import List, Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from server.app.db.database import get_db
@@ -11,7 +11,9 @@ from server.app.schemas.admin import (
     OrdersByDayItem,
     TopProductItem,
 )
+from server.app.schemas.order import AdminOrderUpdate, OrderOut
 from server.app.services.admin_service import AdminService
+from server.app.services.order_service import OrderService
 from server.app.utils.auth import get_current_active_admin
 
 router = APIRouter()
@@ -62,3 +64,25 @@ async def toggle_user_active(
 ):
     user = await AdminService.toggle_user_active(user_id, db)
     return AdminUserOut.model_validate(user)
+
+
+@router.get("/admin/orders", response_model=List[OrderOut])
+async def get_admin_orders(
+    status: Optional[str] = Query(None),
+    user_id: Optional[int] = Query(None),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    current_user: User = Depends(get_current_active_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    return await OrderService.get_all_orders(db, status=status, user_id=user_id, skip=skip, limit=limit)
+
+
+@router.put("/admin/orders/{order_id}", response_model=OrderOut)
+async def update_admin_order(
+    order_id: int,
+    data: AdminOrderUpdate,
+    current_user: User = Depends(get_current_active_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    return await OrderService.update_order_by_admin(order_id=order_id, data=data, current_user=current_user, db=db)

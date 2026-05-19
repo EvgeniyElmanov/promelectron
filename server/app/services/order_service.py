@@ -10,7 +10,7 @@ from server.app.models.delivery_method import DeliveryMethod
 from server.app.models.order import Order, OrderItem
 from server.app.models.product import Product
 from server.app.models.user import User
-from server.app.schemas.order import AddressDetails, OrderCreate, OrderUpdateStatus
+from server.app.schemas.order import AddressDetails, AdminOrderUpdate, OrderCreate, OrderUpdateStatus
 from server.app.services.email_service import EmailService
 from server.app.services.notification_service import NotificationService
 
@@ -129,6 +129,91 @@ class OrderService:
             message=f"Ваш заказ №{full_order.id} на сумму {float(full_order.total_price):,.0f} ₽ успешно создан и ожидает оплаты.",
             order_id=full_order.id,
         )
+
+        return full_order
+
+    @staticmethod
+    async def get_all_orders(
+        db: AsyncSession, status: str | None = None, user_id: int | None = None, skip: int = 0, limit: int = 50
+    ) -> list[Order]:
+        from sqlalchemy import select
+
+        query = select(Order).options(selectinload(Order.items), selectinload(Order.delivery_method))
+        if status:
+            query = query.where(Order.status == status)
+        if user_id:
+            query = query.where(Order.user_id == user_id)
+        query = query.offset(skip).limit(limit).order_by(Order.created_at.desc())
+        result = await db.execute(query)
+        return list(result.scalars().all())
+
+    @staticmethod
+    async def update_order_by_admin(order_id: int, data: AdminOrderUpdate, current_user: User, db: AsyncSession) -> Order:
+        result = await db.execute(
+            select(Order).where(Order.id == order_id).options(
+                selectinload(Order.items),
+                selectinload(Order.delivery_method),
+            )
+        )
+        order = result.scalars().first()
+
+        if not order:
+            raise HTTPException(status_code=404, detail="Order not found")
+
+        allowed_statuses = ["pending", "paid", "shipped", "delivered", "cancelled"]
+        status_changed = False
+
+        if data.status is not None:
+            if data.status not in allowed_statuses:
+                raise HTTPException(status_code=400, detail="Invalid status")
+            if order.status != data.status:
+                order.status = data.status
+                status_changed = True
+
+        if data.tracking_number is not None:
+            order.tracking_number = data.tracking_number
+
+        await db.commit()
+        await db.refresh(order)
+
+        # Reload order with items for response
+        order_result = await db.execute(
+            select(Order).where(Order.id == order_id).options(
+                selectinload(Order.items),
+                selectinload(Order.delivery_method),
+            )
+        )
+        full_order = order_result.scalars().first()
+        if not full_order:
+            raise HTTPException(status_code=500, detail="Failed to update order")
+
+        # Send notification if status changed
+        if status_changed:
+            user_result = await db.execute(select(User).where(User.id == full_order.user_id))
+            user = user_result.scalars().first()
+            if user:
+                await EmailService.send_order_status_update(
+                    to=user.email,
+                    order_id=full_order.id,
+                    status=full_order.status,
+                )
+
+                status_labels = {
+                    "pending": "Ожидает оплаты",
+                    "paid": "Оплачен",
+                    "shipped": "Отправлен",
+                    "delivered": "Доставлен",
+                    "cancelled": "Отменён",
+                }
+                label = status_labels.get(full_order.status, full_order.status)
+                await NotificationService.create_notification(
+                    db=db,
+                    user_id=user.id,
+                    type="status_changed",
+                    title="Статус заказа изменён",
+                    message=f"Заказ №{full_order.id}: {label}",
+                    order_id=full_order.id,
+                )
 
         return full_order
 

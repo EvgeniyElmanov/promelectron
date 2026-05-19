@@ -152,3 +152,28 @@ async def test_product(test_session, test_supplier, test_category):
     await test_session.commit()
     await test_session.refresh(product)
     return product
+
+
+@pytest.fixture
+async def test_order(test_session, test_user, test_product):
+    from server.app.models.order import Order, OrderItem
+
+    order = Order(
+        user_id=test_user.id,
+        total_price=99.99,
+        status="pending",
+        shipping_address="Москва, ул. Ленина, д. 1",
+    )
+    test_session.add(order)
+    await test_session.commit()
+    await test_session.refresh(order)
+
+    order_item = OrderItem(
+        order_id=order.id,
+        product_id=test_product.id,
+        quantity=1,
+        price_at_time=99.99,
+    )
+    test_session.add(order_item)
+    await test_session.commit()
+    return order

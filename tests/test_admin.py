@@ -141,3 +141,74 @@ class TestAdminDashboard:
             headers={"Authorization": f"Bearer {user_token}"},
         )
         assert response.status_code == 403
+
+
+class TestAdminOrders:
+    """Тесты управления заказами админом."""
+
+    @pytest.mark.asyncio
+    async def test_admin_list_orders(self, client, test_admin, admin_token, test_order):
+        """Админ получает список всех заказов."""
+        response = await client.get(
+            "/api/v1/admin/orders",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert isinstance(data, list)
+        assert len(data) >= 1
+        assert data[0]["id"] == test_order.id
+
+    @pytest.mark.asyncio
+    async def test_admin_filter_orders_by_status(self, client, test_admin, admin_token, test_order):
+        """Фильтрация заказов по статусу."""
+        response = await client.get(
+            "/api/v1/admin/orders?status=pending",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        for order in data:
+            assert order["status"] == "pending"
+
+    @pytest.mark.asyncio
+    async def test_admin_update_order_status(self, client, test_admin, admin_token, test_order):
+        """Админ обновляет статус заказа."""
+        response = await client.put(
+            f"/api/v1/admin/orders/{test_order.id}",
+            json={"status": "shipped", "tracking_number": "TRACK123"},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "shipped"
+        assert data["tracking_number"] == "TRACK123"
+
+    @pytest.mark.asyncio
+    async def test_admin_update_invalid_status(self, client, test_admin, admin_token, test_order):
+        """Невалидный статус — 400."""
+        response = await client.put(
+            f"/api/v1/admin/orders/{test_order.id}",
+            json={"status": "invalid_status"},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_admin_update_nonexistent_order(self, client, test_admin, admin_token):
+        """Обновление несуществующего заказа — 404."""
+        response = await client.put(
+            "/api/v1/admin/orders/99999",
+            json={"status": "shipped"},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert response.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_user_cannot_list_admin_orders(self, client, test_user, user_token):
+        """Обычный пользователь не может получить список всех заказов."""
+        response = await client.get(
+            "/api/v1/admin/orders",
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert response.status_code == 403

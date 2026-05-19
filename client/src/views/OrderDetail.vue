@@ -87,6 +87,10 @@
             <span class="info-label">Стоимость доставки</span>
             <span class="info-value">{{ Number(order.delivery_price) > 0 ? formatPrice(order.delivery_price) + ' ₽' : 'Бесплатно' }}</span>
           </div>
+          <div v-if="order.tracking_number" class="info-row">
+            <span class="info-label">Трек-номер</span>
+            <span class="info-value">{{ order.tracking_number }}</span>
+          </div>
           <div v-if="order.status === 'pending'" class="info-row info-row--action">
             <router-link :to="`/checkout/${order.id}`" class="order-pay-btn">
               Оплатить {{ formatPrice(order.total_price) }} ₽
