@@ -1,0 +1,55 @@
+@import './base.css';
+
+#app {
+  width: 100%;
+  margin: 0 auto;
+  background: var(--color-bg);
+  min-height: 100vh;
+}
+
+a {
+  text-decoration: none;
+  color: var(--color-primary);
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+}
+
+input {
+  font-family: inherit;
+}
+
+/* Desktop layout */
+.desktop-container {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+@media (min-width: 768px) {
+  .desktop-container {
+    max-width: 720px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .desktop-container {
+    max-width: 960px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .desktop-container {
+    max-width: 1200px;
+  }
+}
+
+/* Hide bottom nav on desktop */
+@media (min-width: 768px) {
+  body {
+    padding-bottom: 0;
+  }
+}

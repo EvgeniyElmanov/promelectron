@@ -48,7 +48,6 @@ jobs:
   build:
     needs: validate
     runs-on: self-hosted
-    if: false  # disabled until application code is restored
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -76,7 +75,6 @@ jobs:
   deploy-test:
     needs: build
     runs-on: self-hosted
-    if: false  # disabled until application code is restored
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -108,7 +106,6 @@ jobs:
   test-smoke:
     needs: deploy-test
     runs-on: self-hosted
-    if: false  # disabled until application code is restored
     steps:
       - name: API health check
         run: |
