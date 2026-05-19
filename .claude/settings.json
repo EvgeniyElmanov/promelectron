@@ -1,63 +1,58 @@
 {
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+
   "permissions": {
-    "Bash": {
-      ".*uvicorn.*": "allow",
-      ".*pytest.*": "allow",
-      ".*vitest.*": "allow",
-      ".*npm (run |install |test ).*": "allow",
-      ".*npx .*": "allow",
-      ".*pip install.*": "allow",
-      ".*playwright.*": "allow",
-      ".*docker-compose.*": "allow",
-      ".*docker compose.*": "allow",
-      ".*source venv.*": "allow",
-      ".*mkdir.*": "allow",
-      ".*ls.*": "allow",
-      ".*rm.*": "allow",
-      ".*git (status|diff|log|add|commit|branch|checkout).*": "allow",
-      ".*cd client && npm.*": "allow",
-      ".*cd client/ && npm.*": "allow",
-      ".*bash scripts/run_dev.sh.*": "allow",
-      ".*bash scripts/stop_dev.sh.*": "allow",
-      ".*bash scripts/run_e2e.sh.*": "allow",
-      ".*lsof.*": "allow",
-      ".*kill.*": "allow",
-      ".*curl.*": "allow",
-      ".*tail.*": "allow",
-      ".*pkill.*": "allow"
-    }
+    "allow": [
+      "Bash(make *)",
+      "Bash(uv *)",
+      "Bash(pytest *)",
+      "Bash(alembic *)",
+      "Bash(ruff *)",
+      "Bash(mypy *)",
+      "Bash(git status)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git checkout *)",
+      "Bash(git branch *)",
+      "Bash(git stash *)",
+      "Bash(grep *)",
+      "Bash(find . *)",
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Bash(python *)",
+      "Bash(npm *)",
+      "Bash(npx *)",
+      "Bash(node *)",
+      "Bash(kubectl *)",
+      "Bash(helm *)",
+      "Bash(docker *)",
+      "Bash(git push *)",
+      "Bash(gh *)"
+    ],
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(git push --force *)",
+      "Bash(git reset --hard *)",
+      "Bash(DROP *)",
+      "Bash(truncate *)"
+    ]
   },
+
+  "env": {
+    "PYTHONPATH": "./backend",
+    "ENVIRONMENT": "development"
+  },
+
   "hooks": {
     "PostToolUse": [
       {
-        "matcher": "(Edit|Write)",
+        "matcher": "Edit|Write",
         "hooks": [
           {
             "type": "command",
-            "command": "echo 'AUTO-TEST REMINDER: Если ты добавил новый функционал, создай соответствующие тесты! Бэкенд: tests/test_*.py, Фронтенд: client/src/__tests__/*.spec.js, E2E: Playwright MCP. Запуск тестов: pytest tests/ -v && cd client && npx vitest run'",
-            "timeout": 5000
-          }
-        ]
-      },
-      {
-        "matcher": "(Edit|Write)",
-        "fileMatcher": "server/.*\\.py$",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "echo 'BACKEND TEST HOOK: Python файл изменён. Не забудь запустить pytest tests/ -v и добавить тест в tests/test_<module>.py если это новый функционал!'",
-            "timeout": 3000
-          }
-        ]
-      },
-      {
-        "matcher": "(Edit|Write)",
-        "fileMatcher": "client/.*\\.(vue|js|ts)$",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "echo 'FRONTEND TEST HOOK: Vue/JS файл изменён. Не забудь запустить cd client && npx vitest run и добавить тест в client/src/__tests__/<Component>.spec.js если это новый компонент!'",
-            "timeout": 3000
+            "command": "cd backend && ruff check --fix --quiet \"$CLAUDE_TOOL_INPUT_FILE\" 2>/dev/null; true"
           }
         ]
       }
