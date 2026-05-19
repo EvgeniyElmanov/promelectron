@@ -25,21 +25,21 @@
 }
 
 .skeleton-card__body {
-  padding: 10px;
+  padding: 8px 10px 10px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .skeleton-card__price {
   width: 60%;
-  height: 18px;
+  height: 17px;
   border-radius: 4px;
 }
 
 .skeleton-card__name {
   width: 90%;
-  height: 14px;
+  height: 15px;
   border-radius: 4px;
 }
 
@@ -49,7 +49,7 @@
 
 .skeleton-card__btn {
   width: 100%;
-  height: 28px;
+  height: 29px;
   border-radius: 8px;
   margin-top: 4px;
 }

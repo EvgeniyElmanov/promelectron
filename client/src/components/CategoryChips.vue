@@ -60,6 +60,8 @@ onMounted(async () => {
   background: var(--color-bg-white);
   scrollbar-width: none;
   -ms-overflow-style: none;
+  min-height: 45px;
+  align-items: center;
 }
 
 .category-chips::-webkit-scrollbar {
@@ -87,6 +89,7 @@ onMounted(async () => {
   background: var(--color-bg);
   animation: chip-skeleton-pulse 1.5s ease-in-out infinite;
   width: 60px;
+  min-height: 29px;
 }
 
 @keyframes chip-skeleton-pulse {
