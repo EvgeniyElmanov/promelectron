@@ -4,12 +4,11 @@
       <div class="header__logo" data-testid="header-logo" @click="$router.push('/')">MyShop</div>
       
       <!-- Desktop Navigation -->
-      <nav class="header__nav" v-if="isDesktop">
+      <nav class="header__nav">
         <router-link to="/" class="header__nav-link" :class="{ 'header__nav-link--active': $route.path === '/' }">Главная</router-link>
         <router-link to="/favorites" class="header__nav-link" :class="{ 'header__nav-link--active': $route.path.startsWith('/favorites') }">Избранное</router-link>
         <router-link to="/cart" class="header__nav-link" :class="{ 'header__nav-link--active': $route.path.startsWith('/cart') }">Корзина</router-link>
         <router-link to="/orders" class="header__nav-link" :class="{ 'header__nav-link--active': $route.path.startsWith('/orders') }">Заказы</router-link>
-
       </nav>
     </div>
 
@@ -70,13 +69,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuth } from '@/composables/useAuth';
 import { useNotifications } from '@/composables/useNotifications';
 
 const { isAuthenticated } = useAuth();
-const isDesktop = ref(false);
 const notifOpen = ref(false);
 const router = useRouter();
 
@@ -85,19 +83,6 @@ const notifApi = useNotifications();
 const notifications = computed(() => notifApi.notifications.value);
 const unreadCount = computed(() => notifApi.unreadCount.value);
 const unreadNotifications = computed(() => notifications.value.filter((n) => !n.is_read));
-
-const checkWidth = () => {
-  isDesktop.value = window.innerWidth >= 768;
-};
-
-onMounted(() => {
-  checkWidth();
-  window.addEventListener('resize', checkWidth);
-});
-
-onUnmounted(() => {
-  window.removeEventListener('resize', checkWidth);
-});
 
 function toggleNotif(e) {
   e.stopPropagation();
@@ -173,9 +158,15 @@ const vClickOutside = {
 }
 
 .header__nav {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .header__nav {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
 }
 
 .header__nav-link {

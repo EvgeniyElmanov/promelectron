@@ -8,6 +8,9 @@
     >
       Все
     </button>
+    <template v-if="loading">
+      <div v-for="i in 4" :key="'sk' + i" class="category-chips__chip category-chips__chip--skeleton" />
+    </template>
     <button
       v-for="cat in categories"
       :key="cat.id"
@@ -27,6 +30,7 @@ import api from '@/services/api';
 
 const categories = ref([]);
 const selectedId = ref(null);
+const loading = ref(true);
 
 const emit = defineEmits(['select']);
 
@@ -41,6 +45,8 @@ onMounted(async () => {
     categories.value = data;
   } catch {
     // silently fail — chips just won't show
+  } finally {
+    loading.value = false;
   }
 });
 </script>
@@ -75,5 +81,16 @@ onMounted(async () => {
 .category-chips__chip--active {
   background: var(--color-primary);
   color: var(--color-white);
+}
+
+.category-chips__chip--skeleton {
+  background: var(--color-bg);
+  animation: chip-skeleton-pulse 1.5s ease-in-out infinite;
+  width: 60px;
+}
+
+@keyframes chip-skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 </style>

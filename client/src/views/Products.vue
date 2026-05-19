@@ -68,10 +68,22 @@
 
       <div class="home__header-row">
         <h2 class="home__section-title" data-testid="products-section-title">Популярные товары</h2>
-        <span v-if="total !== null" class="home__count" data-testid="products-count">{{ total }} товаров</span>
+        <span class="home__count" data-testid="products-count">
+          <template v-if="total !== null">{{ total }} товаров</template>
+          <template v-else>&nbsp;</template>
+        </span>
       </div>
 
-      <div class="home__grid">
+      <!-- Skeleton grid replaces product grid during initial load -->
+      <div v-if="loading && products.length === 0" class="home__grid">
+        <SkeletonProductCard v-for="i in 8" :key="'sk' + i" />
+      </div>
+
+      <div v-else-if="products.length === 0 && !loading" class="home__empty" data-testid="products-empty">
+        Товары не найдены
+      </div>
+
+      <div v-else class="home__grid">
         <ProductCard
           v-for="product in products"
           :key="product.id"
@@ -79,12 +91,9 @@
         />
       </div>
 
-      <div v-if="loading" class="home__grid">
-        <SkeletonProductCard v-for="i in 6" :key="'sk' + i" />
-      </div>
-
-      <div v-if="products.length === 0 && !loading" class="home__empty" data-testid="products-empty">
-        Товары не найдены
+      <!-- Inline spinner for infinite scroll append loading -->
+      <div v-if="loading && products.length > 0" class="home__loading-more">
+        <div class="home__spinner" />
       </div>
 
       <!-- Intersection Observer target for infinite scroll -->
@@ -325,6 +334,25 @@ onMounted(() => {
   padding: 16px;
   color: var(--color-text-secondary);
   font-size: 14px;
+}
+
+.home__loading-more {
+  display: flex;
+  justify-content: center;
+  padding: 16px;
+}
+
+.home__spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: home-spinner 0.8s linear infinite;
+}
+
+@keyframes home-spinner {
+  to { transform: rotate(360deg); }
 }
 
 .home__empty {
