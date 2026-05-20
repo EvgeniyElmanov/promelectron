@@ -22,20 +22,22 @@ test.describe('Supplier Products', () => {
     await page.click('.supplier-products__add');
 
     // 5. Fill form
-    await page.fill('.modal__form input[type="text"]', productName);
-    await page.fill('.modal__form textarea', 'Test description for e2e');
-    const priceInputs = page.locator('.modal__form input[type="number"]');
-    await priceInputs.first().fill('12345');
-    await priceInputs.last().fill('10');
-    await page.selectOption('.modal__form select', '1'); // Смартфоны
-    await page.click('.modal__submit');
+    await page.fill('[data-testid="product-name-input"]', productName);
+    await page.fill('[data-testid="product-description-input"]', 'Test description for e2e');
+    await page.fill('[data-testid="product-price-input"]', '12345');
+    await page.fill('[data-testid="product-stock-input"]', '10');
+    // Select by label to avoid hardcoding DB-assigned category ID
+    await page.selectOption('[data-testid="product-category-select"]', { label: 'Смартфоны' });
+    await page.click('[data-testid="product-submit-btn"]');
 
     // 6. Wait for modal to close and product to appear
-    await page.waitForTimeout(500);
-    await expect(page.locator('.supplier-product-card__name').filter({ hasText: productName }).first()).toBeVisible();
+    await expect(page.locator('.modal-overlay')).not.toBeVisible({ timeout: 10000 });
+    await expect(
+      page.locator('.supplier-product-card__name').filter({ hasText: productName }).first()
+    ).toBeVisible({ timeout: 10000 });
 
     // 7. Verify the delete button exists
-    const productCard = page.locator('.supplier-product-card').filter({ hasText: productName }).first();
+    const productCard = page.locator('[data-testid="supplier-product-card"]').filter({ hasText: productName }).first();
     await expect(productCard.locator('.supplier-product-card__btn--delete')).toBeVisible();
   });
 });

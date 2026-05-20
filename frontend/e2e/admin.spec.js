@@ -16,22 +16,25 @@ test.describe('Admin Panel', () => {
     await expect(page).toHaveURL('/admin');
     await expect(page.locator('[data-testid="admin-page"]')).toBeVisible();
 
-    // 4. Switch to Categories tab (mobile) or scroll to categories section (desktop)
+    // 4. Switch to Categories tab on mobile
     const categoriesTab = page.locator('.admin__tab:has-text("Категории")');
     if (await categoriesTab.isVisible().catch(() => false)) {
       await categoriesTab.click();
     }
 
-    // 5. Create a test category
-    await page.locator('.admin__btn--primary').first().click();
-    await page.fill('.field__input[placeholder*="Например"]', 'E2E Test Category');
-    await page.fill('.field__input--textarea', 'Test description');
-    await page.click('.modal__submit');
+    // 5. Create a test category using data-testid selectors
+    await page.click('[data-testid="add-category-btn"]');
+    await page.fill('[data-testid="category-name-input"]', 'E2E Test Category');
+    await page.fill('[data-testid="category-description-input"]', 'Test description');
+    await page.click('[data-testid="category-submit-btn"]');
 
-    // 6. Verify category appears in table
-    await expect(page.locator('.admin__table td').filter({ hasText: 'E2E Test Category' }).first()).toBeVisible();
+    // 6. Wait for modal to close, then verify category appears in table
+    await expect(page.locator('.modal-overlay')).not.toBeVisible({ timeout: 10000 });
+    await expect(
+      page.locator('.admin__table td').filter({ hasText: 'E2E Test Category' }).first()
+    ).toBeVisible({ timeout: 10000 });
 
     // 7. Verify "Add" button exists
-    await expect(page.locator('.admin__btn--primary').first()).toBeVisible();
+    await expect(page.locator('[data-testid="add-category-btn"]')).toBeVisible();
   });
 });
