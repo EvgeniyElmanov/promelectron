@@ -6,12 +6,12 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src\.app.db.database import SessionLocal
-from src\.app.models.category import Category
-from src\.app.models.product import Product
-from src\.app.models.supplier import Supplier
-from src\.app.models.user import RoleEnum, User
-from src\.app.utils.auth import hash_password
+from src.app.db.database import SessionLocal
+from src.app.models.category import Category
+from src.app.models.product import Product
+from src.app.models.supplier import Supplier
+from src.app.models.user import RoleEnum, User
+from src.app.utils.auth import hash_password
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
