@@ -1,7 +1,7 @@
 <template>
   <header class="header">
     <div class="header__left">
-      <div class="header__logo" data-testid="header-logo" @click="$router.push('/')">MyShop</div>
+      <div class="header__logo" data-testid="header-logo" @click="$router.push('/')">Promelectron</div>
       
       <!-- Desktop Navigation -->
       <nav class="header__nav">

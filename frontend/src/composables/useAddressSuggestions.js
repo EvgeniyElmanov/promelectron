@@ -18,7 +18,7 @@ async function _doFetch(url) {
   lastRequestTime = Date.now();
 
   const res = await fetch(url, {
-    headers: { 'User-Agent': 'MyShop/1.0 (contact@example.com)' },
+    headers: { 'User-Agent': 'Promelectron/1.0 (contact@example.com)' },
   });
   if (!res.ok) return [];
   return res.json();

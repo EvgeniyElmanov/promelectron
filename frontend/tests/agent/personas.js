@@ -220,7 +220,7 @@ export function generateFuzzData() {
 export function generateCrossRoleCredentials() {
   const ts = Date.now();
   return {
-    admin_email: 'admin@myshop.ru',
+    admin_email: 'admin@promelectron.ru',
     admin_password: 'admin123',
     supplier_email: `supplier_e2e_${ts}@test.com`,
     user_email: `user_e2e_${ts}@test.com`,

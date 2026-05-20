@@ -398,7 +398,7 @@ export class ApiClient {
     let responseText;
     try {
       response = await fetch(url, {
-        headers: { 'Accept': 'application/json', 'User-Agent': 'myshop-e2e/1.0' },
+        headers: { 'Accept': 'application/json', 'User-Agent': 'promelectron-e2e/1.0' },
       });
       responseText = await response.text();
     } catch (e) {
