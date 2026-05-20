@@ -89,7 +89,13 @@ async def get_or_create_admin_user(session: AsyncSession) -> User:
     result = await session.execute(select(User).where(User.email == TEST_ADMIN_USER["email"]))
     user = result.scalar_one_or_none()
     if user:
-        logger.info(f"Пользователь-админ уже существует: {user.email}")
+        if user.role != RoleEnum.admin:
+            user.role = RoleEnum.admin
+            user.is_active = True
+            await session.flush()
+            logger.info(f"Обновлён пользователь-админ: {user.email} (роль -> admin)")
+        else:
+            logger.info(f"Пользователь-админ уже существует: {user.email}")
         return user
 
     user = User(
@@ -110,7 +116,13 @@ async def get_or_create_supplier_user(session: AsyncSession) -> User:
     result = await session.execute(select(User).where(User.email == TEST_SUPPLIER_USER["email"]))
     user = result.scalar_one_or_none()
     if user:
-        logger.info(f"Пользователь-поставщик уже существует: {user.email}")
+        if user.role != RoleEnum.supplier:
+            user.role = RoleEnum.supplier
+            user.is_active = True
+            await session.flush()
+            logger.info(f"Обновлён пользователь-поставщик: {user.email} (роль -> supplier)")
+        else:
+            logger.info(f"Пользователь-поставщик уже существует: {user.email}")
         return user
 
     user = User(
@@ -128,6 +140,14 @@ async def get_or_create_supplier_user(session: AsyncSession) -> User:
 
 
 async def get_or_create_supplier(session: AsyncSession, user: User) -> Supplier:
+    # Сначала ищем по user_id (уникальный constraint)
+    result = await session.execute(select(Supplier).where(Supplier.user_id == user.id))
+    supplier = result.scalar_one_or_none()
+    if supplier:
+        logger.info(f"Поставщик уже существует: {supplier.name}")
+        return supplier
+
+    # Если нет — ищем по api_key
     result = await session.execute(
         select(Supplier).where(Supplier.api_key == TEST_SUPPLIER["api_key"])
     )
