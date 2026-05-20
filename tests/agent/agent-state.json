@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "accounts": {
+    "user": {
+      "email": "buyer_1779256061890@test.com",
+      "password": "TestPassword123!",
+      "name": "Обычный покупатель 1779256061890",
+      "role": "user"
+    }
+  },
+  "entities": {},
+  "bugs": [
+    {
+      "severity": "major",
+      "message": "URL mismatch: https://promelectron-test.aidrivencode.ru/register !== https://promelectron-test.aidrivencode.ru/",
+      "step": 7,
+      "action": "assert",
+      "url": "https://promelectron-test.aidrivencode.ru/register",
+      "persona": "user",
+      "scenario": "fullPurchaseFlow",
+      "id": "bug-1779256070391-aprw",
+      "timestamp": "2026-05-20T05:47:50.391Z"
+    },
+    {
+      "severity": "major",
+      "message": "Element not visible: [data-testid=\"search-bar\"]",
+      "step": 2,
+      "action": "assert",
+      "url": "https://promelectron-test.aidrivencode.ru/",
+      "persona": "user",
+      "scenario": "searchAndFilter",
+      "id": "bug-1779256096684-bowm",
+      "timestamp": "2026-05-20T05:48:16.684Z"
+    }
+  ],
+  "sessions": [
+    {
+      "id": "sess-1779256061889",
+      "persona": "user",
+      "scenario": "fullPurchaseFlow",
+      "startTime": "2026-05-20T05:47:41.889Z",
+      "endTime": "2026-05-20T05:47:52.042Z",
+      "steps": [],
+      "passed": false,
+      "errors": [
+        {
+          "severity": "major",
+          "message": "URL mismatch: https://promelectron-test.aidrivencode.ru/register !== https://promelectron-test.aidrivencode.ru/",
+          "step": 7,
+          "action": "assert",
+          "url": "https://promelectron-test.aidrivencode.ru/register",
+          "persona": "user",
+          "scenario": "fullPurchaseFlow"
+        }
+      ]
+    },
+    {
+      "id": "sess-1779256089548",
+      "persona": "user",
+      "scenario": "searchAndFilter",
+      "startTime": "2026-05-20T05:48:09.548Z",
+      "endTime": "2026-05-20T05:48:18.464Z",
+      "steps": [],
+      "passed": false,
+      "errors": [
+        {
+          "severity": "major",
+          "message": "Element not visible: [data-testid=\"search-bar\"]",
+          "step": 2,
+          "action": "assert",
+          "url": "https://promelectron-test.aidrivencode.ru/",
+          "persona": "user",
+          "scenario": "searchAndFilter"
+        }
+      ]
+    }
+  ],
+  "learnings": {},
+  "lastRun": null
+}

@@ -388,7 +388,30 @@ export class ApiClient {
   // ═══════════════════════════════════════
 
   async health() {
-    return this.request('GET', '/health');
+    // Backend health is at /health without /api/v1 prefix
+    const baseUrl = this.baseUrl.replace(/\/api\/v1\/?$/, '');
+    const url = baseUrl + '/health';
+    const startTime = Date.now();
+    let response;
+    let responseText;
+    try {
+      response = await fetch(url, {
+        headers: { 'Accept': 'application/json', 'User-Agent': 'myshop-e2e/1.0' },
+      });
+      responseText = await response.text();
+    } catch (e) {
+      return { ok: false, error: e.message, status: 0, name: 'health' };
+    }
+    let data;
+    try { data = JSON.parse(responseText); } catch { data = responseText; }
+    return {
+      ok: response.ok,
+      status: response.status,
+      statusText: response.statusText,
+      data,
+      duration: Date.now() - startTime,
+      name: 'health',
+    };
   }
 
   async root() {

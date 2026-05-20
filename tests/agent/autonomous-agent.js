@@ -385,7 +385,7 @@ export class AutonomousAgent {
           const el = document.querySelector('${sel.replace(/'/g, "\\'")}');
           return (el ? el.innerText : document.body.innerText) || '';
         }`);
-        const text = (r.result || '').toLowerCase();
+        const text = String(r.result || '').toLowerCase();
         if (!text.includes(expected.toLowerCase())) {
           return { ok: false, error: `Text "${expected}" not found in ${sel}` };
         }
@@ -397,7 +397,7 @@ export class AutonomousAgent {
         const r = await this.mcp.evaluate(`() => {
           return document.body.innerText.includes('${expected.replace(/'/g, "\\'")}');
         }`);
-        if (!r.result) {
+        if (!Boolean(r.result)) {
           return { ok: false, error: `Toast "${expected}" not found` };
         }
         return { ok: true, found: true };
@@ -405,7 +405,7 @@ export class AutonomousAgent {
 
       case 'evaluate': {
         const r = await this.mcp.evaluate(`() => { return ${expected}; }`);
-        if (!r.result) {
+        if (!Boolean(r.result)) {
           return { ok: false, error: `Evaluate assertion failed` };
         }
         return { ok: true, result: r.result };
@@ -603,21 +603,20 @@ export class AutonomousAgent {
 
     const metrics = await this.mcp.evaluate(`() => {
       try {
-        const timing = performance.timing;
-        const now = performance.now();
-        const navStart = timing.navigationStart || 0;
+        // Navigation Timing API v2
+        const nav = performance.getEntriesByType('navigation')[0] || {};
+        const navStart = nav.startTime || 0;
         
-        // Базовые метрики из timing API
-        const ttfb = timing.responseStart ? timing.responseStart - navStart : 0;
-        const domContentLoaded = timing.domContentLoadedEventEnd ? timing.domContentLoadedEventEnd - navStart : 0;
-        const loadComplete = timing.loadEventEnd ? timing.loadEventEnd - navStart : 0;
+        const ttfb = nav.responseStart ? Math.round(nav.responseStart - navStart) : 0;
+        const domContentLoaded = nav.domContentLoadedEventEnd ? Math.round(nav.domContentLoadedEventEnd - navStart) : 0;
+        const loadComplete = nav.loadEventEnd ? Math.round(nav.loadEventEnd - navStart) : 0;
         
         // Paint метрики
         const paintEntries = performance.getEntriesByType('paint');
         const fcpEntry = paintEntries.find(e => e.name === 'first-contentful-paint');
         const fcp = fcpEntry ? Math.round(fcpEntry.startTime) : 0;
         
-        // LCP из PerformanceObserver (если доступен)
+        // LCP
         let lcp = 0;
         try {
           const lcpEntries = performance.getEntriesByType('largest-contentful-paint');
@@ -652,7 +651,7 @@ export class AutonomousAgent {
       }
     }`);
 
-    return metrics.result || { url, navigationTime, loadTime };
+    return metrics?.result || { url, navigationTime, loadTime };
   }
 
   // ═══════════════════════════════════════
@@ -723,7 +722,7 @@ export class AutonomousAgent {
       return results;
     }`);
 
-    return checks.result || {};
+    return checks?.result || {};
   }
 
   // ═══════════════════════════════════════

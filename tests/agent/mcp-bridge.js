@@ -147,10 +147,19 @@ export class MCPBridge {
   }
 
   async getUrl() {
+    // Method 1: try snapshot
     const r = await this.callTool(TOOLS.snapshot, {});
     const text = r.text || '';
     const match = text.match(/Page URL:\s*(.+)/m);
-    return match ? match[1].trim() : '';
+    if (match) return match[1].trim();
+    
+    // Method 2: fallback to evaluate
+    try {
+      const r2 = await this.evaluate("() => window.location.href");
+      return String(r2.result || '');
+    } catch {
+      return '';
+    }
   }
 
   async getPageContent() {

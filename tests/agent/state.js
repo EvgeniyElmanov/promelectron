@@ -6,7 +6,7 @@
 import { promises as fs } from 'fs';
 import { createRequire } from 'module';
 
-const STATE_FILE = process.env.AGENT_STATE_FILE || './tests/agent/.agent-state.json';
+const STATE_FILE = process.env.AGENT_STATE_FILE || './tests/agent/agent-state.json';
 
 export class AgentState {
   constructor(options = {}) {

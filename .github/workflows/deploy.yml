@@ -435,18 +435,18 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: agent-state
-          path: tests/agent/.agent-state.json
+          path: tests/agent/agent-state.json
           retention-days: 30
 
       - name: Check for critical bugs
         run: |
-          if [ -f tests/agent/.agent-state.json ]; then
-            CRITICAL=$(node -e "const s=require('./tests/agent/.agent-state.json'); console.log(s.bugs.filter(b=>b.severity==='critical').length)")
-            MAJOR=$(node -e "const s=require('./tests/agent/.agent-state.json'); console.log(s.bugs.filter(b=>b.severity==='major').length)")
+          if [ -f tests/agent/agent-state.json ]; then
+            CRITICAL=$(node -e "const s=require('./tests/agent/agent-state.json'); console.log(s.bugs.filter(b=>b.severity==='critical').length)")
+            MAJOR=$(node -e "const s=require('./tests/agent/agent-state.json'); console.log(s.bugs.filter(b=>b.severity==='major').length)")
             echo "📊 Bugs found: $CRITICAL critical, $MAJOR major"
             if [ "$CRITICAL" -gt 0 ]; then
               echo "❌ $CRITICAL critical bugs found!"
-              node -e "const s=require('./tests/agent/.agent-state.json'); s.bugs.filter(b=>b.severity==='critical').forEach(b=>console.log('  -',b.message))"
+              node -e "const s=require('./tests/agent/agent-state.json'); s.bugs.filter(b=>b.severity==='critical').forEach(b=>console.log('  -',b.message))"
               exit 1
             fi
             echo "✅ No critical bugs found"
