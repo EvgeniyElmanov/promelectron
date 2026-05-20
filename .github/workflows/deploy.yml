@@ -126,11 +126,38 @@ jobs:
           KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
         run: |
           echo "=== Cleaning up old postgres pods to avoid PVC conflicts ==="
-          # Postgres uses a Recreate strategy, but old pods may be stuck.
-          # Force-delete any old postgres pods to free the RWO PVC.
-          kubectl delete pods -n promelectron-test -l app=myshop-postgres --force --grace-period=0 --ignore-not-found=true
+          # Postgres uses a Recreate strategy with a RWO PVC.
+          # We MUST wait for the old pod to be fully deleted AND the volume
+          # detached before the new pod can start. Otherwise we get:
+          #   Multi-Attach error for volume "..." Volume is already exclusively attached
+          #
+          # Step 1: Delete old pods forcefully
+          OLD_POD=$(kubectl get pod -n promelectron-test -l app=myshop-postgres -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+          if [ -n "$OLD_POD" ]; then
+            echo "Deleting old postgres pod: $OLD_POD"
+            kubectl delete pod -n promelectron-test "$OLD_POD" --force --grace-period=0 --ignore-not-found=true
+          fi
+          
+          # Step 2: Wait for pod to actually disappear
+          echo "Waiting for old pod to be fully removed..."
+          for i in $(seq 1 30); do
+            COUNT=$(kubectl get pods -n promelectron-test -l app=myshop-postgres --no-headers 2>/dev/null | wc -l)
+            if [ "$COUNT" -eq 0 ]; then
+              echo "✅ Old pod removed"
+              break
+            fi
+            echo "  Attempt $i/30: still $COUNT pod(s) remaining..."
+            kubectl get pods -n promelectron-test -l app=myshop-postgres --no-headers 2>/dev/null || true
+            sleep 2
+          done
+          
+          # Step 3: Give K8s a moment to detach the volume
+          echo "Waiting for volume detach..."
+          sleep 10
+          
+          # Step 4: Also clean up old ReplicaSets
           kubectl delete rs -n promelectron-test -l app=myshop-postgres --ignore-not-found=true
-          sleep 5
+          
           echo "=== PVC status ==="
           kubectl get pvc -n promelectron-test -l app=myshop-postgres
 
