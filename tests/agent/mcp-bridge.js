@@ -5,9 +5,13 @@
 
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 
-const MCP_SERVER_COMMAND = 'npx';
-const MCP_SERVER_ARGS = ['@playwright/mcp@latest', '--headless'];
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const MCP_SERVER_PATH = join(__dirname, '../../node_modules/.bin/playwright-mcp');
+const MCP_SERVER_COMMAND = process.platform === 'win32' ? 'node' : MCP_SERVER_PATH;
+const MCP_SERVER_ARGS = process.platform === 'win32' ? [MCP_SERVER_PATH, '--headless'] : ['--headless'];
 
 // Playwright MCP tool names (не playwright_navigate, а browser_navigate!)
 const TOOLS = {
@@ -114,6 +118,15 @@ export class MCPBridge {
     const wrapped = { result: rawResult, text, image };
     if (this.debug) {
       console.log(`[MCP] callTool(${name}) text length:`, text.length, 'result keys:', Object.keys(rawResult).join(','));
+    }
+    // Temporary CI debugging
+    if (process.env.AGENT_DEBUG_MCP) {
+      console.error(`[MCP-DEBUG] callTool(${name}) rawResult keys:`, Object.keys(rawResult));
+      console.error(`[MCP-DEBUG] callTool(${name}) text length:`, text.length);
+      if (rawResult.content) {
+        console.error(`[MCP-DEBUG] callTool(${name}) content length:`, rawResult.content.length);
+        console.error(`[MCP-DEBUG] callTool(${name}) content[0] type:`, rawResult.content[0]?.type);
+      }
     }
     return wrapped;
   }
