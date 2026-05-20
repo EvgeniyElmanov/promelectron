@@ -22,6 +22,7 @@ from server.app.api.ws import router as ws_router
 from server.app.api.payments import router as payments_router
 from server.app.api.products import router as products_router
 from server.app.api.reviews import router as reviews_router
+from server.app.api.seed import router as seed_router
 from server.app.api.users import router as users_router
 from server.app.db.database import DATABASE_URL
 
@@ -78,6 +79,7 @@ app.include_router(ws_router)
 app.include_router(auth_router, prefix="/api/v1", tags=["auth"])
 app.include_router(reviews_router, prefix="/api/v1", tags=["reviews"])
 app.include_router(favorites_router, prefix="/api/v1", tags=["favorites"])
+app.include_router(seed_router, prefix="/api/v1", tags=["seed"])
 app.include_router(delivery_methods_router, prefix="/api/v1", tags=["delivery-methods"])
 
 

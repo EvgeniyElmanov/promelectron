@@ -1,0 +1,96 @@
+name: Deploy MyShop (Ubuntu Hosted)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  REGISTRY: harbor.kubeadm.ru
+  API_IMAGE: harbor.kubeadm.ru/promelectron/myshop-api
+  FRONTEND_IMAGE: harbor.kubeadm.ru/promelectron/myshop-frontend
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Harbor
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.HARBOR_USERNAME }}
+          password: ${{ secrets.HARBOR_PASSWORD }}
+
+      - name: Build and push API
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.backend
+          push: true
+          tags: ${{ env.API_IMAGE }}:${{ github.sha }}
+          no-cache: true
+
+      - name: Build and push Frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.frontend
+          push: true
+          tags: ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
+          build-args: |
+            VITE_API_URL=https://api.promelectron-test.aidrivencode.ru
+          no-cache: true
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.29.0'
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: '3.14.0'
+
+      - name: Configure KUBECONFIG
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG_BASE64 }}" | base64 -d > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Deploy to test
+        run: |
+          helm upgrade --install promelectron-test ./infra/helm \
+            --set api.image=${{ env.API_IMAGE }}:${{ github.sha }} \
+            --set frontend.image=${{ env.FRONTEND_IMAGE }}:${{ github.sha }} \
+            --namespace promelectron-test \
+            --create-namespace
+
+      - name: Restart deployments
+        run: |
+          kubectl rollout restart deployment/myshop-api -n promelectron-test
+          kubectl rollout restart deployment/myshop-frontend -n promelectron-test
+
+      - name: Wait for rollout
+        run: |
+          kubectl rollout status deployment/myshop-api -n promelectron-test --timeout=300s
+          kubectl rollout status deployment/myshop-frontend -n promelectron-test --timeout=300s
+
+      - name: Run migrations
+        run: |
+          kubectl run migrations --rm -i --restart=Never -n promelectron-test \
+            --image=${{ env.API_IMAGE }}:${{ github.sha }} \
+            --env-from=configmap/myshop-config \
+            --env-from=secret/myshop-secrets \
+            -- alembic upgrade head
+
+      - name: Verify API
+        run: |
+          sleep 10
+          curl -sf https://api.promelectron-test.aidrivencode.ru/health | grep -q '"status"'
+          echo "✅ API healthy"
