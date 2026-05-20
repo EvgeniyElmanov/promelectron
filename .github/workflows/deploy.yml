@@ -75,7 +75,9 @@ jobs:
       - name: Verify API image content
         run: |
           echo "=== Checking routes in built API image ==="
-          docker run --rm -v ${{ github.workspace }}/scripts/verify_api_image.py:/tmp/verify.py ${{ env.API_IMAGE }}:${{ github.sha }} python /tmp/verify.py
+          docker run --rm --entrypoint python \
+            -v ${{ github.workspace }}/scripts/verify_api_image.py:/tmp/verify.py \
+            ${{ env.API_IMAGE }}:${{ github.sha }} /tmp/verify.py
 
   deploy-test:
     needs: build
