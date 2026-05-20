@@ -74,3 +74,4 @@ e2e/screenshots/
 *.sqlite
 *.sqlite3
 uploads/
+tests/agent/reports/
