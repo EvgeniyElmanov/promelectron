@@ -22,7 +22,7 @@
     "agent:discover": "node tests/agent/agent.js --persona=user --discover --report=all"
   },
   "devDependencies": {
-    "@modelcontextprotocol/sdk": "^2026.1.14",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@modelcontextprotocol/server-filesystem": "^2026.1.14",
     "@modelcontextprotocol/server-memory": "^2026.1.26",
     "@modelcontextprotocol/server-sequential-thinking": "^2025.12.18",
