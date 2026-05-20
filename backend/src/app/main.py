@@ -1,4 +1,5 @@
 import asyncio
+import json
 import os
 from contextlib import asynccontextmanager
 from logging import getLogger
@@ -50,11 +51,14 @@ def _run_alembic_migrations(cfg_path: str) -> None:
     command.upgrade(alembic_cfg, "head")
 
 
+_default_cors = '["http://localhost:5173", "http://127.0.0.1:5173"]'
+_cors_origins = json.loads(os.getenv("CORS_ORIGINS", _default_cors))
+
 app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
