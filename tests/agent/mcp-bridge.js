@@ -85,25 +85,37 @@ export class MCPBridge {
     this.tools.clear();
   }
 
+  _extractText(raw) {
+    if (typeof raw === 'string') return raw;
+    if (raw && typeof raw.text === 'string') return raw.text;
+    if (raw && Array.isArray(raw.content)) {
+      return raw.content.map((item) => (item.type === 'text' ? item.text || '' : '')).join('');
+    }
+    return '';
+  }
+
   async callTool(name, args = {}) {
     if (!this.connected) throw new Error('MCP not connected');
     if (this.debug) {
       console.log(`[MCP] callTool(${name})`, JSON.stringify(args).slice(0, 200));
     }
 
-    const result = await this.client.callTool({ name, arguments: args });
+    const rawResult = await this.client.callTool({ name, arguments: args });
 
-    // Извлекаем контент из результата
-    let text = '';
+    // Извлекаем контент из результата (robust для разных версий MCP)
+    const text = this._extractText(rawResult);
     let image = null;
-    if (result.content) {
-      for (const item of result.content) {
-        if (item.type === 'text') text += item.text;
+    if (rawResult.content) {
+      for (const item of rawResult.content) {
         if (item.type === 'image') image = item;
       }
     }
 
-    return { result, text, image };
+    const wrapped = { result: rawResult, text, image };
+    if (this.debug) {
+      console.log(`[MCP] callTool(${name}) text length:`, text.length, 'result keys:', Object.keys(rawResult).join(','));
+    }
+    return wrapped;
   }
 
   // ═══════════════════════════════════════
@@ -149,13 +161,18 @@ export class MCPBridge {
   async getUrl() {
     // Method 1: try snapshot
     const r = await this.callTool(TOOLS.snapshot, {});
-    const text = r.text || '';
+    let text = r.text || '';
+    if (!text && r.result) {
+      text = this._extractText(r.result);
+    }
     const match = text.match(/Page URL:\s*(.+)/m);
     if (match) return match[1].trim();
-    
+
     // Method 2: fallback to evaluate
     try {
       const r2 = await this.evaluate("() => window.location.href");
+      if (typeof r2.result === 'string') return r2.result;
+      if (typeof r2.result === 'number') return String(r2.result);
       return String(r2.result || '');
     } catch {
       return '';
@@ -164,19 +181,28 @@ export class MCPBridge {
 
   async getPageContent() {
     const r = await this.callTool(TOOLS.snapshot, {});
-    return r.text || '';
+    return r.text || this._extractText(r.result) || '';
   }
 
   async evaluate(code) {
     const r = await this.callTool(TOOLS.evaluate, { function: code });
     // Парсим результат из текстового ответа Playwright MCP
-    const text = r.text || '';
-    
+    let text = r.text || '';
+
+    // Fallback: если text пустой, попробуем извлечь из raw result
+    if (!text && r.result) {
+      text = this._extractText(r.result);
+    }
+
+    if (this.debug) {
+      console.log(`[MCP] evaluate text length:`, text.length, 'first 100:', text.slice(0, 100));
+    }
+
     // Ищем блок между "### Result" и "### Ran Playwright code"
     const resultMatch = text.match(/### Result\n([\s\S]*?)(?:\n### Ran Playwright code|$)/);
     if (resultMatch) {
       const raw = resultMatch[1].trim();
-      
+
       // Пытаемся распарсить как JSON
       if (raw.startsWith('{') || raw.startsWith('[')) {
         try {
@@ -212,6 +238,16 @@ export class MCPBridge {
         else if (raw === 'false') r.result = false;
         else if (!isNaN(Number(raw))) r.result = Number(raw);
         else r.result = raw;
+      } else if (text) {
+        // No "### Result" header but some text — maybe plain JSON
+        const trimmed = text.trim();
+        if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+          try { r.result = JSON.parse(trimmed); } catch { r.result = trimmed; }
+        } else if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
+          try { r.result = JSON.parse(trimmed); } catch { r.result = trimmed.slice(1, -1); }
+        } else {
+          r.result = trimmed;
+        }
       }
     }
     return r;
@@ -220,7 +256,7 @@ export class MCPBridge {
   async getConsoleLogs() {
     try {
       const r = await this.callTool(TOOLS.consoleMessages, {});
-      return r.text || '';
+      return r.text || this._extractText(r.result) || '';
     } catch {
       return '';
     }
@@ -261,7 +297,7 @@ export class MCPBridge {
   async getAccessibilityTree() {
     try {
       const r = await this.callTool(TOOLS.snapshot, {});
-      return r.text || '';
+      return r.text || this._extractText(r.result) || '';
     } catch {
       return '';
     }
