@@ -16,25 +16,29 @@ test.describe('Admin Panel', () => {
     await expect(page).toHaveURL('/admin');
     await expect(page.locator('[data-testid="admin-page"]')).toBeVisible();
 
-    // 4. Switch to Categories tab on mobile
+    // 3. Switch to Categories tab on mobile
     const categoriesTab = page.locator('.admin__tab:has-text("Категории")');
     if (await categoriesTab.isVisible().catch(() => false)) {
       await categoriesTab.click();
     }
 
-    // 5. Create a test category using data-testid selectors
+    // 4. Create a test category
     await page.click('[data-testid="add-category-btn"]');
     await page.fill('[data-testid="category-name-input"]', 'E2E Test Category');
     await page.fill('[data-testid="category-description-input"]', 'Test description');
     await page.click('[data-testid="category-submit-btn"]');
 
-    // 6. Wait for modal to close, then verify category appears in table
+    // 5. Wait for modal to close, then verify category appears in table
     await expect(page.locator('.modal-overlay')).not.toBeVisible({ timeout: 10000 });
-    await expect(
-      page.locator('.admin__table td').filter({ hasText: 'E2E Test Category' }).first()
-    ).toBeVisible({ timeout: 10000 });
+    const categoryRow = page.locator('.admin__table tr').filter({ hasText: 'E2E Test Category' }).first();
+    await expect(categoryRow).toBeVisible({ timeout: 10000 });
 
-    // 7. Verify "Add" button exists
+    // 6. Verify "Add" button exists
     await expect(page.locator('[data-testid="add-category-btn"]')).toBeVisible();
+
+    // 7. Cleanup: delete the test category
+    page.once('dialog', (dialog) => dialog.accept());
+    await categoryRow.locator('.admin__icon-btn--delete').click();
+    await expect(categoryRow).not.toBeVisible({ timeout: 10000 });
   });
 });

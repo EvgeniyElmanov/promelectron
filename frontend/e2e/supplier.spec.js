@@ -18,10 +18,10 @@ test.describe('Supplier Products', () => {
     await expect(page).toHaveURL('/my-products');
     await expect(page.locator('[data-testid="supplier-products"]')).toBeVisible();
 
-    // 4. Click "Add product"
+    // 3. Click "Add product"
     await page.click('.supplier-products__add');
 
-    // 5. Fill form
+    // 4. Fill form
     await page.fill('[data-testid="product-name-input"]', productName);
     await page.fill('[data-testid="product-description-input"]', 'Test description for e2e');
     await page.fill('[data-testid="product-price-input"]', '12345');
@@ -30,14 +30,18 @@ test.describe('Supplier Products', () => {
     await page.selectOption('[data-testid="product-category-select"]', { label: 'Смартфоны' });
     await page.click('[data-testid="product-submit-btn"]');
 
-    // 6. Wait for modal to close and product to appear
+    // 5. Wait for modal to close and product to appear
     await expect(page.locator('.modal-overlay')).not.toBeVisible({ timeout: 10000 });
-    await expect(
-      page.locator('.supplier-product-card__name').filter({ hasText: productName }).first()
-    ).toBeVisible({ timeout: 10000 });
-
-    // 7. Verify the delete button exists
     const productCard = page.locator('[data-testid="supplier-product-card"]').filter({ hasText: productName }).first();
-    await expect(productCard.locator('.supplier-product-card__btn--delete')).toBeVisible();
+    await expect(productCard).toBeVisible({ timeout: 10000 });
+
+    // 6. Verify the delete button exists
+    const deleteBtn = productCard.locator('.supplier-product-card__btn--delete');
+    await expect(deleteBtn).toBeVisible();
+
+    // 7. Cleanup: delete the test product
+    page.once('dialog', (dialog) => dialog.accept());
+    await deleteBtn.click();
+    await expect(productCard).not.toBeVisible({ timeout: 10000 });
   });
 });

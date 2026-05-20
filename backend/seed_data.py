@@ -213,9 +213,29 @@ async def create_products(
         logger.info(f"Добавлен товар: {product.name}")
 
 
+async def cleanup_e2e_artifacts(session: AsyncSession) -> None:
+    """Delete categories and products created by e2e tests (name starts with 'E2E')."""
+    e2e_products = (await session.execute(
+        select(Product).where(Product.name.like("E2E%"))
+    )).scalars().all()
+    for p in e2e_products:
+        await session.delete(p)
+        logger.info(f"Удалён e2e товар: {p.name}")
+
+    e2e_categories = (await session.execute(
+        select(Category).where(Category.name.like("E2E%"))
+    )).scalars().all()
+    for c in e2e_categories:
+        await session.delete(c)
+        logger.info(f"Удалена e2e категория: {c.name}")
+
+    await session.flush()
+
+
 async def seed_data() -> None:
     async with SessionLocal() as session:
         try:
+            await cleanup_e2e_artifacts(session)
             admin_user = await get_or_create_admin_user(session)
             supplier_user = await get_or_create_supplier_user(session)
             supplier = await get_or_create_supplier(session, supplier_user)
