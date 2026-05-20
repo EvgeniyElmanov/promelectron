@@ -149,6 +149,7 @@ jobs:
           curl -sf -o /dev/null https://promelectron-test.aidrivencode.ru
           echo "Frontend OK"
 
+
   test-e2e:
     needs: test-smoke
     runs-on: self-hosted
@@ -167,7 +168,7 @@ jobs:
           cd frontend
           BASE_URL=https://promelectron-test.aidrivencode.ru \
           API_URL=https://api.promelectron-test.aidrivencode.ru \
-            npx playwright test --reporter=html
+            npx playwright test --reporter=html --workers=4
 
       - name: Upload report
         uses: actions/upload-artifact@v4
@@ -256,30 +257,3 @@ jobs:
           curl -sf -o /dev/null https://promelectron.aidrivencode.ru
           echo "Frontend OK"
 
-  prod-e2e:
-    needs: prod-smoke
-    runs-on: self-hosted
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install Playwright
-        run: |
-          cd frontend
-          npm ci
-          npx playwright install chromium
-
-      - name: Run E2E tests
-        run: |
-          cd frontend
-          BASE_URL=https://promelectron.aidrivencode.ru \
-          API_URL=https://api.promelectron.aidrivencode.ru \
-            npx playwright test --reporter=html
-
-      - name: Upload report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: playwright-report-prod-${{ github.run_id }}
-          path: frontend/playwright-report/
-          retention-days: 14
