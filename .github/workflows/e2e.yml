@@ -1,0 +1,79 @@
+name: E2E & Smoke Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to test'
+        required: true
+        type: choice
+        options:
+          - test
+          - prod
+        default: test
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+
+jobs:
+  smoke:
+    runs-on: self-hosted
+    steps:
+      - name: Set URLs
+        run: |
+          if [ "${{ inputs.environment }}" = "prod" ]; then
+            echo "API_URL=https://api.promelectron.aidrivencode.ru" >> $GITHUB_ENV
+            echo "FRONTEND_URL=https://promelectron.aidrivencode.ru" >> $GITHUB_ENV
+          else
+            echo "API_URL=https://api.promelectron-test.aidrivencode.ru" >> $GITHUB_ENV
+            echo "FRONTEND_URL=https://promelectron-test.aidrivencode.ru" >> $GITHUB_ENV
+          fi
+
+      - name: API health check
+        run: |
+          curl -sf "${{ env.API_URL }}/health" | grep -q '"status"'
+          echo "API OK"
+
+      - name: Frontend reachable
+        run: |
+          curl -sf -o /dev/null "${{ env.FRONTEND_URL }}"
+          echo "Frontend OK"
+
+  e2e:
+    runs-on: self-hosted
+    needs: smoke
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set URLs
+        run: |
+          if [ "${{ inputs.environment }}" = "prod" ]; then
+            echo "BASE_URL=https://promelectron.aidrivencode.ru" >> $GITHUB_ENV
+            echo "API_URL=https://api.promelectron.aidrivencode.ru" >> $GITHUB_ENV
+          else
+            echo "BASE_URL=https://promelectron-test.aidrivencode.ru" >> $GITHUB_ENV
+            echo "API_URL=https://api.promelectron-test.aidrivencode.ru" >> $GITHUB_ENV
+          fi
+
+      - name: Install Playwright
+        run: |
+          cd tests/e2e
+          npm ci
+          npx playwright install chromium
+
+      - name: Run E2E tests
+        run: |
+          cd tests/e2e
+          BASE_URL="${{ env.BASE_URL }}" API_URL="${{ env.API_URL }}" \
+            npx playwright test --reporter=html
+
+      - name: Upload report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-${{ inputs.environment }}-${{ github.run_id }}
+          path: tests/e2e/playwright-report/
+          retention-days: 14

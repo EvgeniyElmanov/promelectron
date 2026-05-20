@@ -1,0 +1,59 @@
+{
+  "name": "promelectron-frontend",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "run-s lint:*",
+    "lint:oxlint": "oxlint . --fix",
+    "lint:eslint": "eslint . --fix --cache",
+    "format": "prettier --write --experimental-cli src/",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui",
+    "e2e:debug": "playwright test --debug",
+    "e2e:report": "playwright show-report",
+    "agent": "node tests/agent/agent.js",
+    "agent:user": "node tests/agent/agent.js --persona=user --report=all",
+    "agent:admin": "node tests/agent/agent.js --persona=admin --report=all",
+    "agent:supplier": "node tests/agent/agent.js --persona=supplier --report=all",
+    "agent:all": "node tests/agent/agent.js --persona=all --report=all"
+  },
+  "dependencies": {
+    "axios": "^1.15.2",
+    "jwt-decode": "^4.0.0",
+    "vue": "^3.5.32",
+    "vue-router": "^5.0.4"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@modelcontextprotocol/server-filesystem": "^2026.1.14",
+    "@modelcontextprotocol/server-memory": "^2026.1.26",
+    "@modelcontextprotocol/server-sequential-thinking": "^2025.12.18",
+    "@playwright/mcp": "^0.0.75",
+    "@playwright/test": "^1.60.0",
+    "@vitejs/plugin-vue": "^6.0.6",
+    "@vue/test-utils": "^2.4.10",
+    "eslint": "^10.2.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-oxlint": "~1.60.0",
+    "eslint-plugin-vue": "~10.8.0",
+    "globals": "^17.5.0",
+    "jsdom": "^29.1.1",
+    "npm-run-all2": "^8.0.4",
+    "openai": "^4.0.0",
+    "oxlint": "~1.60.0",
+    "prettier": "3.8.3",
+    "vite": "^8.0.8",
+    "vite-plugin-vue-devtools": "^8.1.1",
+    "vitest": "^4.1.6"
+  },
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  }
+}

@@ -29,6 +29,18 @@
       "args": [
         "@modelcontextprotocol/server-sequential-thinking"
       ]
+    },
+    "kubernetes": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "kubernetes-mcp-server@latest"],
+      "env": {
+        "KUBECONFIG": "/Users/aleksandr/.kube/pokutniy",
+        "HTTPS_PROXY": "",
+        "HTTP_PROXY": "",
+        "https_proxy": "",
+        "http_proxy": ""
+      }
     }
   }
 }

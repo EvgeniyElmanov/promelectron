@@ -1,112 +1,126 @@
-# ============================================================
-# My Shop — Makefile
-# ============================================================
-
 SHELL := /bin/bash
+COMPOSE_BACKEND  := docker compose -f backend/docker-compose.yml -p promelectron
+COMPOSE_FRONTEND := docker compose -f frontend/docker-compose.yml -p promelectron
+COMPOSE          := docker compose -f backend/docker-compose.yml -f frontend/docker-compose.yml -p promelectron
 
-.PHONY: help dev stop test test-backend test-frontend test-e2e migrate seed lint format
+.PHONY: help dev dev-backend dev-frontend stop logs \
+        test test-backend test-frontend test-e2e test-visual test-full \
+        migrate migrate-down migrate-generate migrate-history seed \
+        lint lint-backend lint-frontend format format-backend format-frontend \
+        build clean status
 
-help: ## Показать справку
-	@echo "Доступные команды:"
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
+# ─── Справка ───────────────────────────────────────────────────────────────
 
-# --- Dev окружение ---
-dev: ## Запустить backend + frontend
-	bash scripts/run_dev.sh
+help: ## Показать все команды
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
+	  | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-22s\033[0m %s\n", $$1, $$2}'
 
-stop: ## Остановить backend + frontend
-	bash scripts/stop_dev.sh
+# ─── Dev-окружение ──────────────────────────────────────────────────────────
 
-# --- Тесты ---
-test: test-backend test-frontend ## Запустить все тесты
+dev: ## Запустить весь стек (API + PostgreSQL + Redis + Frontend)
+	$(COMPOSE) up -d
 
-test-backend: ## Запустить backend тесты (pytest)
-	source venv/bin/activate && pytest tests/ -v --tb=short
+dev-backend: ## Запустить только бэкенд (API + PostgreSQL + Redis)
+	$(COMPOSE_BACKEND) up -d
 
-test-frontend: ## Запустить frontend тесты (vitest)
-	cd client && npx vitest run
+dev-frontend: ## Запустить только фронтенд
+	$(COMPOSE_FRONTEND) up -d
 
-test-e2e: ## Запустить E2E тесты (playwright)
-	npx playwright test --project=e2e
+stop: ## Остановить все сервисы
+	$(COMPOSE) down
 
-test-visual: ## Визуальная проверка — скриншоты всех ключевых страниц
-	npx playwright test --project=visual-smoke
+logs: ## Показать логи всех сервисов
+	$(COMPOSE) logs -f
 
-test-full: test-backend test-frontend test-e2e test-visual ## Полный цикл: unit + e2e + visual smoke
+logs-api: ## Показать логи API
+	$(COMPOSE_BACKEND) logs -f api
 
-# --- База данных ---
-migrate: ## Применить Alembic миграции
-	source venv/bin/activate && alembic upgrade head
+logs-frontend: ## Показать логи фронтенда
+	$(COMPOSE_FRONTEND) logs -f frontend
 
-migrate-generate: ## Сгенерировать новую Alembic миграцию (make migrate-generate MSG="add users table")
-	source venv/bin/activate && alembic revision --autogenerate -m "$(MSG)"
+# ─── Тесты ──────────────────────────────────────────────────────────────────
 
-seed: ## Заполнить БД тестовыми данными
-	source venv/bin/activate && python seed_data.py
+test: test-backend test-frontend ## Запустить все unit-тесты
 
-# --- Docker ---
-db-up: ## Запустить PostgreSQL в Docker
-	docker compose up -d postgres
+test-backend: ## Запустить pytest (поднимает postgres/redis через docker compose)
+	$(COMPOSE_BACKEND) up -d postgres redis
+	$(COMPOSE_BACKEND) run --rm \
+	  -e DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/promelectron \
+	  -e REDIS_URL=redis://redis:6379/0 \
+	  -e SECRET_KEY=test-secret-key-32-chars-minimum \
+	  api pytest tests/ -v --tb=short
 
-db-down: ## Остановить PostgreSQL
-	docker compose down
+test-frontend: ## Запустить vitest
+	$(COMPOSE_FRONTEND) run --rm frontend sh -c "npm install --silent && npm test"
 
-# --- Линтинг и форматирование ---
+test-e2e: ## Запустить Playwright E2E тесты (требует запущенного стека)
+	$(COMPOSE) up -d
+	$(COMPOSE_FRONTEND) run --rm frontend sh -c "npm install --silent && npx playwright install chromium && npm run e2e"
+
+test-visual: ## Визуальный smoke (скриншоты)
+	$(COMPOSE_FRONTEND) run --rm frontend sh -c "npm install --silent && npx playwright install chromium && npx playwright test --project=visual-smoke"
+
+test-full: test-backend test-frontend test-e2e ## Полный цикл: unit + e2e
+
+# ─── Миграции ───────────────────────────────────────────────────────────────
+
+migrate: ## Применить миграции (alembic upgrade head)
+	$(COMPOSE_BACKEND) up -d postgres
+	$(COMPOSE_BACKEND) run --rm api alembic upgrade head
+
+migrate-down: ## Откатить последнюю миграцию
+	$(COMPOSE_BACKEND) up -d postgres
+	$(COMPOSE_BACKEND) run --rm api alembic downgrade -1
+
+migrate-generate: ## Сгенерировать миграцию: make migrate-generate MSG="add users"
+	$(COMPOSE_BACKEND) up -d postgres
+	$(COMPOSE_BACKEND) run --rm api alembic revision --autogenerate -m "$(MSG)"
+
+migrate-history: ## История миграций
+	$(COMPOSE_BACKEND) run --rm api alembic history
+
+seed: ## Залить тестовые данные
+	$(COMPOSE_BACKEND) up -d postgres redis
+	$(COMPOSE_BACKEND) run --rm api python seed_data.py
+
+# ─── Линт / Форматирование ──────────────────────────────────────────────────
+
 lint: lint-backend lint-frontend ## Линт всего проекта
 
 lint-backend: ## Линт Python (ruff)
-	source venv/bin/activate && ruff check server/app
+	$(COMPOSE_BACKEND) run --rm api ruff check src/
 
-lint-frontend: ## Линт Vue
-	cd client && npm run lint 2>/dev/null || npx oxlint src/ 2>/dev/null || echo "Frontend linter not configured"
+lint-frontend: ## Линт Vue/JS (oxlint + eslint)
+	$(COMPOSE_FRONTEND) run --rm frontend sh -c "npm install --silent && npm run lint"
 
 format: format-backend format-frontend ## Форматировать весь проект
 
 format-backend: ## Форматировать Python (ruff)
-	source venv/bin/activate && ruff format server/app
+	$(COMPOSE_BACKEND) run --rm api ruff format src/
 
-format-frontend: ## Форматировать Vue
-	cd client && npm run format 2>/dev/null || echo "Frontend formatter not configured"
+format-frontend: ## Форматировать Vue/JS (prettier)
+	$(COMPOSE_FRONTEND) run --rm frontend sh -c "npm install --silent && npm run format"
 
-# --- Code Review & Security ---
-review: ## Code review текущих изменений
-	bash scripts/review.sh
+# ─── Сборка образов ─────────────────────────────────────────────────────────
 
-review-security: ## Security audit
-	bash scripts/security-check.sh
+build: ## Пересобрать образы без кэша
+	$(COMPOSE) build --no-cache
 
-check: lint test review ## Полная проверка: линт + тесты + ревью
+build-api: ## Пересобрать только API образ
+	$(COMPOSE_BACKEND) build --no-cache api
 
-# --- Миграции ---
-migrate-down: ## Откатить последнюю Alembic миграцию
-	source venv/bin/activate && alembic downgrade -1
+build-frontend: ## Пересобрать только frontend образ
+	$(COMPOSE_FRONTEND) build --no-cache frontend
 
-migrate-history: ## История миграций
-	source venv/bin/activate && alembic history
+# ─── Утилиты ────────────────────────────────────────────────────────────────
 
-# --- Утилиты ---
-clean: ## Очистить кэш и артефакты
+clean: ## Удалить кэш, артефакты
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
-	find . -type d -name .pytest_cache -exec rm -rf {} + 2>/dev/null || true
-	find . -type d -name node_modules -prune -o -type d -name .vite -exec rm -rf {} + 2>/dev/null || true
 	find . -type f -name "*.pyc" -delete 2>/dev/null || true
-	rm -rf test-results/ playwright-report/ 2>/dev/null || true
+	find . -type d -name .pytest_cache -exec rm -rf {} + 2>/dev/null || true
+	rm -rf frontend/playwright-report/ frontend/test-results/ 2>/dev/null || true
 
-status: ## Статус проекта: git + тесты + линт
-	@echo "=== Git Status ==="
-	@git status --short
-	@echo ""
-	@echo "=== Last Commit ==="
-	@git log -1 --oneline
-	@echo ""
-	@echo "=== Branch ==="
-	@git branch --show-current
-	@echo ""
-	@echo "=== Unpushed Commits ==="
-	@git log --oneline --graph --left-right @{u}...HEAD 2>/dev/null || echo "No upstream branch"
-	@echo ""
-	@echo "=== Test Summary ==="
-	@source venv/bin/activate && pytest tests/ -q --tb=no 2>&1 | tail -3 || true
-	@echo ""
-	@echo "=== Frontend Tests ==="
-	@cd client && npx vitest run --reporter=dot 2>&1 | tail -3 || true
+status: ## Статус: git + запущенные сервисы
+	@echo "=== Git Status ===" && git status --short
+	@echo "" && echo "=== Last Commit ===" && git log -1 --oneline
+	@echo "" && echo "=== Running Services ===" && $(COMPOSE) ps 2>/dev/null || true

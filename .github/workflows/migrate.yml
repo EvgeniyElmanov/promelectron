@@ -1,0 +1,46 @@
+name: Run Database Migrations
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Окружение'
+        required: true
+        type: choice
+        options:
+          - test
+          - prod
+      action:
+        description: 'Действие'
+        required: true
+        type: choice
+        options:
+          - upgrade head
+          - downgrade -1
+          - current
+          - history
+
+env:
+  KUBECONFIG_PATH: ${{ vars.KUBECONFIG_PATH }}
+
+jobs:
+  migrate:
+    runs-on: self-hosted
+    steps:
+      - name: Set namespace
+        run: |
+          if [ "${{ inputs.environment }}" = "prod" ]; then
+            echo "NAMESPACE=promelectron" >> $GITHUB_ENV
+          else
+            echo "NAMESPACE=promelectron-test" >> $GITHUB_ENV
+          fi
+
+      - name: Run alembic ${{ inputs.action }}
+        env:
+          KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
+        run: |
+          POD=$(kubectl get pods -n ${{ env.NAMESPACE }} -l app=promelectron-api \
+            -o jsonpath='{.items[0].metadata.name}')
+          echo "Running: alembic ${{ inputs.action }} on $POD in ${{ env.NAMESPACE }}"
+          kubectl exec -n ${{ env.NAMESPACE }} $POD -- \
+            alembic ${{ inputs.action }}

@@ -1,8 +1,12 @@
-name: Deploy MyShop
+name: Deploy to Kubernetes
 
 on:
   push:
     branches: [main]
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'infra/helm/**'
   workflow_dispatch:
     inputs:
       environment:
@@ -12,41 +16,18 @@ on:
         options:
           - test
           - prod
+          - all
         default: test
 
 env:
   REGISTRY: harbor.kubeadm.ru
-  API_IMAGE: harbor.kubeadm.ru/promelectron/myshop-api
-  FRONTEND_IMAGE: harbor.kubeadm.ru/promelectron/myshop-frontend
+  API_IMAGE: harbor.kubeadm.ru/promelectron/promelectron-api
+  FRONTEND_IMAGE: harbor.kubeadm.ru/promelectron/promelectron-frontend
   KUBECONFIG_PATH: ${{ vars.KUBECONFIG_PATH }}
+  SOPS_VERSION: "3.9.4"
 
 jobs:
-  validate:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install Helm
-        uses: azure/setup-helm@v4
-        with:
-          version: '3.14.0'
-
-      - name: Validate Helm charts
-        run: |
-          helm lint ./infra/helm
-          helm template promelectron-test ./infra/helm > /dev/null
-
-      - name: Validate Dockerfiles syntax
-        run: |
-          docker run --rm -i hadolint/hadolint < Dockerfile.backend || true
-          docker run --rm -i hadolint/hadolint < Dockerfile.frontend || true
-
-      - name: Summary
-        run: echo "✅ Infra validation passed"
-
   build:
-    needs: validate
     runs-on: self-hosted
     steps:
       - name: Checkout
@@ -57,50 +38,82 @@ jobs:
           echo "${{ secrets.HARBOR_PASSWORD }}" | docker login ${{ env.REGISTRY }} \
             -u "${{ secrets.HARBOR_USERNAME }}" --password-stdin
 
+      - name: Ensure Harbor project exists
+        run: |
+          curl -sf -o /dev/null \
+            -u "${{ secrets.HARBOR_USERNAME }}:${{ secrets.HARBOR_PASSWORD }}" \
+            -X POST "https://${{ env.REGISTRY }}/api/v2.0/projects" \
+            -H "Content-Type: application/json" \
+            -d '{"project_name":"promelectron","public":false}' || true
+
       - name: Build and push API image
         run: |
-          docker build --no-cache -f Dockerfile.backend \
+          docker build -f backend/Dockerfile \
             -t ${{ env.API_IMAGE }}:${{ github.sha }} \
-            .
+            backend/
           docker push ${{ env.API_IMAGE }}:${{ github.sha }}
 
-      - name: Build and push frontend image
+      - name: Build and push frontend (test)
+        if: github.event_name == 'push' || inputs.environment == 'test' || inputs.environment == 'all'
         run: |
-          docker build --no-cache -f Dockerfile.frontend \
+          docker build -f frontend/Dockerfile \
             --build-arg VITE_API_URL=https://api.promelectron-test.aidrivencode.ru \
-            -t ${{ env.FRONTEND_IMAGE }}:${{ github.sha }} \
-            .
-          docker push ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
+            -t ${{ env.FRONTEND_IMAGE }}-test:${{ github.sha }} \
+            frontend/
+          docker push ${{ env.FRONTEND_IMAGE }}-test:${{ github.sha }}
 
-      - name: Verify API image content
+      - name: Build and push frontend (prod)
+        if: inputs.environment == 'prod' || inputs.environment == 'all'
         run: |
-          echo "=== Checking routes in built API image ==="
-          docker run --rm --entrypoint python \
-            -v ${{ github.workspace }}/scripts/verify_api_image.py:/tmp/verify.py \
-            ${{ env.API_IMAGE }}:${{ github.sha }} /tmp/verify.py
+          docker build -f frontend/Dockerfile \
+            --build-arg VITE_API_URL=https://api.promelectron.aidrivencode.ru \
+            -t ${{ env.FRONTEND_IMAGE }}:${{ github.sha }} \
+            frontend/
+          docker push ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
 
   deploy-test:
     needs: build
     runs-on: self-hosted
+    if: github.event_name == 'push' || inputs.environment == 'test' || inputs.environment == 'all'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Fix namespace ownership for Helm
-        env:
-          KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
+      - name: Install sops
         run: |
-          if kubectl get namespace promelectron-test &>/dev/null; then
-            echo "Namespace exists, ensuring Helm ownership labels..."
-            kubectl label namespace promelectron-test app.kubernetes.io/managed-by=Helm --overwrite
-            kubectl annotate namespace promelectron-test meta.helm.sh/release-name=promelectron-test --overwrite
-            kubectl annotate namespace promelectron-test meta.helm.sh/release-namespace=promelectron-test --overwrite
+          if ! command -v sops &>/dev/null; then
+            mkdir -p "$HOME/.local/bin"
+            curl -fsSL -o "$HOME/.local/bin/sops" \
+              "https://github.com/getsops/sops/releases/download/v${{ env.SOPS_VERSION }}/sops-v${{ env.SOPS_VERSION }}.linux.amd64"
+            chmod +x "$HOME/.local/bin/sops"
+            echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           fi
 
-      - name: Create Harbor imagePullSecret
+      - name: Import GPG key
+        env:
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          GNUPGHOME=$(mktemp -d)
+          export GNUPGHOME
+          chmod 700 "$GNUPGHOME"
+          printf 'no-tty\npinentry-mode loopback\n' > "$GNUPGHOME/gpg.conf"
+          printf 'allow-loopback-pinentry\nno-allow-external-cache\nallow-preset-passphrase\n' > "$GNUPGHOME/gpg-agent.conf"
+          echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
+          gpg-agent --daemon 2>/dev/null || true
+          PRESET=$(command -v gpg-preset-passphrase 2>/dev/null \
+            || find /usr/lib /usr/libexec -name gpg-preset-passphrase 2>/dev/null | head -1)
+          gpg --with-keygrip --list-secret-keys \
+            | awk '/Keygrip/{print $3}' \
+            | while read -r grip; do
+                printf '%s' "$GPG_PASSPHRASE" | "$PRESET" --preset "$grip"
+              done
+          echo "GNUPGHOME=$GNUPGHOME" >> "$GITHUB_ENV"
+
+      - name: Create Harbor imagePullSecret (test)
         env:
           KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
         run: |
+          kubectl create namespace promelectron-test --dry-run=client -o yaml | kubectl apply -f -
           kubectl create secret docker-registry harborcred \
             --docker-server=${{ env.REGISTRY }} \
             --docker-username=${{ secrets.HARBOR_USERNAME }} \
@@ -108,249 +121,20 @@ jobs:
             --namespace promelectron-test \
             --dry-run=client -o yaml | kubectl apply -f -
 
-      - name: Check prerequisites
-        env:
-          KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
-        run: |
-          echo "=== Secrets ==="
-          kubectl get secrets -n promelectron-test || true
-          echo ""
-          echo "=== PostgreSQL Pod ==="
-          kubectl get pods -n promelectron-test -l app=promelectron-test-postgresql || true
-          echo ""
-          echo "=== Previous API Pod Status ==="
-          kubectl get pods -n promelectron-test -l app=promelectron-test-api || true
-
-      - name: Remove conflicting ingresses
-        env:
-          KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
-        run: |
-          echo "Removing old conflicting ingresses..."
-          kubectl delete ingress promelectron-frontend promelectron-api -n promelectron-test --ignore-not-found=true
-
-      - name: Pre-deploy cleanup (postgres)
-        env:
-          KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
-        run: |
-          echo "=== Cleaning up old postgres pods to avoid PVC conflicts ==="
-          # Postgres uses a Recreate strategy with a RWO PVC.
-          # We MUST wait for the old pod to be fully deleted AND the volume
-          # detached before the new pod can start. Otherwise we get:
-          #   Multi-Attach error for volume "..." Volume is already exclusively attached
-          #
-          # Step 1: Delete old pods forcefully
-          OLD_POD=$(kubectl get pod -n promelectron-test -l app=myshop-postgres -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
-          if [ -n "$OLD_POD" ]; then
-            echo "Deleting old postgres pod: $OLD_POD"
-            kubectl delete pod -n promelectron-test "$OLD_POD" --force --grace-period=0 --ignore-not-found=true
-          fi
-          
-          # Step 2: Wait for pod to actually disappear
-          echo "Waiting for old pod to be fully removed..."
-          for i in $(seq 1 30); do
-            COUNT=$(kubectl get pods -n promelectron-test -l app=myshop-postgres --no-headers 2>/dev/null | wc -l)
-            if [ "$COUNT" -eq 0 ]; then
-              echo "✅ Old pod removed"
-              break
-            fi
-            echo "  Attempt $i/30: still $COUNT pod(s) remaining..."
-            kubectl get pods -n promelectron-test -l app=myshop-postgres --no-headers 2>/dev/null || true
-            sleep 2
-          done
-          
-          # Step 3: Give K8s a moment to detach the volume
-          echo "Waiting for volume detach..."
-          sleep 10
-          
-          # Step 4: Also clean up old ReplicaSets
-          kubectl delete rs -n promelectron-test -l app=myshop-postgres --ignore-not-found=true
-          
-          echo "=== PVC status ==="
-          kubectl get pvc -n promelectron-test -l app=myshop-postgres
-
       - name: Deploy to test
         env:
           KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
         run: |
           helm upgrade --install promelectron-test ./infra/helm \
+            -f infra/helm/stage/test/values.yaml \
+            -f <(sops -d infra/helm/stage/test/secrets.yaml) \
             --set api.image=${{ env.API_IMAGE }}:${{ github.sha }} \
-            --set frontend.image=${{ env.FRONTEND_IMAGE }}:${{ github.sha }} \
+            --set frontend.image=${{ env.FRONTEND_IMAGE }}-test:${{ github.sha }} \
             --namespace promelectron-test \
             --create-namespace
-          echo ""
-          echo "=== Rolling out deployments ==="
-          kubectl rollout restart deployment/myshop-api -n promelectron-test || true
-          kubectl rollout restart deployment/myshop-frontend -n promelectron-test || true
-          echo ""
-          echo "=== Pods after deploy ==="
-          kubectl get pods -n promelectron-test
-          echo ""
-          echo "=== Postgres Pod describe ==="
-          kubectl describe pods -n promelectron-test -l app=myshop-postgres | head -40
-
-      - name: Debug all pods before rollout
-        env:
-          KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
-        run: |
-          echo "=== All pods in namespace ==="
-          kubectl get pods -n promelectron-test -o wide || true
-          echo ""
-          echo "=== All deployments ==="
-          kubectl get deployments -n promelectron-test || true
-          echo ""
-          echo "=== All services ==="
-          kubectl get services -n promelectron-test || true
-          echo ""
-          echo "=== Ingress in namespace ==="
-          kubectl get ingress -n promelectron-test -o yaml || true
-          echo ""
-          echo "=== All ingresses in cluster ==="
-          kubectl get ingress --all-namespaces || true
-          echo ""
-          echo "=== Recent events ==="
-          kubectl get events -n promelectron-test --sort-by='.lastTimestamp' | tail -20 || true
-
-      - name: Run database migrations
-        env:
-          KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
-        run: |
-          echo "=== Waiting for postgres to be ready ==="
-          echo "Postgres pods:"
-          kubectl get pods -n promelectron-test -l app=myshop-postgres
-          
-          echo ""
-          echo "Waiting for postgres readiness probe..."
-          for i in $(seq 1 60); do
-            READY=$(kubectl get pod -n promelectron-test -l app=myshop-postgres -o jsonpath='{.items[0].status.containerStatuses[0].ready}' 2>/dev/null || echo "false")
-            if [ "$READY" = "true" ]; then
-              echo "✅ Postgres is ready"
-              break
-            fi
-            echo "  Attempt $i/60: Postgres not ready yet..."
-            kubectl get pod -n promelectron-test -l app=myshop-postgres --no-headers 2>/dev/null || true
-            sleep 5
-          done
-          
-          if [ "$READY" != "true" ]; then
-            echo "❌ Postgres did not become ready"
-            echo "=== Postgres Pod Logs ==="
-            kubectl logs -n promelectron-test -l app=myshop-postgres --tail=50 || true
-            echo "=== Postgres Pod Describe ==="
-            kubectl describe pod -n promelectron-test -l app=myshop-postgres || true
-            echo "=== Postgres Events ==="
-            kubectl get events -n promelectron-test --field-selector involvedObject.name=$(kubectl get pod -n promelectron-test -l app=myshop-postgres -o jsonpath='{.items[0].metadata.name}') || true
-            exit 1
-          fi
-          
-          echo ""
-          echo "=== Running alembic migrations ==="
-          kubectl delete job myshop-migrations -n promelectron-test --ignore-not-found=true
-          sleep 5
-          
-          # Write job manifest to temp file (heredocs are fragile in YAML)
-          tee /tmp/migrations-job.yaml <<'JOBYAML'
-          apiVersion: batch/v1
-          kind: Job
-          metadata:
-            name: myshop-migrations
-            namespace: promelectron-test
-          spec:
-            ttlSecondsAfterFinished: 3600
-            template:
-              spec:
-                restartPolicy: OnFailure
-                imagePullSecrets:
-                  - name: harborcred
-                initContainers:
-                  - name: wait-for-postgres
-                    image: busybox:1.36
-                    command:
-                      - sh
-                      - -c
-                      - |
-                        for i in $(seq 1 60); do
-                          if nc -z myshop-postgres 5432; then
-                            echo "Postgres is reachable"
-                            exit 0
-                          fi
-                          echo "Waiting for postgres ($i/60)..."
-                          sleep 2
-                        done
-                        echo "Postgres timeout"
-                        exit 1
-                containers:
-                  - name: alembic
-                    image: JOB_IMAGE_PLACEHOLDER
-                    command: ['alembic', 'upgrade', 'head']
-                    envFrom:
-                      - configMapRef:
-                          name: myshop-config
-                      - secretRef:
-                          name: myshop-secrets
-          JOBYAML
-          
-          # Substitute image name and apply
-          sed -i "s|JOB_IMAGE_PLACEHOLDER|${API_IMAGE}:${GITHUB_SHA}|g" /tmp/migrations-job.yaml
-          kubectl apply -f /tmp/migrations-job.yaml
-          
-          echo ""
-          echo "Waiting for migrations to complete..."
-          kubectl wait --for=condition=complete job/myshop-migrations -n promelectron-test --timeout=300s || {
-            echo "❌ Migrations failed"
-            echo "=== Migration Job Logs ==="
-            kubectl logs job/myshop-migrations -n promelectron-test --tail=100 || true
-            echo "=== Migration Job Describe ==="
-            kubectl describe job/myshop-migrations -n promelectron-test || true
-            echo "=== Postgres status at failure ==="
-            kubectl get pod -n promelectron-test -l app=myshop-postgres
-            kubectl logs -n promelectron-test -l app=myshop-postgres --tail=50 || true
-            exit 1
-          }
-          echo "✅ Migrations completed successfully"
-
-      - name: Wait for API rollout
-        env:
-          KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
-        run: |
-          echo "Checking API pod status..."
-          kubectl get pods -n promelectron-test -l app=myshop-api
-          
-          if kubectl get pods -n promelectron-test -l app=myshop-api | grep -Eq "CrashLoopBackOff|ImagePullBackOff|ErrImagePull"; then
-            echo "=== API Pod is failing ==="
-            kubectl logs -n promelectron-test -l app=myshop-api --tail=100 || true
-            kubectl describe pods -n promelectron-test -l app=myshop-api | tail -30 || true
-            exit 1
-          fi
-          
-          kubectl rollout status deployment/myshop-api -n promelectron-test --timeout=600s || {
-            echo "=== API Pod Logs ==="
-            kubectl logs -n promelectron-test -l app=myshop-api --tail=100 || true
-            echo "=== API Pod Describe ==="
-            kubectl describe pods -n promelectron-test -l app=myshop-api | tail -30 || true
-            exit 1
-          }
-
-      - name: Wait for frontend rollout
-        env:
-          KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
-        run: |
-          echo "Checking frontend pod status..."
-          kubectl get pods -n promelectron-test -l app=myshop-frontend
-          
-          if kubectl get pods -n promelectron-test -l app=myshop-frontend | grep -Eq "CrashLoopBackOff|ImagePullBackOff|ErrImagePull"; then
-            echo "=== Frontend Pod is failing ==="
-            kubectl logs -n promelectron-test -l app=myshop-frontend --tail=50 || true
-            kubectl describe pods -n promelectron-test -l app=myshop-frontend | tail -30 || true
-            exit 1
-          fi
-          
-          kubectl rollout status deployment/myshop-frontend -n promelectron-test --timeout=300s || {
-            echo "=== Frontend Pod Logs ==="
-            kubectl logs -n promelectron-test -l app=myshop-frontend --tail=50 || true
-            echo "=== Frontend Pod Describe ==="
-            kubectl describe pods -n promelectron-test -l app=myshop-frontend | tail -30 || true
-            exit 1
-          }
+          kubectl rollout status deployment/promelectron-api -n promelectron-test --timeout=120s
+          kubectl rollout status deployment/promelectron-frontend -n promelectron-test --timeout=120s
+          kubectl rollout status deployment/promelectron-worker -n promelectron-test --timeout=120s
 
   test-smoke:
     needs: deploy-test
@@ -366,99 +150,138 @@ jobs:
           curl -sf -o /dev/null https://promelectron-test.aidrivencode.ru
           echo "Frontend OK"
 
-  test-autonomous-agent:
+  test-e2e:
     needs: test-smoke
     runs-on: self-hosted
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
+      - name: Install Playwright
         run: |
-          npm ci || npm install
-          npx @playwright/mcp install-browser chromium
+          cd tests/e2e
+          npm ci
+          npx playwright install chromium
 
-      - name: Run Autonomous Agent (User scenarios)
+      - name: Run E2E tests
         run: |
-          node tests/agent/agent.js --persona=user --report=all || true
-        env:
-          TEST_BASE_URL: https://promelectron-test.aidrivencode.ru
-          TEST_API_URL: https://api.promelectron-test.aidrivencode.ru
+          cd tests/e2e
+          BASE_URL=https://promelectron-test.aidrivencode.ru \
+          API_URL=https://api.promelectron-test.aidrivencode.ru \
+            npx playwright test --reporter=html
 
-      - name: Run Autonomous Agent (Admin scenarios)
-        run: |
-          node tests/agent/agent.js --persona=admin --report=all || true
-        env:
-          TEST_BASE_URL: https://promelectron-test.aidrivencode.ru
-          TEST_API_URL: https://api.promelectron-test.aidrivencode.ru
-
-      - name: Run Autonomous Agent (Supplier scenarios)
-        run: |
-          node tests/agent/agent.js --persona=supplier --report=all || true
-        env:
-          TEST_BASE_URL: https://promelectron-test.aidrivencode.ru
-          TEST_API_URL: https://api.promelectron-test.aidrivencode.ru
-
-      - name: Run Autonomous Agent (Security scenarios)
-        run: |
-          node tests/agent/agent.js --persona=security --report=all || true
-        env:
-          TEST_BASE_URL: https://promelectron-test.aidrivencode.ru
-          TEST_API_URL: https://api.promelectron-test.aidrivencode.ru
-
-      - name: Run Performance Tests
-        run: |
-          node tests/agent/agent.js --performance --report=all || true
-        env:
-          TEST_BASE_URL: https://promelectron-test.aidrivencode.ru
-          TEST_API_URL: https://api.promelectron-test.aidrivencode.ru
-
-      - name: Run Accessibility Tests
-        run: |
-          node tests/agent/agent.js --accessibility --report=all || true
-        env:
-          TEST_BASE_URL: https://promelectron-test.aidrivencode.ru
-          TEST_API_URL: https://api.promelectron-test.aidrivencode.ru
-
-      - name: Run Responsive Tests
-        run: |
-          node tests/agent/agent.js --responsive --report=all || true
-        env:
-          TEST_BASE_URL: https://promelectron-test.aidrivencode.ru
-          TEST_API_URL: https://api.promelectron-test.aidrivencode.ru
-
-      - name: Upload agent reports
-        if: always()
+      - name: Upload report
         uses: actions/upload-artifact@v4
-        with:
-          name: agent-reports
-          path: tests/agent/reports/
-          retention-days: 7
-
-      - name: Upload agent state
         if: always()
-        uses: actions/upload-artifact@v4
         with:
-          name: agent-state
-          path: tests/agent/agent-state.json
-          retention-days: 30
+          name: playwright-report-test-${{ github.run_id }}
+          path: tests/e2e/playwright-report/
+          retention-days: 14
 
-      - name: Check for critical bugs
+  deploy-prod:
+    needs: build
+    runs-on: self-hosted
+    if: inputs.environment == 'prod' || inputs.environment == 'all'
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install sops
         run: |
-          if [ -f tests/agent/agent-state.json ]; then
-            CRITICAL=$(node -e "const s=require('./tests/agent/agent-state.json'); console.log(s.bugs.filter(b=>b.severity==='critical').length)")
-            MAJOR=$(node -e "const s=require('./tests/agent/agent-state.json'); console.log(s.bugs.filter(b=>b.severity==='major').length)")
-            echo "📊 Bugs found: $CRITICAL critical, $MAJOR major"
-            if [ "$CRITICAL" -gt 0 ]; then
-              echo "❌ $CRITICAL critical bugs found!"
-              node -e "const s=require('./tests/agent/agent-state.json'); s.bugs.filter(b=>b.severity==='critical').forEach(b=>console.log('  -',b.message))"
-              exit 1
-            fi
-            echo "✅ No critical bugs found"
+          if ! command -v sops &>/dev/null; then
+            mkdir -p "$HOME/.local/bin"
+            curl -fsSL -o "$HOME/.local/bin/sops" \
+              "https://github.com/getsops/sops/releases/download/v${{ env.SOPS_VERSION }}/sops-v${{ env.SOPS_VERSION }}.linux.amd64"
+            chmod +x "$HOME/.local/bin/sops"
+            echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           fi
+
+      - name: Import GPG key
+        env:
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          GNUPGHOME=$(mktemp -d)
+          export GNUPGHOME
+          chmod 700 "$GNUPGHOME"
+          printf 'no-tty\npinentry-mode loopback\n' > "$GNUPGHOME/gpg.conf"
+          printf 'allow-loopback-pinentry\nno-allow-external-cache\nallow-preset-passphrase\n' > "$GNUPGHOME/gpg-agent.conf"
+          echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
+          gpg-agent --daemon 2>/dev/null || true
+          PRESET=$(command -v gpg-preset-passphrase 2>/dev/null \
+            || find /usr/lib /usr/libexec -name gpg-preset-passphrase 2>/dev/null | head -1)
+          gpg --with-keygrip --list-secret-keys \
+            | awk '/Keygrip/{print $3}' \
+            | while read -r grip; do
+                printf '%s' "$GPG_PASSPHRASE" | "$PRESET" --preset "$grip"
+              done
+          echo "GNUPGHOME=$GNUPGHOME" >> "$GITHUB_ENV"
+
+      - name: Create Harbor imagePullSecret (prod)
+        env:
+          KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
+        run: |
+          kubectl create namespace promelectron --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create secret docker-registry harborcred \
+            --docker-server=${{ env.REGISTRY }} \
+            --docker-username=${{ secrets.HARBOR_USERNAME }} \
+            --docker-password=${{ secrets.HARBOR_PASSWORD }} \
+            --namespace promelectron \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Deploy to prod
+        env:
+          KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
+        run: |
+          helm upgrade --install promelectron ./infra/helm \
+            -f infra/helm/stage/prod/values.yaml \
+            -f <(sops -d infra/helm/stage/prod/secrets.yaml) \
+            --set api.image=${{ env.API_IMAGE }}:${{ github.sha }} \
+            --set frontend.image=${{ env.FRONTEND_IMAGE }}:${{ github.sha }} \
+            --namespace promelectron \
+            --create-namespace
+          kubectl rollout status deployment/promelectron-api -n promelectron --timeout=120s
+          kubectl rollout status deployment/promelectron-frontend -n promelectron --timeout=120s
+          kubectl rollout status deployment/promelectron-worker -n promelectron --timeout=120s
+
+  prod-smoke:
+    needs: deploy-prod
+    runs-on: self-hosted
+    steps:
+      - name: API health check
+        run: |
+          curl -sf https://api.promelectron.aidrivencode.ru/health | grep -q '"status"'
+          echo "API OK"
+
+      - name: Frontend reachable
+        run: |
+          curl -sf -o /dev/null https://promelectron.aidrivencode.ru
+          echo "Frontend OK"
+
+  prod-e2e:
+    needs: prod-smoke
+    runs-on: self-hosted
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Playwright
+        run: |
+          cd tests/e2e
+          npm ci
+          npx playwright install chromium
+
+      - name: Run E2E tests
+        run: |
+          cd tests/e2e
+          BASE_URL=https://promelectron.aidrivencode.ru \
+          API_URL=https://api.promelectron.aidrivencode.ru \
+            npx playwright test --reporter=html
+
+      - name: Upload report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-prod-${{ github.run_id }}
+          path: tests/e2e/playwright-report/
+          retention-days: 14

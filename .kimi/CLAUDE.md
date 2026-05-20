@@ -26,24 +26,32 @@
 ## Структура
 
 ```
-/server/app/          — Бэкенд FastAPI
-  api/                — REST API эндпоинты
-  models/             — SQLAlchemy ORM модели
-  schemas/            — Pydantic схемы
-  services/           — Бизнес-логика
-  core/config.py      — Настройки (из env vars)
-  db/database.py      — Async engine, session, get_db
-  utils/auth.py       — JWT, хеширование, guard-зависимости
-/client/src/          — Фронтенд Vue 3
-  views/              — Страницы (Products, Login, Cart, Orders, Profile, Register, Admin, AuthCallback)
-  components/         — Переиспользуемые компоненты (Header, ProductCard, BottomNav, SearchBar, CategoryChips, PromoBanner)
-  composables/        — useAuth.js
-  services/api.js     — Axios клиент
-  router/index.js     — Vue Router
-/tests/               — Бэкенд тесты (pytest)
-/alembic/versions/    — Миграции БД
-/e2e/                 — E2E тесты (Playwright)
-/scripts/             — Dev-скрипты (run_dev.sh, stop_dev.sh)
+/backend/             — Бэкенд (Python package: src)
+  src/app/            — FastAPI приложение
+    api/              — REST API эндпоинты
+    models/           — SQLAlchemy ORM модели
+    schemas/          — Pydantic схемы
+    services/         — Бизнес-логика
+    core/config.py    — Настройки (из env vars)
+    db/database.py    — Async engine, session, get_db
+    utils/auth.py     — JWT, хеширование, guard-зависимости
+  tests/              — pytest тесты
+  alembic/versions/   — Миграции БД
+  Dockerfile          — Docker образ (контекст: backend/)
+/frontend/            — Фронтенд Vue 3
+  src/
+    views/            — Страницы
+    components/       — Компоненты
+    composables/      — useAuth.js и др.
+    services/api.js   — Axios клиент
+    router/index.js   — Vue Router
+  e2e/                — Playwright E2E тесты
+  tests/agent/        — AI agent тесты
+  Dockerfile          — Docker образ (контекст: frontend/)
+  playwright.config.js
+/infra/
+  docker-compose.yml  — Локальный dev (API + PostgreSQL + Redis + Frontend)
+  helm/               — Kubernetes Helm чарт
 ```
 
 ## API эндпоинты (префикс /api/v1)
@@ -72,28 +80,41 @@
 - **Cart → CartItem** — корзина пользователя
 - **Order → OrderItem** — заказы (статусы: pending, paid, shipped, delivered, cancelled)
 
-## Команды запуска
+## Команды (через Makefile + docker compose)
+
+Все команды запускаются через `make`. Не используй `docker run` напрямую или `venv activate`.
 
 ```bash
-# Dev-окружение (backend + frontend)
-make dev
-make stop
+# Dev-окружение
+make dev              # Весь стек: API + DB + Redis + Frontend
+make dev-backend      # Только бэкенд
+make dev-frontend     # Только фронтенд (Vue на :5173)
+make stop             # Остановить всё
+make logs             # Логи всех сервисов
+make logs-api         # Логи только API
 
 # Тесты
-make test           # Все тесты
-make test-backend   # pytest
-make test-frontend  # vitest
-make test-e2e       # playwright
+make test             # Все unit-тесты (pytest + vitest)
+make test-backend     # pytest (автоматически стартует postgres/redis)
+make test-frontend    # vitest
+make test-e2e         # Playwright E2E (стартует весь стек)
+make test-visual      # Playwright visual smoke
 
 # База данных
-make migrate        # Alembic upgrade head
-make seed           # Тестовые данные
-make db-up          # PostgreSQL в Docker
+make migrate          # alembic upgrade head
+make migrate-down     # alembic downgrade -1
+make migrate-generate MSG="add table"  # сгенерировать миграцию
+make seed             # тестовые данные
 
-# Отдельно
-source venv/bin/activate && uvicorn server.app.main:app --reload --port 8000
-cd client && npm run dev
+# Линт / Форматирование
+make lint             # ruff + eslint
+make format           # ruff format + prettier
+
+# Сборка образов
+make build            # Пересобрать всё
 ```
+
+**Порты:** API → `http://localhost:8000`, Frontend → `http://localhost:5173`
 
 ## Правила разработки
 

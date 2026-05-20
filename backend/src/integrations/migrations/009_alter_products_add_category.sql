@@ -1,0 +1,2 @@
+ALTER TABLE products ADD COLUMN IF NOT EXISTS description_category_id UInt64 DEFAULT 0;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS type_id UInt64 DEFAULT 0;
