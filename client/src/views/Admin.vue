@@ -137,7 +137,7 @@
       <div class="admin__section">
         <div class="admin__section-header">
           <h2 class="admin__section-title">Категории</h2>
-          <button class="admin__btn admin__btn--primary" @click="openCreateModal">+ Добавить</button>
+          <button class="admin__btn admin__btn--primary" @click="openCreateModal" data-testid="add-category-btn">+ Добавить</button>
         </div>
 
         <SkeletonAdminTable v-if="loading.categories" />

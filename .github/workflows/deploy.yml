@@ -72,6 +72,11 @@ jobs:
             .
           docker push ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
 
+      - name: Verify API image content
+        run: |
+          echo "=== Checking routes in built API image ==="
+          docker run --rm -v ${{ github.workspace }}/scripts/verify_api_image.py:/tmp/verify.py ${{ env.API_IMAGE }}:${{ github.sha }} python /tmp/verify.py
+
   deploy-test:
     needs: build
     runs-on: self-hosted
@@ -170,6 +175,10 @@ jobs:
             --set frontend.image=${{ env.FRONTEND_IMAGE }}:${{ github.sha }} \
             --namespace promelectron-test \
             --create-namespace
+          echo ""
+          echo "=== Rolling out deployments ==="
+          kubectl rollout restart deployment/myshop-api -n promelectron-test || true
+          kubectl rollout restart deployment/myshop-frontend -n promelectron-test || true
           echo ""
           echo "=== Pods after deploy ==="
           kubectl get pods -n promelectron-test
