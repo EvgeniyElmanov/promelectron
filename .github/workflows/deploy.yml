@@ -371,7 +371,7 @@ jobs:
       - name: Install dependencies
         run: |
           npm ci || npm install
-          npx playwright install chromium
+          npx @playwright/mcp install-browser chromium
 
       - name: Run Autonomous Agent (User scenarios)
         run: |
