@@ -358,8 +358,6 @@ jobs:
   test-autonomous-agent:
     needs: test-smoke
     runs-on: self-hosted
-    env:
-      AGENT_DEBUG_MCP: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4
