@@ -75,3 +75,9 @@ e2e/screenshots/
 *.sqlite3
 uploads/
 tests/agent/reports/
+
+# === Autonomous Agent ===
+tests/agent/reports/
+tests/agent/.agent-state.json
+tests/agent/*.png
+.playwright-mcp/

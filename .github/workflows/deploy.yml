@@ -121,6 +121,19 @@ jobs:
           echo "Removing old conflicting ingresses..."
           kubectl delete ingress promelectron-frontend promelectron-api -n promelectron-test --ignore-not-found=true
 
+      - name: Pre-deploy cleanup (postgres)
+        env:
+          KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
+        run: |
+          echo "=== Cleaning up old postgres pods to avoid PVC conflicts ==="
+          # Postgres uses a Recreate strategy, but old pods may be stuck.
+          # Force-delete any old postgres pods to free the RWO PVC.
+          kubectl delete pods -n promelectron-test -l app=myshop-postgres --force --grace-period=0 --ignore-not-found=true
+          kubectl delete rs -n promelectron-test -l app=myshop-postgres --ignore-not-found=true
+          sleep 5
+          echo "=== PVC status ==="
+          kubectl get pvc -n promelectron-test -l app=myshop-postgres
+
       - name: Deploy to test
         env:
           KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
@@ -134,8 +147,8 @@ jobs:
           echo "=== Pods after deploy ==="
           kubectl get pods -n promelectron-test
           echo ""
-          echo "=== API Pod describe ==="
-          kubectl describe pods -n promelectron-test -l app=promelectron-test-api | head -40
+          echo "=== Postgres Pod describe ==="
+          kubectl describe pods -n promelectron-test -l app=myshop-postgres | head -40
 
       - name: Debug all pods before rollout
         env:
@@ -163,13 +176,41 @@ jobs:
         env:
           KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
         run: |
-          echo "Waiting for postgres to be ready..."
-          kubectl wait --for=condition=ready pod -l app=myshop-postgres -n promelectron-test --timeout=300s || true
+          echo "=== Waiting for postgres to be ready ==="
+          echo "Postgres pods:"
+          kubectl get pods -n promelectron-test -l app=myshop-postgres
           
-          echo "Running alembic migrations..."
+          echo ""
+          echo "Waiting for postgres readiness probe..."
+          for i in $(seq 1 60); do
+            READY=$(kubectl get pod -n promelectron-test -l app=myshop-postgres -o jsonpath='{.items[0].status.containerStatuses[0].ready}' 2>/dev/null || echo "false")
+            if [ "$READY" = "true" ]; then
+              echo "✅ Postgres is ready"
+              break
+            fi
+            echo "  Attempt $i/60: Postgres not ready yet..."
+            kubectl get pod -n promelectron-test -l app=myshop-postgres --no-headers 2>/dev/null || true
+            sleep 5
+          done
+          
+          if [ "$READY" != "true" ]; then
+            echo "❌ Postgres did not become ready"
+            echo "=== Postgres Pod Logs ==="
+            kubectl logs -n promelectron-test -l app=myshop-postgres --tail=50 || true
+            echo "=== Postgres Pod Describe ==="
+            kubectl describe pod -n promelectron-test -l app=myshop-postgres || true
+            echo "=== Postgres Events ==="
+            kubectl get events -n promelectron-test --field-selector involvedObject.name=$(kubectl get pod -n promelectron-test -l app=myshop-postgres -o jsonpath='{.items[0].metadata.name}') || true
+            exit 1
+          fi
+          
+          echo ""
+          echo "=== Running alembic migrations ==="
           kubectl delete job myshop-migrations -n promelectron-test --ignore-not-found=true
           sleep 5
-          cat <<EOF | kubectl apply -f -
+          
+          # Write job manifest to temp file (heredocs are fragile in YAML)
+          tee /tmp/migrations-job.yaml <<'JOBYAML'
           apiVersion: batch/v1
           kind: Job
           metadata:
@@ -182,24 +223,52 @@ jobs:
                 restartPolicy: OnFailure
                 imagePullSecrets:
                   - name: harborcred
+                initContainers:
+                  - name: wait-for-postgres
+                    image: busybox:1.36
+                    command:
+                      - sh
+                      - -c
+                      - |
+                        for i in $(seq 1 60); do
+                          if nc -z myshop-postgres 5432; then
+                            echo "Postgres is reachable"
+                            exit 0
+                          fi
+                          echo "Waiting for postgres ($i/60)..."
+                          sleep 2
+                        done
+                        echo "Postgres timeout"
+                        exit 1
                 containers:
                   - name: alembic
-                    image: ${{ env.API_IMAGE }}:${{ github.sha }}
+                    image: JOB_IMAGE_PLACEHOLDER
                     command: ['alembic', 'upgrade', 'head']
                     envFrom:
                       - configMapRef:
                           name: myshop-config
                       - secretRef:
                           name: myshop-secrets
-          EOF
+          JOBYAML
           
+          # Substitute image name and apply
+          sed -i "s|JOB_IMAGE_PLACEHOLDER|${API_IMAGE}:${GITHUB_SHA}|g" /tmp/migrations-job.yaml
+          kubectl apply -f /tmp/migrations-job.yaml
+          
+          echo ""
+          echo "Waiting for migrations to complete..."
           kubectl wait --for=condition=complete job/myshop-migrations -n promelectron-test --timeout=300s || {
+            echo "❌ Migrations failed"
             echo "=== Migration Job Logs ==="
-            kubectl logs job/myshop-migrations -n promelectron-test --tail=50 || true
+            kubectl logs job/myshop-migrations -n promelectron-test --tail=100 || true
             echo "=== Migration Job Describe ==="
             kubectl describe job/myshop-migrations -n promelectron-test || true
+            echo "=== Postgres status at failure ==="
+            kubectl get pod -n promelectron-test -l app=myshop-postgres
+            kubectl logs -n promelectron-test -l app=myshop-postgres --tail=50 || true
             exit 1
           }
+          echo "✅ Migrations completed successfully"
 
       - name: Wait for API rollout
         env:
@@ -258,3 +327,100 @@ jobs:
         run: |
           curl -sf -o /dev/null https://promelectron-test.aidrivencode.ru
           echo "Frontend OK"
+
+  test-autonomous-agent:
+    needs: test-smoke
+    runs-on: self-hosted
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm ci || npm install
+          npx playwright install chromium
+
+      - name: Run Autonomous Agent (User scenarios)
+        run: |
+          node tests/agent/agent.js --persona=user --report=all || true
+        env:
+          TEST_BASE_URL: https://promelectron-test.aidrivencode.ru
+          TEST_API_URL: https://api.promelectron-test.aidrivencode.ru
+
+      - name: Run Autonomous Agent (Admin scenarios)
+        run: |
+          node tests/agent/agent.js --persona=admin --report=all || true
+        env:
+          TEST_BASE_URL: https://promelectron-test.aidrivencode.ru
+          TEST_API_URL: https://api.promelectron-test.aidrivencode.ru
+
+      - name: Run Autonomous Agent (Supplier scenarios)
+        run: |
+          node tests/agent/agent.js --persona=supplier --report=all || true
+        env:
+          TEST_BASE_URL: https://promelectron-test.aidrivencode.ru
+          TEST_API_URL: https://api.promelectron-test.aidrivencode.ru
+
+      - name: Run Autonomous Agent (Security scenarios)
+        run: |
+          node tests/agent/agent.js --persona=security --report=all || true
+        env:
+          TEST_BASE_URL: https://promelectron-test.aidrivencode.ru
+          TEST_API_URL: https://api.promelectron-test.aidrivencode.ru
+
+      - name: Run Performance Tests
+        run: |
+          node tests/agent/agent.js --performance --report=all || true
+        env:
+          TEST_BASE_URL: https://promelectron-test.aidrivencode.ru
+          TEST_API_URL: https://api.promelectron-test.aidrivencode.ru
+
+      - name: Run Accessibility Tests
+        run: |
+          node tests/agent/agent.js --accessibility --report=all || true
+        env:
+          TEST_BASE_URL: https://promelectron-test.aidrivencode.ru
+          TEST_API_URL: https://api.promelectron-test.aidrivencode.ru
+
+      - name: Run Responsive Tests
+        run: |
+          node tests/agent/agent.js --responsive --report=all || true
+        env:
+          TEST_BASE_URL: https://promelectron-test.aidrivencode.ru
+          TEST_API_URL: https://api.promelectron-test.aidrivencode.ru
+
+      - name: Upload agent reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-reports
+          path: tests/agent/reports/
+          retention-days: 7
+
+      - name: Upload agent state
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-state
+          path: tests/agent/.agent-state.json
+          retention-days: 30
+
+      - name: Check for critical bugs
+        run: |
+          if [ -f tests/agent/.agent-state.json ]; then
+            CRITICAL=$(node -e "const s=require('./tests/agent/.agent-state.json'); console.log(s.bugs.filter(b=>b.severity==='critical').length)")
+            MAJOR=$(node -e "const s=require('./tests/agent/.agent-state.json'); console.log(s.bugs.filter(b=>b.severity==='major').length)")
+            echo "📊 Bugs found: $CRITICAL critical, $MAJOR major"
+            if [ "$CRITICAL" -gt 0 ]; then
+              echo "❌ $CRITICAL critical bugs found!"
+              node -e "const s=require('./tests/agent/.agent-state.json'); s.bugs.filter(b=>b.severity==='critical').forEach(b=>console.log('  -',b.message))"
+              exit 1
+            fi
+            echo "✅ No critical bugs found"
+          fi

@@ -1,214 +1,269 @@
-# 🤖 Autonomous Tester Agent
+# 🤖 Autonomous Tester Agent v2
 
 ## Что умеет
 
-Агент выполняет E2E тестирование сайта **автономно** — от лица пользователя, админа или поставщика:
-- Сам регистрируется со случайными данными
-- Добавляет/редактирует товары
-- Проходит весь флоу: каталог → карточка → корзина → заказ → оплата
-- Проверяет UI на баги (перекрытия, ошибки консоли, layout shift)
-- Проверяет API на 500/404/401
-- Сохраняет отчёт с скриншотами
+Агент выполняет **полное автономное тестирование** e-commerce приложения:
+
+### 🔬 Режимы тестирования
+- **Scenarios** — 20+ сценариев для user/admin/supplier/security/performance/accessibility/responsive/fuzz/cross-role
+- **Discovery** — автономное исследование сайта
+- **Performance** — Core Web Vitals (LCP, CLS, FCP, TTFB)
+- **Accessibility** — a11y проверки (alt, labels, headings, landmarks, lang)
+- **Responsive** — тестирование mobile/tablet/desktop viewports
+- **Security** — unauthorized access, form validation, XSS/SQL injection, API authorization
+- **Fuzz** — случайные данные, edge cases
+- **Cross-role** — сквозные сценарии через несколько ролей
+
+### 🧠 Интеллект
+- Реальный браузер через Playwright MCP (23 инструмента)
+- Text-based селекторы (`text=Войти`) + fallback на data-testid/CSS
+- Retry logic (3 попытки с разными селекторами)
+- Vision Analyzer — определение типа страницы по snapshot
+- Персистентная память между запусками
+- API + UI dual testing
+
+### 📊 Отчёты
+- JSON, HTML, Markdown
+- Скриншоты каждого шага
+- Performance метрики
+- Accessibility аудит
+- Историческая статистика
 
 ## Архитектура
 
 ```
 ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│   Persona    │────▶│  Scenario    │────▶│  Playwright  │
-│  (роль +     │     │  (что делать)│     │  MCP (браузер)│
-│  тест-данные)│     │              │     │              │
+│   Persona    │────▶│  Scenario    │────▶│  MCP Bridge  │
+│  (роль +     │     │  (что делать)│     │  (Playwright │
+│  тест-данные)│     │              │     │   via stdio) │
 └──────────────┘     └──────────────┘     └──────────────┘
         │                                          │
-        └──────────────────────────────────────────┘
-                           │
-                    ┌──────────────┐
-                    │  Bug Report  │
-                    │  (скриншот + │
-                    │   шаги + API)│
-                    └──────────────┘
+        │         ┌──────────────┐                 │
+        └────────▶│   Vision     │◀────────────────┘
+                  │  Analyzer    │
+                  └──────────────┘
+                          │
+                   ┌──────────────┐
+                   │  API Client  │
+                   │  (HTTP fetch)│
+                   └──────────────┘
+                          │
+                   ┌──────────────┐
+                   │  State Machine│
+                   │  (memory.json)│
+                   └──────────────┘
+                          │
+                   ┌──────────────┐
+                   │  Bug Report  │
+                   │  (JSON/HTML/ │
+                   │   Markdown)  │
+                   └──────────────┘
 ```
 
-## 3 слоя автоматизации
+## Компоненты
 
-### 1. Persona System — роли
+### MCP Bridge (`tests/agent/mcp-bridge.js`)
+- `@modelcontextprotocol/sdk` + `StdioClientTransport`
+- Запускает `npx @playwright/mcp@latest --headless`
+- 23 инструмента: navigate, click, fill, screenshot, evaluate, console, tabs, etc.
+- Поддерживает text-based (`text=Войти`), ref-based (`e28`), CSS селекторы
+- Автоматический парсинг результатов evaluate (JSON, boolean, number, string)
 
-Каждая роль = объект с:
-- `email` / `password` — креды (генерируются на лету)
-- `role` — `user` | `admin` | `supplier`
-- `actions` — что может делать
-- `assertions` — что должно видеть
+### Vision Analyzer (`tests/agent/vision.js`)
+- Анализ UI через snapshot + accessibility tree
+- Определение типа страницы (login, product_list, cart, error, etc.)
+- Поиск элементов по тексту для fallback селекторов
+- Поддержка OpenAI Vision API (опционально, через `OPENAI_API_KEY`)
+
+### State Machine (`tests/agent/state.js`)
+- Аккаунты всех ролей с токенами
+- Созданные сущности (товары, категории, заказы)
+- Найденные баги с дедупликацией
+- История сессий
+- Learnings — что агент узнал о сайте
+
+### API Client (`tests/agent/api-client.js`)
+- Полное покрытие backend API: auth, users, products, categories, cart, orders, favorites, reviews, payments, notifications, delivery methods, admin
+- Валидация ответов (status, fields, array length, duration)
+- Логирование всех запросов
+
+### Autonomous Agent (`tests/agent/autonomous-agent.js`)
+- Execution engine с retry и fallback
+- Assertion engine: url, element, text, toast, evaluate
+- API validation после каждого сценария
+- Autonomous discovery mode
+- Performance testing (Core Web Vitals)
+- Accessibility testing
+- Responsive testing
+- Cross-role scenario support
+
+### Runner (`tests/agent/runner.js`)
+- CLI с поддержкой всех режимов
+- Отчёты в JSON/HTML/Markdown
+- Историческая статистика
+
+## Роли (Personas)
 
 ```js
-// tests/agent/personas.js
-export const personas = {
-  user: {
-    name: 'Обычный покупатель',
-    can: ['register', 'browse', 'add_to_cart', 'checkout', 'view_orders', 'add_review', 'add_favorite'],
-    shouldSee: ['search-bar', 'product-card', 'cart-link', 'category-chips'],
-    shouldNotSee: ['admin-panel', 'supplier-dashboard'],
-  },
-  admin: {
-    name: 'Администратор',
-    can: ['login', 'view_admin', 'manage_categories', 'manage_users', 'view_orders', 'block_user'],
-    shouldSee: ['admin-dashboard', 'users-table', 'categories-table', 'orders-table'],
-    shouldNotSee: ['supplier-products'],
-  },
-  supplier: {
-    name: 'Поставщик',
-    can: ['register_as_supplier', 'add_product', 'edit_product', 'delete_product', 'view_my_products'],
-    shouldSee: ['supplier-dashboard', 'my-products-list', 'product-form'],
-    shouldNotSee: ['admin-panel'],
-  },
-};
+user       — Обычный покупатель (регистрация, покупка, поиск, корзина, заказы)
+admin      — Администратор (категории, пользователи, заказы, статистика, доставка)
+supplier   — Поставщик (товары, заказы, профиль)
+security   — Security Auditor (доступы, валидация, инъекции, API auth)
+performance — Performance Engineer (LCP, CLS, FCP, TTFB, API response time)
+crossrole  — Сквозные сценарии (admin → supplier → user)
+fuzz       — Случайные данные, edge cases
+accessibility — A11y проверки
+responsive  — Mobile/tablet/desktop breakpoints
 ```
 
-### 2. Scenario Library — сценарии
+## Сценарии
 
-Каждый сценарий = шаги с `action` + `assertion`:
+### User (8 сценариев)
+- `fullPurchaseFlow` — Регистрация → каталог → товар → корзина → checkout
+- `searchAndFilter` — Поиск, фильтры, сортировка
+- `favoritesFlow` — Избранное
+- `userProfileFlow` — Профиль пользователя
+- `userOrdersFlow` — Заказы
+- `userReviewFlow` — Отзывы
+- `cartManagementFlow` — Корзина (изменение количества, удаление)
 
-```js
-// tests/agent/scenarios.js
-export const scenarios = {
-  fullPurchaseFlow: [
-    { action: 'goto', target: '/' },
-    { action: 'assert', selector: '[data-testid="product-card"]', expect: 'visible' },
-    { action: 'click', selector: '[data-testid="product-card"]:first-child' },
-    { action: 'assert', url: '/product/*' },
-    { action: 'click', selector: '[data-testid="add-to-cart-button"]' },
-    { action: 'assert', toast: 'Добавлено в корзину' },
-    { action: 'click', selector: '[data-testid="cart-link"]' },
-    { action: 'assert', url: '/cart' },
-    { action: 'click', selector: '[data-testid="checkout-button"]' },
-    // ...
-  ],
-  
-  adminCategoryManagement: [
-    { action: 'login', persona: 'admin' },
-    { action: 'goto', target: '/admin' },
-    { action: 'assert', selector: '[data-testid="admin-dashboard"]', expect: 'visible' },
-    { action: 'click', selector: '[data-testid="categories-tab"]' },
-    { action: 'click', selector: '[data-testid="add-category-btn"]' },
-    { action: 'fill', selector: '[data-testid="category-name-input"]', value: 'Test Category {{random}}' },
-    { action: 'click', selector: '[data-testid="save-category-btn"]' },
-    { action: 'assert', selector: 'text=Test Category', expect: 'visible' },
-  ],
-  
-  supplierAddProduct: [
-    { action: 'register', persona: 'supplier' },
-    { action: 'goto', target: '/my-products' },
-    { action: 'click', selector: '[data-testid="add-product-btn"]' },
-    { action: 'fill', selector: '[data-testid="product-name"]', value: 'Test Product {{random}}' },
-    { action: 'fill', selector: '[data-testid="product-price"]', value: '9999' },
-    { action: 'fill', selector: '[data-testid="product-stock"]', value: '10' },
-    { action: 'click', selector: '[data-testid="save-product-btn"]' },
-    { action: 'assert', selector: 'text=Test Product', expect: 'visible' },
-  ],
-};
+### Admin (5 сценариев)
+- `adminCategoryManagement` — Управление категориями
+- `adminUserManagement` — Управление пользователями
+- `adminOrderManagement` — Управление заказами
+- `adminDashboardStats` — Статистика дашборда
+- `adminDeliveryMethods` — Способы доставки
+
+### Supplier (4 сценария)
+- `supplierAddProduct` — Добавление товара
+- `supplierEditProduct` — Редактирование товара
+- `supplierDeleteProduct` — Удаление товара
+- `supplierOrdersFlow` — Заказы поставщика
+
+### Security (4 сценария)
+- `unauthorizedAccess` — Проверка доступов
+- `formValidation` — Валидация форм
+- `injectionChecks` — XSS/SQL injection
+- `apiAuthorization` — API авторизация
+
+### Performance (3 сценария)
+- `layoutStability` — Layout shift
+- `coreWebVitals` — LCP, CLS, FCP, TTFB
+- `apiPerformance` — API response time
+
+### Cross-role (1 сценарий)
+- `endToEndPurchase` — Admin → Supplier → User
+
+### Fuzz (2 сценария)
+- `fuzzRegistration` — Регистрация с edge case данными
+- `fuzzProductCreation` — Товар с extreme ценами
+
+### Accessibility (1 сценарий)
+- `accessibilityCheck` — A11y аудит
+
+### Responsive (2 сценария)
+- `responsiveMobile` — Мобильный viewport
+- `responsiveTablet` — Планшетный viewport
+
+## Как запускать
+
+### Локально
+
+```bash
+# Сценарии
+npm run agent -- --persona=user --scenario=fullPurchaseFlow
+npm run agent:user
+npm run agent:admin
+npm run agent:supplier
+npm run agent:security
+npm run agent:all
+
+# Специальные режимы
+npm run agent:performance
+npm run agent:accessibility
+npm run agent:responsive
+npm run agent:crossrole
+npm run agent:fuzz
+
+# Discovery
+npm run agent:discover
+
+# Отладка
+npm run agent -- --persona=user --headed --debug
+
+# Кастомные URL
+npm run agent -- --base-url=http://localhost:5173 --api-url=http://localhost:8000
 ```
 
-### 3. Playwright MCP — движок
+### Окружение
 
-Используем уже настроенный MCP сервер `@playwright/mcp` из `.mcp.json`.
-
-Ключевые команды MCP:
-```
-playwright_navigate(url)           — открыть страницу
-playwright_click(selector)          — клик
-playwright_fill(selector, value)    — заполнить поле
-playwright_select_option(selector, value) — выбрать из селекта
-playwright_screenshot()             — скриншот
-playwright_evaluate(expression)     — выполнить JS в браузере
-browser_console_logs                — получить логи консоли
+```bash
+export TEST_BASE_URL=https://promelectron-test.aidrivencode.ru
+export TEST_API_URL=https://api.promelectron-test.aidrivencode.ru
+export OPENAI_API_KEY=sk-...          # для vision model (опционально)
+export VISION_PROVIDER=openai          # или heuristic (default)
+export AGENT_STATE_FILE=./tests/agent/.agent-state.json
 ```
 
-## Пример автономного сценария
+### CI/CD (GitHub Actions)
 
-```
-Ты — автономный тестер-агент. Запусти браузер, зарегистрируй нового 
-пользователя (email: test_{{timestamp}}@example.com, пароль: Test123!), 
-добавь товар в корзину, оформи заказ. Проверь что нет ошибок в консоли 
-и 500 на API. Сохрани скриншот каждого шага.
-```
+Уже интегрировано в `.github/workflows/deploy.yml`:
 
-Агент сам:
-1. Открывает `https://promelectron-test.aidrivencode.ru`
-2. Ищет форму регистрации (через data-testid или текст кнопки)
-3. Заполняет поля
-4. Жмёт "Зарегистрироваться"
-5. Проверяет что URL изменился на `/`
-6. Идёт в каталог, кликает первый товар
-7. Добавляет в корзину
-8. Проверяет toast-уведомление
-9. Идёт в корзину → оформление
-10. Сохраняет отчёт
+```yaml
+- name: Run Autonomous Agent (User scenarios)
+  run: npm run agent:user
+
+- name: Run Performance Tests
+  run: npm run agent:performance
+
+- name: Run Accessibility Tests
+  run: npm run agent:accessibility
+
+- name: Run Security Tests
+  run: npm run agent:security
+
+- name: Upload agent reports
+  uses: actions/upload-artifact@v4
+  with:
+    name: agent-reports
+    path: tests/agent/reports/
+```
 
 ## Файлы проекта
 
-| Файл | Назначение |
-|---|---|
-| `tests/agent/personas.js` | Роли и разрешения |
-| `tests/agent/scenarios.js` | Библиотека сценариев |
-| `tests/agent/agent.js` | Автономный loop (MCP → действие → проверка → отчёт) |
-| `tests/agent/reports/` | Скриншоты + JSON отчёты |
-| `e2e/*.spec.js` | Существующие Playwright тесты (используют как базу) |
+| Файл | Строки | Назначение |
+|---|---|---|
+| `tests/agent/agent.js` | 77 | Entry point (CLI) |
+| `tests/agent/runner.js` | 204 | Test runner + отчёты |
+| `tests/agent/autonomous-agent.js` | 506 | Execution engine |
+| `tests/agent/mcp-bridge.js` | 272 | MCP SDK + Playwright bridge |
+| `tests/agent/vision.js` | 253 | UI анализ (snapshot + vision) |
+| `tests/agent/state.js` | 197 | Память агента |
+| `tests/agent/api-client.js` | 214 | HTTP API клиент |
+| `tests/agent/personas.js` | 141 | Роли и разрешения |
+| `tests/agent/scenarios.js` | 158 | Библиотека сценариев |
 
-## Как запустить
+## Баг-репорт
 
-### Через MCP (ручной режим)
-```bash
-# Уже настроено в .mcp.json
-npx @playwright/mcp@latest --headless
-```
-
-### Через автономного агента
-```bash
-node tests/agent/agent.js --persona=user --scenario=fullPurchaseFlow
-node tests/agent/agent.js --persona=admin --scenario=adminCategoryManagement
-node tests/agent/agent.js --persona=supplier --scenario=supplierAddProduct
-```
-
-### Через CI (GitHub Actions)
-```yaml
-- name: Autonomous Agent Testing
-  run: |
-    npx playwright install chromium
-    node tests/agent/agent.js --persona=all --report=json
-```
-
-## Генерация баг-репорта
-
-Агент сохраняет:
+Агент автоматически сохраняет:
 ```json
 {
-  "id": "bug-2026-05-20-001",
-  "severity": "critical",
-  "title": "Регистрация возвращает 500",
+  "id": "bug-1779250999160-7xhl",
+  "severity": "critical|major|minor",
+  "message": "URL mismatch: ...",
   "persona": "user",
-  "steps": [
-    "Открыть /register",
-    "Заполнить email: test_123@test.com",
-    "Заполнить пароль: Test123!",
-    "Нажать 'Зарегистрироваться'"
-  ],
-  "expected": "Редирект на /, токен в localStorage",
-  "actual": "Toast: 'Ошибка регистрации. Попробуйте позже.'",
-  "api_response": { "status": 500, "body": "Internal Server Error" },
-  "screenshots": ["step-1.png", "step-4-error.png"],
-  "console_errors": ["GET /api/v1/register 500"],
-  "timestamp": "2026-05-20T02:54:20Z"
+  "scenario": "fullPurchaseFlow",
+  "step": 7,
+  "url": "https://...",
+  "timestamp": "2026-05-20T04:23:19.160Z"
 }
 ```
 
 ## Прокачка агента
 
-Чтобы агент стал умнее, добавь:
-
-1. **Memory** — `memory` MCP сервер уже подключён. Агент запоминает созданные аккаунты и товары между сессиями.
-
-2. **Sequential Thinking** — `sequential-thinking` MCP помогает агенту планировать сложные сценарии (например, "сначала создать категорию как админ, потом добавить товар как поставщик").
-
-3. **Vision** — скриншоты анализируются через vision-capable модель для обнаружения UI багов.
-
-4. **API Testing** — параллельно с UI проверять API endpoints (`curl` / `fetch`).
-
-5. **State Machine** — переходы между состояниями: `anonymous` → `registered` → `with_cart` → `ordered`.
+1. **Vision Model** — подключить `OPENAI_API_KEY` для анализа скриншотов через GPT-4o
+2. **Sequential Thinking** — MCP сервер уже подключён в `.mcp.json`
+3. **Memory** — `memory` MCP сервер уже подключён
+4. **Filesystem** — `filesystem` MCP сервер уже подключён
+5. **New Scenarios** — добавлять новые сценарии в `scenarios.js`
+6. **Custom Selectors** — добавлять fallback селекторы в `FALLBACK_SELECTORS`
