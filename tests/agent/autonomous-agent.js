@@ -230,11 +230,24 @@ export class AutonomousAgent {
         const r = await this.mcp.evaluate(code);
         if (step.assert) {
           const val = r.result;
-          if (step.assert.min !== undefined && val < step.assert.min) {
-            return { ok: false, error: `Evaluate result ${val} < min ${step.assert.min}` };
-          }
-          if (step.assert.max !== undefined && val > step.assert.max) {
-            return { ok: false, error: `Evaluate result ${val} > max ${step.assert.max}` };
+          // Object assert: { key: { min, max }, ... }
+          if (val && typeof val === 'object' && typeof step.assert === 'object' && !Array.isArray(step.assert)) {
+            for (const [key, constraints] of Object.entries(step.assert)) {
+              const fieldVal = val[key];
+              if (constraints && constraints.min !== undefined && fieldVal < constraints.min) {
+                return { ok: false, error: `Evaluate ${key}=${fieldVal} < min ${constraints.min}` };
+              }
+              if (constraints && constraints.max !== undefined && fieldVal > constraints.max) {
+                return { ok: false, error: `Evaluate ${key}=${fieldVal} > max ${constraints.max}` };
+              }
+            }
+          } else {
+            if (step.assert.min !== undefined && val < step.assert.min) {
+              return { ok: false, error: `Evaluate result ${val} < min ${step.assert.min}` };
+            }
+            if (step.assert.max !== undefined && val > step.assert.max) {
+              return { ok: false, error: `Evaluate result ${val} > max ${step.assert.max}` };
+            }
           }
         }
         return { ok: true, result: r.result };

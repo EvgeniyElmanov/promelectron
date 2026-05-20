@@ -95,11 +95,11 @@ export class ApiClient {
   }
 
   async socialLogin(provider) {
-    return this.request('GET', `/${provider}/login`);
+    return this.request('GET', `/auth/${provider}/login`);
   }
 
   async socialCallback(provider, code) {
-    return this.request('GET', `/${provider}/callback?code=${code}`);
+    return this.request('GET', `/auth/${provider}/callback?code=${code}`);
   }
 
   // ═══════════════════════════════════════
@@ -107,23 +107,24 @@ export class ApiClient {
   // ═══════════════════════════════════════
 
   async getMe(role = 'user') {
-    return this.request('GET', '/users/me', { as: role });
+    // /me works for all roles (user, admin, supplier)
+    return this.request('GET', '/me', { as: role });
   }
 
   async updateMe(updates, role = 'user') {
-    return this.request('PATCH', '/users/me', { body: updates, as: role });
+    return this.request('PATCH', '/me', { body: updates, as: role });
   }
 
   async updatePassword(passwordData, role = 'user') {
-    return this.request('PATCH', '/users/me/password', { body: passwordData, as: role });
+    return this.request('PATCH', '/me/password', { body: passwordData, as: role });
   }
 
   async uploadAvatar(fileData, role = 'user') {
-    return this.request('POST', '/users/me/avatar', { body: fileData, as: role, headers: { 'Content-Type': 'multipart/form-data' } });
+    return this.request('POST', '/me/avatar', { body: fileData, as: role, headers: { 'Content-Type': 'multipart/form-data' } });
   }
 
   async getProfile(role = 'user') {
-    return this.request('GET', '/users/profile', { as: role });
+    return this.request('GET', '/profile', { as: role });
   }
 
   // ═══════════════════════════════════════
@@ -196,7 +197,7 @@ export class ApiClient {
   }
 
   async addToCart(productId, quantity = 1, role = 'user') {
-    return this.request('POST', '/cart/items', { body: { product_id: productId, quantity }, as: role });
+    return this.request('POST', '/cart/add', { body: { product_id: productId, quantity }, as: role });
   }
 
   async updateCartItem(itemId, quantity, role = 'user') {
@@ -340,7 +341,7 @@ export class ApiClient {
   // ═══════════════════════════════════════
 
   async getAdminStats(role = 'admin') {
-    return this.request('GET', '/admin/stats', { as: role });
+    return this.request('GET', '/admin/dashboard', { as: role });
   }
 
   async getAdminDashboard(role = 'admin') {
@@ -376,11 +377,12 @@ export class ApiClient {
   // ═══════════════════════════════════════
 
   async getSupplierProducts(role = 'supplier') {
-    return this.request('GET', '/products/supplier', { as: role });
+    return this.request('GET', '/products/my', { as: role });
   }
 
   async getSupplierOrders(role = 'supplier') {
-    return this.request('GET', '/orders/supplier', { as: role });
+    // No dedicated supplier orders endpoint; reuse general orders endpoint
+    return this.request('GET', '/orders/', { as: role });
   }
 
   // ═══════════════════════════════════════

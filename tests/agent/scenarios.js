@@ -27,11 +27,11 @@ export const scenarios = {
   /** Полный флоу: регистрация → покупка */
   fullPurchaseFlow: [
     { step: 1,  action: 'navigate',  target: 'https://promelectron-test.aidrivencode.ru/register' },
-    { step: 2,  action: 'fill',      selector: 'text=Имя',        value: '{{name}}' },
-    { step: 3,  action: 'fill',      selector: 'text=Email',       value: '{{email}}' },
-    { step: 4,  action: 'fill',      selector: 'text=Пароль',    value: '{{password}}' },
-    { step: 5,  action: 'fill',      selector: 'text=Подтвердите пароль', value: '{{password}}' },
-    { step: 6,  action: 'click',     selector: 'text=Зарегистрироваться' },
+    { step: 2,  action: 'fill',      selector: '[data-testid="register-name"]',        value: '{{name}}' },
+    { step: 3,  action: 'fill',      selector: '[data-testid="register-email"]',       value: '{{email}}' },
+    { step: 4,  action: 'fill',      selector: '[data-testid="register-password"]',    value: '{{password}}' },
+    { step: 5,  action: 'fill',      selector: '[data-testid="register-password-confirm"]', value: '{{password}}' },
+    { step: 6,  action: 'click',     selector: '[data-testid="register-submit"]' },
     { step: 7,  action: 'assert',    type: 'url',   expected: 'https://promelectron-test.aidrivencode.ru/' },
     { step: 8,  action: 'assert',    type: 'element', selector: 'text=Популярные товары', expected: 'visible' },
     { step: 9,  action: 'click',     selector: 'text=Подробнее >> nth=0' },
@@ -70,9 +70,9 @@ export const scenarios = {
   /** Профиль пользователя */
   userProfileFlow: [
     { step: 1,  action: 'navigate',  target: 'https://promelectron-test.aidrivencode.ru/login' },
-    { step: 2,  action: 'fill',      selector: 'text=Email',    value: '{{email}}' },
-    { step: 3,  action: 'fill',      selector: 'text=Пароль', value: '{{password}}' },
-    { step: 4,  action: 'click',     selector: 'text=Войти' },
+    { step: 2,  action: 'fill',      selector: '[data-testid="login-email"]',    value: '{{email}}' },
+    { step: 3,  action: 'fill',      selector: '[data-testid="login-password"]', value: '{{password}}' },
+    { step: 4,  action: 'click',     selector: '[data-testid="login-submit"]' },
     { step: 5,  action: 'navigate',  target: 'https://promelectron-test.aidrivencode.ru/profile' },
     { step: 6,  action: 'assert',    type: 'element', selector: 'text=Профиль', expected: 'visible' },
     { step: 7,  action: 'assert',    type: 'element', selector: 'text=Email', expected: 'visible' },
@@ -115,9 +115,9 @@ export const scenarios = {
   /** Управление категориями */
   adminCategoryManagement: [
     { step: 1,  action: 'navigate',  target: 'https://promelectron-test.aidrivencode.ru/login' },
-    { step: 2,  action: 'fill',      selector: 'text=Email',    value: '{{email}}' },
-    { step: 3,  action: 'fill',      selector: 'text=Пароль', value: '{{password}}' },
-    { step: 4,  action: 'click',     selector: 'text=Войти' },
+    { step: 2,  action: 'fill',      selector: '[data-testid="login-email"]',    value: '{{email}}' },
+    { step: 3,  action: 'fill',      selector: '[data-testid="login-password"]', value: '{{password}}' },
+    { step: 4,  action: 'click',     selector: '[data-testid="login-submit"]' },
     { step: 5,  action: 'navigate',  target: 'https://promelectron-test.aidrivencode.ru/admin' },
     { step: 6,  action: 'assert',    type: 'element', selector: 'text=Администрирование', expected: 'visible' },
     { step: 7,  action: 'click',     selector: 'text=Категории' },
@@ -171,12 +171,12 @@ export const scenarios = {
   /** Добавление товара */
   supplierAddProduct: [
     { step: 1,  action: 'navigate',  target: 'https://promelectron-test.aidrivencode.ru/register' },
-    { step: 2,  action: 'fill',      selector: 'text=Имя',        value: '{{name}}' },
-    { step: 3,  action: 'fill',      selector: 'text=Email',       value: '{{email}}' },
-    { step: 4,  action: 'fill',      selector: 'text=Пароль',    value: '{{password}}' },
-    { step: 5,  action: 'fill',      selector: 'text=Подтвердите пароль', value: '{{password}}' },
-    { step: 6,  action: 'select',    selector: 'text=Роль', value: 'supplier' },
-    { step: 7,  action: 'click',     selector: 'text=Зарегистрироваться' },
+    { step: 2,  action: 'fill',      selector: '[data-testid="register-name"]',        value: '{{name}}' },
+    { step: 3,  action: 'fill',      selector: '[data-testid="register-email"]',       value: '{{email}}' },
+    { step: 4,  action: 'fill',      selector: '[data-testid="register-password"]',    value: '{{password}}' },
+    { step: 5,  action: 'fill',      selector: '[data-testid="register-password-confirm"]', value: '{{password}}' },
+    { step: 6,  action: 'click',     selector: '[data-testid="role-supplier"]' },
+    { step: 7,  action: 'click',     selector: '[data-testid="register-submit"]' },
     { step: 8,  action: 'navigate',  target: 'https://promelectron-test.aidrivencode.ru/my-products' },
     { step: 9,  action: 'click',     selector: 'text=Добавить товар' },
     { step: 10, action: 'fill',      selector: 'text=Название',  value: 'Test Product {{random}}' },
@@ -232,26 +232,26 @@ export const scenarios = {
   /** Валидация форм — пустые поля, невалидный email, короткий пароль */
   formValidation: [
     { step: 1,  action: 'navigate',  target: 'https://promelectron-test.aidrivencode.ru/register' },
-    { step: 2,  action: 'click',     selector: 'text=Зарегистрироваться' },
+    { step: 2,  action: 'click',     selector: '[data-testid="register-submit"]' },
     { step: 3,  action: 'assert',    type: 'url', expected: '/register' },
-    { step: 4,  action: 'fill',      selector: 'text=Email', value: 'invalid-email' },
-    { step: 5,  action: 'click',     selector: 'text=Зарегистрироваться' },
+    { step: 4,  action: 'fill',      selector: '[data-testid="register-email"]', value: 'invalid-email' },
+    { step: 5,  action: 'click',     selector: '[data-testid="register-submit"]' },
     { step: 6,  action: 'assert',    type: 'url', expected: '/register' },
     { step: 7,  action: 'navigate',  target: 'https://promelectron-test.aidrivencode.ru/login' },
-    { step: 8,  action: 'fill',      selector: 'text=Email', value: 'nonexistent@test.com' },
-    { step: 9,  action: 'fill',      selector: 'text=Пароль', value: 'wrong' },
-    { step: 10, action: 'click',     selector: 'text=Войти' },
+    { step: 8,  action: 'fill',      selector: '[data-testid="login-email"]', value: 'nonexistent@test.com' },
+    { step: 9,  action: 'fill',      selector: '[data-testid="login-password"]', value: 'wrong' },
+    { step: 10, action: 'click',     selector: '[data-testid="login-submit"]' },
     { step: 11, action: 'assert',    type: 'url', expected: '/login' },
   ],
 
   /** SQL Injection / XSS базовые проверки */
   injectionChecks: [
     { step: 1,  action: 'navigate',  target: 'https://promelectron-test.aidrivencode.ru/register' },
-    { step: 2,  action: 'fill',      selector: 'text=Имя', value: "<script>alert('xss')</script>" },
-    { step: 3,  action: 'fill',      selector: 'text=Email', value: "test' OR '1'='1@test.com" },
-    { step: 4,  action: 'fill',      selector: 'text=Пароль', value: 'TestPassword123!' },
-    { step: 5,  action: 'fill',      selector: 'text=Подтвердите пароль', value: 'TestPassword123!' },
-    { step: 6,  action: 'click',     selector: 'text=Зарегистрироваться' },
+    { step: 2,  action: 'fill',      selector: '[data-testid="register-name"]', value: "<script>alert('xss')</script>" },
+    { step: 3,  action: 'fill',      selector: '[data-testid="register-email"]', value: "test' OR '1'='1@test.com" },
+    { step: 4,  action: 'fill',      selector: '[data-testid="register-password"]', value: 'TestPassword123!' },
+    { step: 5,  action: 'fill',      selector: '[data-testid="register-password-confirm"]', value: 'TestPassword123!' },
+    { step: 6,  action: 'click',     selector: '[data-testid="register-submit"]' },
     { step: 7,  action: 'assert',    type: 'url', expected: '/register' },
     { step: 8,  action: 'evaluate',  script: `() => { return document.querySelector('script')?.textContent?.includes("alert") || false; }` },
     { step: 9,  action: 'assert',    type: 'url', expected: '/register' },
@@ -298,8 +298,7 @@ export const scenarios = {
         ttfb: nav?.responseStart || 0,
         loadTime: nav?.loadEventEnd || 0,
       };
-    }` },
-    { step: 4,  action: 'assert',    type: 'evaluate', expected: { lcp: { max: 4000 }, cls: { max: 0.1 }, fcp: { max: 2000 }, ttfb: { max: 1000 } } },
+    }`, assert: { lcp: { max: 4000 }, cls: { max: 0.1 }, fcp: { max: 2000 }, ttfb: { max: 1000 } } },
   ],
 
   /** API Response Time */
@@ -322,7 +321,7 @@ export const scenarios = {
     { step: 5,  action: 'api',       method: 'POST', path: '/products/', as: 'supplier', storeResult: 'product', body: { name: 'E2E Product {{random}}', price: 999, stock: 10, category_id: '{{category_id}}' } },
     { step: 6,  action: 'api',       method: 'POST', path: '/register', storeResult: 'user', body: { name: 'E2E User {{random}}', email: '{{user_email}}', password: '{{password}}', role: 'user', password_confirm: '{{password}}' } },
     { step: 7,  action: 'api',       method: 'POST', path: '/login', as: 'user', storeToken: 'user', body: { email: '{{user_email}}', password: '{{password}}' } },
-    { step: 8,  action: 'api',       method: 'POST', path: '/cart/items', as: 'user', body: { product_id: '{{product_id}}', quantity: 1 } },
+    { step: 8,  action: 'api',       method: 'POST', path: '/cart/add', as: 'user', body: { product_id: '{{product_id}}', quantity: 1 } },
     { step: 9,  action: 'api',       method: 'GET',  path: '/cart/', as: 'user', expected: { arrayMinLength: 1 } },
     { step: 10, action: 'api',       method: 'DELETE', path: '/products/{{product_id}}', as: 'supplier' },
     { step: 11, action: 'api',       method: 'DELETE', path: '/categories/{{category_id}}', as: 'admin' },
@@ -335,11 +334,11 @@ export const scenarios = {
   /** Регистрация с edge case данными */
   fuzzRegistration: [
     { step: 1,  action: 'navigate',  target: 'https://promelectron-test.aidrivencode.ru/register' },
-    { step: 2,  action: 'fill',      selector: 'text=Имя', value: '{{fuzz_string_50}}' },
-    { step: 3,  action: 'fill',      selector: 'text=Email', value: '{{fuzz_email}}' },
-    { step: 4,  action: 'fill',      selector: 'text=Пароль', value: '{{fuzz_password}}' },
-    { step: 5,  action: 'fill',      selector: 'text=Подтвердите пароль', value: '{{fuzz_password}}' },
-    { step: 6,  action: 'click',     selector: 'text=Зарегистрироваться' },
+    { step: 2,  action: 'fill',      selector: '[data-testid="register-name"]', value: '{{fuzz_string_50}}' },
+    { step: 3,  action: 'fill',      selector: '[data-testid="register-email"]', value: '{{fuzz_email}}' },
+    { step: 4,  action: 'fill',      selector: '[data-testid="register-password"]', value: '{{fuzz_password}}' },
+    { step: 5,  action: 'fill',      selector: '[data-testid="register-password-confirm"]', value: '{{fuzz_password}}' },
+    { step: 6,  action: 'click',     selector: '[data-testid="register-submit"]' },
     { step: 7,  action: 'assert',    type: 'text', selector: 'body', expected: 'обязательно' },
   ],
 
@@ -370,9 +369,7 @@ export const scenarios = {
       const focusable = Array.from(document.querySelectorAll('button, a, input, select, textarea'));
       const withoutFocus = focusable.filter(el => el.tabIndex < 0 && !el.disabled).length;
       return { totalImages: images.length, withoutAlt, headings: headings.length, ariaLabels, focusable: focusable.length, withoutFocus };
-    }` },
-    { step: 3,  action: 'assert',    type: 'evaluate', expected: { withoutAlt: { max: 5 } } },
-    { step: 4,  action: 'assert',    type: 'evaluate', expected: { headings: { min: 1 } } },
+    }`, assert: { withoutAlt: { max: 5 }, headings: { min: 1 } } },
   ],
 
   // ═══════════════════════════════════════════════════

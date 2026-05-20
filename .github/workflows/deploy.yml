@@ -59,14 +59,14 @@ jobs:
 
       - name: Build and push API image
         run: |
-          docker build -f Dockerfile.backend \
+          docker build --no-cache -f Dockerfile.backend \
             -t ${{ env.API_IMAGE }}:${{ github.sha }} \
             .
           docker push ${{ env.API_IMAGE }}:${{ github.sha }}
 
       - name: Build and push frontend image
         run: |
-          docker build -f Dockerfile.frontend \
+          docker build --no-cache -f Dockerfile.frontend \
             --build-arg VITE_API_URL=https://api.promelectron-test.aidrivencode.ru \
             -t ${{ env.FRONTEND_IMAGE }}:${{ github.sha }} \
             .
