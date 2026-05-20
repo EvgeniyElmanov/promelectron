@@ -40,8 +40,8 @@ export const scenarios = {
     { step: 12, action: 'assert',    type: 'toast', expected: 'Добавлено в корзину' },
     { step: 13, action: 'click',     selector: 'text=Корзина' },
     { step: 14, action: 'assert',    type: 'url',   expected: '/cart' },
-    { step: 15, action: 'assert',    type: 'element', selector: 'text=Ваша корзина', expected: 'visible' },
-    { step: 16, action: 'assert',    type: 'element', selector: 'text=Оформить заказ', expected: 'visible' },
+    { step: 15, action: 'assert',    type: 'element', selector: '[data-testid="cart-title"]', expected: 'visible' },
+    { step: 16, action: 'assert',    type: 'element', selector: '[data-testid="checkout-button"]', expected: 'visible' }
   ],
 
   /** Поиск + фильтры */
@@ -62,7 +62,7 @@ export const scenarios = {
   favoritesFlow: [
     { step: 1,  action: 'navigate',  target: 'https://promelectron-test.aidrivencode.ru/' },
     { step: 2,  action: 'login',     persona: 'user' },
-    { step: 3,  action: 'click',     selector: '[data-testid="product-card"]:first-child [data-testid="favorite-button"]' },
+    { step: 3,  action: 'click',     selector: '[data-testid="favorite-button"] >> nth=0' },
     { step: 4,  action: 'navigate',  target: 'https://promelectron-test.aidrivencode.ru/favorites' },
     { step: 5,  action: 'assert',    type: 'element', selector: '[data-testid="favorite-item"]', expected: 'visible' },
   ],
@@ -74,8 +74,8 @@ export const scenarios = {
     { step: 3,  action: 'fill',      selector: '[data-testid="login-password"]', value: '{{password}}' },
     { step: 4,  action: 'click',     selector: '[data-testid="login-submit"]' },
     { step: 5,  action: 'navigate',  target: 'https://promelectron-test.aidrivencode.ru/profile' },
-    { step: 6,  action: 'assert',    type: 'element', selector: 'text=Профиль', expected: 'visible' },
-    { step: 7,  action: 'assert',    type: 'element', selector: 'text=Email', expected: 'visible' },
+    { step: 6,  action: 'assert',    type: 'element', selector: '[data-testid="profile-title"]', expected: 'visible' },
+    { step: 7,  action: 'assert',    type: 'element', selector: '[data-testid="profile-email"]', expected: 'visible' },
     { step: 8,  action: 'assert',    type: 'text', selector: 'body', expected: '{{email}}' },
   ],
 
@@ -83,29 +83,29 @@ export const scenarios = {
   userOrdersFlow: [
     { step: 1,  action: 'login',     persona: 'user' },
     { step: 2,  action: 'navigate',  target: 'https://promelectron-test.aidrivencode.ru/orders' },
-    { step: 3,  action: 'assert',    type: 'element', selector: 'text=Мои заказы', expected: 'visible' },
-    { step: 4,  action: 'assert',    type: 'element', selector: 'text=Заказ', expected: 'visible' },
+    { step: 3,  action: 'assert',    type: 'element', selector: '[data-testid="orders-title"]', expected: 'visible' },
+    { step: 4,  action: 'assert',    type: 'element', selector: '[data-testid="order-card"]', expected: 'visible' }
   ],
 
   /** Отзывы */
   userReviewFlow: [
     { step: 1,  action: 'login',     persona: 'user' },
     { step: 2,  action: 'navigate',  target: 'https://promelectron-test.aidrivencode.ru/' },
-    { step: 3,  action: 'click',     selector: 'text=Подробнее >> nth=0' },
+    { step: 3,  action: 'click',     selector: '[data-testid="product-card"] >> nth=0' },
     { step: 4,  action: 'assert',    type: 'url',   expected: '/product/' },
-    { step: 5,  action: 'assert',    type: 'element', selector: 'text=Отзывы', expected: 'visible' },
+    { step: 5,  action: 'assert',    type: 'element', selector: '[data-testid="pdp-reviews-section"]', expected: 'visible' }
   ],
 
   /** Корзина: изменение количества + удаление */
   cartManagementFlow: [
     { step: 1,  action: 'login',     persona: 'user' },
     { step: 2,  action: 'navigate',  target: 'https://promelectron-test.aidrivencode.ru/' },
-    { step: 3,  action: 'click',     selector: 'text=Подробнее >> nth=0' },
-    { step: 4,  action: 'click',     selector: 'text=В корзину' },
+    { step: 3,  action: 'click',     selector: '[data-testid="product-card"] >> nth=0' },
+    { step: 4,  action: 'click',     selector: '[data-testid="add-to-cart-button"] >> nth=0' },
     { step: 5,  action: 'wait',      ms: 1000 },
     { step: 6,  action: 'navigate',  target: 'https://promelectron-test.aidrivencode.ru/cart' },
-    { step: 7,  action: 'assert',    type: 'element', selector: 'text=Ваша корзина', expected: 'visible' },
-    { step: 8,  action: 'assert',    type: 'element', selector: 'text=Оформить заказ', expected: 'visible' },
+    { step: 7,  action: 'assert',    type: 'element', selector: '[data-testid="cart-title"]', expected: 'visible' },
+    { step: 8,  action: 'assert',    type: 'element', selector: '[data-testid="checkout-button"]', expected: 'visible' },
   ],
 
   // ═══════════════════════════════════════════════════
@@ -119,11 +119,11 @@ export const scenarios = {
     { step: 3,  action: 'fill',      selector: '[data-testid="login-password"]', value: '{{password}}' },
     { step: 4,  action: 'click',     selector: '[data-testid="login-submit"]' },
     { step: 5,  action: 'navigate',  target: 'https://promelectron-test.aidrivencode.ru/admin' },
-    { step: 6,  action: 'assert',    type: 'element', selector: 'text=Администрирование', expected: 'visible' },
+    { step: 6,  action: 'assert',    type: 'element', selector: '[data-testid="admin-page"]', expected: 'visible' },
     { step: 7,  action: 'click',     selector: 'text=Категории' },
-    { step: 8,  action: 'click',     selector: 'text=Добавить категорию' },
-    { step: 9,  action: 'fill',      selector: 'text=Название', value: 'Test Category {{random}}' },
-    { step: 10, action: 'click',     selector: 'text=Сохранить' },
+    { step: 8,  action: 'click',     selector: 'text=Добавить' },
+    { step: 9,  action: 'fill',      selector: '[data-testid="category-name-input"]', value: 'Test Category {{random}}' },
+    { step: 10, action: 'click',     selector: 'text=Создать' },
     { step: 11, action: 'assert',    type: 'text', selector: 'body', expected: 'Test Category' },
   ],
 
@@ -149,17 +149,17 @@ export const scenarios = {
   adminDashboardStats: [
     { step: 1,  action: 'login',     persona: 'admin' },
     { step: 2,  action: 'navigate',  target: 'https://promelectron-test.aidrivencode.ru/admin' },
-    { step: 3,  action: 'assert',    type: 'element', selector: 'text=Статистика', expected: 'visible' },
+    { step: 3,  action: 'assert',    type: 'element', selector: 'text=Дашборд', expected: 'visible' },
     { step: 4,  action: 'assert',    type: 'element', selector: 'text=Пользователи', expected: 'visible' },
     { step: 5,  action: 'assert',    type: 'element', selector: 'text=Заказы', expected: 'visible' },
-    { step: 6,  action: 'assert',    type: 'element', selector: 'text=Выручка', expected: 'visible' },
+    { step: 6,  action: 'assert',    type: 'element', selector: 'text=Выручка', expected: 'visible' }
   ],
 
   /** Управление способами доставки */
   adminDeliveryMethods: [
     { step: 1,  action: 'login',     persona: 'admin' },
     { step: 2,  action: 'navigate',  target: 'https://promelectron-test.aidrivencode.ru/admin' },
-    { step: 3,  action: 'click',     selector: 'text=Способы доставки' },
+    { step: 3,  action: 'click',     selector: 'text=Доставка' },
     { step: 4,  action: 'assert',    type: 'element', selector: 'text=Способы доставки', expected: 'visible' },
     { step: 5,  action: 'assert',    type: 'element', selector: '[data-testid="delivery-methods-table"]', expected: 'visible' },
   ],
@@ -178,11 +178,11 @@ export const scenarios = {
     { step: 6,  action: 'click',     selector: '[data-testid="role-supplier"]' },
     { step: 7,  action: 'click',     selector: '[data-testid="register-submit"]' },
     { step: 8,  action: 'navigate',  target: 'https://promelectron-test.aidrivencode.ru/my-products' },
-    { step: 9,  action: 'click',     selector: 'text=Добавить товар' },
-    { step: 10, action: 'fill',      selector: 'text=Название',  value: 'Test Product {{random}}' },
-    { step: 11, action: 'fill',      selector: 'text=Цена', value: '9999' },
-    { step: 12, action: 'fill',      selector: 'text=Количество', value: '10' },
-    { step: 13, action: 'click',     selector: 'text=Сохранить' },
+    { step: 9,  action: 'click',     selector: 'text=Добавить' },
+    { step: 10, action: 'fill',      selector: '[data-testid="product-name-input"]',  value: 'Test Product {{random}}' },
+    { step: 11, action: 'fill',      selector: '[data-testid="product-price-input"]', value: '9999' },
+    { step: 12, action: 'fill',      selector: '[data-testid="product-stock-input"]', value: '10' },
+    { step: 13, action: 'click',     selector: '[data-testid="product-submit-btn"]' },
     { step: 14, action: 'assert',    type: 'text', selector: 'body', expected: 'Test Product' },
   ],
 
@@ -190,9 +190,9 @@ export const scenarios = {
   supplierEditProduct: [
     { step: 1,  action: 'login',     persona: 'supplier' },
     { step: 2,  action: 'navigate',  target: 'https://promelectron-test.aidrivencode.ru/my-products' },
-    { step: 3,  action: 'click',     selector: '[data-testid="edit-product-btn"]:first-child' },
-    { step: 4,  action: 'fill',      selector: 'text=Название', value: 'Updated Product {{random}}' },
-    { step: 5,  action: 'click',     selector: 'text=Сохранить' },
+    { step: 3,  action: 'click',     selector: '.supplier-product-card__btn--edit >> nth=0' },
+    { step: 4,  action: 'fill',      selector: '[data-testid="product-name-input"]', value: 'Updated Product {{random}}' },
+    { step: 5,  action: 'click',     selector: '[data-testid="product-submit-btn"]' },
     { step: 6,  action: 'assert',    type: 'text', selector: 'body', expected: 'Updated Product' },
   ],
 
@@ -200,15 +200,15 @@ export const scenarios = {
   supplierDeleteProduct: [
     { step: 1,  action: 'login',     persona: 'supplier' },
     { step: 2,  action: 'navigate',  target: 'https://promelectron-test.aidrivencode.ru/my-products' },
-    { step: 3,  action: 'click',     selector: '[data-testid="delete-product-btn"]:first-child' },
+    { step: 3,  action: 'click',     selector: '.supplier-product-card__btn--delete >> nth=0' },
     { step: 4,  action: 'assert',    type: 'toast', expected: 'удален' },
   ],
 
   /** Просмотр заказов поставщика */
   supplierOrdersFlow: [
     { step: 1,  action: 'login',     persona: 'supplier' },
-    { step: 2,  action: 'navigate',  target: 'https://promelectron-test.aidrivencode.ru/supplier-orders' },
-    { step: 3,  action: 'assert',    type: 'element', selector: 'text=Заказы', expected: 'visible' },
+    { step: 2,  action: 'navigate',  target: 'https://promelectron-test.aidrivencode.ru/orders' },
+    { step: 3,  action: 'assert',    type: 'element', selector: '[data-testid="orders-title"]', expected: 'visible' }
   ],
 
   // ═══════════════════════════════════════════════════
@@ -218,15 +218,20 @@ export const scenarios = {
   /** Проверка доступов — гость не должен видеть защищённые страницы */
   unauthorizedAccess: [
     { step: 1,  action: 'navigate',  target: 'https://promelectron-test.aidrivencode.ru/cart' },
-    { step: 2,  action: 'assert',    type: 'url', expected: '/login' },
-    { step: 3,  action: 'navigate',  target: 'https://promelectron-test.aidrivencode.ru/admin' },
-    { step: 4,  action: 'assert',    type: 'url', expected: '/login' },
-    { step: 5,  action: 'navigate',  target: 'https://promelectron-test.aidrivencode.ru/my-products' },
+    { step: 2,  action: 'wait',      ms: 500 },
+    { step: 3,  action: 'assert',    type: 'url', expected: '/login' },
+    { step: 4,  action: 'navigate',  target: 'https://promelectron-test.aidrivencode.ru/admin' },
+    { step: 5,  action: 'wait',      ms: 500 },
     { step: 6,  action: 'assert',    type: 'url', expected: '/login' },
-    { step: 7,  action: 'navigate',  target: 'https://promelectron-test.aidrivencode.ru/orders' },
-    { step: 8,  action: 'assert',    type: 'url', expected: '/login' },
-    { step: 9,  action: 'navigate',  target: 'https://promelectron-test.aidrivencode.ru/profile' },
-    { step: 10, action: 'assert',    type: 'url', expected: '/login' },
+    { step: 7,  action: 'navigate',  target: 'https://promelectron-test.aidrivencode.ru/my-products' },
+    { step: 8,  action: 'wait',      ms: 500 },
+    { step: 9,  action: 'assert',    type: 'url', expected: '/login' },
+    { step: 10, action: 'navigate',  target: 'https://promelectron-test.aidrivencode.ru/orders' },
+    { step: 11, action: 'wait',      ms: 500 },
+    { step: 12, action: 'assert',    type: 'url', expected: '/login' },
+    { step: 13, action: 'navigate',  target: 'https://promelectron-test.aidrivencode.ru/profile' },
+    { step: 14, action: 'wait',      ms: 500 },
+    { step: 15, action: 'assert',    type: 'url', expected: '/login' },
   ],
 
   /** Валидация форм — пустые поля, невалидный email, короткий пароль */
@@ -346,11 +351,11 @@ export const scenarios = {
   fuzzProductCreation: [
     { step: 1,  action: 'login',     persona: 'supplier' },
     { step: 2,  action: 'navigate',  target: 'https://promelectron-test.aidrivencode.ru/my-products' },
-    { step: 3,  action: 'click',     selector: 'text=Добавить товар' },
-    { step: 4,  action: 'fill',      selector: 'text=Название', value: '{{fuzz_string_100}}' },
-    { step: 5,  action: 'fill',      selector: 'text=Цена', value: '{{fuzz_price}}' },
-    { step: 6,  action: 'fill',      selector: 'text=Количество', value: '{{fuzz_stock}}' },
-    { step: 7,  action: 'click',     selector: 'text=Сохранить' },
+    { step: 3,  action: 'click',     selector: 'text=Добавить' },
+    { step: 4,  action: 'fill',      selector: '[data-testid="product-name-input"]', value: '{{fuzz_string_100}}' },
+    { step: 5,  action: 'fill',      selector: '[data-testid="product-price-input"]', value: '{{fuzz_price}}' },
+    { step: 6,  action: 'fill',      selector: '[data-testid="product-stock-input"]', value: '{{fuzz_stock}}' },
+    { step: 7,  action: 'click',     selector: '[data-testid="product-submit-btn"]' },
     { step: 8,  action: 'assert',    type: 'url', expected: '/my-products' },
   ],
 

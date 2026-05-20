@@ -57,8 +57,8 @@ export const personas = {
     name: 'Администратор',
     emailPrefix: 'admin',
     defaultCredentials: {
-      email: 'admin@myshop.ru',
-      password: 'admin123',
+      email: 'seed-admin@example.com',
+      password: 'seedpassword123',
     },
     can: [
       'login',
@@ -102,6 +102,10 @@ export const personas = {
     key: 'supplier',
     name: 'Поставщик',
     emailPrefix: 'supplier',
+    defaultCredentials: {
+      email: 'seed-supplier@example.com',
+      password: 'seedpassword123',
+    },
     can: [
       'register_as_supplier',
       'login',

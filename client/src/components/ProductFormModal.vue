@@ -15,6 +15,7 @@
             class="field__input"
             placeholder="Например, Смартфон Pro"
             required
+            data-testid="product-name-input"
           />
         </div>
 
@@ -25,6 +26,7 @@
             class="field__input field__input--textarea"
             rows="3"
             placeholder="Описание товара..."
+            data-testid="product-description-input"
           />
         </div>
 
@@ -38,6 +40,7 @@
               min="0"
               step="0.01"
               required
+              data-testid="product-price-input"
             />
           </div>
 
@@ -49,13 +52,14 @@
               class="field__input"
               min="0"
               required
+              data-testid="product-stock-input"
             />
           </div>
         </div>
 
         <div class="field">
           <label class="field__label">Категория <span class="required">*</span></label>
-          <select v-model.number="form.category_id" class="field__input" required>
+          <select v-model.number="form.category_id" class="field__input" required data-testid="product-category-select">
             <option value="" disabled>Выберите категорию</option>
             <option v-for="cat in categories" :key="cat.id" :value="cat.id">
               {{ cat.name }}
@@ -94,7 +98,7 @@
 
         <div v-if="error" class="form-error">{{ error }}</div>
 
-        <button type="submit" class="modal__submit" :disabled="submitting">
+        <button type="submit" class="modal__submit" :disabled="submitting" data-testid="product-submit-btn">
           {{ submitting ? 'Сохранение...' : (isEdit ? 'Сохранить' : 'Создать') }}
         </button>
       </form>

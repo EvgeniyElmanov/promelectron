@@ -101,7 +101,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="u in users" :key="u.id">
+              <tr v-for="u in users" :key="u.id" data-testid="user-row">
                 <td>{{ u.id }}</td>
                 <td>{{ u.email }}</td>
                 <td>{{ u.full_name || '—' }}</td>
@@ -193,7 +193,7 @@
         <div v-else-if="deliveryMethods.length === 0" class="admin__empty">Нет способов доставки</div>
 
         <div v-else class="admin__table-wrapper">
-          <table class="admin__table">
+          <table class="admin__table" data-testid="delivery-methods-table">
             <thead>
               <tr>
                 <th>ID</th>
@@ -251,7 +251,7 @@
         <div v-else-if="orders.length === 0" class="admin__empty">Нет заказов</div>
 
         <div v-else class="admin__table-wrapper">
-          <table class="admin__table">
+          <table class="admin__table" data-testid="orders-table">
             <thead>
               <tr>
                 <th>№</th>
@@ -302,14 +302,14 @@
         <form class="modal__form" @submit.prevent="handleSubmit">
           <div class="field">
             <label class="field__label">Название <span class="required">*</span></label>
-            <input v-model="form.name" class="field__input" placeholder="Например, Смартфоны" required />
+            <input v-model="form.name" class="field__input" placeholder="Например, Смартфоны" required data-testid="category-name-input" />
           </div>
           <div class="field">
             <label class="field__label">Описание</label>
-            <textarea v-model="form.description" class="field__input field__input--textarea" rows="3" placeholder="Описание категории..." />
+            <textarea v-model="form.description" class="field__input field__input--textarea" rows="3" placeholder="Описание категории..." data-testid="category-description-input" />
           </div>
           <div v-if="error" class="form-error">{{ error }}</div>
-          <button type="submit" class="modal__submit" :disabled="submitting">
+          <button type="submit" class="modal__submit" :disabled="submitting" data-testid="category-submit-btn">
             {{ submitting ? 'Сохранение...' : (isEdit ? 'Сохранить' : 'Создать') }}
           </button>
         </form>
@@ -326,28 +326,28 @@
         <form class="modal__form" @submit.prevent="handleDeliverySubmit">
           <div class="field">
             <label class="field__label">Название <span class="required">*</span></label>
-            <input v-model="deliveryForm.name" class="field__input" placeholder="Например, Курьер" required />
+            <input v-model="deliveryForm.name" class="field__input" placeholder="Например, Курьер" required data-testid="delivery-name-input" />
           </div>
           <div class="field">
             <label class="field__label">Описание</label>
-            <textarea v-model="deliveryForm.description" class="field__input field__input--textarea" rows="2" placeholder="Описание..." />
+            <textarea v-model="deliveryForm.description" class="field__input field__input--textarea" rows="2" placeholder="Описание..." data-testid="delivery-description-input" />
           </div>
           <div class="field">
             <label class="field__label">Цена (₽)</label>
-            <input v-model.number="deliveryForm.base_price" type="number" min="0" step="0.01" class="field__input" placeholder="0" />
+            <input v-model.number="deliveryForm.base_price" type="number" min="0" step="0.01" class="field__input" placeholder="0" data-testid="delivery-price-input" />
           </div>
           <div class="field">
             <label class="field__label">Срок доставки</label>
-            <input v-model="deliveryForm.estimated_days" class="field__input" placeholder="Например, 1-3 дня" />
+            <input v-model="deliveryForm.estimated_days" class="field__input" placeholder="Например, 1-3 дня" data-testid="delivery-days-input" />
           </div>
           <div class="field">
             <label class="field__label">
-              <input v-model="deliveryForm.is_active" type="checkbox" />
+              <input v-model="deliveryForm.is_active" type="checkbox" data-testid="delivery-active-checkbox" />
               Активен
             </label>
           </div>
           <div v-if="deliveryError" class="form-error">{{ deliveryError }}</div>
-          <button type="submit" class="modal__submit" :disabled="submittingDelivery">
+          <button type="submit" class="modal__submit" :disabled="submittingDelivery" data-testid="delivery-submit-btn">
             {{ submittingDelivery ? 'Сохранение...' : (isEditDelivery ? 'Сохранить' : 'Создать') }}
           </button>
         </form>

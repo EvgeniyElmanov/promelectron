@@ -338,6 +338,21 @@ export class MCPBridge {
 
   async isElementVisible(selector) {
     try {
+      // Use Playwright's locator.isVisible() for full selector support (text=, >>, etc.)
+      const raw = await this.callTool('browser_run_code_unsafe', {
+        code: `async (page) => { return await page.locator('${selector.replace(/'/g, "\\'")}').isVisible().catch(() => false); }`,
+      });
+      const text = raw.text || this._extractText(raw.result || raw);
+      const match = text.match(/### Result\n(true|false)\n/);
+      if (match) return match[1] === 'true';
+      // Fallback: plain text result
+      if (text.trim() === 'true') return true;
+      if (text.trim() === 'false') return false;
+    } catch {
+      // ignore
+    }
+    // Final fallback for simple CSS selectors
+    try {
       const r = await this.evaluate(`
         const el = document.querySelector('${selector.replace(/'/g, "\\'")}');
         el && el.offsetParent !== null && getComputedStyle(el).display !== 'none' && getComputedStyle(el).visibility !== 'hidden'
