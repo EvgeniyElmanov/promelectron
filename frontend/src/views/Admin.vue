@@ -589,7 +589,7 @@ async function toggleUser(userId) {
 const fetchCategories = async () => {
   loading.value.categories = true;
   try {
-    const { data } = await api.get('/categories');
+    const { data } = await api.get('/categories/');
     categories.value = data;
   } catch {
     toast('Не удалось загрузить категории', 'error');

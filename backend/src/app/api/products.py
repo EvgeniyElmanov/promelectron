@@ -187,9 +187,16 @@ async def delete_product_image(
         raise HTTPException(status_code=403, detail="Not your product")
 
     # Remove from filesystem
-    filepath = os.path.join(UPLOAD_DIR, str(product_id), filename)
-    if os.path.exists(filepath):
-        os.remove(filepath)
+    safe_filename = os.path.basename(filename)
+    if not safe_filename or safe_filename.startswith("."):
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    filepath = os.path.join(UPLOAD_DIR, str(product_id), safe_filename)
+    real_filepath = os.path.realpath(filepath)
+    real_base = os.path.realpath(os.path.join(UPLOAD_DIR, str(product_id)))
+    if not real_filepath.startswith(real_base + os.sep) and real_filepath != real_base:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    if os.path.exists(real_filepath):
+        os.remove(real_filepath)
 
     # Update product.images
     image_url = f"/uploads/products/{product_id}/{filename}"

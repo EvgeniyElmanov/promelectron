@@ -21,7 +21,6 @@ const routes = [
   { path: '/', component: Products },
   { path: '/login', component: Login },
   { path: '/register', component: Register },
-  { path: '/admin', component: Admin },
   { path: '/cart', component: Cart, meta: { requiresAuth: true } },
   { path: '/orders', component: Orders, meta: { requiresAuth: true } },
   { path: '/orders/:id', component: OrderDetail, meta: { requiresAuth: true } },

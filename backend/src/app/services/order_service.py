@@ -48,7 +48,9 @@ class OrderService:
         total_price = Decimal(0)
         order_items: list[OrderItem] = []
         for cart_item in cart.items:
-            product_result = await db.execute(select(Product).where(Product.id == cart_item.product_id))
+            product_result = await db.execute(
+                select(Product).where(Product.id == cart_item.product_id).with_for_update()
+            )
             product = product_result.scalars().first()
 
             if not product:
@@ -258,7 +260,9 @@ class OrderService:
 
         # Return stock
         for item in order.items:
-            product_result = await db.execute(select(Product).where(Product.id == item.product_id))
+            product_result = await db.execute(
+                select(Product).where(Product.id == item.product_id).with_for_update()
+            )
             product = product_result.scalars().first()
             if product:
                 product.stock += item.quantity

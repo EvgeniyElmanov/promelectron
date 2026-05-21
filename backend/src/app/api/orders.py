@@ -7,7 +7,7 @@ from src.app.db.database import get_db
 from src.app.models.user import User
 from src.app.schemas.order import OrderCreate, OrderOut, OrderUpdateStatus
 from src.app.services.order_service import OrderService
-from src.app.utils.auth import get_current_active_user
+from src.app.utils.auth import get_current_active_admin, get_current_active_user
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 
@@ -60,7 +60,7 @@ async def cancel_order(
 async def update_order_status(
     order_id: int,
     status_update: OrderUpdateStatus,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(get_current_active_admin),
     db: AsyncSession = Depends(get_db),
 ):
     return await OrderService.update_order_status(
