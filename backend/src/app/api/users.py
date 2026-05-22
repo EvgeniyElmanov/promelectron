@@ -3,6 +3,7 @@ import shutil
 import uuid
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, Request
+from src.app.core.config import settings
 from src.app.utils.rate_limiter import conditional_limit, limiter
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -105,7 +106,7 @@ async def upload_avatar(
     with open(filepath, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    base_url = str(request.base_url).rstrip("/")
+    base_url = settings.api_base_url or str(request.base_url).rstrip("/")
     avatar_url = f"{base_url}/uploads/avatars/{current_user.id}/{filename}"
     return await UserService.update_profile(
         user_id=current_user.id,
