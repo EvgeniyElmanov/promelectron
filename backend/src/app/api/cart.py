@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, Request
-from src.app.utils.rate_limiter import limiter
+from src.app.utils.rate_limiter import conditional_limit, limiter
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.app.db.database import get_db
@@ -12,7 +12,7 @@ router = APIRouter(prefix="/cart", tags=["cart"])
 
 
 @router.post("/add", response_model=CartItemOut)
-@limiter.limit("20/minute")
+@conditional_limit("20/minute")
 async def add_to_cart(request: Request,
     item_: CartItemCreate,
     current_user: User = Depends(get_current_active_user),
