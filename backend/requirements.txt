@@ -11,3 +11,5 @@ httpx
 aiofiles
 python-multipart
 aiosmtplib
+redis
+slowapi

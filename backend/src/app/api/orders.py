@@ -1,6 +1,7 @@
 from typing import List
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
+from src.app.utils.rate_limiter import limiter
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.app.db.database import get_db
@@ -13,7 +14,8 @@ router = APIRouter(prefix="/orders", tags=["orders"])
 
 
 @router.post("/create", response_model=OrderOut)
-async def create_order(
+@limiter.limit("10/minute")
+async def create_order(request: Request,
     order_data: OrderCreate,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
@@ -57,7 +59,8 @@ async def cancel_order(
 
 
 @router.put("/{order_id}/status", response_model=OrderOut)
-async def update_order_status(
+@limiter.limit("10/minute")
+async def update_order_status(request: Request,
     order_id: int,
     status_update: OrderUpdateStatus,
     current_user: User = Depends(get_current_active_admin),

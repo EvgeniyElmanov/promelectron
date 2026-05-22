@@ -19,6 +19,7 @@ class Settings:
     smtp_password: str
     smtp_from: str
     smtp_tls: bool
+    redis_url: str
 
 
 settings = Settings(
@@ -39,6 +40,7 @@ settings = Settings(
     smtp_password=os.getenv("SMTP_PASSWORD", ""),
     smtp_from=os.getenv("SMTP_FROM", "noreply@myshop.ru"),
     smtp_tls=os.getenv("SMTP_TLS", "true").lower() == "true",
+    redis_url=os.getenv("REDIS_URL", "redis://redis:6379/0"),
 )
 
 SECRET_KEY = settings.secret_key

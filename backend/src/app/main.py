@@ -25,7 +25,11 @@ from src.app.api.products import router as products_router
 from src.app.api.reviews import router as reviews_router
 from src.app.api.seed import router as seed_router
 from src.app.api.users import router as users_router
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+
 from src.app.db.database import DATABASE_URL
+from src.app.utils.rate_limiter import limiter
 
 logger = getLogger(__name__)
 
@@ -55,6 +59,10 @@ _default_cors = '["http://localhost:5173", "http://127.0.0.1:5173"]'
 _cors_origins = json.loads(os.getenv("CORS_ORIGINS", _default_cors))
 
 app = FastAPI(lifespan=lifespan)
+
+# Rate limiting
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,

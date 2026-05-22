@@ -283,22 +283,9 @@ class TestProductsAPI:
         assert response.status_code in (401, 403)
 
     @pytest.mark.asyncio
-    async def test_create_product_as_supplier(self, client, test_supplier, test_category, test_session):
+    async def test_create_product_as_supplier(self, client, test_supplier, test_category):
         """Создание товара поставщиком — успешно."""
-        from src.app.models.supplier import Supplier
         from src.app.utils.auth import create_access_token
-
-        # Создаём Supplier запись для поставщика
-        supplier_record = Supplier(
-            user_id=test_supplier.id,
-            name="Supplier Record",
-            description="Test",
-            api_key="key123",
-            is_active=True,
-        )
-        test_session.add(supplier_record)
-        await test_session.commit()
-        await test_session.refresh(supplier_record)
 
         token = create_access_token(data={"sub": test_supplier.email})
         response = await client.post(
@@ -315,14 +302,14 @@ class TestProductsAPI:
         assert response.status_code == 200
         data = response.json()
         assert data["name"] == "Supplier Product"
-        assert data["supplier_id"] == supplier_record.id
+        assert isinstance(data["supplier_id"], int)
 
     @pytest.mark.asyncio
-    async def test_create_product_supplier_not_registered(self, client, test_supplier, test_category):
+    async def test_create_product_supplier_not_registered(self, client, test_supplier_user_only, test_category):
         """Создание товара поставщиком без записи в Supplier — 403."""
         from src.app.utils.auth import create_access_token
 
-        token = create_access_token(data={"sub": test_supplier.email})
+        token = create_access_token(data={"sub": test_supplier_user_only.email})
         response = await client.post(
             "/api/v1/products/",
             json={

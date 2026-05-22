@@ -1,6 +1,9 @@
 import asyncio
+import os
+
 import pytest
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from src.app.db.database import Base, get_db
@@ -8,8 +11,13 @@ from src.app.main import app
 from src.app.models.user import RoleEnum, User
 from src.app.utils.auth import create_access_token
 
-
-TEST_DATABASE_URL = "sqlite+aiosqlite:///./test.db"
+# Используем отдельную тестовую БД, чтобы не трогать dev/prod данные
+_env_url = os.getenv("DATABASE_URL", "")
+if "postgresql" in _env_url:
+    # Заменяем имя БД на promelectron_test
+    TEST_DATABASE_URL = _env_url.rsplit("/", 1)[0] + "/promelectron_test"
+else:
+    TEST_DATABASE_URL = "sqlite+aiosqlite:///./test.db"
 
 
 @pytest.fixture(scope="session")
@@ -21,8 +29,23 @@ def event_loop():
 
 @pytest.fixture
 async def test_engine():
+    # Для PostgreSQL: создаём тестовую БД если не существует
+    if "postgresql" in TEST_DATABASE_URL:
+        db_name = TEST_DATABASE_URL.rsplit("/", 1)[-1]
+        base_url = TEST_DATABASE_URL.rsplit("/", 1)[0] + "/postgres"
+        admin_engine = create_async_engine(base_url, isolation_level="AUTOCOMMIT")
+        async with admin_engine.connect() as conn:
+            result = await conn.execute(
+                text("SELECT 1 FROM pg_database WHERE datname = :db_name"),
+                {"db_name": db_name},
+            )
+            if not result.scalar():
+                await conn.execute(text(f'CREATE DATABASE "{db_name}"'))
+        await admin_engine.dispose()
+
     engine = create_async_engine(TEST_DATABASE_URL)
     async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
     yield engine
     async with engine.begin() as conn:
@@ -39,6 +62,10 @@ async def test_session(test_engine):
 
 @pytest.fixture
 async def client(test_session):
+    from src.app.utils.rate_limiter import limiter
+
+    limiter.reset()
+
     async def override_get_db():
         yield test_session
 
@@ -97,7 +124,8 @@ async def test_admin(test_session):
 
 
 @pytest.fixture
-async def test_supplier(test_session):
+async def test_supplier_user_only(test_session):
+    """User with supplier role, but no Supplier record."""
     from src.app.utils.auth import hash_password
 
     user = User(
@@ -110,6 +138,23 @@ async def test_supplier(test_session):
     await test_session.commit()
     await test_session.refresh(user)
     return user
+
+
+@pytest.fixture
+async def test_supplier(test_session, test_supplier_user_only):
+    from src.app.models.supplier import Supplier
+
+    supplier = Supplier(
+        user_id=test_supplier_user_only.id,
+        name="Test Supplier",
+        description="Test supplier",
+        api_key="test-api-key-123",
+        is_active=True,
+    )
+    test_session.add(supplier)
+    await test_session.commit()
+    await test_session.refresh(supplier)
+    return test_supplier_user_only
 
 
 @pytest.fixture
@@ -128,16 +173,22 @@ async def test_product(test_session, test_supplier, test_category):
     from src.app.models.product import Product
     from src.app.models.supplier import Supplier
 
-    supplier = Supplier(
-        user_id=test_supplier.id,
-        name="Test Supplier",
-        description="Test supplier",
-        api_key="test-api-key-123",
-        is_active=True,
+    # test_supplier уже создал Supplier, находим его
+    result = await test_session.execute(
+        select(Supplier).where(Supplier.user_id == test_supplier.id)
     )
-    test_session.add(supplier)
-    await test_session.commit()
-    await test_session.refresh(supplier)
+    supplier = result.scalars().first()
+    if not supplier:
+        supplier = Supplier(
+            user_id=test_supplier.id,
+            name="Test Supplier",
+            description="Test supplier",
+            api_key="test-api-key-123",
+            is_active=True,
+        )
+        test_session.add(supplier)
+        await test_session.commit()
+        await test_session.refresh(supplier)
 
     product = Product(
         name="Test Product",

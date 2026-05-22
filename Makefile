@@ -44,11 +44,11 @@ test: test-backend test-frontend ## Запустить все unit-тесты
 
 test-backend: ## Запустить pytest (поднимает postgres/redis через docker compose)
 	$(COMPOSE_BACKEND) up -d postgres redis
-	$(COMPOSE_BACKEND) run --rm \
+	$(COMPOSE_BACKEND) run --rm --entrypoint "" \
 	  -e DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/promelectron \
 	  -e REDIS_URL=redis://redis:6379/0 \
 	  -e SECRET_KEY=test-secret-key-32-chars-minimum \
-	  api pytest tests/ -v --tb=short
+	  api sh -c "pip install -q -r requirements-dev.txt && pytest tests/ -v --tb=short"
 
 test-frontend: ## Запустить vitest
 	$(COMPOSE_FRONTEND) run --rm frontend sh -c "npm install --silent && npm test"
@@ -66,18 +66,18 @@ test-full: test-backend test-frontend test-e2e ## Полный цикл: unit + 
 
 migrate: ## Применить миграции (alembic upgrade head)
 	$(COMPOSE_BACKEND) up -d postgres
-	$(COMPOSE_BACKEND) run --rm api alembic upgrade head
+	$(COMPOSE_BACKEND) run --rm --entrypoint "" api alembic upgrade head
 
 migrate-down: ## Откатить последнюю миграцию
 	$(COMPOSE_BACKEND) up -d postgres
-	$(COMPOSE_BACKEND) run --rm api alembic downgrade -1
+	$(COMPOSE_BACKEND) run --rm --entrypoint "" api alembic downgrade -1
 
 migrate-generate: ## Сгенерировать миграцию: make migrate-generate MSG="add users"
 	$(COMPOSE_BACKEND) up -d postgres
-	$(COMPOSE_BACKEND) run --rm api alembic revision --autogenerate -m "$(MSG)"
+	$(COMPOSE_BACKEND) run --rm --entrypoint "" api alembic revision --autogenerate -m "$(MSG)"
 
 migrate-history: ## История миграций
-	$(COMPOSE_BACKEND) run --rm api alembic history
+	$(COMPOSE_BACKEND) run --rm --entrypoint "" api alembic history
 
 seed: ## Залить тестовые данные
 	$(COMPOSE_BACKEND) up -d postgres redis

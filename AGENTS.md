@@ -255,3 +255,120 @@ cd server && ruff check --fix --quiet "$CLAUDE_TOOL_INPUT_FILE" 2>/dev/null; tru
 - ❌ Закоммитить с `console.log`, `debugger`
 - ❌ Push в main напрямую (только через PR)
 - ❌ Коммит без разрешения пользователя
+
+## 🪤 Известные ловушки и ошибки (Promelectron)
+
+> Реальные проблемы, которые уже случались. Проверять перед коммитом.
+
+### 1. Тесты не должны трогать dev/prod БД
+**Что случилось:** `conftest.py` использовал `DATABASE_URL` напрямую → `drop_all` в фикстуре снёс все таблицы dev-БД.
+**Фикс:** Всегда использовать отдельную тестовую БД:
+```python
+# conftest.py
+_env_url = os.getenv("DATABASE_URL", "")
+if "postgresql" in _env_url:
+    TEST_DATABASE_URL = _env_url.rsplit("/", 1)[0] + "/promelectron_test"
+else:
+    TEST_DATABASE_URL = "sqlite+aiosqlite:///./test.db"
+```
+**Проверка:** `docker exec postgres psql -U postgres -d promelectron -c "\dt"` — таблицы должны быть.
+
+### 2. Rate limiting ломает тесты
+**Что случилось:** `slowapi` блокировал тестовые запросы → `KeyError`, `429`.
+**Фикс:** Сброс лимитера в `client` fixture:
+```python
+@pytest.fixture
+async def client(test_session):
+    from src.app.utils.rate_limiter import limiter
+    limiter.reset()  # Очищаем счётчики перед каждым тестом
+    ...
+```
+
+### 3. SQLite ≠ PostgreSQL
+**Что случилось:** Тесты, написанные под SQLite, падали на PostgreSQL:
+- `ForeignKeyViolationError` — SQLite игнорирует FK по умолчанию
+- `UniqueViolationError` — SQLite не всегда проверяет unique
+- `ProgrammingError` — различия в SQL синтаксисе
+**Фикс:** Всегда запускать `make test-backend` (PostgreSQL в Docker), никогда `pytest` локально на SQLite.
+
+### 4. Trailing slash в FastAPI
+**Что случилось:** `api.get('/categories')` → 307 redirect → axios теряет заголовки/теряется в CORS.
+**Фикс:** Всегда использовать trailing slash, как в декораторе:
+```javascript
+// Правильно
+api.get('/categories/')   // @router.get("/")
+api.post('/categories/')  // @router.post("/")
+```
+
+### 5. Docker node_modules permissions
+**Что случилось:** `npm install` в контейнере (`node:20-alpine`, root) создаёт `node_modules` с `root:root` → хост не может писать.
+**Фикс:** После работы с Docker:
+```bash
+sudo chown -R $(whoami):$(whoami) frontend/node_modules
+```
+**Или:** всегда ставить зависимости на хосте, а не в контейнере.
+
+### 6. docker-entrypoint.sh executable bit
+**Что случилось:** Volume mount перезаписывает файл из хоста → теряется `+x` → `permission denied` при старте.
+**Фикс:** Проверять перед запуском:
+```bash
+chmod +x backend/docker-entrypoint.sh
+```
+
+### 7. docker-entrypoint.sh игнорирует аргументы
+**Что случилось:** Entrypoint всегда запускает `seed_data.py + uvicorn`, `$@` не передаётся → `make migrate` не работает.
+**Фикс (workaround):** В Makefile использовать `--entrypoint ""`:
+```makefile
+migrate:
+	docker compose run --rm --entrypoint "" api alembic upgrade head
+```
+
+### 8. Vite proxy hostname в Docker
+**Что случилось:** `target: 'http://127.0.0.1:8000'` в `vite.config.js` — frontend контейнер не может достучаться до `127.0.0.1` хоста.
+**Фикс:** Использовать имя сервиса:
+```javascript
+proxy: { '/api': { target: 'http://api:8000', changeOrigin: true } }
+```
+
+### 9. Alembic version без таблиц
+**Что случилось:** `drop_all` снёс таблицы, но `alembic_version` остался → `alembic upgrade head` считает, что всё на месте.
+**Фикс:**
+```sql
+DELETE FROM alembic_version;
+-- Затем
+alembic upgrade head
+```
+
+### 10. Duplicate route без guard
+**Что случилось:** Два `path: '/admin'` — первый без `meta: { requiresAdmin }` перехватывал все запросы.
+**Фикс:** Только один маршрут с guard:
+```javascript
+// ❌ Неправильно
+{ path: '/admin', component: Admin },
+{ path: '/admin', component: Admin, meta: { requiresAuth: true, requiresAdmin: true } }
+
+// ✅ Правильно
+{ path: '/admin', component: Admin, meta: { requiresAuth: true, requiresAdmin: true } }
+```
+
+### 11. Path traversal в filename
+**Что случилось:** `os.path.join(UPLOAD_DIR, str(product_id), filename)` с `filename=../../etc/passwd`.
+**Фикс:** Санитизация:
+```python
+safe = os.path.basename(filename)
+if not safe or safe.startswith("."):
+    raise HTTPException(400, "Invalid filename")
+real_fp = os.path.realpath(os.path.join(UPLOAD_DIR, str(product_id), safe))
+real_base = os.path.realpath(os.path.join(UPLOAD_DIR, str(product_id)))
+if not real_fp.startswith(real_base + os.sep):
+    raise HTTPException(400, "Invalid filename")
+```
+
+### 12. Race condition на stock
+**Что случилось:** `SELECT stock` → проверка → `UPDATE stock` в отдельных шагах → overselling при параллельных запросах.
+**Фикс:** `SELECT FOR UPDATE`:
+```python
+product_result = await db.execute(
+    select(Product).where(Product.id == ...).with_for_update()
+)
+```
