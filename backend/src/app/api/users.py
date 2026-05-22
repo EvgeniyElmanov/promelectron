@@ -78,6 +78,7 @@ async def read_supplier_data(current_user: User = Depends(get_current_active_sup
 
 @router.post("/me/avatar", response_model=UserOut)
 async def upload_avatar(
+    request: Request,
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -104,7 +105,8 @@ async def upload_avatar(
     with open(filepath, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    avatar_url = f"/uploads/avatars/{current_user.id}/{filename}"
+    base_url = str(request.base_url).rstrip("/")
+    avatar_url = f"{base_url}/uploads/avatars/{current_user.id}/{filename}"
     return await UserService.update_profile(
         user_id=current_user.id,
         user_data=UserUpdate(avatar_url=avatar_url),
