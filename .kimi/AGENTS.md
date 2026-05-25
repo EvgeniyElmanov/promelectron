@@ -38,6 +38,8 @@ make status       # git + tests + lint
 |------|----------|
 | `security.md` | Security checklist (auth, injection, PII) |
 | `git.md` | Git workflow (branch → PR → merge) |
+| `planning.md` | Task format, status definitions, sprint boundaries |
+| `agent-first.md` | **Always delegate to agents before manual work** |
 
 ## Skills
 
