@@ -2,7 +2,7 @@
 
 > Single source of truth for project execution.  
 > Updated by: `project-manager` agent per `.kimi/rules/planning.md`  
-> Last updated: 2026-05-13
+> Last updated: 2026-05-25
 
 ---
 
@@ -22,8 +22,8 @@ Goal: fix blockers that break production, stabilize test suite, and close env ga
 | | MinIO deployed in K8s but not in docker-compose. Files ephemeral in containers. See `task.md` + `spec.md` + `progress.md`. | | | | |
 | P0-2 | **K8s env: `API_BASE_URL`** | XS | low | `[!]` | — |
 | | Add `API_BASE_URL=https://api.promelectron-test.aidrivencode.ru` to `api-deployment.yaml` env. Blocked: infra file forbidden to assistant. | | | | |
-| P0-3 | **Fix test: `test_upload_product_image`** | S | medium | `[!]` | — |
-| | `PermissionError: [Errno 13] Permission denied: 'uploads/products/1/...'`. Directory likely owned by root (created inside Docker). Need `chown` or volume mount fix. | | | | |
+| P0-3 | **Fix upload test failures (PermissionError)** | S | medium | `[!]` | — |
+| | 6 tests fail with `PermissionError: [Errno 13] Permission denied: 'uploads/products/1/...'`. Root cause: `backend/uploads/` and subdirs owned by `root:root` (created inside Docker). Also `.pytest_cache` root-owned causing cache warnings. Need `chown -R $(id -u):$(id -g) backend/uploads/ backend/.pytest_cache` or mock storage in tests. | | | | |
 
 ### P0 Assumptions
 - MinIO credentials exist in K8s secrets (unverified)
@@ -37,9 +37,9 @@ Goal: fix blockers that break production, stabilize test suite, and close env ga
 | ID | Task | Size | Risk | Status | Depends |
 |----|------|------|------|--------|---------|
 | P1-1 | **Stabilize test suite** | M | low | `[/]` | P0-3 |
-| | **Backend:** 74/75 passed. 1 failed: `test_upload_product_image` (PermissionError). **Frontend:** 59/60 passed. 1 failed: `Admin.spec.js` (text assertion broken by layout change). | | | | |
-| P1-2 | **WebSocket notifications (connect UI)** | M | medium | `[ ]` | — |
-| | Backend `ws.py` + `notifications.py` exist. `Notifications.vue` uses REST polling only. No WebSocket connection in frontend. Need to add `new WebSocket(wsUrl)` in `Notifications.vue` or `App.vue`. | | | | |
+| | **Backend:** 81/87 passed. 6 failed: all upload tests (`test_upload_product_image` + 5 `test_upload_all_image_formats[*]` — PermissionError). **Frontend:** 59/60 passed. 1 failed: `Admin.spec.js` (text assertion broken by layout change). | | | | |
+| P1-2 | **WebSocket notifications (connect UI)** | M | medium | `[x]` (updated: 2026-05-25) | — |
+| | Backend `/ws/notifications` mounted. Frontend `useNotifications.js` uses `new WebSocket` with auto-reconnect + toast. `Header.vue` shows unread badge + dropdown. Fully functional. | | | | |
 | P1-3 | **OAuth callback flow verify** | S | low | `[ ]` | — |
 | | Backend endpoints exist. `AuthCallback.vue` exists. `.env` has **empty** `GOOGLE_CLIENT_ID` / `YANDEX_CLIENT_ID`. Need real credentials + test on test env. | | | | |
 | P1-4 | **Email production (Mailgun)** | S | low | `[ ]` | — |
@@ -53,16 +53,18 @@ Goal: fix blockers that break production, stabilize test suite, and close env ga
 
 | ID | Task | Size | Risk | Status |
 |----|------|------|------|--------|
-| P2-1 | **Reviews UI** | M | low | `[ ]` |
-| | API `reviews.py` exists (POST/GET/PUT/DELETE). **No `<ProductReviews>` component** on `ProductDetail.vue`. | | | |
-| P2-2 | **Favorites integration (catalog heart)** | S | low | `[ ]` |
-| | API `favorites.py` + view `Favorites.vue` exist. **No heart toggle** on `ProductCard`. No favorites counter in header. | | | |
-| P2-3 | **Backend pagination** | M | low | `[ ]` |
-| | Add `skip`/`limit` to `/products`, `/orders`, `/admin/users`. Currently likely returns full dataset. | | | |
+| P2-1 | **Reviews UI** | M | low | `[x]` (updated: 2026-05-25) |
+| | `ProductDetail.vue` has full reviews section: `<ProductReviews>` form (rating + text), list with stars, API integration (`POST /reviews/product/{id}`). | | | |
+| P2-2 | **Favorites integration (catalog heart)** | S | low | `[x]` (updated: 2026-05-25) |
+| | `ProductCard.vue` has heart toggle (`isFavorite`, `toggleFavorite`, calls `/favorites/add/{id}` and `/favorites/remove/{id}`). `Favorites.vue` view works. `Header.vue` and `BottomNav.vue` have nav links. **Minor gap:** no favorites counter badge in header (optional enhancement). | | | |
+| P2-3 | **Backend pagination** | M | low | `[x]` (updated: 2026-05-25) |
+| | Pagination already implemented: `/products` (20), `/products/my` (100), `/admin/users` (50), `/admin/orders` (50), `/notifications` (50). | | | |
 | P2-4 | **Image optimization** | M | medium | `[ ]` |
 | | Convert uploads to WebP + thumbnails. Depends on P0-1 (need S3 for multi-size). | | | |
 | P2-5 | **Redis caching** | M | low | `[ ]` |
 | | Cache popular products, categories. Redis already used for rate limiting. | | | |
+| P2-6 | **Favorites counter in header** | XS | low | `[ ]` |
+| | `Header.vue` has "Избранное" link but no count badge. Small UX win; can reuse `useFavorites` composable pattern. | | | |
 
 ---
 
@@ -82,6 +84,8 @@ Goal: fix blockers that break production, stabilize test suite, and close env ga
 | | Firebase Cloud Messaging. Deferred. | | |
 | P3-6 | **CDN for static assets** | M | `[-]` |
 | | CloudFront/CloudFlare. Deferred. | | |
+| P3-7 | **Fix `.pytest_cache` permissions** | XS | `[ ]` |
+| | `backend/.pytest_cache` owned by root, causing `PytestCacheWarning` on every run. Same fix as P0-3. | | |
 
 ---
 
@@ -115,13 +119,12 @@ Goal: fix blockers that break production, stabilize test suite, and close env ga
 | Risk | Probability | Impact | Mitigation |
 |------|-------------|--------|------------|
 | Uploads lost on pod restart | high | high | P0-1 (MinIO integration) |
-| Test suite unstable (1 backend + 1 frontend failure) | high | medium | P1-1 (fix tests) |
+| Test suite unstable (6 backend + 1 frontend failure) | high | medium | P1-1 (fix tests) + P0-3 (uploads chown) |
 | Avatar URL breaks again | medium | medium | P0-2 (API_BASE_URL env) |
 | CI deploys untested code | high | medium | P1-1 (stabilize + add to CI) |
-| WebSocket backend unused | high | low | P1-2 (connect frontend) |
-| Reviews/favorites API orphaned | medium | low | P2-1, P2-2 (add UI) |
 | Schema drift without migrations | low | high | Enforce `make migrate` in CI |
 | OAuth untested (no creds) | high | high | P1-3 (get real creds + test) |
+| WebSocket notifications silently fail in K8s (no sticky sessions) | medium | low | Verify ingress supports WS upgrade |
 
 ---
 
@@ -132,16 +135,15 @@ Goal: fix blockers that break production, stabilize test suite, and close env ga
 **Capacity:** ~4 dev-days
 
 ### Must (P0)
-- [ ] P0-3: Fix `test_upload_product_image` (chown uploads/ or mock storage)
-- [ ] P0-2: DevOps adds `API_BASE_URL` to K8s
+- [ ] P0-3: Fix upload permissions (`chown -R $(id -u):$(id -g) backend/uploads/` and `backend/.pytest_cache`)
 
 ### Should (P1)
-- [ ] P1-1: Fix `Admin.spec.js` (update selector or assertion)
+- [ ] P1-1: Fix `Admin.spec.js` text assertion (layout merged words — update selector)
 - [ ] P1-5: Update `.env.example` with all required vars (`REDIS_URL`, `ENVIRONMENT`, `API_BASE_URL`)
 - [ ] P1-3: Get Google/Yandex OAuth creds + test callback
 
 ### Could (P2)
-- [ ] P2-2: Add heart toggle to `ProductCard`
+- [ ] P2-6: Add favorites counter badge to `Header.vue`
 
 ---
 
