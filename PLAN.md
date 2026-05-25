@@ -18,8 +18,8 @@ Goal: fix blockers that break production before adding new features.
 
 | ID | Task | Size | Risk | Status | Commit |
 |----|------|------|------|--------|--------|
-| P0-1 | **Persistent storage for uploads** | L | high | `[!]` | — |
-| | MinIO already deployed in K8s. Need to integrate `boto3`/`aiobotocore` in backend, replace `StaticFiles` with presigned S3 URLs, migrate existing files. | | | | |
+| P0-1 | **[Persistent storage for uploads → .agent/tasks/P0-1-minio/](./.agent/tasks/P0-1-minio/)** | L | high | `[!]` | — |
+| | MinIO already deployed in K8s. Task broken into 9 subtasks. See `task.md` + `spec.md` + `progress.md`. | | | | |
 | P0-2 | **K8s env: `API_BASE_URL`** | XS | low | `[!]` | — |
 | | Add `API_BASE_URL=https://api.promelectron-test.aidrivencode.ru` to `api-deployment.yaml` env. Blocked: infra file is forbidden to assistant. | | | | |
 | P0-3 | **Avatar upload end-to-end verify** | S | medium | `[/]` | `d2a6081` |
