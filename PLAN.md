@@ -22,8 +22,8 @@ Goal: fix blockers that break production, stabilize test suite, and close env ga
 | | MinIO deployed in K8s but not in docker-compose. Files ephemeral in containers. See `task.md` + `spec.md` + `progress.md`. | | | | |
 | P0-2 | **K8s env: `API_BASE_URL`** | XS | low | `[!]` | — |
 | | Add `API_BASE_URL=https://api.promelectron-test.aidrivencode.ru` to `api-deployment.yaml` env. Blocked: infra file forbidden to assistant. | | | | |
-| P0-3 | **Fix upload test failures (PermissionError)** | S | medium | `[!]` | — |
-| | 6 tests fail with `PermissionError: [Errno 13] Permission denied: 'uploads/products/1/...'`. Root cause: `backend/uploads/` and subdirs owned by `root:root` (created inside Docker). Also `.pytest_cache` root-owned causing cache warnings. Need `chown -R $(id -u):$(id -g) backend/uploads/ backend/.pytest_cache` or mock storage in tests. | | | | |
+| P0-3 | **Fix upload test failures (PermissionError)** | S | medium | `[x]` (updated: 2026-05-25) | `5fb553f` |
+| | Added `temp_upload_dirs` autouse fixture in `backend/tests/conftest.py` — monkey-patches `UPLOAD_DIR` and `AVATAR_UPLOAD_DIR` to temp directories. Added `cache_dir = "/tmp/pytest-cache-backend"` to `backend/pyproject.toml`. **Result:** 87 passed, 0 failed (was 81/87 with 6 failures). | | | | |
 
 ### P0 Assumptions
 - MinIO credentials exist in K8s secrets (unverified)
@@ -37,7 +37,7 @@ Goal: fix blockers that break production, stabilize test suite, and close env ga
 | ID | Task | Size | Risk | Status | Depends |
 |----|------|------|------|--------|---------|
 | P1-1 | **Stabilize test suite** | M | low | `[/]` | P0-3 |
-| | **Backend:** 81/87 passed. 6 failed: all upload tests (`test_upload_product_image` + 5 `test_upload_all_image_formats[*]` — PermissionError). **Frontend:** 59/60 passed. 1 failed: `Admin.spec.js` (text assertion broken by layout change). | | | | |
+| | **Backend:** 87 passed, 0 failed. **Frontend:** 59/60 passed. 1 failed: `Admin.spec.js` (text assertion broken by layout change). | | | | |
 | P1-2 | **WebSocket notifications (connect UI)** | M | medium | `[x]` (updated: 2026-05-25) | — |
 | | Backend `/ws/notifications` mounted. Frontend `useNotifications.js` uses `new WebSocket` with auto-reconnect + toast. `Header.vue` shows unread badge + dropdown. Fully functional. | | | | |
 | P1-3 | **OAuth callback flow verify** | S | low | `[ ]` | — |
@@ -84,8 +84,8 @@ Goal: fix blockers that break production, stabilize test suite, and close env ga
 | | Firebase Cloud Messaging. Deferred. | | |
 | P3-6 | **CDN for static assets** | M | `[-]` |
 | | CloudFront/CloudFlare. Deferred. | | |
-| P3-7 | **Fix `.pytest_cache` permissions** | XS | `[ ]` |
-| | `backend/.pytest_cache` owned by root, causing `PytestCacheWarning` on every run. Same fix as P0-3. | | |
+| P3-7 | **Fix `.pytest_cache` permissions** | XS | `[x]` (updated: 2026-05-25) |
+| | Resolved by P0-3: `cache_dir = "/tmp/pytest-cache-backend"` added to `backend/pyproject.toml`. | | |
 
 ---
 
@@ -111,6 +111,7 @@ Goal: fix blockers that break production, stabilize test suite, and close env ga
 | S-3 | E2E tests: Playwright, 92 passed | — | — |
 | S-4 | Nginx: `client_max_body_size`, `/uploads/` proxy, regex fix | `d2a6081` | 2026-05-13 |
 | S-5 | Plan system: `project-manager` agent, `PLAN.md`, `.agent/tasks/` | `635bc09` | 2026-05-13 |
+| P0-3 | Fix upload test failures (PermissionError) | `5fb553f` | 2026-05-25 |
 
 ---
 
@@ -119,7 +120,7 @@ Goal: fix blockers that break production, stabilize test suite, and close env ga
 | Risk | Probability | Impact | Mitigation |
 |------|-------------|--------|------------|
 | Uploads lost on pod restart | high | high | P0-1 (MinIO integration) |
-| Test suite unstable (6 backend + 1 frontend failure) | high | medium | P1-1 (fix tests) + P0-3 (uploads chown) |
+| Test suite unstable (1 frontend failure: Admin.spec.js) | medium | low | P1-1 (fix Admin.spec.js selector) |
 | Avatar URL breaks again | medium | medium | P0-2 (API_BASE_URL env) |
 | CI deploys untested code | high | medium | P1-1 (stabilize + add to CI) |
 | Schema drift without migrations | low | high | Enforce `make migrate` in CI |
@@ -130,12 +131,12 @@ Goal: fix blockers that break production, stabilize test suite, and close env ga
 
 ## 📊 Sprint Proposal — Next 1 Week
 
-**Theme:** Stabilize tests + close env gaps
+**Theme:** Close remaining test gaps + env parity
 
-**Capacity:** ~4 dev-days
+**Capacity:** ~3 dev-days
 
 ### Must (P0)
-- [ ] P0-3: Fix upload permissions (`chown -R $(id -u):$(id -g) backend/uploads/` and `backend/.pytest_cache`)
+- [x] P0-3: Fix upload test failures (PermissionError) — **done**
 
 ### Should (P1)
 - [ ] P1-1: Fix `Admin.spec.js` text assertion (layout merged words — update selector)
