@@ -30,6 +30,7 @@ make status       # git + tests + lint
 | `e2e-tester` | Playwright E2E | `agents/e2e-tester.md` |
 | `integration-dev` | Dev-окружение | `agents/integration-dev.md` |
 | `tester` | Тесты | `agents/tester.md` |
+| `project-manager` | План, приоритеты, roadmap | `agents/project-manager.md` |
 
 ## Rules
 
