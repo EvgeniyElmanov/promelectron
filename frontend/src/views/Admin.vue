@@ -134,7 +134,7 @@
 
     <!-- Categories Tab -->
     <div v-show="!isMobile || activeTab === 'categories'" class="admin__tab-panel">
-      <div class="admin__section">
+      <div class="admin__section" data-testid="categories-section">
         <div class="admin__section-header">
           <h2 class="admin__section-title">Категории</h2>
           <button class="admin__btn admin__btn--primary" @click="openCreateModal" data-testid="add-category-btn">+ Добавить</button>

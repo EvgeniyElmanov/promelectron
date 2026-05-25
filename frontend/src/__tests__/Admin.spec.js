@@ -78,7 +78,7 @@ describe('Admin.vue', () => {
       if (url === '/admin/orders-by-day') return Promise.resolve({ data: mockOrdersByDay });
       if (url === '/admin/top-products') return Promise.resolve({ data: mockTopProducts });
       if (url === '/admin/users') return Promise.resolve({ data: mockUsers });
-      if (url === '/categories') return Promise.resolve({ data: mockCategories });
+      if (url === '/categories/') return Promise.resolve({ data: mockCategories });
       return Promise.resolve({ data: {} });
     });
     mockPatch.mockResolvedValue({ data: {} });
@@ -147,9 +147,10 @@ describe('Admin.vue', () => {
     const wrapper = mount(Admin, { global: { plugins: [router] } });
     await flushPromises();
 
-    expect(wrapper.text()).toContain('Категории');
-    expect(wrapper.text()).toContain('Смартфоны');
-    expect(wrapper.text()).toContain('Ноутбуки');
+    const categoriesSection = wrapper.find('[data-testid="categories-section"]');
+    expect(categoriesSection.text()).toContain('Категории');
+    expect(categoriesSection.text()).toContain('Смартфоны');
+    expect(categoriesSection.text()).toContain('Ноутбуки');
   });
 
   it('блокирует пользователя по клику', async () => {
