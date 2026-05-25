@@ -36,8 +36,8 @@ Goal: fix blockers that break production, stabilize test suite, and close env ga
 
 | ID | Task | Size | Risk | Status | Depends |
 |----|------|------|------|--------|---------|
-| P1-1 | **Stabilize test suite** | M | low | `[/]` | P0-3 |
-| | **Backend:** 87 passed, 0 failed. **Frontend:** 59/60 passed. 1 failed: `Admin.spec.js` (text assertion broken by layout change). | | | | |
+| P1-1 | **Stabilize test suite** | M | low | `[x]` (updated: 2026-05-25) | P0-3 |
+| | **Backend:** 87/87 passed. **Frontend:** 60/60 passed. All green. Commit: `7335bd0`. | | | | |
 | P1-2 | **WebSocket notifications (connect UI)** | M | medium | `[x]` (updated: 2026-05-25) | — |
 | | Backend `/ws/notifications` mounted. Frontend `useNotifications.js` uses `new WebSocket` with auto-reconnect + toast. `Header.vue` shows unread badge + dropdown. Fully functional. | | | | |
 | P1-3 | **OAuth callback flow verify** | S | low | `[ ]` | — |
@@ -112,6 +112,7 @@ Goal: fix blockers that break production, stabilize test suite, and close env ga
 | S-4 | Nginx: `client_max_body_size`, `/uploads/` proxy, regex fix | `d2a6081` | 2026-05-13 |
 | S-5 | Plan system: `project-manager` agent, `PLAN.md`, `.agent/tasks/` | `635bc09` | 2026-05-13 |
 | P0-3 | Fix upload test failures (PermissionError) | `5fb553f` | 2026-05-25 |
+| P1-1 | Stabilize test suite | `7335bd0` | 2026-05-25 |
 
 ---
 
@@ -120,9 +121,9 @@ Goal: fix blockers that break production, stabilize test suite, and close env ga
 | Risk | Probability | Impact | Mitigation |
 |------|-------------|--------|------------|
 | Uploads lost on pod restart | high | high | P0-1 (MinIO integration) |
-| Test suite unstable (1 frontend failure: Admin.spec.js) | medium | low | P1-1 (fix Admin.spec.js selector) |
+| Test suite unstable | low | low | **Resolved** — both suites green (backend 87/87, frontend 60/60). Commit: `7335bd0`. |
 | Avatar URL breaks again | medium | medium | P0-2 (API_BASE_URL env) |
-| CI deploys untested code | high | medium | P1-1 (stabilize + add to CI) |
+| CI deploys untested code | medium | medium | Full test suite green; add `npm test` and `pytest` to CI pipeline. |
 | Schema drift without migrations | low | high | Enforce `make migrate` in CI |
 | OAuth untested (no creds) | high | high | P1-3 (get real creds + test) |
 | WebSocket notifications silently fail in K8s (no sticky sessions) | medium | low | Verify ingress supports WS upgrade |
@@ -137,9 +138,9 @@ Goal: fix blockers that break production, stabilize test suite, and close env ga
 
 ### Must (P0)
 - [x] P0-3: Fix upload test failures (PermissionError) — **done**
+- [x] P1-1: Stabilize test suite — **done** (backend 87/87, frontend 60/60)
 
 ### Should (P1)
-- [ ] P1-1: Fix `Admin.spec.js` text assertion (layout merged words — update selector)
 - [ ] P1-5: Update `.env.example` with all required vars (`REDIS_URL`, `ENVIRONMENT`, `API_BASE_URL`)
 - [ ] P1-3: Get Google/Yandex OAuth creds + test callback
 
