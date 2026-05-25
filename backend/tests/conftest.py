@@ -1,5 +1,7 @@
 import asyncio
 import os
+import shutil
+import tempfile
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -18,6 +20,22 @@ if "postgresql" in _env_url:
     TEST_DATABASE_URL = _env_url.rsplit("/", 1)[0] + "/promelectron_test"
 else:
     TEST_DATABASE_URL = "sqlite+aiosqlite:///./test.db"
+
+
+@pytest.fixture(autouse=True)
+def temp_upload_dirs(monkeypatch):
+    """Redirect upload directories to temp locations to avoid permission issues."""
+    temp_root = tempfile.mkdtemp()
+
+    import src.app.api.products as products_mod
+    import src.app.api.users as users_mod
+
+    monkeypatch.setattr(products_mod, "UPLOAD_DIR", os.path.join(temp_root, "products"))
+    monkeypatch.setattr(users_mod, "AVATAR_UPLOAD_DIR", os.path.join(temp_root, "avatars"))
+
+    yield
+
+    shutil.rmtree(temp_root, ignore_errors=True)
 
 
 @pytest.fixture(scope="session")

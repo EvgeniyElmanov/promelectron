@@ -3,3 +3,4 @@ asyncio_mode = "auto"
 testpaths = ["tests"]
 pythonpath = ["."]
 addopts = "-v --tb=short"
+cache_dir = "/tmp/pytest-cache-backend"
