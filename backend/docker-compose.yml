@@ -38,11 +38,7 @@ services:
     command: server /data --console-address ":9001"
     volumes:
       - minio_data:/data
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+
 
   api:
     build:
@@ -63,14 +59,13 @@ services:
       MINIO_SECRET_KEY: minioadmin
       MINIO_BUCKET: promelectron-uploads
       MINIO_SECURE: "false"
+      ACCESS_TOKEN_EXPIRE_MINUTES: "30"
     volumes:
       - .:/app
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      minio: {}
+      - postgres
+      - redis
+      - minio
     command: uvicorn src.app.main:app --host 0.0.0.0 --port 8000 --reload
 
 volumes:

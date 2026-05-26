@@ -68,12 +68,13 @@
 
 #### 1.1 Добавить переменные окружения в Helm values / ConfigMap
 
-В файле Helm values (например, `values-test.yaml` или `values-production.yaml`), добавить в секцию `env.open` (ConfigMap):
+В базовом файле Helm values (`infra/helm/values.yaml`), в секции `env.open` (ConfigMap), уже добавлены все необходимые переменные. Stage-файлы (`stage/test/values.yaml`, `stage/prod/values.yaml`) **не должны** переопределять `env.open`, иначе Helm заменит (не смержит) весь блок, и базовые переменные потеряются.
+
+Убедитесь, что в `env.open` присутствуют:
 
 ```yaml
 env:
   open:
-    # Существующие переменные...
     API_BASE_URL: "https://api.promelectron-test.aidrivencode.ru"
     MINIO_ENDPOINT: "http://promelectron-minio:9000"
     MINIO_BUCKET: "promelectron-uploads"
@@ -83,10 +84,14 @@ env:
     # --- Временно в открытом виде (переделаем на Secret позже) ---
     MINIO_ACCESS_KEY: "<minio-root-user>"
     MINIO_SECRET_KEY: "<minio-root-password>"
+    # Для самого пода MinIO
+    MINIO_ROOT_USER: "<minio-root-user>"
+    MINIO_ROOT_PASSWORD: "<minio-root-password>"
 ```
 
 > **Примечание:** Александр создаёт пароли, но не редактирует файлы. Evgeniy прописывает creds в ConfigMap.  
-> **Временное решение:** Creds в открытом виде в ConfigMap, чтобы не тормозить разработку. Переделаем на K8s Secret после запуска.
+> **Временное решение:** Creds в открытом виде в ConfigMap, чтобы не тормозить разработку. Переделаем на K8s Secret после запуска.  
+> **MinIO под** читает `MINIO_ROOT_USER`/`MINIO_ROOT_PASSWORD` из того же ConfigMap + `promelectron-secrets` (Secret).
 
 #### 1.2 Создать бакет MinIO и политику доступа
 
@@ -455,7 +460,7 @@ REDIS_URL=redis://redis:6379/0
 
 | Файл | Действие | Владелец |
 |------|----------|----------|
-| Helm values / ConfigMap (`values-*.yaml`) | Добавить переменные окружения + creds MinIO | Evgeniy (по данным от Александра) |
+| Helm values / ConfigMap (`values.yaml`) | Добавить переменные окружения + creds MinIO | Evgeniy (по данным от Александра) |
 | K8s secrets | Перевести creds MinIO из ConfigMap в Secret | После запуска |
 | Под MinIO | Создать бакет + политику | Александр |
 | `backend/requirements.txt` | Добавить `aiobotocore` | Бэкенд-разработчик |
