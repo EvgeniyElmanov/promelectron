@@ -18,8 +18,8 @@ Goal: fix blockers that break production, stabilize test suite, and close env ga
 
 | ID | Task | Size | Risk | Status | Commit |
 |----|------|------|------|--------|--------|
-| P0-1 | **[Persistent storage for uploads → .agent/tasks/P0-1-minio/](./.agent/tasks/P0-1-minio/)** | L | high | `[!]` | — |
-| | MinIO deployed in K8s but not in docker-compose. Files ephemeral in containers. See `task.md` + `spec.md` + `progress.md`. | | | | |
+| P0-1 | **[Persistent storage for uploads → .agent/tasks/P0-1-minio/](./.agent/tasks/P0-1-minio/)** | L | high | `[/]` | — |
+| | MinIO deployed in K8s. Creds can go in ConfigMap temporarily (per Alexandr). Backend code + tests ready to implement. See `MINIO_INTEGRATION.md` for full guide. | | | | |
 | P0-2 | **K8s env: `API_BASE_URL`** | XS | low | `[!]` | — |
 | | Add `API_BASE_URL=https://api.promelectron-test.aidrivencode.ru` to `api-deployment.yaml` env. Blocked: infra file forbidden to assistant. | | | | |
 | P0-3 | **Fix upload test failures (PermissionError)** | S | medium | `[x]` (updated: 2026-05-25) | `5fb553f` |
