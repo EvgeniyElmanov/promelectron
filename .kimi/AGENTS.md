@@ -31,6 +31,7 @@ make status       # git + tests + lint
 | `integration-dev` | Dev-окружение | `agents/integration-dev.md` |
 | `tester` | Тесты | `agents/tester.md` |
 | `project-manager` | План, приоритеты, roadmap | `agents/project-manager.md` |
+| `devops` | Инфраструктура, K8s, Helm, Docker, nginx | `agents/devops.md` |
 
 ## Rules
 
