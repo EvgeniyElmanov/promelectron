@@ -21,12 +21,13 @@ You **MUST** use an agent (via `Agent` tool) when:
 
 ## When You MAY Skip Agents
 
-You MAY work directly (without agent delegation) when:
+**ZERO EXCEPTIONS.** You MUST use an agent for every task.
 
-1. **Single-file change** — typo fix, one-line bugfix, simple rename
-2. **Reading a known file** — user explicitly asked for `file.py`
-3. **Simple Q&A** — explaining a concept, answering about syntax
-4. **Emergency fix** — production down, need immediate action (still document what agent would have caught)
+Even for:
+- Single-word typo fixes → use `code-reviewer` agent
+- Reading one file → use `explore` agent  
+- Simple Q&A → use `project-manager` agent for context
+- Emergency fix → use `backend-dev` or `frontend-dev` agent immediately
 
 ## How to Delegate
 
@@ -43,6 +44,7 @@ You MAY work directly (without agent delegation) when:
 - ❌ Writing backend code without checking if `backend-dev` agent has conventions
 - ❌ Doing security review alone instead of `security-reviewer`
 - ❌ Implementing a feature across backend+frontend as one giant step
+- ❌ Editing files directly — ALWAYS delegate to agent first
 
 ## Rationale
 
@@ -51,5 +53,6 @@ Agents are specialized sub-processes with:
 - **Focused execution** — single goal, no distractions
 - **Reproducible results** — same prompt → same workflow → consistent quality
 - **Parallel execution** — multiple agents can work simultaneously on independent tasks
+- **Error detection** — agents catch bugs that manual editing misses
 
-Your manual work should be **coordination, review, and final decisions** — not raw exploration and implementation.
+Your ONLY manual work is **coordination, review, and final decisions** — never raw exploration, never direct file edits, never implementation without agent delegation.
