@@ -13,6 +13,7 @@ async function fillAddress(page, prefix) {
   await page.fill(`[data-testid="${prefix}apartment"]`, '42');
 }
 
+test.describe.configure({ mode: 'serial' });
 test.describe('Profile & Edit Profile', () => {
   test('user can view profile and edit name', async ({ page }) => {
     const email = uniqueEmail();
