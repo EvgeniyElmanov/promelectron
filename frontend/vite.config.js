@@ -5,6 +5,9 @@ import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
 
 // https://vite.dev/config/
+const proxyTarget = process.env.VITE_PROXY_API || 'http://127.0.0.1:8000'
+const wsTarget = proxyTarget.replace(/^http/, 'ws')
+
 export default defineConfig({
   plugins: [
     vue(),
@@ -19,16 +22,16 @@ export default defineConfig({
     host: '0.0.0.0',
     proxy: {
       '/api': {
-        target: 'http://api:8000',
+        target: proxyTarget,
         changeOrigin: true,
       },
       '/ws': {
-        target: 'ws://api:8000',
+        target: wsTarget,
         changeOrigin: true,
         ws: true,
       },
       '/uploads': {
-        target: 'http://api:8000',
+        target: proxyTarget,
         changeOrigin: true,
       },
     },
