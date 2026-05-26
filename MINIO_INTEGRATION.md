@@ -66,9 +66,9 @@
 
 ### Шаг 1 — DevOps: K8s-секреты и бакет (Александр)
 
-#### 1.1 Добавить переменные окружения в Helm values
+#### 1.1 Добавить переменные окружения в Helm values / ConfigMap
 
-В файле Helm values (например, `values-test.yaml` или `values-production.yaml`), добавить в секцию `env.open`:
+В файле Helm values (например, `values-test.yaml` или `values-production.yaml`), добавить в секцию `env.open` (ConfigMap):
 
 ```yaml
 env:
@@ -80,18 +80,13 @@ env:
     MINIO_SECURE: "false"
     ENVIRONMENT: "production"
     REDIS_URL: "redis://promelectron-redis:6379/0"
-```
-
-И в `env.secret` (или отдельно в `promelectron-secrets`):
-
-```yaml
-env:
-  secret:
+    # --- Временно в открытом виде (переделаем на Secret позже) ---
     MINIO_ACCESS_KEY: "<minio-root-user>"
     MINIO_SECRET_KEY: "<minio-root-password>"
 ```
 
-> **Примечание:** `API_BASE_URL`, `REDIS_URL` и `ENVIRONMENT` тоже отсутствуют. Добавь их сейчас, чтобы не делать отдельных PR.
+> **Примечание:** Александр создаёт пароли, но не редактирует файлы. Evgeniy прописывает creds в ConfigMap.  
+> **Временное решение:** Creds в открытом виде в ConfigMap, чтобы не тормозить разработку. Переделаем на K8s Secret после запуска.
 
 #### 1.2 Создать бакет MinIO и политику доступа
 
@@ -460,8 +455,8 @@ REDIS_URL=redis://redis:6379/0
 
 | Файл | Действие | Владелец |
 |------|----------|----------|
-| Helm values (`values-*.yaml`) | Добавить переменные окружения | Александр |
-| K8s secrets | Добавить учётные данные MinIO | Александр |
+| Helm values / ConfigMap (`values-*.yaml`) | Добавить переменные окружения + creds MinIO | Evgeniy (по данным от Александра) |
+| K8s secrets | Перевести creds MinIO из ConfigMap в Secret | После запуска |
 | Под MinIO | Создать бакет + политику | Александр |
 | `backend/requirements.txt` | Добавить `aiobotocore` | Бэкенд-разработчик |
 | `backend/src/app/core/config.py` | Добавить настройки MinIO | Бэкенд-разработчик |
