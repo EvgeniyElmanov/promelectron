@@ -1,52 +1,52 @@
-# MinIO Integration Guide — Promelectron
+# Руководство по интеграции MinIO — Promelectron
 
-> **For:** Александр (DevOps) + Backend review  
-> **Task:** P0-1 — Persistent storage for uploads  
-> **Status:** Ready for implementation  
-> **Created:** 2026-05-25
-
----
-
-## 1. Why MinIO?
-
-**Current problem:** Uploaded files (avatars, product images) are stored in the container filesystem (`/app/uploads`). In Kubernetes this is ephemeral — files disappear on every pod restart, redeploy, or node migration.
-
-**Evidence:** Every time the API pod restarts, all user avatars and product images are lost. Users see broken image links.
-
-**Solution:** Use MinIO (already deployed in the cluster) as S3-compatible object storage. Files persist independently of pod lifecycle.
+> **Для:** Александра (DevOps) + Backend-разработчика  
+> **Задача:** P0-1 — Постоянное хранилище для загружаемых файлов  
+> **Статус:** Готово к реализации  
+> **Создано:** 2026-05-25
 
 ---
 
-## 2. What Already Exists
+## 1. Зачем нужен MinIO?
 
-| Component | File | Status |
+**Текущая проблема:** Загружаемые файлы (аватары, фото товаров) хранятся в файловой системе контейнера (`/app/uploads`). В Kubernetes это эфемерное хранилище — файлы исчезают при каждом перезапуске, редеплое или миграции пода.
+
+**Последствия:** При каждом рестарте API-пода пропадают все аватарки пользователей и фото товаров. Пользователи видят битые ссылки на изображения.
+
+**Решение:** Использовать MinIO (уже развёрнут в кластере) как S3-совместимое объектное хранилище. Файлы сохраняются независимо от жизненного цикла подов.
+
+---
+
+## 2. Что уже существует
+
+| Компонент | Файл | Статус |
 |-----------|------|--------|
-| MinIO deployment | `infra/helm/templates/minio-deployment.yaml` | ✅ Deployed |
-| MinIO PVC | `infra/helm/templates/minio-pvc.yaml` | ✅ Exists |
-| MinIO service | `infra/helm/templates/minio-service.yaml` | ✅ Exists |
-| Backend upload endpoints | `backend/src/app/api/users.py`, `products.py` | ✅ Work (local fs) |
-| StaticFiles mount | `backend/src/app/main.py` | ✅ Serves `/uploads/` |
+| Деплоймент MinIO | `infra/helm/templates/minio-deployment.yaml` | ✅ Развёрнут |
+| PVC MinIO | `infra/helm/templates/minio-pvc.yaml` | ✅ Существует |
+| Сервис MinIO | `infra/helm/templates/minio-service.yaml` | ✅ Существует |
+| Endpoint'ы загрузки | `backend/src/app/api/users.py`, `products.py` | ✅ Работают (локальная ФС) |
+| Раздача статики | `backend/src/app/main.py` | ✅ Монтирует `/uploads/` |
 
-**What does NOT exist yet:**
-- MinIO bucket + public policy
-- K8s secrets with MinIO credentials
-- `API_BASE_URL` env var
-- Backend abstraction layer for storage
-- `aiobotocore` dependency
+**Что ещё НЕ существует:**
+- Бакет MinIO + публичная политика
+- K8s-секреты с учётными данными MinIO
+- Переменная окружения `API_BASE_URL`
+- Абстракция хранилища в бэкенде
+- Зависимость `aiobotocore`
 
 ---
 
-## 3. Architecture Overview
+## 3. Общая архитектура
 
 ```
-┌─────────────┐     upload      ┌──────────────┐     S3 API      ┌──────────┐
-│   Frontend  │ ───────────────>│   FastAPI    │ ──────────────>│  MinIO   │
-│  (browser)  │                 │   (API pod)  │                │ (K8s)    │
+┌─────────────┐     загрузка    ┌──────────────┐     S3 API      ┌──────────┐
+│   Фронтенд  │ ───────────────>│   FastAPI    │ ──────────────>│  MinIO   │
+│  (браузер)  │                 │   (API pod)  │                │ (K8s)    │
 └─────────────┘                 └──────────────┘                └──────────┘
        │                                │                              │
        │                                │ 307 Redirect                 │
        │ <──────────────────────────────┼──────────────────────────────┘
-       │                                │  (public URL)
+       │                                │  (публичный URL)
        │                                │
        │                         ┌──────┴──────┐
        │                         │   PostgreSQL  │
@@ -54,26 +54,26 @@
        │                         └───────────────┘
 ```
 
-**Flow:**
-1. User uploads file → FastAPI receives multipart form
-2. FastAPI uploads bytes to MinIO bucket via `aiobotocore`
-3. FastAPI stores public MinIO URL in PostgreSQL (`avatar_url`, `image_url`)
-4. Browser requests image → FastAPI returns `307 Redirect` to MinIO public URL
+**Поток данных:**
+1. Пользователь загружает файл → FastAPI получает multipart-форму
+2. FastAPI загружает байты в бакет MinIO через `aiobotocore`
+3. FastAPI сохраняет публичный URL MinIO в PostgreSQL (`avatar_url`, `image_url`)
+4. Браузер запрашивает изображение → FastAPI возвращает `307 Redirect` на публичный URL MinIO
 
 ---
 
-## 4. Step-by-Step Implementation
+## 4. Пошаговая реализация
 
-### Step 1 — DevOps: K8s Secrets & Bucket (Александр)
+### Шаг 1 — DevOps: K8s-секреты и бакет (Александр)
 
-#### 1.1 Add env vars to Helm values
+#### 1.1 Добавить переменные окружения в Helm values
 
-In your Helm values file (e.g., `values-test.yaml` or `values-production.yaml`), add to the `env.open` section:
+В файле Helm values (например, `values-test.yaml` или `values-production.yaml`), добавить в секцию `env.open`:
 
 ```yaml
 env:
   open:
-    # Existing vars...
+    # Существующие переменные...
     API_BASE_URL: "https://api.promelectron-test.aidrivencode.ru"
     MINIO_ENDPOINT: "http://promelectron-minio:9000"
     MINIO_BUCKET: "promelectron-uploads"
@@ -82,7 +82,7 @@ env:
     REDIS_URL: "redis://promelectron-redis:6379/0"
 ```
 
-And to `env.secret` (or create separately in `promelectron-secrets`):
+И в `env.secret` (или отдельно в `promelectron-secrets`):
 
 ```yaml
 env:
@@ -91,60 +91,60 @@ env:
     MINIO_SECRET_KEY: "<minio-root-password>"
 ```
 
-> **Note:** `API_BASE_URL`, `REDIS_URL`, and `ENVIRONMENT` are also missing. Add them now to avoid separate PRs.
+> **Примечание:** `API_BASE_URL`, `REDIS_URL` и `ENVIRONMENT` тоже отсутствуют. Добавь их сейчас, чтобы не делать отдельных PR.
 
-#### 1.2 Create MinIO bucket and policy
+#### 1.2 Создать бакет MinIO и политику доступа
 
-Exec into the MinIO pod:
+Подключиться к поду MinIO:
 
 ```bash
 kubectl exec -it deployment/promelectron-minio -n <namespace> -- sh
 ```
 
-Inside the pod:
+Внутри пода:
 
 ```bash
-# Setup mc (MinIO client) pointing to local server
+# Настроить mc (клиент MinIO) на локальный сервер
 mc alias set local http://localhost:9000 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD
 
-# Create bucket
+# Создать бакет
 mc mb local/promelectron-uploads
 
-# Set public-read policy for avatars and product images
+# Установить публичную политику чтения для аватаров и фото товаров
 mc anonymous set download local/promelectron-uploads
 
-# Verify
+# Проверить
 mc anonymous get local/promelectron-uploads
 ```
 
-**Expected output:** `Access permission for 'local/promelectron-uploads' is 'download'`
+**Ожидаемый результат:** `Access permission for 'local/promelectron-uploads' is 'download'`
 
-#### 1.3 Verify MinIO is reachable from API pod
+#### 1.3 Проверить доступность MinIO из API-пода
 
 ```bash
 kubectl exec -it deployment/promelectron-api -n <namespace> -- sh
-# Inside API pod:
+# Внутри API-пода:
 curl http://promelectron-minio:9000/minio/health/live
-# Expected: 200 OK
+# Ожидается: 200 OK
 ```
 
 ---
 
-### Step 2 — Backend: Install Dependency
+### Шаг 2 — Бэкенд: Установка зависимости
 
-Add to `backend/requirements.txt`:
+Добавить в `backend/requirements.txt`:
 
 ```
 aiobotocore>=2.13.0
 ```
 
-Then rebuild Docker image or run `pip install aiobotocore` in the pod.
+Затем пересобрать Docker-образ или запустить `pip install aiobotocore` в поде.
 
 ---
 
-### Step 3 — Backend: Config (`backend/src/app/core/config.py`)
+### Шаг 3 — Бэкенд: Конфигурация (`backend/src/app/core/config.py`)
 
-Add to the `Settings` dataclass:
+Добавить в датакласс `Settings`:
 
 ```python
     api_base_url: str
@@ -155,7 +155,7 @@ Add to the `Settings` dataclass:
     minio_secure: bool
 ```
 
-Add to the `settings = Settings(...)` instantiation:
+Добавить в инстанциацию `settings = Settings(...)`:
 
 ```python
     api_base_url=os.getenv("API_BASE_URL", ""),
@@ -168,9 +168,9 @@ Add to the `settings = Settings(...)` instantiation:
 
 ---
 
-### Step 4 — Backend: Storage Service (`backend/src/app/services/storage_service.py`)
+### Шаг 4 — Бэкенд: Сервис хранилища (`backend/src/app/services/storage_service.py`)
 
-Create new file:
+Создать новый файл:
 
 ```python
 import os
@@ -194,7 +194,7 @@ class StorageService(Protocol):
 
 
 class LocalStorageService:
-    """Fallback for local development without MinIO."""
+    """Fallback для локальной разработки без MinIO."""
 
     async def upload(self, key: str, file: UploadFile) -> str:
         filepath = os.path.join("uploads", key)
@@ -214,7 +214,7 @@ class LocalStorageService:
 
 
 class MinioStorageService:
-    """Production storage using MinIO (S3-compatible)."""
+    """Продакшен-хранилище через MinIO (S3-совместимый)."""
 
     def __init__(self):
         self.endpoint = settings.minio_endpoint
@@ -241,7 +241,7 @@ class MinioStorageService:
         return self.get_url(key)
 
     def get_url(self, key: str) -> str:
-        # Public bucket — direct URL without presign
+        # Публичный бакет — прямой URL без подписи
         scheme = "https" if self.secure else "http"
         host = self.endpoint.replace("http://", "").replace("https://", "")
         return f"{scheme}://{host}/{self.bucket}/{key}"
@@ -268,20 +268,20 @@ storage = get_storage_service()
 
 ---
 
-### Step 5 — Backend: Update Upload Endpoints
+### Шаг 5 — Бэкенд: Обновить endpoint'ы загрузки
 
 #### `backend/src/app/api/users.py`
 
-Replace the upload logic in `upload_avatar`:
+Заменить логику загрузки в `upload_avatar`:
 
 ```python
 from src.app.services.storage_service import storage
 
-# ... inside upload_avatar ...
+# ... внутри upload_avatar ...
 key = f"avatars/{current_user.id}/{filename}"
 public_url = await storage.upload(key, file)
 
-# Delete old avatar if exists
+# Удалить старый аватар, если есть
 if current_user.avatar_url:
     old_key = current_user.avatar_url.replace(f"{settings.api_base_url}/uploads/", "").lstrip("/")
     if old_key and not old_key.startswith("http"):
@@ -294,27 +294,27 @@ return await UserService.update_profile(
 )
 ```
 
-Remove the `base_url = settings.api_base_url or str(request.base_url).rstrip("/")` line.
+Удалить строку `base_url = settings.api_base_url or str(request.base_url).rstrip("/")`.
 
 #### `backend/src/app/api/products.py`
 
-Similarly, replace file saving logic in image upload endpoint:
+Аналогично заменить сохранение файла в endpoint загрузки изображений:
 
 ```python
 from src.app.services.storage_service import storage
 
-# ... inside upload_image ...
+# ... внутри upload_image ...
 key = f"products/{product_id}/{filename}"
 public_url = await storage.upload(key, file)
 ```
 
-Update `image_url` storage in DB to use `public_url`.
+Обновить сохранение `image_url` в БД на `public_url`.
 
 ---
 
-### Step 6 — Backend: Serving Files (`backend/src/app/main.py`)
+### Шаг 6 — Бэкенд: Раздача файлов (`backend/src/app/main.py`)
 
-Replace the `StaticFiles` mount with a redirect handler:
+Заменить монтирование `StaticFiles` на обработчик редиректа:
 
 ```python
 from fastapi import Request
@@ -322,29 +322,29 @@ from fastapi.responses import RedirectResponse, FileResponse
 
 from src.app.services.storage_service import storage
 
-# Remove or conditionally disable:
+# Удалить или условно отключить:
 # app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 @app.get("/uploads/{path:path}")
 async def serve_upload(request: Request, path: str):
     url = storage.get_url(path)
     if url.startswith("/"):
-        # Local dev — fallback to filesystem
+        # Локальная разработка — fallback на файловую систему
         filepath = os.path.join("uploads", path)
         if os.path.exists(filepath):
             return FileResponse(filepath)
-        raise HTTPException(status_code=404, detail="File not found")
+        raise HTTPException(status_code=404, detail="Файл не найден")
     return RedirectResponse(url=url, status_code=307)
 ```
 
 ---
 
-### Step 7 — Frontend: Nginx Cleanup (`frontend/nginx.conf`)
+### Шаг 7 — Фронтенд: Очистка nginx (`frontend/nginx.conf`)
 
-Remove or comment out the `/uploads/` location since files are now served directly from MinIO (or via API redirect):
+Удалить или закомментировать location `/uploads/`, так как файлы теперь раздаются напрямую из MinIO (или через API-редирект):
 
 ```nginx
-# REMOVED — uploads now served directly from MinIO
+# УДАЛЕНО — uploads раздаются напрямую из MinIO
 # location ^~ /uploads/ {
 #     proxy_pass http://promelectron-api:8000/uploads/;
 # }
@@ -352,9 +352,9 @@ Remove or comment out the `/uploads/` location since files are now served direct
 
 ---
 
-### Step 8 — Docker Compose (Local Dev)
+### Шаг 8 — Docker Compose (локальная разработка)
 
-Add to `backend/docker-compose.yml`:
+Добавить в `backend/docker-compose.yml`:
 
 ```yaml
   minio:
@@ -373,7 +373,7 @@ volumes:
   minio_data:
 ```
 
-And add to the `api` service environment:
+И добавить в переменные окружения сервиса `api`:
 
 ```yaml
       MINIO_ENDPOINT: http://minio:9000
@@ -388,9 +388,9 @@ And add to the `api` service environment:
 
 ---
 
-### Step 9 — Tests Update
+### Шаг 9 — Обновление тестов
 
-Update `backend/tests/conftest.py`:
+Обновить `backend/tests/conftest.py`:
 
 ```python
 @pytest.fixture(autouse=True)
@@ -406,26 +406,26 @@ def mock_storage_service(monkeypatch):
     monkeypatch.setattr(storage_service, "storage", FakeStorage())
 ```
 
-Remove or update the old `temp_upload_dirs` fixture since `upload()` is now mocked entirely.
+Удалить или обновить старый фикстуру `temp_upload_dirs`, так как `upload()` теперь полностью мокается.
 
 ---
 
-### Step 10 — `.env.example` Update
+### Шаг 10 — Обновление `.env.example`
 
-Add to `backend/.env.example`:
+Добавить в `backend/.env.example`:
 
 ```env
-# --- MinIO (S3-compatible storage) ---
+# --- MinIO (S3-совместимое хранилище) ---
 MINIO_ENDPOINT=http://localhost:9000
 MINIO_ACCESS_KEY=minioadmin
 MINIO_SECRET_KEY=minioadmin
 MINIO_BUCKET=promelectron-uploads
 MINIO_SECURE=false
 
-# --- Base URL ---
+# --- Базовый URL API ---
 API_BASE_URL=http://localhost:8000
 
-# --- Environment ---
+# --- Окружение ---
 ENVIRONMENT=development
 
 # --- Redis ---
@@ -434,44 +434,42 @@ REDIS_URL=redis://redis:6379/0
 
 ---
 
-## 5. Rollback Plan
+## 5. План отката
 
-If something goes wrong:
+Если что-то пойдёт не так:
 
-1. Unset `MINIO_ENDPOINT` in K8s → backend falls back to `LocalStorageService`
-2. Restore `frontend/nginx.conf` `/uploads/` proxy location
-3. Re-enable `StaticFiles` mount in `main.py`
-4. Files uploaded during MinIO period will have external URLs — they become 404, but new uploads go to local fs again (acceptable for test env)
-
----
-
-## 6. Verification Checklist
-
-After deployment:
-
-- [ ] `kubectl get pods` — MinIO pod Running
-- [ ] `mc ls local/promelectron-uploads` — bucket exists
-- [ ] Upload avatar via frontend → `avatar_url` in DB starts with `https://minio...`
-- [ ] `curl -I <avatar_url>` → returns `200 OK` directly from MinIO
-- [ ] `pytest backend/tests/` → 87 passed
-- [ ] E2E tests → 92 passed
+1. Удалить `MINIO_ENDPOINT` в K8s → бэкенд автоматически переключится на `LocalStorageService`
+2. Восстановить location `/uploads/` в `frontend/nginx.conf`
+3. Включить обратно монтирование `StaticFiles` в `main.py`
+4. Файлы, загруженные в период работы MinIO, будут иметь внешние URL — они станут 404, но новые загрузки снова пойдут в локальную ФС (приемлемо для тестового окружения)
 
 ---
 
-## 7. Files Changed Summary
+## 6. Чек-лист проверки после деплоя
 
-| File | Action | Owner |
-|------|--------|-------|
-| Helm values (`values-*.yaml`) | Add env vars | Александр |
-| K8s secrets | Add MinIO creds | Александр |
-| MinIO pod | Create bucket + policy | Александр |
-| `backend/requirements.txt` | Add `aiobotocore` | Backend dev |
-| `backend/src/app/core/config.py` | Add MinIO settings | Backend dev |
-| `backend/src/app/services/storage_service.py` | **New file** — storage abstraction | Backend dev |
-| `backend/src/app/api/users.py` | Use `storage.upload()` | Backend dev |
-| `backend/src/app/api/products.py` | Use `storage.upload()` | Backend dev |
-| `backend/src/app/main.py` | Replace StaticFiles with redirect | Backend dev |
-| `frontend/nginx.conf` | Remove `/uploads/` proxy | Frontend dev |
-| `backend/docker-compose.yml` | Add MinIO service | Александр |
-| `backend/tests/conftest.py` | Mock storage service | Backend dev |
-| `backend/.env.example` | Add all missing vars | Backend dev |
+- [ ] `kubectl get pods` — под MinIO в статусе Running
+- [ ] `mc ls local/promelectron-uploads` — бакет существует
+- [ ] Загрузить аватар через фронтенд → `avatar_url` в БД начинается с `https://minio...`
+- [ ] `curl -I <avatar_url>` → возвращает `200 OK` напрямую из MinIO
+- [ ] `pytest backend/tests/` → 87 тестов пройдено
+- [ ] E2E-тесты → 92 пройдено
+
+---
+
+## 7. Сводка изменений по файлам
+
+| Файл | Действие | Владелец |
+|------|----------|----------|
+| Helm values (`values-*.yaml`) | Добавить переменные окружения | Александр |
+| K8s secrets | Добавить учётные данные MinIO | Александр |
+| Под MinIO | Создать бакет + политику | Александр |
+| `backend/requirements.txt` | Добавить `aiobotocore` | Бэкенд-разработчик |
+| `backend/src/app/core/config.py` | Добавить настройки MinIO | Бэкенд-разработчик |
+| `backend/src/app/services/storage_service.py` | **Новый файл** — абстракция хранилища | Бэкенд-разработчик |
+| `backend/src/app/api/users.py` | Использовать `storage.upload()` | Бэкенд-разработчик |
+| `backend/src/app/api/products.py` | Использовать `storage.upload()` | Бэкенд-разработчик |
+| `backend/src/app/main.py` | Заменить StaticFiles на редирект | Бэкенд-разработчик |
+| `frontend/nginx.conf` | Удалить proxy `/uploads/` | Фронтенд-разработчик |
+| `backend/docker-compose.yml` | Добавить сервис MinIO | Александр |
+| `backend/tests/conftest.py` | Замокать storage service | Бэкенд-разработчик |
+| `backend/.env.example` | Добавить все недостающие переменные | Бэкенд-разработчик |
