@@ -39,9 +39,9 @@ test.describe('Supplier Products', () => {
     const deleteBtn = productCard.locator('.supplier-product-card__btn--delete');
     await expect(deleteBtn).toBeVisible();
 
-    // 7. Cleanup: delete the test product
+    // 7. Cleanup: delete (deactivate) the test product
     page.once('dialog', (dialog) => dialog.accept());
     await deleteBtn.click();
-    await expect(productCard).not.toBeVisible({ timeout: 10000 });
+    await expect(productCard.locator('.supplier-product-card__badge')).toHaveText('Неактивен', { timeout: 10000 });
   });
 });

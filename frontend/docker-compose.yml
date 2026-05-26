@@ -1,12 +1,13 @@
 services:
   frontend:
-    image: node:20-alpine
+    image: mcr.microsoft.com/playwright:v1.60.0-jammy
     working_dir: /app
     ports:
       - "5173:5173"
     environment:
       - VITE_PROXY_API=http://api:8000
       - API_URL=http://api:8000
+      - BASE_URL=http://frontend:5173
     volumes:
-      - .:/app
+      - ../frontend:/app
     command: sh -c "npm install --silent && npm run dev -- --host 0.0.0.0"

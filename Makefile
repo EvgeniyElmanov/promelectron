@@ -55,10 +55,15 @@ test-frontend: ## Запустить vitest
 
 test-e2e: ## Запустить Playwright E2E тесты (требует запущенного стека)
 	$(COMPOSE) up -d
-	$(COMPOSE_FRONTEND) run --rm frontend sh -c "npm install --silent && npx playwright install chromium && npm run e2e"
+	@echo "Waiting for frontend dev server to be ready..."
+	@$(COMPOSE_FRONTEND) run --rm frontend sh -c "until curl -s -o /dev/null http://frontend:5173; do sleep 1; done"
+	$(COMPOSE_FRONTEND) run --rm frontend npx playwright test --workers=1
 
 test-visual: ## Визуальный smoke (скриншоты)
-	$(COMPOSE_FRONTEND) run --rm frontend sh -c "npm install --silent && npx playwright install chromium && npx playwright test --project=visual-smoke"
+	$(COMPOSE) up -d
+	@echo "Waiting for frontend dev server to be ready..."
+	@$(COMPOSE_FRONTEND) run --rm frontend sh -c "until curl -s -o /dev/null http://frontend:5173; do sleep 1; done"
+	$(COMPOSE_FRONTEND) run --rm frontend npx playwright test --project=visual-smoke --workers=1
 
 test-full: test-backend test-frontend test-e2e ## Полный цикл: unit + e2e
 

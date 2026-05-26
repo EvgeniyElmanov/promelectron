@@ -20,6 +20,10 @@ export default defineConfig({
   },
   server: {
     host: '0.0.0.0',
+    allowedHosts: ['frontend'],
+    watch: {
+      ignored: ['**/playwright-report/**', '**/test-results/**'],
+    },
     proxy: {
       '/api': {
         target: proxyTarget,
