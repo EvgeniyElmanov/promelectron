@@ -24,7 +24,7 @@ router = APIRouter()
 
 
 @router.post("/register")
-@conditional_limit("5/minute")
+@conditional_limit("50/minute")
 async def register_user(request: Request, user_data: UserCreate, db: AsyncSession = Depends(get_db)):
     return await UserService.register_user(user_data=user_data, db=db)
 
