@@ -1,7 +1,5 @@
 import asyncio
 import os
-import shutil
-import tempfile
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -23,19 +21,24 @@ else:
 
 
 @pytest.fixture(autouse=True)
-def temp_upload_dirs(monkeypatch):
-    """Redirect upload directories to temp locations to avoid permission issues."""
-    temp_root = tempfile.mkdtemp()
+def mock_storage_service(monkeypatch):
+    """Mock storage service to avoid filesystem/MinIO side effects in tests."""
 
-    import src.app.api.products as products_mod
-    import src.app.api.users as users_mod
+    class FakeStorage:
+        async def upload(self, key, file):
+            return f"/uploads/{key}"
 
-    monkeypatch.setattr(products_mod, "UPLOAD_DIR", os.path.join(temp_root, "products"))
-    monkeypatch.setattr(users_mod, "AVATAR_UPLOAD_DIR", os.path.join(temp_root, "avatars"))
+        def get_url(self, key):
+            return f"/uploads/{key}"
 
-    yield
+        async def delete(self, key):
+            pass
 
-    shutil.rmtree(temp_root, ignore_errors=True)
+    fake = FakeStorage()
+    monkeypatch.setattr("src.app.api.products.storage", fake)
+    monkeypatch.setattr("src.app.api.users.storage", fake)
+    monkeypatch.setattr("src.app.main.storage", fake)
+    monkeypatch.setattr("src.app.services.storage_service.storage", fake)
 
 
 @pytest.fixture(scope="session")

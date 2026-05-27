@@ -338,7 +338,7 @@ class TestProductsAPI:
         assert response.status_code == 200
         data = response.json()
         assert len(data["images"]) == 1
-        assert "/uploads/products/" in data["images"][0]
+        assert "products/" in data["images"][0]
 
     @pytest.mark.asyncio
     async def test_upload_image_unauthorized(self, client, test_product):

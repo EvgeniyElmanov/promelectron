@@ -21,6 +21,11 @@ class Settings:
     smtp_tls: bool
     redis_url: str
     api_base_url: str
+    minio_endpoint: str | None
+    minio_access_key: str | None
+    minio_secret_key: str | None
+    minio_bucket: str
+    minio_secure: bool
 
 
 settings = Settings(
@@ -43,9 +48,13 @@ settings = Settings(
     smtp_tls=os.getenv("SMTP_TLS", "true").lower() == "true",
     redis_url=os.getenv("REDIS_URL", "redis://redis:6379/0"),
     api_base_url=os.getenv("API_BASE_URL", ""),
+    minio_endpoint=os.getenv("MINIO_ENDPOINT"),
+    minio_access_key=os.getenv("MINIO_ACCESS_KEY"),
+    minio_secret_key=os.getenv("MINIO_SECRET_KEY"),
+    minio_bucket=os.getenv("MINIO_BUCKET", "promelectron-uploads"),
+    minio_secure=os.getenv("MINIO_SECURE", "true").lower() == "true",
 )
 
 SECRET_KEY = settings.secret_key
 ALGORITHM = settings.algorithm
 ACCESS_TOKEN_EXPIRE_MINUTES = settings.access_token_expire_minutes
-

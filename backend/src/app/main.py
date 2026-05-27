@@ -6,9 +6,9 @@ from logging import getLogger
 
 from alembic import command
 from alembic.config import Config
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse, RedirectResponse
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from src.app.api.admin import router as admin_router
@@ -19,16 +19,17 @@ from src.app.api.delivery_methods import router as delivery_methods_router
 from src.app.api.favorites import router as favorites_router
 from src.app.api.notifications import router as notifications_router
 from src.app.api.orders import router as orders_router
-from src.app.api.ws import router as ws_router
 from src.app.api.payments import router as payments_router
 from src.app.api.products import router as products_router
 from src.app.api.reviews import router as reviews_router
 from src.app.api.seed import router as seed_router
 from src.app.api.users import router as users_router
+from src.app.api.ws import router as ws_router
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from src.app.db.database import DATABASE_URL
+from src.app.services.storage_service import storage
 from src.app.utils.rate_limiter import limiter
 
 logger = getLogger(__name__)
@@ -73,9 +74,18 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
-# Static files for uploads
-if os.path.isdir("uploads"):
-    app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
+@app.get("/uploads/{path:path}")
+async def serve_upload(path: str):
+    url = storage.get_url(path)
+    if url.startswith("http"):
+        return RedirectResponse(url=url, status_code=307)
+    # Local fallback — serve from filesystem
+    filepath = os.path.join("uploads", path)
+    if os.path.exists(filepath):
+        return FileResponse(filepath)
+    raise HTTPException(status_code=404, detail="File not found")
+
 
 # Подключаем все роутеры
 # categories ДО products, иначе /products/{id} перехватит /categories"

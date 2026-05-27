@@ -1,23 +1,21 @@
 import os
-import shutil
 import uuid
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, Request
-from src.app.core.config import settings
-from src.app.utils.rate_limiter import conditional_limit, limiter
+from src.app.utils.rate_limiter import conditional_limit
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.app.db.database import get_db
 from src.app.models.user import User
 from src.app.schemas.user import PasswordChange, UserCreate, UserOut, UserUpdate
 from src.app.services.user_service import UserService
+from src.app.services.storage_service import storage
 from src.app.utils.auth import (
     get_current_active_admin,
     get_current_active_supplier,
     get_current_user,
 )
 
-AVATAR_UPLOAD_DIR = "uploads/avatars"
 AVATAR_ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
 
 router = APIRouter()
@@ -91,23 +89,13 @@ async def upload_avatar(
             detail=f"Invalid file type. Allowed: {', '.join(AVATAR_ALLOWED_EXTENSIONS)}",
         )
 
-    user_dir = os.path.join(AVATAR_UPLOAD_DIR, str(current_user.id))
-    os.makedirs(user_dir, exist_ok=True)
-
     # Remove old avatar file if exists
     if current_user.avatar_url:
-        old_path = current_user.avatar_url.lstrip("/")
-        if os.path.exists(old_path):
-            os.remove(old_path)
+        await storage.delete(current_user.avatar_url)
 
-    filename = f"{uuid.uuid4().hex}{ext}"
-    filepath = os.path.join(user_dir, filename)
+    key = f"avatars/{current_user.id}/{uuid.uuid4().hex}{ext}"
+    avatar_url = await storage.upload(key, file)
 
-    with open(filepath, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-
-    base_url = settings.api_base_url or str(request.base_url).rstrip("/")
-    avatar_url = f"{base_url}/uploads/avatars/{current_user.id}/{filename}"
     return await UserService.update_profile(
         user_id=current_user.id,
         user_data=UserUpdate(avatar_url=avatar_url),

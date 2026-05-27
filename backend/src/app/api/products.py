@@ -1,5 +1,4 @@
 import os
-import shutil
 import uuid
 from typing import List
 
@@ -12,6 +11,7 @@ from src.app.models.supplier import Supplier
 from src.app.models.user import User
 from src.app.schemas.product import ProductCreate, ProductDetailOut, ProductListOut, ProductOut, ProductUpdate
 from src.app.services.product_service import ProductService
+from src.app.services.storage_service import storage
 from src.app.utils.auth import (
     get_current_active_supplier,
     get_optional_user,
@@ -116,7 +116,6 @@ async def delete_product(
 
 # --- Product Images ---
 
-UPLOAD_DIR = "uploads/products"
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
 
@@ -149,17 +148,11 @@ async def upload_product_image(
     if not supplier or product.supplier_id != supplier.id:
         raise HTTPException(status_code=403, detail="Not your product")
 
-    # Save file
-    product_dir = os.path.join(UPLOAD_DIR, str(product_id))
-    os.makedirs(product_dir, exist_ok=True)
-    filename = f"{uuid.uuid4().hex}{ext}"
-    filepath = os.path.join(product_dir, filename)
-
-    with open(filepath, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    # Upload to storage
+    key = f"products/{product_id}/{uuid.uuid4().hex}{ext}"
+    image_url = await storage.upload(key, file)
 
     # Update product.images
-    image_url = f"/uploads/products/{product_id}/{filename}"
     images = product.images or []
     images.append(image_url)
     return await ProductService.update_product(
@@ -186,20 +179,25 @@ async def delete_product_image(
     if not supplier or product.supplier_id != supplier.id:
         raise HTTPException(status_code=403, detail="Not your product")
 
-    # Remove from filesystem
+    # Validate filename to prevent path traversal
     safe_filename = os.path.basename(filename)
     if not safe_filename or safe_filename.startswith("."):
         raise HTTPException(status_code=400, detail="Invalid filename")
-    filepath = os.path.join(UPLOAD_DIR, str(product_id), safe_filename)
-    real_filepath = os.path.realpath(filepath)
-    real_base = os.path.realpath(os.path.join(UPLOAD_DIR, str(product_id)))
-    if not real_filepath.startswith(real_base + os.sep) and real_filepath != real_base:
-        raise HTTPException(status_code=400, detail="Invalid filename")
-    if os.path.exists(real_filepath):
-        os.remove(real_filepath)
+
+    # Find matching image URL in product.images
+    image_url = None
+    for img in (product.images or []):
+        if img.endswith(f"/{safe_filename}"):
+            image_url = img
+            break
+
+    if image_url is None:
+        raise HTTPException(status_code=404, detail="Image not found")
+
+    # Delete from storage
+    await storage.delete(image_url)
 
     # Update product.images
-    image_url = f"/uploads/products/{product_id}/{filename}"
     images = [img for img in (product.images or []) if img != image_url]
     return await ProductService.update_product(
         product_id=product_id,
@@ -207,4 +205,3 @@ async def delete_product_image(
         current_user=current_user,
         db=db,
     )
-

@@ -13,3 +13,4 @@ python-multipart
 aiosmtplib
 redis
 slowapi
+aiobotocore>=2.13.0

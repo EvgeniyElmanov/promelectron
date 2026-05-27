@@ -410,7 +410,7 @@ export class AutonomousAgent {
         const r = await this.mcp.evaluate(`() => {
           return document.body.innerText.includes('${expected.replace(/'/g, "\\'")}');
         }`);
-        if (!Boolean(r.result)) {
+        if (!r.result) {
           return { ok: false, error: `Toast "${expected}" not found` };
         }
         return { ok: true, found: true };
@@ -418,7 +418,7 @@ export class AutonomousAgent {
 
       case 'evaluate': {
         const r = await this.mcp.evaluate(`() => { return ${expected}; }`);
-        if (!Boolean(r.result)) {
+        if (!r.result) {
           return { ok: false, error: `Evaluate assertion failed` };
         }
         return { ok: true, result: r.result };
