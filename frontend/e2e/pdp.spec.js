@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 function uniqueEmail() {
-  return `test_${Date.now()}@example.com`;
+  return `test_${Date.now()}_w${test.info().workerIndex}@example.com`;
 }
 
 test.describe('Product Detail Page', () => {
