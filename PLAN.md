@@ -2,7 +2,7 @@
 
 > Single source of truth for project execution.  
 > Updated by: `project-manager` agent per `.kimi/rules/planning.md`  
-> Last updated: 2026-05-26
+> Last updated: 2026-05-27
 
 ---
 
@@ -53,8 +53,8 @@ Goal: fix blockers that break production, stabilize test suite, and close env ga
 | | Backend endpoints exist. `AuthCallback.vue` exists. `.env` has **empty** `GOOGLE_CLIENT_ID` / `YANDEX_CLIENT_ID`. Need real credentials + test on test env. | | | | |
 | P1-4 | **Email production (Mailgun)** | S | low | `[ ]` | — |
 | | `.env` has empty `SMTP_USER` / `SMTP_PASSWORD`. Currently using Gmail SMTP_HOST for dev. Need Mailgun credentials + K8s secret update. | | | | |
-| P1-5 | **Env parity: `.env.example` vs docker-compose** | S | low | `[ ]` | — |
-| | `.env.example` missing: `REDIS_URL`, `ENVIRONMENT`, `API_BASE_URL`. Docker-compose sets them, but `.env.example` does not document them. | | | | |
+| P1-5 | **Env parity: `.env.example` vs docker-compose** | S | low | `[x]` (updated: 2026-05-27) | — |
+| | `.env.example` already contains `REDIS_URL`, `ENVIRONMENT`, `API_BASE_URL`, `ACCESS_TOKEN_EXPIRE_MINUTES`, and all MinIO vars. Verified against `backend/docker-compose.yml`. | | | | |
 
 ---
 
@@ -72,8 +72,8 @@ Goal: fix blockers that break production, stabilize test suite, and close env ga
 | | Convert uploads to WebP + thumbnails. Depends on P0-1 (need S3 for multi-size). | | | |
 | P2-5 | **Redis caching** | M | low | `[ ]` |
 | | Cache popular products, categories. Redis already used for rate limiting. | | | |
-| P2-6 | **Favorites counter in header** | XS | low | `[ ]` |
-| | `Header.vue` has "Избранное" link but no count badge. Small UX win; can reuse `useFavorites` composable pattern. | | | |
+| P2-6 | **Favorites counter in header** | XS | low | `[x]` (updated: 2026-05-27) |
+| | Badge added to `Header.vue` by frontend-dev agent. | | | |
 
 ---
 
@@ -120,6 +120,7 @@ Goal: fix blockers that break production, stabilize test suite, and close env ga
 | S-3 | E2E tests: Playwright, 92 passed | — | — |
 | S-4 | Nginx: `client_max_body_size`, `/uploads/` proxy, regex fix | `d2a6081` | 2026-05-13 |
 | S-5 | Plan system: `project-manager` agent, `PLAN.md`, `.agent/tasks/` | `635bc09` | 2026-05-13 |
+| S-6 | E2E stabilization (Playwright image, Vite allowedHosts, rate limit, workerIndex) | `e253310` | 2026-05-27 |
 | P0-3 | Fix upload test failures (PermissionError) | `5fb553f` | 2026-05-25 |
 | P1-1 | Stabilize test suite | `7335bd0` | 2026-05-25 |
 
@@ -144,6 +145,7 @@ Goal: fix blockers that break production, stabilize test suite, and close env ga
 | Date | Topic | Lesson |
 |------|-------|--------|
 | 2026-05-26 | Helm `env.open` | Helm **replaces** maps in values files, it does **not merge** them. Defining `env.open` in a stage `values.yaml` (e.g., `stage/test/values.yaml`) overwrites the entire `env.open` block from base `values.yaml`, dropping all base env vars. **Rule:** always put all env vars in base `values.yaml` and override individual values only, never redefine the whole `env.open` block in stage files. |
+| 2026-05-27 | E2E CI failures | `Date.now()` is not unique under parallel workers — always include `test.info().workerIndex`. Rate limiting (`5/minute`) on test env (`ENVIRONMENT=production`) blocks parallel E2E registrations. `serial` mode is a dangerous misdiagnosis for independent tests. |
 
 ---
 
@@ -154,16 +156,16 @@ Goal: fix blockers that break production, stabilize test suite, and close env ga
 **Capacity:** ~3 dev-days
 
 ### Must (P0)
-- [x] P0-1: MinIO infra validated and ready — **done** (`docker-compose config` passes, commit `910f61c`). Backend implementation unblocked.
+- [ ] P0-1: Backend MinIO implementation — **top priority** (infra ready, code pending)
 - [x] P0-3: Fix upload test failures (PermissionError) — **done**
 - [x] P1-1: Stabilize test suite — **done** (backend 87/87, frontend 60/60)
 
 ### Should (P1)
-- [ ] P1-5: Update `.env.example` with all required vars (`REDIS_URL`, `ENVIRONMENT`, `API_BASE_URL`)
+- [x] P1-5: `.env.example` parity — **done** (verified against docker-compose)
 - [ ] P1-3: Get Google/Yandex OAuth creds + test callback
 
 ### Could (P2)
-- [ ] P2-6: Add favorites counter badge to `Header.vue`
+- [x] P2-6: Add favorites counter badge to `Header.vue` — **done**
 
 ---
 

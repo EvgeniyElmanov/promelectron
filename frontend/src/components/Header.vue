@@ -6,7 +6,7 @@
       <!-- Desktop Navigation -->
       <nav class="header__nav">
         <router-link to="/" class="header__nav-link" :class="{ 'header__nav-link--active': $route.path === '/' }">Главная</router-link>
-        <router-link to="/favorites" class="header__nav-link" :class="{ 'header__nav-link--active': $route.path.startsWith('/favorites') }">Избранное</router-link>
+        <router-link to="/favorites" class="header__nav-link" :class="{ 'header__nav-link--active': $route.path.startsWith('/favorites') }">Избранное<span v-if="favoritesCount > 0" class="header__nav-badge">{{ favoritesCount > 99 ? '99+' : favoritesCount }}</span></router-link>
         <router-link to="/cart" class="header__nav-link" :class="{ 'header__nav-link--active': $route.path.startsWith('/cart') }">Корзина</router-link>
         <router-link to="/orders" class="header__nav-link" :class="{ 'header__nav-link--active': $route.path.startsWith('/orders') }">Заказы</router-link>
       </nav>
@@ -69,12 +69,30 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuth } from '@/composables/useAuth';
 import { useNotifications } from '@/composables/useNotifications';
+import api from '@/services/api';
 
 const { isAuthenticated } = useAuth();
+const favoritesCount = ref(0);
+
+const fetchFavoritesCount = async () => {
+  if (!isAuthenticated.value) {
+    favoritesCount.value = 0;
+    return;
+  }
+  try {
+    const { data } = await api.get('/favorites/');
+    favoritesCount.value = Array.isArray(data) ? data.length : 0;
+  } catch {
+    favoritesCount.value = 0;
+  }
+};
+
+onMounted(fetchFavoritesCount);
+watch(isAuthenticated, fetchFavoritesCount);
 const notifOpen = ref(false);
 const router = useRouter();
 
@@ -185,6 +203,23 @@ const vClickOutside = {
 .header__nav-link--active {
   color: var(--color-primary);
   background: var(--color-primary-light);
+}
+
+.header__nav-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  margin-left: 6px;
+  border-radius: 9px;
+  background: var(--color-danger);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  vertical-align: middle;
 }
 
 .header__actions {
