@@ -81,3 +81,6 @@ tests/agent/reports/
 tests/agent/agent-state.json
 tests/agent/*.png
 .playwright-mcp/
+/.kimi/lessons-learned.md
+/backend/package-lock.json
+/frontend/Dockerfile.dev
