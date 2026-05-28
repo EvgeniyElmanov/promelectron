@@ -12,6 +12,7 @@ import AuthCallback from '../views/AuthCallback.vue';
 import ProductDetail from '../views/ProductDetail.vue';
 import Favorites from '../views/Favorites.vue';
 import SupplierProducts from '../views/SupplierProducts.vue';
+import SupplierOrders from '../views/SupplierOrders.vue';
 import Admin from '../views/Admin.vue';
 import OrderDetail from '../views/OrderDetail.vue';
 import Checkout from '../views/Checkout.vue';
@@ -32,6 +33,7 @@ const routes = [
   { path: '/product/:id', component: ProductDetail },
   { path: '/favorites', component: Favorites, meta: { requiresAuth: true } },
   { path: '/my-products', component: SupplierProducts, meta: { requiresAuth: true, requiresSupplier: true } },
+  { path: '/supplier-orders', component: SupplierOrders, meta: { requiresAuth: true, requiresSupplier: true } },
   { path: '/admin', component: Admin, meta: { requiresAuth: true, requiresAdmin: true } },
 ];
 

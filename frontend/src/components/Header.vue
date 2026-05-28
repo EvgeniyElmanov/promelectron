@@ -10,6 +10,7 @@
         <router-link to="/cart" class="header__nav-link" :class="{ 'header__nav-link--active': $route.path.startsWith('/cart') }">Корзина</router-link>
         <router-link to="/orders" class="header__nav-link" :class="{ 'header__nav-link--active': $route.path.startsWith('/orders') }">Заказы</router-link>
         <router-link v-if="isSupplier" to="/my-products" class="header__nav-link" :class="{ 'header__nav-link--active': $route.path.startsWith('/my-products') }">Мои товары</router-link>
+        <router-link v-if="isSupplier" to="/supplier-orders" class="header__nav-link" :class="{ 'header__nav-link--active': $route.path.startsWith('/supplier-orders') }">Мои заказы</router-link>
       </nav>
     </div>
 
