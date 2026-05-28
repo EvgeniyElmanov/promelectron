@@ -51,8 +51,14 @@ test.describe('Checkout Flow', () => {
     await expect(page.locator('[data-testid="cart-street"]')).toHaveValue('Тестовая');
 
     // Place order → redirects to checkout page
-    await page.click('[data-testid="checkout-button"]');
-    await page.waitForURL(/\/checkout\/\d+/, { timeout: 10000 });
+    const createOrderResponse = page.waitForResponse(
+      response => response.url().includes('/orders/create'),
+      { timeout: 30000 }
+    );
+    await page.locator('[data-testid="checkout-button"]').click();
+    const response = await createOrderResponse;
+    expect(response.status()).toBe(200);
+    await expect(page).toHaveURL(/\/checkout\/\d+/, { timeout: 30000 });
 
     // Complete mock payment
     await page.fill('[data-testid="card-holder"]', 'Test User');

@@ -22,7 +22,7 @@ router = APIRouter(prefix="/orders", tags=["orders"])
 
 
 @router.post("/create", response_model=OrderOut)
-@conditional_limit("10/minute")
+@conditional_limit("50/minute")
 async def create_order(request: Request,
     order_data: OrderCreate,
     current_user: User = Depends(get_current_active_user),

@@ -104,33 +104,36 @@ class OrderService:
         if not full_order:
             raise HTTPException(status_code=500, detail="Failed to create order")
 
-        # Send confirmation email
-        items_for_email = []
-        for oi in full_order.items:
-            prod_result = await db.execute(select(Product).where(Product.id == oi.product_id))
-            prod = prod_result.scalars().first()
-            items_for_email.append({
-                "product_name": prod.name if prod else "Товар",
-                "quantity": oi.quantity,
-                "price_at_time": float(oi.price_at_time),
-            })
-        await EmailService.send_order_confirmation(
-            to=current_user.email,
-            order_id=full_order.id,
-            total_price=float(full_order.total_price),
-            items=items_for_email,
-            shipping_address=full_order.shipping_address,
-        )
+        # Send confirmation email and create notification (best-effort)
+        try:
+            items_for_email = []
+            for oi in full_order.items:
+                prod_result = await db.execute(select(Product).where(Product.id == oi.product_id))
+                prod = prod_result.scalars().first()
+                items_for_email.append({
+                    "product_name": prod.name if prod else "Товар",
+                    "quantity": oi.quantity,
+                    "price_at_time": float(oi.price_at_time),
+                })
+            await EmailService.send_order_confirmation(
+                to=current_user.email,
+                order_id=full_order.id,
+                total_price=float(full_order.total_price),
+                items=items_for_email,
+                shipping_address=full_order.shipping_address,
+            )
 
-        # Create notification
-        await NotificationService.create_notification(
-            db=db,
-            user_id=current_user.id,
-            type="order_created",
-            title="Заказ оформлен",
-            message=f"Ваш заказ №{full_order.id} на сумму {float(full_order.total_price):,.0f} ₽ успешно создан и ожидает оплаты.",
-            order_id=full_order.id,
-        )
+            await NotificationService.create_notification(
+                db=db,
+                user_id=current_user.id,
+                type="order_created",
+                title="Заказ оформлен",
+                message=f"Ваш заказ №{full_order.id} на сумму {float(full_order.total_price):,.0f} ₽ успешно создан и ожидает оплаты.",
+                order_id=full_order.id,
+            )
+        except Exception:
+            import logging
+            logging.getLogger(__name__).exception("Failed to send order confirmation side-effects")
 
         return full_order
 

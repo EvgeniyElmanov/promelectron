@@ -74,36 +74,40 @@ class PaymentService:
         await db.commit()
         await db.refresh(payment)
 
-        # Отправляем email о подтверждении оплаты
-        user_result = await db.execute(select(User).where(User.id == payment.order.user_id))
-        user = user_result.scalars().first()
-        if user:
-            items_for_email = []
-            for oi in payment.order.items:
-                from src.app.models.product import Product
-                prod_result = await db.execute(select(Product).where(Product.id == oi.product_id))
-                prod = prod_result.scalars().first()
-                items_for_email.append({
-                    "product_name": prod.name if prod else "Товар",
-                    "quantity": oi.quantity,
-                    "price_at_time": float(oi.price_at_time),
-                })
-            await EmailService.send_order_confirmation(
-                to=user.email,
-                order_id=payment.order.id,
-                total_price=float(payment.order.total_price),
-                items=items_for_email,
-                shipping_address=payment.order.shipping_address,
-            )
+        # Отправляем email о подтверждении оплаты (best-effort)
+        try:
+            user_result = await db.execute(select(User).where(User.id == payment.order.user_id))
+            user = user_result.scalars().first()
+            if user:
+                items_for_email = []
+                for oi in payment.order.items:
+                    from src.app.models.product import Product
+                    prod_result = await db.execute(select(Product).where(Product.id == oi.product_id))
+                    prod = prod_result.scalars().first()
+                    items_for_email.append({
+                        "product_name": prod.name if prod else "Товар",
+                        "quantity": oi.quantity,
+                        "price_at_time": float(oi.price_at_time),
+                    })
+                await EmailService.send_order_confirmation(
+                    to=user.email,
+                    order_id=payment.order.id,
+                    total_price=float(payment.order.total_price),
+                    items=items_for_email,
+                    shipping_address=payment.order.shipping_address,
+                )
 
-            await NotificationService.create_notification(
-                db=db,
-                user_id=user.id,
-                type="order_paid",
-                title="Заказ оплачен",
-                message=f"Заказ №{payment.order.id} на сумму {float(payment.order.total_price):,.0f} ₽ успешно оплачен.",
-                order_id=payment.order.id,
-            )
+                await NotificationService.create_notification(
+                    db=db,
+                    user_id=user.id,
+                    type="order_paid",
+                    title="Заказ оплачен",
+                    message=f"Заказ №{payment.order.id} на сумму {float(payment.order.total_price):,.0f} ₽ успешно оплачен.",
+                    order_id=payment.order.id,
+                )
+        except Exception:
+            import logging
+            logging.getLogger(__name__).exception("Failed to send payment confirmation side-effects")
 
         return payment
 

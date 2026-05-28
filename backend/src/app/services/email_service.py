@@ -1,8 +1,12 @@
+import asyncio
+import logging
 from email.message import EmailMessage
 
-from aiosmtplib import send
+from aiosmtplib import send, SMTPException
 
 from src.app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class EmailService:
@@ -18,14 +22,20 @@ class EmailService:
         message.set_content(text_body or "")
         message.add_alternative(html_body, subtype="html")
 
-        await send(
-            message,
-            hostname=settings.smtp_host,
-            port=settings.smtp_port,
-            username=settings.smtp_user,
-            password=settings.smtp_password,
-            start_tls=settings.smtp_tls,
-        )
+        try:
+            await asyncio.wait_for(
+                send(
+                    message,
+                    hostname=settings.smtp_host,
+                    port=settings.smtp_port,
+                    username=settings.smtp_user,
+                    password=settings.smtp_password,
+                    start_tls=settings.smtp_tls,
+                ),
+                timeout=5.0,
+            )
+        except (SMTPException, asyncio.TimeoutError, OSError) as exc:
+            logger.warning("Failed to send email to %s: %s", to, exc)
 
     @staticmethod
     def _format_price(price: float) -> str:

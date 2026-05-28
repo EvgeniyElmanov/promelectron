@@ -28,7 +28,7 @@ async def register_user(request: Request, user_data: UserCreate, db: AsyncSessio
 
 
 @router.post("/login")
-@conditional_limit("5/minute")
+@conditional_limit("50/minute")
 async def login_user(request: Request, user_data: UserCreate, db: AsyncSession = Depends(get_db)):
     return await UserService.login_user(user_data=user_data, db=db)
 

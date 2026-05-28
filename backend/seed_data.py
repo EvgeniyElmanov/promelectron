@@ -7,8 +7,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.app.db.database import SessionLocal
+from src.app.models.cart import Cart, CartItem
 from src.app.models.category import Category
+from src.app.models.favorite import Favorite
+from src.app.models.notification import Notification
+from src.app.models.order import Order, OrderItem
+from src.app.models.payment import Payment
 from src.app.models.product import Product
+from src.app.models.review import Review
 from src.app.models.supplier import Supplier
 from src.app.models.user import RoleEnum, User
 from src.app.utils.auth import hash_password
@@ -213,6 +219,8 @@ async def create_products(
         logger.info(f"Добавлен товар: {product.name}")
 
 
+from sqlalchemy import delete
+
 async def cleanup_e2e_artifacts(session: AsyncSession) -> None:
     """Delete categories and products created by e2e tests (name starts with 'E2E')."""
     e2e_products = (await session.execute(
@@ -232,10 +240,42 @@ async def cleanup_e2e_artifacts(session: AsyncSession) -> None:
     await session.flush()
 
 
+async def reset_test_state(session: AsyncSession) -> None:
+    """Reset mutable state between E2E test runs."""
+    # Delete test-generated data in dependency order
+    await session.execute(delete(Review))
+    await session.execute(delete(Favorite))
+    await session.execute(delete(Notification))
+    await session.execute(delete(Payment))
+    await session.execute(delete(OrderItem))
+    await session.execute(delete(Order))
+    await session.execute(delete(CartItem))
+    await session.execute(delete(Cart))
+    # Delete non-seed users
+    from src.app.models.user import User
+    await session.execute(
+        delete(User).where(
+            User.email.not_in([
+                TEST_ADMIN_USER["email"],
+                TEST_SUPPLIER_USER["email"],
+            ])
+        )
+    )
+    # Reset product stock to seed values
+    stock_map = {p["name"]: p["stock"] for p in TEST_PRODUCTS}
+    for name, stock in stock_map.items():
+        await session.execute(
+            Product.__table__.update().where(Product.name == name).values(stock=stock)
+        )
+    await session.flush()
+    logger.info("Test state reset completed")
+
+
 async def seed_data() -> None:
     async with SessionLocal() as session:
         try:
             await cleanup_e2e_artifacts(session)
+            await reset_test_state(session)
             admin_user = await get_or_create_admin_user(session)
             supplier_user = await get_or_create_supplier_user(session)
             supplier = await get_or_create_supplier(session, supplier_user)
