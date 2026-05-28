@@ -50,6 +50,26 @@ class DeliveryMethodOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class SupplierOrderItemOut(BaseModel):
+    product_name: str
+    quantity: int
+    price_per_item: Decimal
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SupplierOrderOut(BaseModel):
+    id: int
+    buyer_name: Optional[str] = None
+    buyer_email: str
+    total_amount: Decimal
+    status: str
+    created_at: datetime
+    items: List[SupplierOrderItemOut]
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class OrderOut(BaseModel):
     id: int
     user_id: int

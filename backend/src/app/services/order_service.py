@@ -150,6 +150,79 @@ class OrderService:
         return list(result.scalars().all())
 
     @staticmethod
+    async def get_supplier_orders(supplier_id: int, db: AsyncSession, skip: int = 0, limit: int = 100) -> list[Order]:
+        subquery = (
+            select(Order.id)
+            .join(Order.items)
+            .join(OrderItem.product)
+            .where(Product.supplier_id == supplier_id)
+            .distinct()
+            .subquery()
+        )
+        result = await db.execute(
+            select(Order)
+            .where(Order.id.in_(select(subquery.c.id)))
+            .options(selectinload(Order.items).selectinload(OrderItem.product), selectinload(Order.user))
+            .offset(skip)
+            .limit(limit)
+            .order_by(Order.created_at.desc())
+        )
+        return list(result.scalars().all())
+
+    @staticmethod
+    async def get_supplier_order_details(order_id: int, supplier_id: int, db: AsyncSession) -> Order:
+        result = await db.execute(
+            select(Order)
+            .where(Order.id == order_id)
+            .options(selectinload(Order.items).selectinload(OrderItem.product), selectinload(Order.user))
+        )
+        order = result.scalars().first()
+        if not order:
+            raise HTTPException(status_code=404, detail="Order not found")
+
+        has_supplier_product = any(
+            item.product and item.product.supplier_id == supplier_id for item in order.items
+        )
+        if not has_supplier_product:
+            raise HTTPException(status_code=404, detail="Order not found")
+
+        return order
+
+    @staticmethod
+    async def update_supplier_order_status(order_id: int, supplier_id: int, new_status: str, db: AsyncSession) -> Order:
+        result = await db.execute(
+            select(Order).where(Order.id == order_id).options(selectinload(Order.items).selectinload(OrderItem.product))
+        )
+        order = result.scalars().first()
+        if not order:
+            raise HTTPException(status_code=404, detail="Order not found")
+
+        has_supplier_product = any(
+            item.product and item.product.supplier_id == supplier_id for item in order.items
+        )
+        if not has_supplier_product:
+            raise HTTPException(status_code=403, detail="You don't have permission to update this order")
+
+        if new_status != "shipped":
+            raise HTTPException(status_code=400, detail="Suppliers can only set status to 'shipped'")
+
+        order.status = new_status
+        await db.commit()
+        await db.refresh(order)
+
+        # Reload with full relationships for response
+        order_result = await db.execute(
+            select(Order)
+            .where(Order.id == order_id)
+            .options(selectinload(Order.items).selectinload(OrderItem.product), selectinload(Order.user))
+        )
+        full_order = order_result.scalars().first()
+        if not full_order:
+            raise HTTPException(status_code=500, detail="Failed to update order")
+
+        return full_order
+
+    @staticmethod
     async def update_order_by_admin(order_id: int, data: AdminOrderUpdate, current_user: User, db: AsyncSession) -> Order:
         result = await db.execute(
             select(Order).where(Order.id == order_id).options(
