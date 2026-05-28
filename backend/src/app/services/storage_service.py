@@ -53,6 +53,12 @@ class MinioStorageService:
         self.secure = settings.minio_secure
         self.session = get_session()
 
+    async def _ensure_bucket(self, client) -> None:
+        try:
+            await client.head_bucket(Bucket=self.bucket)
+        except Exception:
+            await client.create_bucket(Bucket=self.bucket)
+
     async def upload(self, key: str, file: UploadFile) -> str:
         async with self.session.create_client(
             "s3",
@@ -61,6 +67,7 @@ class MinioStorageService:
             aws_secret_access_key=self.secret_key,
             use_ssl=self.secure,
         ) as client:
+            await self._ensure_bucket(client)
             await client.put_object(
                 Bucket=self.bucket,
                 Key=key,
