@@ -6,6 +6,7 @@ from src.app.models.user import User
 from src.app.schemas.category import CategoryCreate, CategoryOut
 from src.app.services.category_service import CategoryService
 from src.app.utils.auth import get_current_active_admin
+from src.app.utils.cache import cache_response, invalidate_cache
 
 router = APIRouter(prefix="/categories", tags=["categories"])
 
@@ -17,7 +18,9 @@ async def create_category(
     db: AsyncSession = Depends(get_db),
 ):
     _ = current_user
-    return await CategoryService.create_category(category_data=category_data, db=db)
+    category = await CategoryService.create_category(category_data=category_data, db=db)
+    await invalidate_cache("/api/v1/categories*")
+    return category
 
 
 @router.get("/{category_id}", response_model=CategoryOut)
@@ -26,6 +29,7 @@ async def read_category(category_id: int, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/", response_model=list[CategoryOut])
+@cache_response(ttl_seconds=3600)
 async def list_categories(db: AsyncSession = Depends(get_db)):
     return await CategoryService.list_categories(db=db)
 
@@ -38,9 +42,11 @@ async def update_category(
     db: AsyncSession = Depends(get_db),
 ):
     _ = current_user
-    return await CategoryService.update_category(
+    category = await CategoryService.update_category(
         category_id=category_id, category_data=category_data, db=db
     )
+    await invalidate_cache("/api/v1/categories*")
+    return category
 
 
 @router.delete("/{category_id}")
@@ -50,5 +56,7 @@ async def delete_category(
     db: AsyncSession = Depends(get_db),
 ):
     _ = current_user
-    return await CategoryService.delete_category(category_id=category_id, db=db)
+    result = await CategoryService.delete_category(category_id=category_id, db=db)
+    await invalidate_cache("/api/v1/categories*")
+    return result
 

@@ -21,6 +21,14 @@ else:
 
 
 @pytest.fixture(autouse=True)
+async def flush_redis():
+    """Flush Redis DB before each test to ensure cache isolation."""
+    from src.app.core.redis_client import redis_client
+
+    await redis_client.flushdb()
+
+
+@pytest.fixture(autouse=True)
 def mock_storage_service(monkeypatch):
     """Mock storage service to avoid filesystem/MinIO side effects in tests."""
 

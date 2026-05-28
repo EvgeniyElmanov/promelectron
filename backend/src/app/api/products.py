@@ -16,11 +16,13 @@ from src.app.utils.auth import (
     get_current_active_supplier,
     get_optional_user,
 )
+from src.app.utils.cache import cache_response, invalidate_cache
 
 router = APIRouter(prefix="/products", tags=["products"])
 
 
 @router.get("/", response_model=ProductListOut)
+@cache_response(ttl_seconds=300)
 async def read_products(
     skip: int = 0,
     limit: int = 20,
@@ -52,9 +54,11 @@ async def create_product(
     current_user: User = Depends(get_current_active_supplier),
     db: AsyncSession = Depends(get_db),
 ):
-    return await ProductService.create_product(
+    product = await ProductService.create_product(
         product_data=product_, current_user=current_user, db=db
     )
+    await invalidate_cache("/api/v1/products*")
+    return product
 
 
 @router.get("/my", response_model=List[ProductOut])
@@ -98,9 +102,11 @@ async def update_product(
     current_user: User = Depends(get_current_active_supplier),
     db: AsyncSession = Depends(get_db),
 ):
-    return await ProductService.update_product(
+    product = await ProductService.update_product(
         product_id=product_id, product_data=product_, current_user=current_user, db=db
     )
+    await invalidate_cache("/api/v1/products*")
+    return product
 
 
 @router.delete("/{product_id}")
@@ -109,9 +115,11 @@ async def delete_product(
     current_user: User = Depends(get_current_active_supplier),
     db: AsyncSession = Depends(get_db),
 ):
-    return await ProductService.delete_product(
+    result = await ProductService.delete_product(
         product_id=product_id, current_user=current_user, db=db
     )
+    await invalidate_cache("/api/v1/products*")
+    return result
 
 
 # --- Product Images ---
@@ -161,6 +169,7 @@ async def upload_product_image(
         current_user=current_user,
         db=db,
     )
+    await invalidate_cache("/api/v1/products*")
 
     response_data = ProductOut.model_validate(updated_product).model_dump()
     response_data.update({
@@ -208,9 +217,11 @@ async def delete_product_image(
 
     # Update product.images
     images = [img for img in (product.images or []) if img != image_url]
-    return await ProductService.update_product(
+    result = await ProductService.update_product(
         product_id=product_id,
         product_data=ProductUpdate(images=images),
         current_user=current_user,
         db=db,
     )
+    await invalidate_cache("/api/v1/products*")
+    return result
