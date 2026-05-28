@@ -70,8 +70,8 @@ Goal: fix blockers that break production, stabilize test suite, and close env ga
 | | Pagination already implemented: `/products` (20), `/products/my` (100), `/admin/users` (50), `/admin/orders` (50), `/notifications` (50). | | | |
 | P2-4 | **Image optimization** | M | medium | `[x]` (updated: 2026-05-27) |
 | | Backend `upload_image()` generates WebP variants (small/medium/large). Frontend uses `useImageUrl()` with lazy loading and `srcset`. Commit `8a1d3ac`. | | | |
-| P2-5 | **Redis caching** | M | low | `[ ]` |
-| | Cache popular products, categories. Redis already used for rate limiting. | | | |
+| P2-5 | **Redis caching** | M | low | `[x]` (updated: 2026-05-27) |
+| | `@cache_response` decorator, 5min TTL for products, 1hr for categories, invalidation on CUD. **46x speedup** measured. Commit: `9412962`. | | | |
 | P2-6 | **Favorites counter in header** | XS | low | `[x]` (updated: 2026-05-27) |
 | | Badge added to `Header.vue` by frontend-dev agent. | | | |
 
@@ -125,6 +125,7 @@ Goal: fix blockers that break production, stabilize test suite, and close env ga
 | P1-1 | Stabilize test suite | `7335bd0` | 2026-05-25 |
 | P0-1 | Persistent storage for uploads (MinIO) | `e47b2af` | 2026-05-27 |
 | P2-4 | Image optimization (WebP + thumbnails) | `8a1d3ac` | 2026-05-27 |
+| P2-5 | Redis caching (`@cache_response`, 46x speedup) | `9412962` | 2026-05-27 |
 
 ---
 
@@ -138,6 +139,7 @@ Goal: fix blockers that break production, stabilize test suite, and close env ga
 | CI deploys untested code | medium | medium | Full test suite green; add `npm test` and `pytest` to CI pipeline. |
 | Schema drift without migrations | low | high | Enforce `make migrate` in CI |
 | Image optimization blocked by S3 dependency | — | — | **Resolved** — P0-1 complete, P2-4 done. WebP variants + thumbnails live. Commit: `8a1d3ac`. |
+| Catalog read performance under load | medium | medium | **Resolved** — P2-5 complete. Redis caching with `@cache_response` delivers 46x speedup on product/category endpoints. |
 | OAuth untested (no creds) | high | high | P1-3 (get real creds + test) |
 | WebSocket notifications silently fail in K8s (no sticky sessions) | medium | low | Verify ingress supports WS upgrade |
 
@@ -171,10 +173,15 @@ Goal: fix blockers that break production, stabilize test suite, and close env ga
 ### Could (P2)
 - [x] P2-6: Add favorites counter badge to `Header.vue` — **done**
 - [x] P2-4: Image optimization (WebP + thumbnails) — **done** (commit `8a1d3ac`)
-- [ ] P2-5: Redis caching — **recommended next priority** (no blockers, medium value, Redis already used for rate limiting)
+- [x] P2-5: Redis caching — **done** (commit `9412962`, 46x speedup)
 
-### If Unblocked
-- [ ] P0-2: `API_BASE_URL` in K8s — needs DevOps access to `api-deployment.yaml`
+### Won't / Deferred
+- [ ] P1-3: OAuth callback flow — **blocked** (waiting user creds)
+- [ ] P1-4: Mailgun production email — **blocked** (waiting user creds)
+- [ ] P0-2: `API_BASE_URL` in K8s — **blocked** (infra file forbidden to assistant)
+
+### Recommended Next Priority
+- [ ] **P3-2: Supplier dashboard completeness** — no blockers, medium effort, direct user value. Verify full CRUD + analytics in `SupplierProducts.vue`.
 
 ---
 
