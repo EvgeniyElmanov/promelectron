@@ -26,6 +26,8 @@ class Settings:
     minio_secret_key: str | None
     minio_bucket: str
     minio_secure: bool
+    onec_api_url: str | None
+    onec_api_key: str | None
 
 
 settings = Settings(
@@ -53,6 +55,8 @@ settings = Settings(
     minio_secret_key=os.getenv("MINIO_SECRET_KEY"),
     minio_bucket=os.getenv("MINIO_BUCKET", "promelectron-uploads"),
     minio_secure=os.getenv("MINIO_SECURE", "true").lower() == "true",
+    onec_api_url=os.getenv("ONEC_API_URL"),
+    onec_api_key=os.getenv("ONEC_API_KEY"),
 )
 
 SECRET_KEY = settings.secret_key

@@ -81,7 +81,7 @@ Goal: fix blockers that break production, stabilize test suite, and close env ga
 
 | ID | Task | Size | Status |
 |----|------|------|--------|
-| P3-1 | **Celery / 1C sync workers** | M | `[ ]` |
+| P3-1 | **Celery / 1C sync workers** | M | `[x]` (updated: 2026-05-28) |
 | | `.claude/commands/sync-onec.md` references Celery, but no `workers/` or `celery_app.py` found in `backend/src/app/`. Verify if code exists elsewhere or needs creation. | | |
 | P3-2 | **Supplier dashboard completeness** | M | `[x]` (updated: 2026-05-27) |
 | | Supplier orders API (`GET /orders/supplier/`, `GET /orders/supplier/{id}`, `PATCH /orders/supplier/{id}/ship`). `SupplierOrders.vue` frontend with ship action. `SupplierDashboard.vue` analytics (order counts, revenue, top products). Header nav links for suppliers ("Мои товары", "Мои заказы"). Unit tests: backend 97 passed, frontend 77 passed. Commit: `df2dc3a`. | | |
@@ -187,7 +187,7 @@ Goal: fix blockers that break production, stabilize test suite, and close env ga
 - [ ] P3-6: CDN for static assets — **deferred** (Phase 3)
 
 ### Recommended Next Priority
-- [ ] **P3-1: Celery / 1C sync workers** — best effort/value among open, unblocked items. Medium effort. Verify if `celery_app.py` and worker tasks exist in `backend/src/app/` or need creation. Referenced in `.claude/commands/sync-onec.md`. Adds critical business value (1C ERP integration) with no external blockers.
+- [x] **P3-1: Celery / 1C sync workers** — **done**. Celery app (`celery_app.py`) + Redis broker, `sync_products_from_onec` task, `OnecClient` HTTP client, `sku` field on Product + migration, beat schedule every 5min. Docker compose services `worker` + `beat`. Tests: 5/5 passed. Full suite: 102/102 passed.
 
 ---
 

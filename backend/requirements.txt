@@ -15,3 +15,5 @@ redis
 slowapi
 aiobotocore>=2.13.0
 Pillow>=10.0.0
+celery[redis]>=5.3.0
+requests>=2.31.0
