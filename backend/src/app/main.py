@@ -12,6 +12,7 @@ from fastapi.responses import FileResponse, RedirectResponse
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from src.app.api.admin import router as admin_router
+from src.app.api.analytics import router as analytics_router
 from src.app.api.auth import router as auth_router
 from src.app.api.cart import router as cart_router
 from src.app.api.categories import router as categories_router
@@ -97,6 +98,7 @@ async def serve_upload(path: str, size: str | None = None):
 # categories ДО products, иначе /products/{id} перехватит /categories"
 app.include_router(users_router, prefix="/api/v1", tags=["users"])
 app.include_router(admin_router, prefix="/api/v1", tags=["admin"])
+app.include_router(analytics_router, prefix="/api/v1", tags=["analytics"])
 app.include_router(categories_router, prefix="/api/v1", tags=["categories"])
 app.include_router(products_router, prefix="/api/v1", tags=["products"])
 app.include_router(cart_router, prefix="/api/v1", tags=["cart"])
