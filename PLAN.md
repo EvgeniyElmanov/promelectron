@@ -83,8 +83,8 @@ Goal: fix blockers that break production, stabilize test suite, and close env ga
 |----|------|------|--------|
 | P3-1 | **Celery / 1C sync workers** | M | `[ ]` |
 | | `.claude/commands/sync-onec.md` references Celery, but no `workers/` or `celery_app.py` found in `backend/src/app/`. Verify if code exists elsewhere or needs creation. | | |
-| P3-2 | **Supplier dashboard completeness** | M | `[ ]` |
-| | `SupplierProducts.vue` exists. Verify full CRUD + analytics. | | |
+| P3-2 | **Supplier dashboard completeness** | M | `[~]` (updated: 2026-05-27) |
+| | Supplier orders API (`GET /orders/supplier/`, `GET /orders/supplier/{id}`, `PATCH /orders/supplier/{id}/ship`). `SupplierOrders.vue` frontend with ship action. Header nav links for suppliers ("Мои товары", "Мои заказы"). Unit tests: 69 passed. Commit: `0dd91e3`. **Gap:** analytics dashboard (#2) not yet implemented. | | |
 | P3-3 | **SEO / SSR / Prerender** | L | `[-]` |
 | | Dynamic `<title>`, Open Graph, `sitemap.xml`. Deferred until Phase 3. | | |
 | P3-4 | **Real payment gateway** | L | `[-]` |
@@ -126,6 +126,7 @@ Goal: fix blockers that break production, stabilize test suite, and close env ga
 | P0-1 | Persistent storage for uploads (MinIO) | `e47b2af` | 2026-05-27 |
 | P2-4 | Image optimization (WebP + thumbnails) | `8a1d3ac` | 2026-05-27 |
 | P2-5 | Redis caching (`@cache_response`, 46x speedup) | `9412962` | 2026-05-27 |
+| P3-2 | Supplier dashboard completeness (orders API + frontend + nav) | `0dd91e3` | 2026-05-27 |
 
 ---
 
@@ -181,7 +182,8 @@ Goal: fix blockers that break production, stabilize test suite, and close env ga
 - [ ] P0-2: `API_BASE_URL` in K8s — **blocked** (infra file forbidden to assistant)
 
 ### Recommended Next Priority
-- [ ] **P3-2: Supplier dashboard completeness** — no blockers, medium effort, direct user value. Verify full CRUD + analytics in `SupplierProducts.vue`.
+- [ ] **P3-2 analytics dashboard** — remaining gap from P3-2. No blockers, small-to-medium effort, adds supplier value. Implement analytics summary (order counts, revenue, top products) in `SupplierDashboard.vue` or extend `SupplierOrders.vue`.
+- [ ] **P3-1: Celery / 1C sync workers** — medium effort, verify if `celery_app.py` exists or needs creation. Referenced in `.claude/commands/sync-onec.md`.
 
 ---
 
