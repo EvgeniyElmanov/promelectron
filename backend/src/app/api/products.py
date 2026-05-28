@@ -130,7 +130,7 @@ def _validate_image(file: UploadFile) -> str:
     return ext
 
 
-@router.post("/{product_id}/images", response_model=ProductOut)
+@router.post("/{product_id}/images")
 async def upload_product_image(
     product_id: int,
     file: UploadFile = File(...),
@@ -148,19 +148,28 @@ async def upload_product_image(
     if not supplier or product.supplier_id != supplier.id:
         raise HTTPException(status_code=403, detail="Not your product")
 
-    # Upload to storage
+    # Upload to storage with WebP variants
     key = f"products/{product_id}/{uuid.uuid4().hex}{ext}"
-    image_url = await storage.upload(key, file)
+    result = await storage.upload_image(key, file)
 
     # Update product.images
     images = product.images or []
-    images.append(image_url)
-    return await ProductService.update_product(
+    images.append(result["original"])
+    updated_product = await ProductService.update_product(
         product_id=product_id,
         product_data=ProductUpdate(images=images),
         current_user=current_user,
         db=db,
     )
+
+    response_data = ProductOut.model_validate(updated_product).model_dump()
+    response_data.update({
+        "original": result["original"],
+        "small": result["small"],
+        "medium": result["medium"],
+        "large": result["large"],
+    })
+    return response_data
 
 
 @router.delete("/{product_id}/images/{filename}", response_model=ProductOut)
@@ -194,8 +203,8 @@ async def delete_product_image(
     if image_url is None:
         raise HTTPException(status_code=404, detail="Image not found")
 
-    # Delete from storage
-    await storage.delete(image_url)
+    # Delete from storage (including variants)
+    await storage.delete_image(image_url)
 
     # Update product.images
     images = [img for img in (product.images or []) if img != image_url]

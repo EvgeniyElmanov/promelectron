@@ -28,10 +28,22 @@ def mock_storage_service(monkeypatch):
         async def upload(self, key, file):
             return f"/uploads/{key}"
 
+        async def upload_image(self, key, file):
+            base, _ = os.path.splitext(key)
+            return {
+                "original": f"/uploads/{key}",
+                "small": f"/uploads/{base}_small.webp",
+                "medium": f"/uploads/{base}_medium.webp",
+                "large": f"/uploads/{base}_large.webp",
+            }
+
         def get_url(self, key):
             return f"/uploads/{key}"
 
         async def delete(self, key):
+            pass
+
+        async def delete_image(self, key):
             pass
 
     fake = FakeStorage()

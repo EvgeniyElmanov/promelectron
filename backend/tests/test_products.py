@@ -339,6 +339,13 @@ class TestProductsAPI:
         data = response.json()
         assert len(data["images"]) == 1
         assert "products/" in data["images"][0]
+        # Verify WebP variants are returned
+        assert "small" in data
+        assert "medium" in data
+        assert "large" in data
+        assert data["small"].endswith("_small.webp")
+        assert data["medium"].endswith("_medium.webp")
+        assert data["large"].endswith("_large.webp")
 
     @pytest.mark.asyncio
     async def test_upload_image_unauthorized(self, client, test_product):

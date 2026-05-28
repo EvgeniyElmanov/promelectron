@@ -75,7 +75,7 @@ async def read_supplier_data(current_user: User = Depends(get_current_active_sup
     return {"message": f"Hello supplier {current_user.email}"}
 
 
-@router.post("/me/avatar", response_model=UserOut)
+@router.post("/me/avatar")
 async def upload_avatar(
     request: Request,
     file: UploadFile = File(...),
@@ -89,15 +89,24 @@ async def upload_avatar(
             detail=f"Invalid file type. Allowed: {', '.join(AVATAR_ALLOWED_EXTENSIONS)}",
         )
 
-    # Remove old avatar file if exists
+    # Remove old avatar file if exists (including variants)
     if current_user.avatar_url:
-        await storage.delete(current_user.avatar_url)
+        await storage.delete_image(current_user.avatar_url)
 
     key = f"avatars/{current_user.id}/{uuid.uuid4().hex}{ext}"
-    avatar_url = await storage.upload(key, file)
+    result = await storage.upload_image(key, file)
 
-    return await UserService.update_profile(
+    user = await UserService.update_profile(
         user_id=current_user.id,
-        user_data=UserUpdate(avatar_url=avatar_url),
+        user_data=UserUpdate(avatar_url=result["original"]),
         db=db,
     )
+
+    response_data = UserOut.model_validate(user).model_dump()
+    response_data.update({
+        "original": result["original"],
+        "small": result["small"],
+        "medium": result["medium"],
+        "large": result["large"],
+    })
+    return response_data

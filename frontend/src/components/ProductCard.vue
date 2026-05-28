@@ -6,12 +6,14 @@
     >
       <img
         v-if="product.images?.length"
-        :src="product.images[0]"
+        :src="getImageUrl(product.images[0], 'small')"
+        :srcset="`${getImageUrl(product.images[0], 'small')} 1x, ${getImageUrl(product.images[0], 'medium')} 2x`"
         class="product-card__img"
         alt=""
         width="400"
         height="400"
         decoding="async"
+        loading="lazy"
       />
       <span v-else class="product-card__image-letter">{{ product.name.charAt(0) }}</span>
       <button
@@ -51,6 +53,7 @@ import { useRouter } from 'vue-router';
 import api from '@/services/api';
 import { useAuth } from '@/composables/useAuth';
 import { useToast } from '@/composables/useToast';
+import { getImageUrl } from '@/composables/useImageUrl';
 
 const props = defineProps({
   product: { type: Object, required: true },

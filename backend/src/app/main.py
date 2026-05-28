@@ -76,7 +76,13 @@ app.add_middleware(
 
 
 @app.get("/uploads/{path:path}")
-async def serve_upload(path: str):
+async def serve_upload(path: str, size: str | None = None):
+    if size:
+        if size not in ("small", "medium", "large"):
+            raise HTTPException(status_code=400, detail="Invalid size. Allowed: small, medium, large")
+        base, _ = os.path.splitext(path)
+        path = f"{base}_{size}.webp"
+
     url = storage.get_url(path)
     if url.startswith("http"):
         return RedirectResponse(url=url, status_code=307)

@@ -31,9 +31,10 @@
         >
           <img
             v-if="product.images?.length"
-            :src="product.images[selectedImage || 0]"
+            :src="getImageUrl(product.images[selectedImage || 0], 'medium')"
             class="product-detail__img"
             alt=""
+            loading="lazy"
           />
           <span v-else class="product-detail__image-letter">{{ product.name?.charAt(0) }}</span>
         </div>
@@ -45,7 +46,7 @@
             :class="{ 'product-detail__thumb--active': selectedImage === idx }"
             @click="selectedImage = idx"
           >
-            <img :src="img" alt="" />
+            <img :src="getImageUrl(img, 'small')" alt="" loading="lazy" />
           </button>
         </div>
       </div>
@@ -150,6 +151,7 @@ import api from '@/services/api';
 import { useAuth } from '@/composables/useAuth';
 import { useToast } from '@/composables/useToast';
 import SkeletonProductDetail from '@/components/SkeletonProductDetail.vue';
+import { getImageUrl } from '@/composables/useImageUrl';
 
 const route = useRoute();
 const router = useRouter();
