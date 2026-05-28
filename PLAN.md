@@ -18,8 +18,8 @@ Goal: fix blockers that break production, stabilize test suite, and close env ga
 
 | ID | Task | Size | Risk | Status | Commit |
 |----|------|------|------|--------|--------|
-| P0-1 | **[Persistent storage for uploads → .agent/tasks/P0-1-minio/](./.agent/tasks/P0-1-minio/)** | L | high | `[/]` (updated: 2026-05-26) | `910f61c` |
-| | Infra files validated and ready. Helm charts, docker-compose, and K8s manifests fixed and verified (`docker-compose config` passes). Remaining: backend MinIO client code + tests. See `MINIO_INTEGRATION.md` for full guide. | | | | |
+| P0-1 | **[Persistent storage for uploads → .agent/tasks/P0-1-minio/](./.agent/tasks/P0-1-minio/)** | L | high | `[x]` (updated: 2026-05-27) | `e47b2af` |
+| | Backend `StorageService` implemented with `aiobotocore` MinIO client + local filesystem fallback. Presigned URLs via `/uploads/{path}` with `307 Redirect`. Bucket auto-creation fixed. All 87 backend tests pass. E2E upload flow verified end-to-end. | | | | |
 | P0-2 | **K8s env: `API_BASE_URL`** | XS | low | `[!]` | — |
 | | Add `API_BASE_URL=https://api.promelectron-test.aidrivencode.ru` to `api-deployment.yaml` env. Blocked: infra file forbidden to assistant. | | | | |
 | P0-3 | **Fix upload test failures (PermissionError)** | S | medium | `[x]` (updated: 2026-05-25) | `5fb553f` |
@@ -123,6 +123,7 @@ Goal: fix blockers that break production, stabilize test suite, and close env ga
 | S-6 | E2E stabilization (Playwright image, Vite allowedHosts, rate limit, workerIndex) | `e253310` | 2026-05-27 |
 | P0-3 | Fix upload test failures (PermissionError) | `5fb553f` | 2026-05-25 |
 | P1-1 | Stabilize test suite | `7335bd0` | 2026-05-25 |
+| P0-1 | Persistent storage for uploads (MinIO) | `e47b2af` | 2026-05-27 |
 
 ---
 
@@ -130,7 +131,7 @@ Goal: fix blockers that break production, stabilize test suite, and close env ga
 
 | Risk | Probability | Impact | Mitigation |
 |------|-------------|--------|------------|
-| Uploads lost on pod restart | high | high | P0-1 (MinIO integration) — infra ready, backend pending |
+| Uploads lost on pod restart | — | — | **Resolved** — P0-1 complete. MinIO persistent storage + presigned URLs live. |
 | Test suite unstable | low | low | **Resolved** — both suites green (backend 87/87, frontend 60/60). Commit: `7335bd0`. |
 | Avatar URL breaks again | medium | medium | P0-2 (API_BASE_URL env) |
 | CI deploys untested code | medium | medium | Full test suite green; add `npm test` and `pytest` to CI pipeline. |
@@ -156,7 +157,7 @@ Goal: fix blockers that break production, stabilize test suite, and close env ga
 **Capacity:** ~3 dev-days
 
 ### Must (P0)
-- [ ] P0-1: Backend MinIO implementation — **top priority** (infra ready, code pending)
+- [x] P0-1: Backend MinIO implementation — **done** (commit `e47b2af`)
 - [x] P0-3: Fix upload test failures (PermissionError) — **done**
 - [x] P1-1: Stabilize test suite — **done** (backend 87/87, frontend 60/60)
 
@@ -166,6 +167,10 @@ Goal: fix blockers that break production, stabilize test suite, and close env ga
 
 ### Could (P2)
 - [x] P2-6: Add favorites counter badge to `Header.vue` — **done**
+- [ ] P2-4: Image optimization (WebP + thumbnails) — **suggested next priority** now that P0-1 is unblocked
+
+### If Unblocked
+- [ ] P0-2: `API_BASE_URL` in K8s — needs DevOps access to `api-deployment.yaml`
 
 ---
 
