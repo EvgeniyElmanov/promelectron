@@ -251,16 +251,6 @@ async def reset_test_state(session: AsyncSession) -> None:
     await session.execute(delete(Order))
     await session.execute(delete(CartItem))
     await session.execute(delete(Cart))
-    # Delete non-seed users
-    from src.app.models.user import User
-    await session.execute(
-        delete(User).where(
-            User.email.not_in([
-                TEST_ADMIN_USER["email"],
-                TEST_SUPPLIER_USER["email"],
-            ])
-        )
-    )
     # Reset product stock to seed values
     stock_map = {p["name"]: p["stock"] for p in TEST_PRODUCTS}
     for name, stock in stock_map.items():
