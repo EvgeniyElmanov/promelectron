@@ -83,8 +83,8 @@ Goal: fix blockers that break production, stabilize test suite, and close env ga
 |----|------|------|--------|
 | P3-1 | **Celery / 1C sync workers** | M | `[ ]` |
 | | `.claude/commands/sync-onec.md` references Celery, but no `workers/` or `celery_app.py` found in `backend/src/app/`. Verify if code exists elsewhere or needs creation. | | |
-| P3-2 | **Supplier dashboard completeness** | M | `[~]` (updated: 2026-05-27) |
-| | Supplier orders API (`GET /orders/supplier/`, `GET /orders/supplier/{id}`, `PATCH /orders/supplier/{id}/ship`). `SupplierOrders.vue` frontend with ship action. Header nav links for suppliers ("Мои товары", "Мои заказы"). Unit tests: 69 passed. Commit: `0dd91e3`. **Gap:** analytics dashboard (#2) not yet implemented. | | |
+| P3-2 | **Supplier dashboard completeness** | M | `[x]` (updated: 2026-05-27) |
+| | Supplier orders API (`GET /orders/supplier/`, `GET /orders/supplier/{id}`, `PATCH /orders/supplier/{id}/ship`). `SupplierOrders.vue` frontend with ship action. `SupplierDashboard.vue` analytics (order counts, revenue, top products). Header nav links for suppliers ("Мои товары", "Мои заказы"). Unit tests: backend 97 passed, frontend 77 passed. Commit: `df2dc3a`. | | |
 | P3-3 | **SEO / SSR / Prerender** | L | `[-]` |
 | | Dynamic `<title>`, Open Graph, `sitemap.xml`. Deferred until Phase 3. | | |
 | P3-4 | **Real payment gateway** | L | `[-]` |
@@ -126,7 +126,7 @@ Goal: fix blockers that break production, stabilize test suite, and close env ga
 | P0-1 | Persistent storage for uploads (MinIO) | `e47b2af` | 2026-05-27 |
 | P2-4 | Image optimization (WebP + thumbnails) | `8a1d3ac` | 2026-05-27 |
 | P2-5 | Redis caching (`@cache_response`, 46x speedup) | `9412962` | 2026-05-27 |
-| P3-2 | Supplier dashboard completeness (orders API + frontend + nav) | `0dd91e3` | 2026-05-27 |
+| P3-2 | Supplier dashboard completeness (orders API + frontend + analytics + nav + tests) | `df2dc3a` | 2026-05-27 |
 
 ---
 
@@ -157,7 +157,7 @@ Goal: fix blockers that break production, stabilize test suite, and close env ga
 
 ## 📊 Sprint Proposal — Next 1 Week
 
-**Theme:** Production performance + caching layer
+**Theme:** Background workers + close supplier tooling gaps
 
 **Capacity:** ~3 dev-days
 
@@ -171,19 +171,23 @@ Goal: fix blockers that break production, stabilize test suite, and close env ga
 - [ ] P1-3: Get Google/Yandex OAuth creds + test callback — **blocked** (waiting user creds)
 - [ ] P1-4: Email production (Mailgun) — **blocked** (waiting Mailgun credentials + K8s secret update)
 
-### Could (P2)
+### Could (P2/P3)
 - [x] P2-6: Add favorites counter badge to `Header.vue` — **done**
 - [x] P2-4: Image optimization (WebP + thumbnails) — **done** (commit `8a1d3ac`)
 - [x] P2-5: Redis caching — **done** (commit `9412962`, 46x speedup)
+- [x] P3-2: Supplier dashboard completeness — **done** (commit `df2dc3a`, backend 97/97, frontend 77/77)
 
 ### Won't / Deferred
 - [ ] P1-3: OAuth callback flow — **blocked** (waiting user creds)
 - [ ] P1-4: Mailgun production email — **blocked** (waiting user creds)
 - [ ] P0-2: `API_BASE_URL` in K8s — **blocked** (infra file forbidden to assistant)
+- [ ] P3-3: SEO / SSR / Prerender — **deferred** (Phase 3)
+- [ ] P3-4: Real payment gateway — **deferred** (Phase 3)
+- [ ] P3-5: Push notifications (FCM) — **deferred** (Phase 3)
+- [ ] P3-6: CDN for static assets — **deferred** (Phase 3)
 
 ### Recommended Next Priority
-- [ ] **P3-2 analytics dashboard** — remaining gap from P3-2. No blockers, small-to-medium effort, adds supplier value. Implement analytics summary (order counts, revenue, top products) in `SupplierDashboard.vue` or extend `SupplierOrders.vue`.
-- [ ] **P3-1: Celery / 1C sync workers** — medium effort, verify if `celery_app.py` exists or needs creation. Referenced in `.claude/commands/sync-onec.md`.
+- [ ] **P3-1: Celery / 1C sync workers** — best effort/value among open, unblocked items. Medium effort. Verify if `celery_app.py` and worker tasks exist in `backend/src/app/` or need creation. Referenced in `.claude/commands/sync-onec.md`. Adds critical business value (1C ERP integration) with no external blockers.
 
 ---
 
