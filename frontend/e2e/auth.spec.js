@@ -41,7 +41,13 @@ test.describe('Authentication', () => {
     await expect(page.locator('[data-testid="login-error"]')).toBeVisible();
   });
 
-  test('guest user can view empty cart and login on checkout', async ({ page }) => {
+  test('guest user can view cart and login on checkout', async ({ page }) => {
+    // Pre-populate guest cart so checkout button is visible
+    await page.evaluate(() => {
+      localStorage.setItem('guest_cart', JSON.stringify([
+        { product_id: 1, quantity: 2, name: 'Test Product', price: 1000, stock: 5, images: [] }
+      ]));
+    });
     await page.goto('/cart');
     // Guest sees cart page, not redirected to login
     await expect(page.locator('[data-testid="cart-page"]')).toBeVisible();
