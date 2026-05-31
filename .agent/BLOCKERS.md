@@ -12,7 +12,7 @@
 |----|------|--------|----------|-----------|------------|--------|--------|---------|
 | BLK-001 | 2026-05-30 | `.github/` защищена — CI/CD правки требуют ручного доступа | P1 | Helm, deploy.yml | devops | ждёт доступа | Править вручную через админа | 2026-06-02 |
 | BLK-002 | 2026-05-30 | `worker.enabled=false` в Helm — Celery не работает в K8s | P0 | 1C sync, email, notifications | devops | в работе | Временно cron + manual trigger | 2026-06-02 |
-| BLK-003 | 2026-05-30 | `frontend/Dockerfile` с `USER nginx` — rollout timed out в CI/CD | P0 | Frontend деплой | devops | расследование | Временно убрать `USER nginx`, оставить root | 2026-06-02 |
+| BLK-003 | 2026-05-30 | `frontend/Dockerfile` с `USER nginx` — rollout timed out в CI/CD | P0 | Frontend деплой | devops | **РЕШЁН** | Откат до `3b51d2e`, rebuild через `.dockerignore` | 2026-05-30 |
 | BLK-004 | 2026-05-30 | `API_BASE_URL` в K8s test окружении не настроен | P1 | E2E тесты, фронтенд | devops | ждёт конфиг | Hardcode в nginx.conf временно | 2026-06-05 |
 | BLK-005 | 2026-05-30 | Нет реальных SMTP кредов — email в fallback-режиме | P1 | Email notifications | project-manager | ждёт данных от пользователя | Graceful skip (уже реализовано) | 2026-06-10 |
 
@@ -35,6 +35,14 @@
 ```markdown
 | BLK-NNN | YYYY-MM-DD | Описание | P0/P1/P2 | Задачи #X, #Y | КТО | статус | План B | YYYY-MM-DD |
 ```
+
+## Предотвращённые
+
+| Дата | Потенциальный блокер | Почему не случился |
+|------|----------------------|--------------------|
+| 2026-05-30 | Повторный деплой `USER nginx` без temp dirs | Решено отложить non-root containers до Sprint 2, когда будут readiness probes |
+
+---
 
 **Severity:**
 - **P0** — полная остановка разработки или деплоя

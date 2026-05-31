@@ -5,6 +5,28 @@
 
 ---
 
+## Сводная таблица
+
+| ID | Решение | Статус | Review | Related |
+|----|---------|--------|--------|---------|
+| ADR-001 | FastAPI + SQLAlchemy 2.0 async | ✅ Внедрено | 2026-12-01 | — |
+| ADR-002 | Vue 3 + Vite + Axios | ✅ Внедрено | 2026-12-01 | — |
+| ADR-003 | JWT Bearer + localStorage | ⚠️ Устарело | 2026-08-01 | TD-012 |
+| ADR-004 | PostgreSQL + Alembic | ✅ Внедрено | 2026-12-01 | TD-010 |
+| ADR-005 | Redis (кэш + rate limit + Celery) | ✅ Частично | 2026-08-01 | TD-009 |
+| ADR-006 | MinIO + Local fallback | ✅ Внедрено | 2026-12-01 | — |
+| ADR-007 | WebSocket для notifications | ✅ Внедрено | 2026-12-01 | TD-008 |
+| ADR-008 | SELECT FOR UPDATE для stock | ✅ Внедрено | 2027-06-01 | — |
+| ADR-009 | WebP image variants | ✅ Внедрено | 2026-12-01 | — |
+| ADR-010 | Celery + Redis для background | ✅ Частично | 2026-08-01 | BLK-002 |
+| ADR-011 | Mock payments (MVP) | ⚠️ Устарело | 2026-06-15 | BACKLOG #1 |
+| ADR-012 | Composables вместо Pinia | ⚠️ Устарело | 2026-08-01 | TD-005 |
+| ADR-013 | HttpOnly cookies + refresh tokens | 🔄 В бэклоге | 2026-09-01 | TD-012 |
+| ADR-014 | PostgreSQL tsvector для search | 🔄 В бэклоге | 2026-10-01 | BACKLOG #24 |
+| ADR-015 | ЮKassa как первый провайдер | 🔄 Sprint 1 | 2026-07-01 | BACKLOG #1 |
+
+---
+
 ## Принятые решения
 
 ### ADR-001: FastAPI + SQLAlchemy 2.0 async
