@@ -42,7 +42,8 @@ test.describe('Authentication', () => {
   });
 
   test('guest user can view cart and login on checkout', async ({ page }) => {
-    // Pre-populate guest cart so checkout button is visible
+    // Navigate first to set origin, then pre-populate guest cart
+    await page.goto('/');
     await page.evaluate(() => {
       localStorage.setItem('guest_cart', JSON.stringify([
         { product_id: 1, quantity: 2, name: 'Test Product', price: 1000, stock: 5, images: [] }
