@@ -1,13 +1,13 @@
 ---
 name: plan-maintainer
-description: Maintain and evolve the project plan (PLAN.md). Read codebase, assess task status, update priorities, and detect blockers.
+description: Maintain and evolve the project plan (.agent/PLANNING_HANDOFF.md and .agent/BACKLOG.md). Read codebase, assess task status, update priorities, and detect blockers.
 argument-hint: "<action: analyze|update|propose|sprint-review>"
 disable-model-invocation: false
 ---
 
 # Plan Maintainer
 
-Maintain `PLAN.md` as the single source of truth for project execution.
+Maintain `.agent/PLANNING_HANDOFF.md` and `.agent/BACKLOG.md` as the single source of truth for project execution.
 
 ## Capabilities
 
@@ -20,7 +20,7 @@ Maintain `PLAN.md` as the single source of truth for project execution.
 
 ### `analyze`
 ```
-Read PLAN.md → git log --oneline -30 → scan key files → report discrepancies
+Read .agent/PLANNING_HANDOFF.md → Read .agent/BACKLOG.md → git log --oneline -30 → scan key files → report discrepancies
 ```
 
 Use when:
@@ -30,7 +30,7 @@ Use when:
 
 ### `update`
 ```
-Read PLAN.md → verify specific task in code → edit status → write back
+Read .agent/BACKLOG.md → verify specific task in code → edit status → write back
 ```
 
 Use when:
@@ -40,7 +40,7 @@ Use when:
 
 ### `propose`
 ```
-Read PLAN.md → identify unblocked P0/P1 → estimate capacity → write sprint proposal
+Read .agent/BACKLOG.md → identify unblocked P0/P1 → estimate capacity → write sprint proposal
 ```
 
 Use when:
@@ -50,7 +50,7 @@ Use when:
 
 ### `sprint-review`
 ```
-Read PLAN.md → git log --since="1 week ago" → compare planned vs actual → write review
+Read .agent/BACKLOG.md → git log --since="1 week ago" → compare planned vs actual → write review
 ```
 
 Use when:
@@ -110,5 +110,5 @@ Never rely on `ROADMAP.md` alone — it becomes stale.
 - ❌ Don't create tasks larger than 1 day of work
 - ❌ Don't assign tasks to sprints without checking dependencies
 - ❌ Don't hide blockers — escalate them
-- ❌ Don't duplicate tasks between `PLAN.md` and `ROADMAP.md`
+- ❌ Don't duplicate tasks between `.agent/PLANNING_HANDOFF.md` and `ROADMAP.md`
 - ❌ Don't delete completed tasks — archive them

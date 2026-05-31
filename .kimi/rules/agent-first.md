@@ -15,7 +15,7 @@ You **MUST** use an agent (via `Agent` tool) when:
    - `code-reviewer` — quality checks, security review
    - `e2e-tester` — Playwright tests, visual regression
    - `tester` — unit tests, edge cases
-4. **You are updating PLAN.md** — always delegate to `project-manager`
+4. **You are updating .agent/PLANNING_HANDOFF.md or .agent/BACKLOG.md** — always delegate to `project-manager`
 5. **You are doing a security audit** — delegate to `code-reviewer` or `security-reviewer`
 6. **You are touching infra/docker/k8s** — delegate to `devops`
 
@@ -40,7 +40,7 @@ Even for:
 ## Anti-Patterns
 
 - ❌ Manually exploring 10+ files to understand a module
-- ❌ Updating PLAN.md without `project-manager` audit
+- ❌ Updating .agent/PLANNING_HANDOFF.md or .agent/BACKLOG.md without `project-manager` audit
 - ❌ Writing backend code without checking if `backend-dev` agent has conventions
 - ❌ Doing security review alone instead of `security-reviewer`
 - ❌ Implementing a feature across backend+frontend as one giant step

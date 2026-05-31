@@ -37,8 +37,12 @@
 - **GitHub:** `github.com/AutonomaCo/promelectron`
 - **CI/CD:** GitHub Actions → Harbor → K8s
 - **Документация:** `ARCHITECTURE.md` (общая архитектура)
-- **Дорожная карта:** `.agent/PLANNING_HANDOFF.md` (полный план на 3 фазы)
+- **Дорожная карта:** `.agent/PLANNING_HANDOFF.md` (полный план на 3 фазы) — **единственный актуальный план**
+- **Задачи:** `.agent/BACKLOG.md` (текущий спринт)
 - **Аудит:** `/AUDIT.md` (сравнение с Ozon.ru, ~50% готовности)
+
+## ⚠️ Устаревшее (не читать)
+- `PLAN.md` — заархивирован, заменён на `.agent/PLANNING_HANDOFF.md`
 
 ---
 

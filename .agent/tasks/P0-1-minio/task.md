@@ -26,7 +26,7 @@ Store all uploads in MinIO (S3-compatible object storage) instead of local files
 - [ ] Local dev works without MinIO (fallback to filesystem)
 - [ ] All backend tests pass (87)
 - [ ] E2E tests pass (92)
-- [ ] `PLAN.md` updated: P0-1 marked `[x]`
+- [ ] `.agent/BACKLOG.md` updated: P0-1 marked done
 
 ## Subtasks
 

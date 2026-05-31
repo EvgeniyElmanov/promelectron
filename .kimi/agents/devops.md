@@ -39,7 +39,7 @@ Handle deployment, infrastructure, and environment configuration tasks.
 
 ## Workflow
 
-1. **Read reference** — `MINIO_INTEGRATION.md`, `PLAN.md`, or task spec
+1. **Read reference** — `MINIO_INTEGRATION.md`, `.agent/PLANNING_HANDOFF.md`, `.agent/BACKLOG.md`, or task spec
 2. **Check consistency** — prod vs test vs docker-compose vs `.env.example`
 3. **Validate syntax** — `helm template`, `docker-compose config`
 4. **Check security** — no hardcoded secrets in plain text (unless explicitly temporary)

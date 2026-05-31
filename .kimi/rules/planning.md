@@ -4,15 +4,15 @@ Rules for maintaining project plans, roadmaps, and task prioritization.
 
 ## 1. Single Source of Truth
 
-`PLAN.md` is the only authoritative plan. `ROADMAP.md` is historical reference only.
+.agent/PLANNING_HANDOFF.md is the only authoritative plan. `ROADMAP.md` and `PLAN.md.ARCHIVE` are historical reference only.
 
-- When updating plans, always edit `PLAN.md` first
-- If `ROADMAP.md` contradicts `PLAN.md`, `PLAN.md` wins
-- After updating `PLAN.md`, update `ROADMAP.md` only if explicitly requested
+- When updating plans, always edit `.agent/PLANNING_HANDOFF.md` first
+- If `ROADMAP.md` contradicts `.agent/PLANNING_HANDOFF.md`, `.agent/PLANNING_HANDOFF.md` wins
+- After updating `.agent/PLANNING_HANDOFF.md`, update `ROADMAP.md` only if explicitly requested
 
 ## 2. Task Format
 
-Every task in `PLAN.md` must follow this format:
+Every task in `.agent/PLANNING_HANDOFF.md` and `.agent/BACKLOG.md` must follow the format defined in those files.
 
 ```markdown
 - [ ] **ID-XXX** Task title (S|M|L) — risk: low|medium|high
@@ -49,7 +49,7 @@ Rank tasks by:
 - A sprint is 1 week max
 - Each sprint has at most 1 P0 and 2 P1 tasks
 - Everything else is P2/P3 and can spill over
-- At sprint end, update `PLAN.md` with:
+- At sprint end, update `.agent/PLANNING_HANDOFF.md` and `.agent/BACKLOG.md` with:
   - What was completed
   - What was not and why
   - New blockers discovered
@@ -81,5 +81,5 @@ A task is Done only when:
 - [ ] Tests pass (backend + frontend + E2E if UI)
 - [ ] No new lint/security errors
 - [ ] Feature works in local environment
-- [ ] `PLAN.md` is updated with status `[x]`
+- [ ] `.agent/BACKLOG.md` is updated with status
 - [ ] No follow-up tasks created without explicit user approval

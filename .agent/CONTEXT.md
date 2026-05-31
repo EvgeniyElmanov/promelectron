@@ -61,6 +61,9 @@ make test-e2e      # Playwright
 ```
 
 ## Ссылки
-- [Дорожная карта](./PLANNING_HANDOFF.md)
+- **План:** [PLANNING_HANDOFF.md](./PLANNING_HANDOFF.md) (единственный актуальный) + [BACKLOG.md](./BACKLOG.md)
 - [Аудит проекта](/AUDIT.md)
 - [Архитектура](/ARCHITECTURE.md)
+
+## ⚠️ Устаревшее
+- `PLAN.md` — заархивирован в `PLAN.md.ARCHIVE`, заменён на `.agent/PLANNING_HANDOFF.md`
