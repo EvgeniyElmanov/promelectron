@@ -92,9 +92,11 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '@/services/api';
 import { useAuth } from '@/composables/useAuth';
+import { useCart } from '@/composables/useCart';
 
 const router = useRouter();
 const { setAuth } = useAuth();
+const { mergeCartOnLogin } = useCart();
 
 const email = ref('');
 const password = ref('');
@@ -128,6 +130,7 @@ async function handleLogin() {
       password: password.value,
     });
     setAuth(response.data.access_token, response.data.user);
+    await mergeCartOnLogin();
     router.push('/');
   } catch (err) {
     serverError.value = err.response?.data?.detail || 'Ошибка входа. Проверьте данные.';

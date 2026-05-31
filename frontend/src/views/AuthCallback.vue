@@ -11,11 +11,13 @@ import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import api from '@/services/api';
 import { useAuth } from '@/composables/useAuth';
+import { useCart } from '@/composables/useCart';
 
 const route = useRoute();
 const router = useRouter();
 const error = ref('');
 const { setAuth } = useAuth();
+const { mergeCartOnLogin } = useCart();
 
 onMounted(async () => {
   try {
@@ -36,6 +38,7 @@ onMounted(async () => {
       email: response.data.email,
     });
 
+    await mergeCartOnLogin();
     router.push('/');
   } catch (err) {
     error.value = err.response?.data?.detail || 'Ошибка авторизации';

@@ -52,6 +52,7 @@ import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '@/services/api';
 import { useAuth } from '@/composables/useAuth';
+import { useCart } from '@/composables/useCart';
 import { useToast } from '@/composables/useToast';
 import { getImageUrl } from '@/composables/useImageUrl';
 
@@ -62,6 +63,7 @@ const props = defineProps({
 const router = useRouter();
 const { isAuthenticated } = useAuth();
 const { add: toast } = useToast();
+const { addToCart: addToCartStore } = useCart();
 
 const isLoading = ref(false);
 const isFavorite = ref(props.product.is_favorite || false);
@@ -108,13 +110,9 @@ const addToCart = async () => {
   if (isLoading.value) return;
   isLoading.value = true;
   try {
-    await api.post('/cart/add', { product_id: props.product.id, quantity: 1 });
+    await addToCartStore(props.product.id, 1, props.product);
     toast('Добавлено в корзину', 'success');
   } catch (err) {
-    if (err?.response?.status === 401) {
-      router.push('/login');
-      return;
-    }
     toast('Не удалось добавить в корзину', 'error');
   } finally {
     isLoading.value = false;

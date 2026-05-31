@@ -149,6 +149,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import api from '@/services/api';
 import { useAuth } from '@/composables/useAuth';
+import { useCart } from '@/composables/useCart';
 import { useToast } from '@/composables/useToast';
 import SkeletonProductDetail from '@/components/SkeletonProductDetail.vue';
 import { getImageUrl } from '@/composables/useImageUrl';
@@ -157,6 +158,7 @@ const route = useRoute();
 const router = useRouter();
 const { isAuthenticated } = useAuth();
 const { add: toast } = useToast();
+const { addToCart: addToCartStore } = useCart();
 
 const product = ref({});
 const reviews = ref([]);
@@ -224,13 +226,9 @@ const addToCart = async () => {
   if (cartLoading.value) return;
   cartLoading.value = true;
   try {
-    await api.post('/cart/add', { product_id: productId.value, quantity: 1 });
+    await addToCartStore(productId.value, 1, product.value);
     toast('Добавлено в корзину', 'success');
   } catch (err) {
-    if (err?.response?.status === 401) {
-      router.push('/login');
-      return;
-    }
     toast('Не удалось добавить в корзину', 'error');
   } finally {
     cartLoading.value = false;

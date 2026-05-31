@@ -8,6 +8,10 @@ class CartItemCreate(BaseModel):
     quantity: int = 1
 
 
+class CartMergeRequest(BaseModel):
+    items: List[CartItemCreate]
+
+
 class CartItemUpdate(BaseModel):
     quantity: int
 
