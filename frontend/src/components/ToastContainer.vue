@@ -29,21 +29,20 @@ const { toasts, remove } = useToast();
 .toast-container {
   position: fixed;
   top: 56px;
-  right: 56px;
+  right: 8px;
   z-index: 200;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-width: 320px;
-  width: calc(100% - 32px);
+  max-width: 240px;
+  width: auto;
 }
 
 @media (min-width: 768px) {
   .toast-container {
     top: 56px;
-    right: 56px;
-    max-width: 400px;
-    width: auto;
+    right: 24px;
+    max-width: 320px;
   }
 }
 
