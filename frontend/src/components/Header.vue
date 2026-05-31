@@ -69,6 +69,7 @@
         </svg>
       </router-link>
     </div>
+    <ToastContainer class="header__toast" />
   </header>
 </template>
 
@@ -78,6 +79,7 @@ import { useRouter } from 'vue-router';
 import { useAuth } from '@/composables/useAuth';
 import { useCart } from '@/composables/useCart';
 import { useNotifications } from '@/composables/useNotifications';
+import ToastContainer from '@/components/ToastContainer.vue';
 import api from '@/services/api';
 
 const { isAuthenticated, isSupplier } = useAuth();
@@ -374,5 +376,12 @@ const vClickOutside = {
   color: var(--color-primary);
   text-decoration: none;
   border-top: 1px solid var(--color-border);
+}
+
+.header__toast {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 12px;
+  z-index: 200;
 }
 </style>
