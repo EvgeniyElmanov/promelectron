@@ -6,9 +6,6 @@
       <!-- Desktop Navigation -->
       <nav class="header__nav">
         <router-link to="/" class="header__nav-link" :class="{ 'header__nav-link--active': $route.path === '/' }">Главная</router-link>
-        <router-link to="/favorites" class="header__nav-link" :class="{ 'header__nav-link--active': $route.path.startsWith('/favorites') }">Избранное<span v-if="favoritesCount > 0" class="header__nav-badge">{{ favoritesCount > 99 ? '99+' : favoritesCount }}</span></router-link>
-        <router-link to="/cart" class="header__nav-link" :class="{ 'header__nav-link--active': $route.path.startsWith('/cart') }">Корзина</router-link>
-        <router-link to="/orders" class="header__nav-link" :class="{ 'header__nav-link--active': $route.path.startsWith('/orders') }">Заказы</router-link>
         <router-link v-if="isSupplier" to="/supplier-dashboard" class="header__nav-link" :class="{ 'header__nav-link--active': $route.path.startsWith('/supplier-dashboard') }">Дашборд</router-link>
         <router-link v-if="isSupplier" to="/my-products" class="header__nav-link" :class="{ 'header__nav-link--active': $route.path.startsWith('/my-products') }">Мои товары</router-link>
         <router-link v-if="isSupplier" to="/supplier-orders" class="header__nav-link" :class="{ 'header__nav-link--active': $route.path.startsWith('/supplier-orders') }">Мои заказы</router-link>
@@ -17,7 +14,7 @@
 
     <div class="header__actions">
       <!-- Notifications -->
-      <div v-if="isAuthenticated" class="header__notif-wrap">
+      <div v-if="isAuthenticated" class="header__action-item header__notif-wrap">
         <button class="header__icon header__icon--notif" data-testid="notifications-btn" title="Уведомления" @click="toggleNotif">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
@@ -25,6 +22,7 @@
           </svg>
           <span v-if="unreadCount > 0" class="header__notif-badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
         </button>
+        <span class="header__action-label">Уведомления</span>
         <!-- Dropdown -->
         <div v-if="notifOpen" class="notif-dropdown" v-click-outside="closeNotif">
           <div class="notif-dropdown__header">
@@ -48,25 +46,56 @@
         </div>
       </div>
 
-      <router-link to="/cart" class="header__icon" data-testid="cart-link" title="Корзина">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-          <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4H6z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          <line x1="3" y1="6" x2="21" y2="6" stroke="currentColor" stroke-width="2"/>
-          <path d="M16 10a4 4 0 01-8 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        </svg>
-        <span v-if="cartCount > 0" class="header__notif-badge">{{ cartCount > 99 ? '99+' : cartCount }}</span>
+      <router-link to="/orders" class="header__action-item" v-if="isAuthenticated">
+        <div class="header__icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+          </svg>
+        </div>
+        <span class="header__action-label">Заказы</span>
       </router-link>
-      <router-link v-if="isAuthenticated" to="/profile" class="header__icon" data-testid="profile-link" title="Профиль">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-          <circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2"/>
-          <path d="M4 20c0-4 4-7 8-7s8 3 8 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        </svg>
+
+      <router-link to="/favorites" class="header__action-item">
+        <div class="header__icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
+          </svg>
+          <span v-if="favoritesCount > 0" class="header__notif-badge">{{ favoritesCount > 99 ? '99+' : favoritesCount }}</span>
+        </div>
+        <span class="header__action-label">Избранное</span>
       </router-link>
-      <router-link v-else to="/login" class="header__icon" data-testid="login-link" title="Войти">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-          <circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2"/>
-          <path d="M4 20c0-4 4-7 8-7s8 3 8 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        </svg>
+
+      <router-link to="/cart" class="header__action-item" data-testid="cart-link">
+        <div class="header__icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4H6z"/>
+            <line x1="3" y1="6" x2="21" y2="6"/>
+            <path d="M16 10a4 4 0 01-8 0"/>
+          </svg>
+          <span v-if="cartCount > 0" class="header__notif-badge">{{ cartCount > 99 ? '99+' : cartCount }}</span>
+        </div>
+        <span class="header__action-label">Корзина</span>
+      </router-link>
+
+      <router-link v-if="isAuthenticated" to="/profile" class="header__action-item" data-testid="profile-link">
+        <div class="header__icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="8" r="4"/>
+            <path d="M4 20c0-4 4-7 8-7s8 3 8 7"/>
+          </svg>
+        </div>
+        <span class="header__action-label">Профиль</span>
+      </router-link>
+
+      <router-link v-else to="/login" class="header__action-item" data-testid="login-link">
+        <div class="header__icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="8" r="4"/>
+            <path d="M4 20c0-4 4-7 8-7s8 3 8 7"/>
+          </svg>
+        </div>
+        <span class="header__action-label">Войти</span>
       </router-link>
     </div>
     <ToastContainer class="header__toast" />
@@ -234,6 +263,31 @@ const vClickOutside = {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.header__action-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.header__action-label {
+  display: none;
+  font-size: 12px;
+  color: #999;
+  line-height: 1;
+}
+
+@media (min-width: 768px) {
+  .header__actions {
+    gap: 20px;
+  }
+  .header__action-label {
+    display: block;
+  }
 }
 
 .header__icon {
