@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 import { createRouter, createWebHistory } from 'vue-router';
+import { computed, ref } from 'vue';
 import Cart from '../views/Cart.vue';
 
 const mockGet = vi.fn();
@@ -19,6 +20,30 @@ vi.mock('@/services/api', () => ({
 
 vi.mock('@/composables/useToast', () => ({
   useToast: () => ({ add: vi.fn() }),
+}));
+
+const mockIsAuthenticated = ref(true);
+
+vi.mock('@/composables/useAuth', () => ({
+  useAuth: () => ({
+    isAuthenticated: computed(() => mockIsAuthenticated.value),
+  }),
+}));
+
+const mockGuestItems = ref([]);
+const mockCartCount = ref(0);
+
+vi.mock('@/composables/useCart', () => ({
+  useCart: () => ({
+    cartCount: computed(() => mockCartCount.value),
+    addToCart: vi.fn(),
+    removeFromCart: vi.fn(),
+    updateQuantity: vi.fn(),
+    getGuestCartItems: () => mockGuestItems.value,
+    clearGuestCart: vi.fn(),
+    mergeCartOnLogin: vi.fn(),
+    syncCartCount: vi.fn(),
+  }),
 }));
 
 vi.mock('@/components/AddressForm.vue', () => ({
@@ -73,6 +98,9 @@ const mockProfile = {
 describe('Cart.vue', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockIsAuthenticated.value = true;
+    mockGuestItems.value = [];
+    mockCartCount.value = 0;
     mockGet.mockImplementation((url) => {
       if (url === '/cart/') return Promise.resolve({ data: mockCartWithItems });
       if (url === '/auth/profile') return Promise.resolve({ data: mockProfile });
@@ -143,5 +171,52 @@ describe('Cart.vue', () => {
     await flushPromises();
 
     expect(mockDelete).toHaveBeenCalledWith('/cart/remove/101');
+  });
+});
+
+describe('Cart.vue — гостевая корзина', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockIsAuthenticated.value = false;
+    mockGuestItems.value = [
+      {
+        product_id: 10,
+        quantity: 3,
+        name: 'Гостевой товар',
+        price: 1500,
+        stock: 8,
+        images: [],
+      },
+    ];
+    mockCartCount.value = 3;
+    mockGet.mockImplementation((url) => {
+      if (url === '/delivery-methods/') return Promise.resolve({ data: [] });
+      return Promise.resolve({ data: {} });
+    });
+  });
+
+  it('отображает товары из localStorage для гостя', async () => {
+    const wrapper = mount(Cart, { global: { plugins: [router] } });
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Гостевой товар');
+    expect(wrapper.text()).toContain('4\u00A0500');
+  });
+
+  it('показывает кнопку "Войти, чтобы оформить" для гостя', async () => {
+    const wrapper = mount(Cart, { global: { plugins: [router] } });
+    await flushPromises();
+
+    const checkoutBtn = wrapper.find('[data-testid="checkout-button"]');
+    expect(checkoutBtn.exists()).toBe(true);
+    expect(checkoutBtn.text()).toContain('Войти');
+  });
+
+  it('не показывает блоки доставки и адреса для гостя', async () => {
+    const wrapper = mount(Cart, { global: { plugins: [router] } });
+    await flushPromises();
+
+    expect(wrapper.text()).not.toContain('Способ доставки');
+    expect(wrapper.find('[data-testid="address-form"]').exists()).toBe(false);
   });
 });

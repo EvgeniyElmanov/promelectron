@@ -54,6 +54,7 @@
           <line x1="3" y1="6" x2="21" y2="6" stroke="currentColor" stroke-width="2"/>
           <path d="M16 10a4 4 0 01-8 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
         </svg>
+        <span v-if="cartCount > 0" class="header__notif-badge">{{ cartCount > 99 ? '99+' : cartCount }}</span>
       </router-link>
       <router-link v-if="isAuthenticated" to="/profile" class="header__icon" data-testid="profile-link" title="Профиль">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
@@ -75,10 +76,12 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuth } from '@/composables/useAuth';
+import { useCart } from '@/composables/useCart';
 import { useNotifications } from '@/composables/useNotifications';
 import api from '@/services/api';
 
 const { isAuthenticated, isSupplier } = useAuth();
+const { cartCount } = useCart();
 const favoritesCount = ref(0);
 
 const fetchFavoritesCount = async () => {

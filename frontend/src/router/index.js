@@ -23,7 +23,7 @@ const routes = [
   { path: '/', component: Products },
   { path: '/login', component: Login },
   { path: '/register', component: Register },
-  { path: '/cart', component: Cart, meta: { requiresAuth: true } },
+  { path: '/cart', component: Cart },
   { path: '/orders', component: Orders, meta: { requiresAuth: true } },
   { path: '/orders/:id', component: OrderDetail, meta: { requiresAuth: true } },
   { path: '/checkout/:id', component: Checkout, meta: { requiresAuth: true } },

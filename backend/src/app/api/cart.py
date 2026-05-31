@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, Request
-from src.app.utils.rate_limiter import conditional_limit, limiter
+from src.app.utils.rate_limiter import conditional_limit
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.app.db.database import get_db
 from src.app.models.user import User
-from src.app.schemas.cart import CartItemCreate, CartItemOut, CartItemUpdate, CartOut
+from src.app.schemas.cart import CartItemCreate, CartItemOut, CartItemUpdate, CartMergeRequest, CartOut
 from src.app.services.cart_service import CartService
 from src.app.utils.auth import get_current_active_user
 
@@ -48,4 +48,15 @@ async def get_cart(
     db: AsyncSession = Depends(get_db),
 ):
     return await CartService.get_cart(current_user=current_user, db=db)
+
+
+@router.post("/merge", response_model=CartOut)
+async def merge_cart(
+    items_: CartMergeRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return await CartService.merge_cart(
+        items_data=items_.items, current_user=current_user, db=db
+    )
 

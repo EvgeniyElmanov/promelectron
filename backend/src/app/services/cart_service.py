@@ -98,3 +98,44 @@ class CartService:
         )
         items = list(items_result.scalars().all())
         return {"id": cart.id, "user_id": current_user.id, "items": items}
+
+    @staticmethod
+    async def merge_cart(
+        items_data: list[CartItemCreate], current_user: User, db: AsyncSession
+    ) -> dict[str, object]:
+        cart_result = await db.execute(select(Cart).where(Cart.user_id == current_user.id))
+        cart = cart_result.scalars().first()
+
+        if not cart:
+            cart = Cart(user_id=current_user.id)
+            db.add(cart)
+            await db.commit()
+            await db.refresh(cart)
+
+        for item_data in items_data:
+            existing_item_result = await db.execute(
+                select(CartItem).where(
+                    CartItem.cart_id == cart.id,
+                    CartItem.product_id == item_data.product_id,
+                )
+            )
+            existing_item = existing_item_result.scalars().first()
+            if existing_item:
+                existing_item.quantity += item_data.quantity
+            else:
+                new_item = CartItem(
+                    cart_id=cart.id,
+                    product_id=item_data.product_id,
+                    quantity=item_data.quantity,
+                )
+                db.add(new_item)
+
+        await db.commit()
+
+        items_result = await db.execute(
+            select(CartItem)
+            .where(CartItem.cart_id == cart.id)
+            .options(selectinload(CartItem.product))
+        )
+        items = list(items_result.scalars().all())
+        return {"id": cart.id, "user_id": current_user.id, "items": items}

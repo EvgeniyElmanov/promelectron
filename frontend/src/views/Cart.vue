@@ -126,7 +126,7 @@
           </div>
         </div>
 
-        <div class="cart__summary-section">
+        <div v-if="isAuthenticated" class="cart__summary-section">
           <h3 class="cart__summary-title">Способ доставки</h3>
           <div class="cart__delivery-list">
             <label
@@ -154,7 +154,7 @@
           </div>
         </div>
 
-        <div class="cart__summary-section">
+        <div v-if="isAuthenticated" class="cart__summary-section">
           <AddressForm
             v-model="shippingAddress"
             label="Адрес доставки"
@@ -173,10 +173,10 @@
       <button
         class="cart__checkout-btn"
         data-testid="checkout-button"
-        :disabled="creatingOrder || !isAddressValid"
+        :disabled="creatingOrder || (isAuthenticated && !isAddressValid)"
         @click="createOrder"
       >
-        {{ creatingOrder ? 'Оформление...' : 'Оформить заказ' }}
+        {{ creatingOrder ? 'Оформление...' : (isAuthenticated ? 'Оформить заказ' : 'Войти, чтобы оформить') }}
       </button>
     </div>
   </div>
@@ -186,6 +186,8 @@
 import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '@/services/api';
+import { useAuth } from '@/composables/useAuth';
+import { useCart } from '@/composables/useCart';
 import { useToast } from '@/composables/useToast';
 import AddressForm from '@/components/AddressForm.vue';
 import SkeletonCartItem from '@/components/SkeletonCartItem.vue';
@@ -201,6 +203,8 @@ const deliveryMethods = ref([]);
 const selectedDeliveryMethodId = ref(null);
 const router = useRouter();
 const { add: toast } = useToast();
+const { isAuthenticated } = useAuth();
+const { getGuestCartItems, updateQuantity: updateGuestQuantity, removeFromCart: removeGuestItem } = useCart();
 
 // Swipe state
 const touchStartX = ref(0);
@@ -236,13 +240,33 @@ const formatPrice = (price) => {
 const fetchCart = async () => {
   loading.value = true;
   try {
-    const [cartResponse, profileResponse] = await Promise.all([
-      api.get('/cart/'),
-      api.get('/auth/profile'),
-    ]);
-    cart.value = cartResponse.data;
-    if (profileResponse.data.shipping_address) {
-      shippingAddress.value = { ...profileResponse.data.shipping_address };
+    if (isAuthenticated.value) {
+      const [cartResponse, profileResponse] = await Promise.all([
+        api.get('/cart/'),
+        api.get('/auth/profile'),
+      ]);
+      cart.value = cartResponse.data;
+      if (profileResponse.data.shipping_address) {
+        shippingAddress.value = { ...profileResponse.data.shipping_address };
+      }
+    } else {
+      const items = getGuestCartItems();
+      cart.value = {
+        id: 0,
+        user_id: 0,
+        items: items.map(item => ({
+          id: `guest-${item.product_id}`,
+          product_id: item.product_id,
+          quantity: item.quantity,
+          product: {
+            id: item.product_id,
+            name: item.name,
+            price: item.price,
+            stock: item.stock,
+            images: item.images || [],
+          },
+        })),
+      };
     }
   } catch (err) {
     console.error('Failed to fetch cart:', err);
@@ -272,7 +296,12 @@ const updateQuantity = async (itemId, newQuantity) => {
   if (newQuantity < 1) return;
   updatingId.value = itemId;
   try {
-    await api.put(`/cart/update/${itemId}`, { quantity: newQuantity });
+    if (isAuthenticated.value) {
+      await api.put(`/cart/update/${itemId}`, { quantity: newQuantity });
+    } else {
+      const productId = Number(String(itemId).replace('guest-', ''));
+      await updateGuestQuantity(productId, newQuantity);
+    }
     await fetchCart();
   } catch (err) {
     console.error('Failed to update quantity:', err);
@@ -285,7 +314,12 @@ const updateQuantity = async (itemId, newQuantity) => {
 const removeItem = async (itemId) => {
   swipedItemId.value = null;
   try {
-    await api.delete(`/cart/remove/${itemId}`);
+    if (isAuthenticated.value) {
+      await api.delete(`/cart/remove/${itemId}`);
+    } else {
+      const productId = Number(String(itemId).replace('guest-', ''));
+      await removeGuestItem(productId);
+    }
     await fetchCart();
     toast('Товар удалён из корзины', 'info');
   } catch (err) {
@@ -296,6 +330,10 @@ const removeItem = async (itemId) => {
 
 const createOrder = async () => {
   if (creatingOrder.value) return;
+  if (!isAuthenticated.value) {
+    router.push('/login');
+    return;
+  }
   if (!isAddressValid.value) {
     toast('Заполните город, улицу и дом', 'error');
     return;

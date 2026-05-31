@@ -9,6 +9,7 @@
       :data-testid="'nav-' + item.label"
     >
       <span class="bottom-nav__icon" v-html="item.icon"></span>
+      <span v-if="item.to === '/cart' && cartCount > 0" class="bottom-nav__badge">{{ cartCount > 99 ? '99+' : cartCount }}</span>
       <span class="bottom-nav__label">{{ item.label }}</span>
     </router-link>
   </nav>
@@ -18,8 +19,10 @@
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { useAuth } from '@/composables/useAuth';
+import { useCart } from '@/composables/useCart';
 
 const route = useRoute();
+const { cartCount } = useCart();
 
 const baseNavItems = [
   {
@@ -107,6 +110,24 @@ const isActive = (to) => {
 .bottom-nav__label {
   font-size: 11px;
   line-height: 1;
+}
+
+.bottom-nav__badge {
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  margin-left: 6px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--color-danger);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Hide on desktop */
