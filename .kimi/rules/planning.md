@@ -4,7 +4,7 @@ Rules for maintaining project plans, roadmaps, and task prioritization.
 
 ## 1. Single Source of Truth
 
-.agent/PLANNING_HANDOFF.md is the only authoritative plan. `ROADMAP.md` and `PLAN.md.ARCHIVE` are historical reference only.
+.agent/PLANNING_HANDOFF.md is the only authoritative plan. `ROADMAP.md` is historical reference only.
 
 - When updating plans, always edit `.agent/PLANNING_HANDOFF.md` first
 - If `ROADMAP.md` contradicts `.agent/PLANNING_HANDOFF.md`, `.agent/PLANNING_HANDOFF.md` wins

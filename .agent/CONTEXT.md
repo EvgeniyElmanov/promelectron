@@ -65,5 +65,3 @@ make test-e2e      # Playwright
 - [Аудит проекта](/AUDIT.md)
 - [Архитектура](/ARCHITECTURE.md)
 
-## ⚠️ Устаревшее
-- `PLAN.md` — заархивирован в `PLAN.md.ARCHIVE`, заменён на `.agent/PLANNING_HANDOFF.md`
