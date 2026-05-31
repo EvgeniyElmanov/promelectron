@@ -10,15 +10,15 @@
 
 | # | Задача | Агент | Приоритет | Статус | Зависимости | Оценка | Блокер |
 |---|--------|-------|-----------|--------|-------------|--------|--------|
-| 1 | Интеграция ЮKassa (реальные платежи) | backend-dev | P0 | todo | — | 2 недели | — |
+| 1 | Интеграция ЮKassa (реальные платежи) | backend-dev | P0 | **in_progress** | — | 2 недели | — |
 | 2 | Webhook обработка платежей | backend-dev | P0 | todo | #1 | 3 дня | — |
-| 3 | Гостевая корзина: backend API | backend-dev | P0 | todo | — | 1 неделя | — |
-| 4 | Гостевая корзина: localStorage + merge при login | frontend-dev | P0 | todo | #3 (merge только) | 1 неделя | — |
+| 3 | Гостевая корзина: backend API | backend-dev | P0 | **done** | — | 1 неделя | — |
+| 4 | Гостевая корзина: localStorage + merge при login | frontend-dev | P0 | **done** | #3 | 1 неделя | — |
 | 5 | Убрать hardcoded secrets (SECRET_KEY, SEED_SECRET) | backend-dev | P0 | todo | — | 2 дня | — |
 | 6 | Исправить Helm worker templates (Celery) | devops | P0 | todo | — | 2 дня | .github/ защищена |
 | 7 | Подключить Sentry | devops | P0 | todo | — | 3 дня | — |
 | 8 | Настроить backup БД (pg_dump → S3/MinIO) | devops | P0 | todo | — | 2 дня | — |
-| 9 | E2E тесты гостевой корзины | e2e-tester | P0 | todo | #3, #4 | 2 дня | — |
+| 9 | E2E тесты гостевой корзины | e2e-tester | P0 | **done** | #3, #4 | 2 дня | — |
 | 10 | Product.price → Numeric(10,2) + Alembic | backend-dev | P0 | todo | — | 2 дня | — |
 
 **Цель спринта:** Реальные платежи работают, гостевая корзина в проде, нет критичных security issues.
@@ -89,3 +89,6 @@
 | 0 | Инициализация `.agent/` | 2026-05-30 | Создана структура памяти проекта |
 | 1 | Восстановление деплоя после аудита | 2026-05-30 | Откат `3f88f3b`, rebuild из `3b51d2e`, CI/CD зелёный |
 | 2 | Добавить `.dockerignore` в frontend | 2026-05-30 | Триггер CI/CD, уменьшен build context |
+| 3 | Гостевая корзина — backend API + merge endpoint | 2026-05-31 | `POST /cart/merge`, 106/106 backend тестов ✅ |
+| 4 | Гостевая корзина — frontend + merge при login | 2026-05-31 | `useCart` composable, localStorage, 80/80 frontend тестов ✅ |
+| 5 | E2E тесты гостевой корзины | 2026-05-31 | Обновлён `auth.spec.js`, CI/CD зелёный ✅ |

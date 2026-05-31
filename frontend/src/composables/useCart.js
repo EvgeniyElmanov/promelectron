@@ -27,14 +27,25 @@ export const useCart = () => {
   const { isAuthenticated } = useAuth();
 
   const addToCart = async (productId, quantity = 1, product = null) => {
+    if (product && quantity > product.stock) {
+      throw new Error(
+        `Недостаточно товара в наличии. Доступно: ${product.stock}, запрошено: ${quantity}`
+      );
+    }
     if (isAuthenticated.value) {
       await api.post('/cart/add', { product_id: productId, quantity });
       await syncCartCount();
     } else {
       const items = loadGuestCart();
       const existing = items.find((i) => i.product_id === productId);
+      const newQuantity = (existing?.quantity || 0) + quantity;
+      if (product && newQuantity > product.stock) {
+        throw new Error(
+          `Недостаточно товара в наличии. Доступно: ${product.stock}, в корзине будет: ${newQuantity}`
+        );
+      }
       if (existing) {
-        existing.quantity += quantity;
+        existing.quantity = newQuantity;
       } else {
         items.push({
           product_id: productId,

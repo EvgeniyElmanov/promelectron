@@ -12,7 +12,6 @@
 |----|------|--------|----------|-----------|------------|--------|--------|---------|
 | BLK-001 | 2026-05-30 | `.github/` защищена — CI/CD правки требуют ручного доступа | P1 | Helm, deploy.yml | devops | ждёт доступа | Править вручную через админа | 2026-06-02 |
 | BLK-002 | 2026-05-30 | `worker.enabled=false` в Helm — Celery не работает в K8s | P0 | 1C sync, email, notifications | devops | в работе | Временно cron + manual trigger | 2026-06-02 |
-| BLK-003 | 2026-05-30 | `frontend/Dockerfile` с `USER nginx` — rollout timed out в CI/CD | P0 | Frontend деплой | devops | **РЕШЁН** | Откат до `3b51d2e`, rebuild через `.dockerignore` | 2026-05-30 |
 | BLK-004 | 2026-05-30 | `API_BASE_URL` в K8s test окружении не настроен | P1 | E2E тесты, фронтенд | devops | ждёт конфиг | Hardcode в nginx.conf временно | 2026-06-05 |
 | BLK-005 | 2026-05-30 | Нет реальных SMTP кредов — email в fallback-режиме | P1 | Email notifications | project-manager | ждёт данных от пользователя | Graceful skip (уже реализовано) | 2026-06-10 |
 
@@ -27,6 +26,8 @@
 | BLK-R003 | 2026-05-28 | Rate limiting в CI — `ENVIRONMENT=production` ломал тесты | P1 | Поднять limits для `/login` и `/orders/create` до 50/min | 1 час |
 | BLK-R004 | 2026-05-28 | FK violation при seed reset — удаление users ломало suppliers | P1 | Убрать удаление users из `reset_test_state`, оставить только orders/carts | 3 часа |
 | BLK-R005 | 2026-05-28 | Email timeout в тестах — SMTP блокировал | P1 | `asyncio.wait_for(..., 5s)` + try/except в `EmailService` | 2 часа |
+| BLK-R006 | 2026-05-30 | `frontend/Dockerfile` с `USER nginx` — rollout timed out в CI/CD | P0 | Откат до `3b51d2e`, rebuild через `.dockerignore` | 2 часа |
+| BLK-R007 | 2026-05-31 | E2E auth.spec.js ожидал редиректа `/cart` → `/login` после гостевой корзины | P1 | Обновить тест: гость видит корзину, checkout ведёт на login | 1 час |
 
 ---
 

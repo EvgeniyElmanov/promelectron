@@ -4,11 +4,32 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.app.models.cart import Cart, CartItem
+from src.app.models.product import Product
 from src.app.models.user import User
 from src.app.schemas.cart import CartItemCreate, CartItemUpdate
 
 
 class CartService:
+    @staticmethod
+    async def _validate_product_and_stock(
+        product_id: int, requested_quantity: int, db: AsyncSession, existing_quantity: int = 0
+    ) -> None:
+        product_result = await db.execute(
+            select(Product).where(Product.id == product_id)
+        )
+        product = product_result.scalars().first()
+        if not product:
+            raise HTTPException(status_code=404, detail=f"Product {product_id} not found")
+        if not product.is_active:
+            raise HTTPException(status_code=400, detail=f"Product {product_id} is not active")
+        total = requested_quantity + existing_quantity
+        if total > product.stock:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Not enough stock for product {product_id}. "
+                       f"Available: {product.stock}, requested: {total}",
+            )
+
     @staticmethod
     async def add_to_cart(
         item_data: CartItemCreate, current_user: User, db: AsyncSession
@@ -28,6 +49,11 @@ class CartService:
             )
         )
         existing_item = existing_item_result.scalars().first()
+
+        existing_quantity = existing_item.quantity if existing_item else 0
+        await CartService._validate_product_and_stock(
+            item_data.product_id, item_data.quantity, db, existing_quantity
+        )
 
         if existing_item:
             existing_item.quantity += item_data.quantity
@@ -58,6 +84,10 @@ class CartService:
 
         if not item:
             raise HTTPException(status_code=404, detail="Cart item not found")
+
+        await CartService._validate_product_and_stock(
+            item.product_id, item_data.quantity, db, existing_quantity=0
+        )
 
         item.quantity = item_data.quantity
         await db.commit()
@@ -120,6 +150,10 @@ class CartService:
                 )
             )
             existing_item = existing_item_result.scalars().first()
+            existing_quantity = existing_item.quantity if existing_item else 0
+            await CartService._validate_product_and_stock(
+                item_data.product_id, item_data.quantity, db, existing_quantity
+            )
             if existing_item:
                 existing_item.quantity += item_data.quantity
             else:

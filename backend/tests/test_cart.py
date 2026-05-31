@@ -179,3 +179,64 @@ class TestCartAPI:
             json={"items": [{"product_id": 1, "quantity": 1}]},
         )
         assert response.status_code == 403
+
+    async def test_add_to_cart_product_not_found(self, client, user_token, test_user):
+        response = await client.post(
+            "/api/v1/cart/add",
+            headers={"Authorization": f"Bearer {user_token}"},
+            json={"product_id": 99999, "quantity": 1},
+        )
+        assert response.status_code == 404
+
+    async def test_add_to_cart_insufficient_stock(
+        self, client, user_token, test_user, test_product
+    ):
+        response = await client.post(
+            "/api/v1/cart/add",
+            headers={"Authorization": f"Bearer {user_token}"},
+            json={"product_id": test_product.id, "quantity": test_product.stock + 1},
+        )
+        assert response.status_code == 400
+        assert "Not enough stock" in response.json()["detail"]
+
+    async def test_update_cart_item_exceeds_stock(
+        self, client, user_token, test_user, test_product
+    ):
+        # Add first
+        await client.post(
+            "/api/v1/cart/add",
+            headers={"Authorization": f"Bearer {user_token}"},
+            json={"product_id": test_product.id, "quantity": 1},
+        )
+        cart_resp = await client.get(
+            "/api/v1/cart/",
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        item_id = cart_resp.json()["items"][0]["id"]
+
+        response = await client.put(
+            f"/api/v1/cart/update/{item_id}",
+            headers={"Authorization": f"Bearer {user_token}"},
+            json={"quantity": test_product.stock + 1},
+        )
+        assert response.status_code == 400
+        assert "Not enough stock" in response.json()["detail"]
+
+    async def test_merge_cart_product_not_found(self, client, user_token, test_user):
+        response = await client.post(
+            "/api/v1/cart/merge",
+            headers={"Authorization": f"Bearer {user_token}"},
+            json={"items": [{"product_id": 99999, "quantity": 1}]},
+        )
+        assert response.status_code == 404
+
+    async def test_merge_cart_insufficient_stock(
+        self, client, user_token, test_user, test_product
+    ):
+        response = await client.post(
+            "/api/v1/cart/merge",
+            headers={"Authorization": f"Bearer {user_token}"},
+            json={"items": [{"product_id": test_product.id, "quantity": test_product.stock + 1}]},
+        )
+        assert response.status_code == 400
+        assert "Not enough stock" in response.json()["detail"]
