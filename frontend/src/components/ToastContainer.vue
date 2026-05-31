@@ -28,7 +28,7 @@ const { toasts, remove } = useToast();
 <style scoped>
 .toast-container {
   position: fixed;
-  top: 16px;
+  top: 70px;
   right: 16px;
   z-index: 200;
   display: flex;
@@ -40,7 +40,7 @@ const { toasts, remove } = useToast();
 
 @media (min-width: 768px) {
   .toast-container {
-    top: 24px;
+    top: 80px;
     right: 24px;
     max-width: 400px;
     width: auto;
