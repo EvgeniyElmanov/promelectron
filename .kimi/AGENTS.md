@@ -1,4 +1,4 @@
-# 🤖 Kimi Agent System — My Shop
+# 🤖 Kimi Agent System — Promelectron
 
 > **Адаптация агентов под наш проект:** Vue 3 + FastAPI + PostgreSQL
 >
@@ -60,10 +60,10 @@ make status       # git + tests + lint
 
 | | Параметр | Значение |
 |---|----------|----------|
-| Backend path | `server/` | FastAPI + SQLAlchemy 2.0 |
+| Backend path | `backend/` | FastAPI + SQLAlchemy 2.0 |
 | Frontend | Vue 3 + JavaScript | Composition API, Vite |
 | Package manager | `venv` | Python 3.12 |
-| CI/CD | Пока не настроено | |
+| CI/CD | GitHub Actions → Harbor → K8s Helm | |
 
 ## Workflow
 

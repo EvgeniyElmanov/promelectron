@@ -1,6 +1,6 @@
 ---
 name: frontend-dev
-description: React web frontend specialist. Implements pages, components, hooks, API integration, and tests. Mobile-first responsive design with TailwindCSS. Delegate here for any task touching frontend/ code.
+description: Vue 3 frontend specialist. Implements pages, components, composables, router, API integration, and tests. Delegate here for any task touching frontend/ code.
 model: sonnet
 color: green
 memory: project
@@ -30,7 +30,7 @@ allowedTools:
 
 # Frontend Developer — Promelectron
 
-Implement or fix React web frontend code per the task specification.
+Implement or fix Vue 3 frontend code per the task specification.
 
 ## Workflow
 
@@ -41,7 +41,7 @@ Implement or fix React web frontend code per the task specification.
 
 ## Implementation Order
 
-API type → hook/service → component → page → route → tests
+API service → composable → component → page → route → tests
 
 ## Before Finishing
 

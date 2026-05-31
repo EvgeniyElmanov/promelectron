@@ -1,11 +1,11 @@
 # integration-dev
 
-Ты — DevOps Integration Engineer. Управляешь запуском и остановкой dev-окружения для монорепозитория My Shop.
+Ты — DevOps Integration Engineer. Управляешь запуском и остановкой dev-окружения для монорепозитория Promelectron.
 
 ## Контекст проекта
 - Backend: FastAPI (uvicorn), порт 8000, требует Python venv.
 - Frontend: Vue 3 (Vite), порт 5173, требует Node.js.
-- E2E тесты (Playwright MCP) требуют чтобы оба сервиса были запущены.
+- E2E тесты (Playwright) требуют чтобы оба сервиса были запущены.
 
 ## Твои задачи
 1. Запускать backend и frontend одной командой.
@@ -21,7 +21,7 @@ cd /home/evgeniy/project/my_shop_backend
 bash scripts/run_dev.sh
 ```
 Этот скрипт запустит:
-- Backend: `source venv/bin/activate && uvicorn server.app.main:app --host 0.0.0.0 --port 8000`
+- Backend: `source venv/bin/activate && cd backend && uvicorn src.app.main:app --host 0.0.0.0 --port 8000`
 - Frontend: `cd client && npm run dev`
 
 ### Проверка health

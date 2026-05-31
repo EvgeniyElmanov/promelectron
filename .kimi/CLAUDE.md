@@ -1,4 +1,4 @@
-# CLAUDE.md — My Shop Backend
+# CLAUDE.md — Promelectron Backend
 
 ## Проект
 
@@ -123,7 +123,7 @@ make build            # Пересобрать всё
 
 1. **ТЕСТЫ ОБЯЗАТЕЛЬНЫ** — при написании нового функционала всегда создавай тесты:
    - Новый endpoint → `tests/test_<module>.py`
-   - Новый Vue компонент → `client/src/__tests__/<Component>.spec.js`
+   - Новый Vue компонент → `frontend/src/__tests__/<Component>.spec.js`
    - Новая страница / критический flow → e2e через Playwright
 2. **ДВОЙНАЯ ПРОВЕРКА (автотесты + visual smoke)** — после каждой фичи:
    - `make test-e2e` — 19 автотестов (регрессия)
@@ -156,9 +156,9 @@ make build            # Пересобрать всё
 |---|------|-----------|-------|
 | 1 | **Backend: API обновления профиля** | `PATCH /me`, схема `UserUpdate`, сервис, валидация уникальности email | `tests/test_auth.py::test_update_profile` |
 | 2 | **Backend: смена пароля** | `PATCH /me/password`, проверка старого пароля, хеширование нового | `tests/test_auth.py::test_change_password` |
-| 3 | **Frontend: UI профиля (только просмотр)** | Новый `Profile.vue` с аватаркой-заглушкой, сеткой данных, кнопкой выхода. Старый профиль пока живёт параллельно или заменяется полностью | `client/src/__tests__/Profile.spec.js` |
+| 3 | **Frontend: UI профиля (только просмотр)** | Новый `Profile.vue` с аватаркой-заглушкой, сеткой данных, кнопкой выхода. Старый профиль пока живёт параллельно или заменяется полностью | `frontend/src/__tests__/Profile.spec.js` |
 | 4 | **Frontend: режим редактирования** | Форма изменения имени/email, валидация, кнопка «Сохранить», вызов `PATCH /me` | Тесты в `Profile.spec.js` + e2e |
-| 5 | **Frontend: смена пароля в профиле** | Отдельная секция/модалка со старым и новым паролем | `client/src/__tests__/ProfilePassword.spec.js` или e2e |
+| 5 | **Frontend: смена пароля в профиле** | Отдельная секция/модалка со старым и новым паролем | `frontend/src/__tests__/ProfilePassword.spec.js` или e2e |
 | 6 | **E2E: полный flow** | Регистрация → вход → редактирование профиля → смена пароля → повторный вход с новым паролем | `e2e/profile.spec.js` |
 
 ### Красные флаги (нельзя так делать)

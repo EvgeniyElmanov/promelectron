@@ -1,4 +1,4 @@
-# 🤖 AI Agent System — My Shop
+# 🤖 AI Agent System — Promelectron
 
 ## Быстрый старт
 
@@ -95,12 +95,12 @@ Code review текущих изменений:
 ## Агенты
 
 ### `backend-dev`
-**Зона:** `server/app/`, `tests/`
+**Зона:** `backend/src/app/`, `backend/tests/`
 **Workflow:** model → schema → service → route → tests
 **Before finish:** `pytest -x` + `ruff check`
 
 ### `frontend-dev`
-**Зона:** `client/src/`
+**Зона:** `frontend/src/`
 **Workflow:** component → API integration → test
 **Before finish:** `npm test -- --run`
 
@@ -144,9 +144,9 @@ Code review текущих изменений:
 
 | Rule | Описание | Пути |
 |------|----------|------|
-| `api.md` | Route handlers thin, business logic in services | `server/app/api/**/*.py` |
-| `models.md` | SQLAlchemy conventions | `server/app/models/**/*.py` |
-| `testing.md` | Test conventions | `tests/**/*.py`, `client/src/__tests__/**/*.js` |
+| `api.md` | Route handlers thin, business logic in services | `backend/src/app/api/**/*.py` |
+| `models.md` | SQLAlchemy conventions | `backend/src/app/models/**/*.py` |
+| `testing.md` | Test conventions | `backend/tests/**/*.py`, `frontend/src/__tests__/**/*.js` |
 | `security.md` | Security checklist | Весь проект |
 | `git.md` | Git workflow | `.git/` |
 
@@ -191,7 +191,7 @@ Code review текущих изменений:
 
 ### PostToolUse (Edit|Write)
 ```bash
-cd server && ruff check --fix --quiet "$CLAUDE_TOOL_INPUT_FILE" 2>/dev/null; true
+cd backend && ruff check --fix --quiet "$CLAUDE_TOOL_INPUT_FILE" 2>/dev/null; true
 ```
 
 Автоформатирование Python после каждого изменения.

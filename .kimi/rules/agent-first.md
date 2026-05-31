@@ -21,13 +21,12 @@ You **MUST** use an agent (via `Agent` tool) when:
 
 ## When You MAY Skip Agents
 
-**ZERO EXCEPTIONS.** You MUST use an agent for every task.
+You MAY skip agent delegation for:
+- Single-word typo fixes or obvious one-line bugs
+- Reading a single known file for quick context
+- Simple Q&A that does not require code changes
 
-Even for:
-- Single-word typo fixes → use `code-reviewer` agent
-- Reading one file → use `explore` agent  
-- Simple Q&A → use `project-manager` agent for context
-- Emergency fix → use `backend-dev` or `frontend-dev` agent immediately
+For everything else — delegate to the appropriate agent.
 
 ## How to Delegate
 

@@ -41,7 +41,7 @@ Handle deployment and infrastructure tasks.
 ## Key Commands
 
 ```bash
-export KUBECONFIG=/home/aleksandr/.kube/pokutiy
+export KUBECONFIG=${KUBECONFIG:-$HOME/.kube/pokutiy}
 IMAGE_TAG=$(git rev-parse --short HEAD)
 
 # Build

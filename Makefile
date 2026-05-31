@@ -129,3 +129,20 @@ status: ## Статус: git + запущенные сервисы
 	@echo "=== Git Status ===" && git status --short
 	@echo "" && echo "=== Last Commit ===" && git log -1 --oneline
 	@echo "" && echo "=== Running Services ===" && $(COMPOSE) ps 2>/dev/null || true
+
+review: ## Code review текущих изменений
+	@echo "=== Git Diff ===" && git diff --stat
+	@echo "" && echo "=== Lint ===" && make lint
+	@echo "" && echo "=== Tests ===" && make test
+
+review-security: ## Security audit checklist
+	@echo "=== Security Checklist ==="
+	@echo "[ ] Auth guards on new endpoints"
+	@echo "[ ] No raw SQL with string formatting"
+	@echo "[ ] No PII in logs"
+	@echo "[ ] Prices calculated server-side"
+	@echo "[ ] No hardcoded secrets"
+	@git diff --name-only
+
+check: lint test ## Полная проверка: lint + test + security checklist
+	@echo "=== Full Check Complete ==="

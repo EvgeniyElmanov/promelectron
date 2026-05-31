@@ -50,11 +50,9 @@ Review code changes against the specification. **Do NOT run tests or modify code
 - Integration access via `service.py` — never `client.py` directly
 
 ### Frontend (if changed)
-- Mobile-first TailwindCSS — default styles for mobile, `md:`/`lg:` for wider screens
 - All API calls in `services/` — never fetch directly in components
-- Custom hooks for all data fetching — not inline in components
+- Custom composables for all data fetching — not inline in components
 - Money formatted correctly (kopecks → currency display)
-- TypeScript types defined for all API payloads
 
 ### Tests
 - New behaviour has tests — missing = ❌ CRITICAL

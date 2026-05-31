@@ -20,7 +20,7 @@ paths:
 ## Infrastructure
 - Registry: `harbor.kubeadm.ru/promelectron/promelectron-api`
 - Image tags: git SHA — **never `:latest` in Helm values for deployments**
-- Kubeconfig: `/home/aleksandr/.kube/pokutniy`
+- Kubeconfig: `${KUBECONFIG:-$HOME/.kube/pokutiy}`
 - Helm chart: `./infra/helm/`
 - imagePullSecret: `harborcred`
 - Storage class: `ceph-block`
@@ -72,7 +72,7 @@ gpg --export-secret-keys --armor EFE7C254B3297D737D5D832B576EE7224B73177C
 ## Deploy Commands
 
 ```bash
-export KUBECONFIG=/home/aleksandr/.kube/pokutniy
+export KUBECONFIG=${KUBECONFIG:-$HOME/.kube/pokutiy}
 IMAGE_TAG=$(git rev-parse --short HEAD)
 
 # Test

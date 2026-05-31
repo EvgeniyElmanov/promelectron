@@ -26,8 +26,7 @@ allowedTools:
   - Bash(cd *)
   - Bash(ls *)
   - Bash(find *)
-  - mcp__plugin_context7_context7__resolve-library-id
-  - mcp__plugin_context7_context7__query-docs
+  # Context7 MCP — add here if configured
 ---
 
 # Backend Developer — Promelectron

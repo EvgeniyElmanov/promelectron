@@ -1,9 +1,9 @@
 ---
 description: Security checklist for all code changes
 paths:
-  - "server/app/**/*.py"
-  - "client/src/**/*.vue"
-  - "client/src/**/*.js"
+  - "backend/src/app/**/*.py"
+  - "frontend/src/**/*.vue"
+  - "frontend/src/**/*.js"
 ---
 
 # Security Checklist
