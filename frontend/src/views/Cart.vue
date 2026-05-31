@@ -176,7 +176,7 @@
         :disabled="creatingOrder || (isAuthenticated && !isAddressValid)"
         @click="createOrder"
       >
-        {{ creatingOrder ? 'Оформление...' : (isAuthenticated ? 'Оформить заказ' : 'Войти, чтобы оформить') }}
+        {{ creatingOrder ? 'Оформление...' : 'Оформить заказ' }}
       </button>
     </div>
   </div>
@@ -331,7 +331,7 @@ const removeItem = async (itemId) => {
 const createOrder = async () => {
   if (creatingOrder.value) return;
   if (!isAuthenticated.value) {
-    router.push('/login');
+    router.push('/guest-checkout');
     return;
   }
   if (!isAddressValid.value) {

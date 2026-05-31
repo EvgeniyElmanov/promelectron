@@ -3,12 +3,13 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.app.utils.rate_limiter import conditional_limit, limiter
+from src.app.utils.rate_limiter import conditional_limit
 
 from src.app.db.database import get_db
 from src.app.models.supplier import Supplier
 from src.app.models.user import User
 from src.app.schemas.order import (
+    GuestOrderCreate,
     OrderCreate,
     OrderOut,
     OrderUpdateStatus,
@@ -37,6 +38,33 @@ async def create_order(request: Request,
     - Returns the created order
     """
     return await OrderService.create_order(current_user=current_user, order_data=order_data, db=db)
+
+
+@router.post("/create-guest", response_model=OrderOut)
+@conditional_limit("10/minute")
+async def create_guest_order(
+    request: Request,
+    order_data: GuestOrderCreate,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Create an order without registration (guest checkout).
+    
+    - Accepts a list of items with product_id and quantity
+    - Validates stock and reduces it
+    - Returns the created order
+    """
+    return await OrderService.create_guest_order(order_data=order_data, db=db)
+
+
+@router.get("/guest/{order_id}", response_model=OrderOut)
+async def get_guest_order(
+    order_id: int,
+    guest_email: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get a guest order by ID and email."""
+    return await OrderService.get_guest_order(order_id=order_id, guest_email=guest_email, db=db)
 
 
 @router.get("/{order_id}", response_model=OrderOut)

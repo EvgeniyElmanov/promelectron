@@ -10,7 +10,7 @@ from src.app.models.delivery_method import DeliveryMethod
 from src.app.models.order import Order, OrderItem
 from src.app.models.product import Product
 from src.app.models.user import User
-from src.app.schemas.order import AddressDetails, AdminOrderUpdate, OrderCreate, OrderUpdateStatus
+from src.app.schemas.order import AddressDetails, AdminOrderUpdate, GuestOrderCreate, OrderCreate, OrderUpdateStatus
 from src.app.services.email_service import EmailService
 from src.app.services.notification_service import NotificationService
 
@@ -136,6 +136,111 @@ class OrderService:
             logging.getLogger(__name__).exception("Failed to send order confirmation side-effects")
 
         return full_order
+
+    @staticmethod
+    async def create_guest_order(order_data: GuestOrderCreate, db: AsyncSession) -> Order:
+        if not order_data.items:
+            raise HTTPException(status_code=400, detail="Cart is empty")
+
+        total_price = Decimal(0)
+        order_items: list[OrderItem] = []
+        for item in order_data.items:
+            product_result = await db.execute(
+                select(Product).where(
+                    Product.id == item.product_id,
+                    Product.is_active.is_(True),
+                ).with_for_update()
+            )
+            product = product_result.scalars().first()
+
+            if not product:
+                raise HTTPException(status_code=404, detail=f"Product {item.product_id} not found")
+
+            if product.stock < item.quantity:
+                raise HTTPException(status_code=400, detail=f"Not enough stock for product {product.name}")
+
+            product.stock -= item.quantity
+            order_item = OrderItem(
+                product_id=item.product_id,
+                quantity=item.quantity,
+                price_at_time=product.price,
+            )
+            total_price += Decimal(product.price) * item.quantity
+            order_items.append(order_item)
+
+        delivery_price = Decimal(0)
+        if order_data.delivery_method_id:
+            dm_result = await db.execute(
+                select(DeliveryMethod).where(
+                    DeliveryMethod.id == order_data.delivery_method_id,
+                    DeliveryMethod.is_active.is_(True),
+                )
+            )
+            dm = dm_result.scalars().first()
+            if dm:
+                delivery_price = Decimal(dm.base_price)
+
+        new_order = Order(
+            user_id=None,
+            total_price=total_price + delivery_price,
+            status="pending",
+            delivery_method_id=order_data.delivery_method_id,
+            delivery_price=delivery_price,
+            shipping_address=_format_address(order_data.shipping_address),
+            guest_email=order_data.guest_email,
+            guest_name=order_data.guest_name,
+            guest_phone=order_data.guest_phone,
+            items=order_items,
+        )
+        db.add(new_order)
+        await db.commit()
+        await db.refresh(new_order)
+
+        order_result = await db.execute(
+            select(Order).where(Order.id == new_order.id).options(
+                selectinload(Order.items),
+                selectinload(Order.delivery_method),
+            )
+        )
+        full_order = order_result.scalars().first()
+        if not full_order:
+            raise HTTPException(status_code=500, detail="Failed to create order")
+
+        # Send confirmation email (best-effort)
+        try:
+            items_for_email = []
+            for oi in full_order.items:
+                prod_result = await db.execute(select(Product).where(Product.id == oi.product_id))
+                prod = prod_result.scalars().first()
+                items_for_email.append({
+                    "product_name": prod.name if prod else "Товар",
+                    "quantity": oi.quantity,
+                    "price_at_time": float(oi.price_at_time),
+                })
+            await EmailService.send_order_confirmation(
+                to=full_order.guest_email,
+                order_id=full_order.id,
+                total_price=float(full_order.total_price),
+                items=items_for_email,
+                shipping_address=full_order.shipping_address,
+            )
+        except Exception:
+            import logging
+            logging.getLogger(__name__).exception("Failed to send order confirmation side-effects")
+
+        return full_order
+
+    @staticmethod
+    async def get_guest_order(order_id: int, guest_email: str, db: AsyncSession) -> Order:
+        result = await db.execute(
+            select(Order)
+            .where(Order.id == order_id, Order.guest_email == guest_email)
+            .options(selectinload(Order.items), selectinload(Order.delivery_method))
+        )
+        order = result.scalars().first()
+        if not order:
+            raise HTTPException(status_code=404, detail="Order not found")
+        return order
 
     @staticmethod
     async def get_all_orders(

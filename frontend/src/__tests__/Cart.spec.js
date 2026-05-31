@@ -203,13 +203,25 @@ describe('Cart.vue — гостевая корзина', () => {
     expect(wrapper.text()).toContain('4\u00A0500');
   });
 
-  it('показывает кнопку "Войти, чтобы оформить" для гостя', async () => {
+  it('показывает кнопку "Оформить заказ" для гостя', async () => {
     const wrapper = mount(Cart, { global: { plugins: [router] } });
     await flushPromises();
 
     const checkoutBtn = wrapper.find('[data-testid="checkout-button"]');
     expect(checkoutBtn.exists()).toBe(true);
-    expect(checkoutBtn.text()).toContain('Войти');
+    expect(checkoutBtn.text()).toContain('Оформить заказ');
+  });
+
+  it('редиректит гостя на /guest-checkout при оформлении', async () => {
+    const push = vi.spyOn(router, 'push');
+    const wrapper = mount(Cart, { global: { plugins: [router] } });
+    await flushPromises();
+
+    const checkoutBtn = wrapper.find('[data-testid="checkout-button"]');
+    await checkoutBtn.trigger('click');
+    await flushPromises();
+
+    expect(push).toHaveBeenCalledWith('/guest-checkout');
   });
 
   it('не показывает блоки доставки и адреса для гостя', async () => {

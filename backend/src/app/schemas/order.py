@@ -30,6 +30,22 @@ class OrderCreate(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class GuestOrderItemCreate(BaseModel):
+    product_id: int
+    quantity: int = 1
+
+
+class GuestOrderCreate(BaseModel):
+    items: List[GuestOrderItemCreate]
+    shipping_address: Optional[AddressDetails] = None
+    delivery_method_id: Optional[int] = None
+    guest_email: str
+    guest_name: Optional[str] = None
+    guest_phone: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class OrderUpdateStatus(BaseModel):
     status: str
 
@@ -72,12 +88,15 @@ class SupplierOrderOut(BaseModel):
 
 class OrderOut(BaseModel):
     id: int
-    user_id: int
+    user_id: Optional[int] = None
     status: str
     total_price: Decimal
     delivery_method_id: Optional[int] = None
     delivery_price: Optional[Decimal] = None
     shipping_address: Optional[str] = None
+    guest_email: Optional[str] = None
+    guest_name: Optional[str] = None
+    guest_phone: Optional[str] = None
     created_at: datetime
     items: List[OrderItemOut]
     tracking_number: Optional[str] = None
