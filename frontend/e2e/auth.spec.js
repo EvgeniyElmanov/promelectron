@@ -41,8 +41,16 @@ test.describe('Authentication', () => {
     await expect(page.locator('[data-testid="login-error"]')).toBeVisible();
   });
 
-  test('unauthorized user redirected from cart to login', async ({ page }) => {
+  test('guest user can view empty cart and login on checkout', async ({ page }) => {
     await page.goto('/cart');
+    // Guest sees cart page, not redirected to login
+    await expect(page.locator('[data-testid="cart-page"]')).toBeVisible();
+    await expect(page.locator('[data-testid="cart-title"]')).toContainText('Корзина');
+
+    // Checkout button redirects to login for guest
+    const checkoutBtn = page.locator('[data-testid="checkout-button"]');
+    await expect(checkoutBtn).toBeVisible();
+    await checkoutBtn.click();
     await expect(page).toHaveURL('/login');
   });
 });
