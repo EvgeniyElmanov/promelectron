@@ -20,8 +20,10 @@
 | 8 | Настроить backup БД (pg_dump → S3/MinIO) | devops | P0 | todo | — | 2 дня | — |
 | 9 | E2E тесты гостевой корзины | e2e-tester | P0 | **done** | #3, #4 | 2 дня | — |
 | 10 | Product.price → Numeric(10,2) + Alembic | backend-dev | P0 | todo | — | 2 дня | — |
+| 11 | OAuth Google ID — production настройка (credentials, redirect URI, валидация) | backend-dev + devops | P0 | todo | — | 2 дня | — |
+| 12 | OAuth Yandex ID — production настройка (credentials, redirect URI, валидация) | backend-dev + devops | P0 | **done** | — | 2 дня | — |
 
-**Цель спринта:** Реальные платежи работают, гостевая корзина в проде, нет критичных security issues.
+**Цель спринта:** Реальные платежи работают, гостевая корзина в проде, OAuth production-ready, нет критичных security issues.
 
 ---
 

@@ -47,13 +47,14 @@ async def oauth_login(provider: str):
     config = get_provider_config(provider)
 
     client_id = settings.google_client_id if provider == "google" else settings.yandex_client_id
-    redirect_uri = f"{settings.frontend_url}/auth/callback?provider={provider}"
+    redirect_uri = f"{settings.frontend_url}/auth/callback"
 
     auth_params = {
         "client_id": client_id,
         "redirect_uri": redirect_uri,
         "response_type": "code",
         "scope": config["scope"],
+        "state": provider,
     }
 
     query = "&".join(f"{k}={v}" for k, v in auth_params.items())
@@ -72,7 +73,7 @@ async def oauth_callback(
 
     client_id = settings.google_client_id if provider == "google" else settings.yandex_client_id
     client_secret = settings.google_client_secret if provider == "google" else settings.yandex_client_secret
-    redirect_uri = f"{settings.frontend_url}/auth/callback?provider={provider}"
+    redirect_uri = f"{settings.frontend_url}/auth/callback"
 
     # 1. Обмен кода на токен
     async with httpx.AsyncClient() as client:

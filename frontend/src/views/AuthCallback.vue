@@ -21,7 +21,7 @@ const { mergeCartOnLogin } = useCart();
 
 onMounted(async () => {
   try {
-    const provider = route.query.provider;
+    const provider = route.query.state || route.query.provider;
     const code = route.query.code;
 
     if (!provider || !code) {
