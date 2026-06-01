@@ -60,6 +60,8 @@ services:
       MINIO_BUCKET: promelectron-uploads
       MINIO_SECURE: "false"
       ACCESS_TOKEN_EXPIRE_MINUTES: "30"
+      YANDEX_CLIENT_ID: ${YANDEX_CLIENT_ID:-}
+      YANDEX_CLIENT_SECRET: ${YANDEX_CLIENT_SECRET:-}
     volumes:
       - .:/app
     depends_on:
@@ -116,6 +118,8 @@ services:
       MINIO_BUCKET: promelectron-uploads
       MINIO_SECURE: "false"
       ACCESS_TOKEN_EXPIRE_MINUTES: "30"
+      YANDEX_CLIENT_ID: ${YANDEX_CLIENT_ID:-}
+      YANDEX_CLIENT_SECRET: ${YANDEX_CLIENT_SECRET:-}
     volumes:
       - .:/app
     depends_on:
