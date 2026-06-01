@@ -65,17 +65,20 @@
         <span class="header__action-label">Избранное</span>
       </router-link>
 
-      <router-link to="/cart" class="header__action-item" data-testid="cart-link">
-        <div class="header__icon">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4H6z"/>
-            <line x1="3" y1="6" x2="21" y2="6"/>
-            <path d="M16 10a4 4 0 01-8 0"/>
-          </svg>
-          <span v-if="cartCount > 0" class="header__notif-badge">{{ cartCount > 99 ? '99+' : cartCount }}</span>
-        </div>
-        <span class="header__action-label">Корзина</span>
-      </router-link>
+      <div class="header__cart-wrap">
+        <router-link to="/cart" class="header__action-item" data-testid="cart-link">
+          <div class="header__icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4H6z"/>
+              <line x1="3" y1="6" x2="21" y2="6"/>
+              <path d="M16 10a4 4 0 01-8 0"/>
+            </svg>
+            <span v-if="cartCount > 0" class="header__notif-badge">{{ cartCount > 99 ? '99+' : cartCount }}</span>
+          </div>
+          <span class="header__action-label">Корзина</span>
+        </router-link>
+        <ToastContainer class="header__toast" />
+      </div>
 
       <router-link v-if="isAuthenticated" to="/profile" class="header__action-item" data-testid="profile-link">
         <div class="header__icon">
@@ -97,7 +100,6 @@
         <span class="header__action-label">Войти</span>
       </router-link>
     </div>
-    <ToastContainer class="header__toast" />
   </header>
 </template>
 
@@ -431,10 +433,15 @@ const vClickOutside = {
   border-top: 1px solid var(--color-border);
 }
 
+.header__cart-wrap {
+  position: relative;
+}
+
 .header__toast {
   position: absolute;
   top: calc(100% + 8px);
-  right: 12px;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 200;
 }
 </style>
