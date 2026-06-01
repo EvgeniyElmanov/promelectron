@@ -233,11 +233,42 @@
             </div>
           </div>
 
-          <!-- Products -->
+          <!-- Products from API suggestions -->
           <div v-if="suggestedProducts.length" class="search-bar__section">
             <div class="search-bar__section-title">Товары</div>
             <div
               v-for="product in suggestedProducts"
+              :key="product.id"
+              class="search-bar__product-mini"
+              data-testid="search-bar-product-suggestion"
+              @click="selectProduct(product)"
+            >
+              <img
+                v-if="product.image"
+                :src="product.image"
+                class="search-bar__product-img"
+                alt=""
+              />
+              <div class="search-bar__product-info">
+                <div
+                  class="search-bar__product-name"
+                  v-html="highlightMatch(product.name)"
+                />
+                <div
+                  v-if="product.price"
+                  class="search-bar__product-price"
+                >
+                  {{ formatPrice(product.price) }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Fallback products when suggestions API fails -->
+          <div v-else-if="fallbackProducts.length" class="search-bar__section">
+            <div class="search-bar__section-title">Товары</div>
+            <div
+              v-for="product in fallbackProducts"
               :key="product.id"
               class="search-bar__product-mini"
               data-testid="search-bar-product-suggestion"
@@ -334,6 +365,7 @@ const isMobileOpen = ref(false);
 
 const {
   query: searchQuery,
+  isLoading,
   recommendations,
   suggestions,
   fetchRecommendations,
@@ -367,9 +399,23 @@ const suggestedProducts = computed(
   () => suggestions.value?.products || []
 );
 
+// Fallback: filter recommendations locally when suggestions API fails
+const fallbackProducts = computed(() => {
+  const q = props.modelValue.trim().toLowerCase();
+  if (!q || q.length < 2) return [];
+  return recommendedProducts.value.filter((p) =>
+    p.name.toLowerCase().includes(q)
+  );
+});
+
 const showNoResults = computed(() => {
   const q = props.modelValue.trim();
   if (!q || q.length < 2) return false;
+  if (isLoading.value) return false;
+  // If suggestions API returned an error (null), show fallback or nothing
+  if (suggestions.value === null) {
+    return fallbackProducts.value.length === 0;
+  }
   return (
     !textSuggestions.value.length &&
     !suggestedCategories.value.length &&

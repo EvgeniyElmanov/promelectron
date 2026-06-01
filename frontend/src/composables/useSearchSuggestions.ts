@@ -85,12 +85,14 @@ export function useSearchSuggestions() {
       recommendations.value = data;
       setCached(key, data);
     } catch (err: any) {
-      // Graceful fallback so UI never breaks
-      recommendations.value = {
-        trending: [],
-        popular_categories: [],
-        recommendations: [],
-      };
+      // Keep previous data on error; UI handles empty state gracefully
+      if (!recommendations.value) {
+        recommendations.value = {
+          trending: [],
+          popular_categories: [],
+          recommendations: [],
+        };
+      }
       error.value = err?.message || 'Failed to load recommendations';
     } finally {
       isLoading.value = false;
@@ -117,12 +119,8 @@ export function useSearchSuggestions() {
       suggestions.value = data;
       setCached(key, data);
     } catch (err: any) {
-      suggestions.value = {
-        queries: [],
-        categories: [],
-        brands: [],
-        products: [],
-      };
+      // Keep suggestions null on error so UI can show fallback instead of "not found"
+      suggestions.value = null;
       error.value = err?.message || 'Failed to load suggestions';
     } finally {
       isLoading.value = false;

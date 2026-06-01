@@ -184,4 +184,39 @@ describe('SearchBar.vue', () => {
 
     expect(wrapper.text()).toContain('Ничего не найдено');
   });
+
+  it('не показывает "Ничего не найдено" при ошибке API если есть fallback товары', async () => {
+    mockState.recommendations = {
+      trending: [],
+      popular_categories: [],
+      recommendations: [
+        { id: 1, name: 'Смартфон Nova X12', price: 45990 },
+        { id: 2, name: 'Ноутбук Pro', price: 89990 },
+      ],
+    };
+    mockState.suggestions = null; // API error
+
+    const wrapper = mount(SearchBar, {
+      props: { modelValue: 'смарт' },
+    });
+    await wrapper.find('input[type="text"]').trigger('focus');
+    await nextTick();
+
+    expect(wrapper.text()).not.toContain('Ничего не найдено');
+    expect(wrapper.text()).toContain('Смартфон Nova X12');
+    expect(wrapper.text()).not.toContain('Ноутбук Pro');
+  });
+
+  it('не показывает "Ничего не найдено" во время загрузки', async () => {
+    mockState.isLoading = true;
+    mockState.suggestions = null;
+
+    const wrapper = mount(SearchBar, {
+      props: { modelValue: 'тест' },
+    });
+    await wrapper.find('input[type="text"]').trigger('focus');
+    await nextTick();
+
+    expect(wrapper.text()).not.toContain('Ничего не найдено');
+  });
 })
