@@ -332,7 +332,7 @@ const removeItem = async (itemId) => {
 const createOrder = async () => {
   if (creatingOrder.value) return;
   if (!isAuthenticated.value) {
-    router.push('/guest-checkout');
+    router.push('/login?redirect=/cart');
     return;
   }
   if (!isAddressValid.value) {

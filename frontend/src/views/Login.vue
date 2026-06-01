@@ -89,11 +89,12 @@
 
 <script setup>
 import { ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import api from '@/services/api';
 import { useAuth } from '@/composables/useAuth';
 import { useCart } from '@/composables/useCart';
 
+const route = useRoute();
 const router = useRouter();
 const { setAuth } = useAuth();
 const { mergeCartOnLogin } = useCart();
@@ -131,7 +132,8 @@ async function handleLogin() {
     });
     setAuth(response.data.access_token, response.data.user);
     await mergeCartOnLogin();
-    router.push('/');
+    const redirect = route.query.redirect;
+    router.push(typeof redirect === 'string' && redirect.startsWith('/') ? redirect : '/');
   } catch (err) {
     serverError.value = err.response?.data?.detail || 'Ошибка входа. Проверьте данные.';
   } finally {

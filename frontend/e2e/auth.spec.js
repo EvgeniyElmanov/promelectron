@@ -41,7 +41,7 @@ test.describe('Authentication', () => {
     await expect(page.locator('[data-testid="login-error"]')).toBeVisible();
   });
 
-  test('guest user can view cart and proceed to guest checkout', async ({ page }) => {
+  test('guest user can view cart and is redirected to login on checkout', async ({ page }) => {
     // Navigate first to set origin, then pre-populate guest cart
     await page.goto('/');
     await page.evaluate(() => {
@@ -54,10 +54,10 @@ test.describe('Authentication', () => {
     await expect(page.locator('[data-testid="cart-page"]')).toBeVisible();
     await expect(page.locator('[data-testid="cart-title"]')).toContainText('Корзина');
 
-    // Checkout button redirects to guest checkout for guest
+    // Checkout button redirects to login for guest
     const checkoutBtn = page.locator('[data-testid="checkout-button"]');
     await expect(checkoutBtn).toBeVisible();
     await checkoutBtn.click();
-    await expect(page).toHaveURL('/guest-checkout');
+    await expect(page).toHaveURL('/login?redirect=/cart');
   });
 });
