@@ -121,10 +121,12 @@ import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import api from '@/services/api';
 import { useToast } from '@/composables/useToast';
+import { useCart } from '@/composables/useCart';
 
 const route = useRoute();
 const router = useRouter();
 const { add: toast } = useToast();
+const { syncCartCount } = useCart();
 
 const orderId = computed(() => route.params.id);
 
@@ -206,6 +208,7 @@ const processPayment = async () => {
     await api.post(`/payments/${paymentId}/confirm`);
 
     toast('Оплата прошла успешно!', 'success');
+    await syncCartCount();
     await new Promise((resolve) => setTimeout(resolve, 600));
     await router.push(`/orders/${orderId.value}`);
   } catch (err) {

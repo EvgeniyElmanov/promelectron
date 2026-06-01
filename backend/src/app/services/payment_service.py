@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from src.app.models.cart import Cart, CartItem
 from src.app.models.order import Order
 from src.app.models.payment import Payment
 from src.app.models.user import User
@@ -72,6 +73,16 @@ class PaymentService:
         payment.order.status = "paid"
 
         await db.commit()
+
+        # Очищаем корзину пользователя после успешной оплаты
+        if payment.order.user_id:
+            cart_result = await db.execute(select(Cart).where(Cart.user_id == payment.order.user_id))
+            cart = cart_result.scalars().first()
+            if cart:
+                from sqlalchemy import delete
+                await db.execute(delete(CartItem).where(CartItem.cart_id == cart.id))
+                await db.commit()
+
         await db.refresh(payment)
 
         # Отправляем email о подтверждении оплаты (best-effort)

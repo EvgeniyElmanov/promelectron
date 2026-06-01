@@ -90,7 +90,6 @@ class OrderService:
             items=order_items,
         )
         db.add(new_order)
-        await db.execute(delete(CartItem).where(CartItem.cart_id == cart.id))
         await db.commit()
         await db.refresh(new_order)
 

@@ -204,7 +204,7 @@ const selectedDeliveryMethodId = ref(null);
 const router = useRouter();
 const { add: toast } = useToast();
 const { isAuthenticated } = useAuth();
-const { getGuestCartItems, updateQuantity: updateGuestQuantity, removeFromCart: removeGuestItem } = useCart();
+const { getGuestCartItems, updateQuantity: updateGuestQuantity, removeFromCart: removeGuestItem, syncCartCount } = useCart();
 
 // Swipe state
 const touchStartX = ref(0);
@@ -273,6 +273,7 @@ const fetchCart = async () => {
     toast('Не удалось загрузить корзину', 'error');
   } finally {
     loading.value = false;
+    await syncCartCount();
   }
 };
 
