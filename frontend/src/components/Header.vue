@@ -12,7 +12,7 @@
     </div>
 
     <div class="header__search-desktop">
-      <SearchBar v-model="headerSearchQuery" data-testid="header-search-bar" @keyup.enter="onSearchSubmit" />
+      <SearchBar v-model="headerSearchQuery" data-testid="header-search-bar" @submit="onSearchSubmit" />
     </div>
 
     <div class="header__actions">
@@ -140,9 +140,9 @@ const notifOpen = ref(false);
 const router = useRouter();
 const headerSearchQuery = ref('');
 
-const onSearchSubmit = () => {
-  const q = headerSearchQuery.value.trim();
-  router.push({ path: '/', query: q ? { q } : undefined });
+const onSearchSubmit = (q) => {
+  const query = (q || headerSearchQuery.value).trim();
+  router.push({ path: '/', query: query ? { q: query } : undefined });
 };
 
 // Always call useNotifications — it handles auth internally

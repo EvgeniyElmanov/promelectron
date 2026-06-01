@@ -1,6 +1,6 @@
 <template>
   <div class="home">
-    <SearchBar v-model="searchQuery" class="home__search-bar" />
+    <SearchBar v-model="searchQuery" class="home__search-bar" @submit="onSearchSubmit" />
     <CategoryChips @select="handleCategorySelect" />
     <PromoBanner />
 
@@ -113,7 +113,7 @@
 
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import ProductCard from '@/components/ProductCard.vue';
 import SearchBar from '@/components/SearchBar.vue';
 import CategoryChips from '@/components/CategoryChips.vue';
@@ -122,6 +122,7 @@ import SkeletonProductCard from '@/components/SkeletonProductCard.vue';
 import api from '@/services/api';
 
 const route = useRoute();
+const router = useRouter();
 const products = ref([]);
 const searchQuery = ref('');
 const selectedCategory = ref(null);
@@ -209,6 +210,25 @@ watch(searchQuery, () => {
     fetchProducts();
   }, 300);
 });
+
+const onSearchSubmit = (q) => {
+  clearTimeout(searchTimeout);
+  router.push({ path: '/', query: q ? { q } : undefined });
+};
+
+// React to URL query changes (e.g. from header search)
+watch(
+  () => route.query.q,
+  (newQ) => {
+    const q = newQ ? String(newQ) : '';
+    if (q !== searchQuery.value) {
+      clearTimeout(searchTimeout);
+      searchQuery.value = q;
+      skip.value = 0;
+      fetchProducts();
+    }
+  }
+);
 
 onMounted(async () => {
   if (route.query.q) {
