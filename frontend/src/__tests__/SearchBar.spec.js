@@ -15,6 +15,11 @@ const mockState = reactive({
 const mockFetchRecommendations = vi.fn();
 const mockFetchSuggestions = vi.fn();
 
+const mockAddSearchHistory = vi.fn();
+const mockRemoveSearchHistory = vi.fn();
+const mockClearSearchHistory = vi.fn();
+const mockGetSearchHistory = vi.fn(() => []);
+
 vi.mock('@/composables/useSearchSuggestions', () => ({
   useSearchSuggestions: () => ({
     get query() { return { value: mockState.query }; },
@@ -25,6 +30,10 @@ vi.mock('@/composables/useSearchSuggestions', () => ({
     fetchRecommendations: mockFetchRecommendations,
     fetchSuggestions: mockFetchSuggestions,
   }),
+  getSearchHistory: () => mockGetSearchHistory(),
+  addSearchHistory: (q) => mockAddSearchHistory(q),
+  removeSearchHistory: (q) => mockRemoveSearchHistory(q),
+  clearSearchHistory: () => mockClearSearchHistory(),
 }));
 
 describe('SearchBar.vue', () => {

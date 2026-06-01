@@ -64,6 +64,44 @@ export interface Suggestions {
   products: MiniProduct[];
 }
 
+const HISTORY_KEY = 'search_history';
+const MAX_HISTORY = 8;
+
+export function getSearchHistory(): string[] {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function addSearchHistory(query: string): void {
+  const q = query.trim();
+  if (!q) return;
+  const history = getSearchHistory();
+  const updated = [q, ...history.filter((h) => h.toLowerCase() !== q.toLowerCase())].slice(0, MAX_HISTORY);
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
+}
+
+export function removeSearchHistory(query: string): void {
+  const history = getSearchHistory().filter((h) => h !== query);
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+}
+
+export function clearSearchHistory(): void {
+  localStorage.removeItem(HISTORY_KEY);
+}
+
+function mapProductItem(item: any): MiniProduct {
+  return {
+    id: item.id,
+    name: item.name,
+    price: item.price,
+    image: item.images?.[0] || item.image || undefined,
+  };
+}
+
 export function useSearchSuggestions() {
   const query = ref('');
   const isLoading = ref(false);
@@ -85,15 +123,27 @@ export function useSearchSuggestions() {
       recommendations.value = data;
       setCached(key, data);
     } catch (err: any) {
-      // Keep previous data on error; UI handles empty state gracefully
-      if (!recommendations.value) {
+      // Fallback to existing /products/ API when search endpoints are not ready
+      try {
+        const { data } = await api.get<{ items: any[]; total: number }>('/products/', {
+          params: { limit: 6 },
+        });
         recommendations.value = {
           trending: [],
           popular_categories: [],
-          recommendations: [],
+          recommendations: data.items.map(mapProductItem),
         };
+        setCached(key, recommendations.value);
+      } catch {
+        if (!recommendations.value) {
+          recommendations.value = {
+            trending: [],
+            popular_categories: [],
+            recommendations: [],
+          };
+        }
+        error.value = err?.message || 'Failed to load recommendations';
       }
-      error.value = err?.message || 'Failed to load recommendations';
     } finally {
       isLoading.value = false;
     }
@@ -119,9 +169,22 @@ export function useSearchSuggestions() {
       suggestions.value = data;
       setCached(key, data);
     } catch (err: any) {
-      // Keep suggestions null on error so UI can show fallback instead of "not found"
-      suggestions.value = null;
-      error.value = err?.message || 'Failed to load suggestions';
+      // Fallback to existing /products/ API when search endpoints are not ready
+      try {
+        const { data } = await api.get<{ items: any[]; total: number }>('/products/', {
+          params: { q: q.trim(), limit: 5 },
+        });
+        suggestions.value = {
+          queries: [],
+          categories: [],
+          brands: [],
+          products: data.items.map(mapProductItem),
+        };
+        setCached(key, suggestions.value);
+      } catch {
+        suggestions.value = null;
+        error.value = err?.message || 'Failed to load suggestions';
+      }
     } finally {
       isLoading.value = false;
     }

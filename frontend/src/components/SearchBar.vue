@@ -74,6 +74,38 @@
       <div class="search-bar__scroll">
         <!-- Recommendations view (empty query) -->
         <template v-if="!modelValue.trim()">
+          <!-- Search history -->
+          <div v-if="searchHistory.length" class="search-bar__section">
+            <div class="search-bar__section-header">
+              <div class="search-bar__section-title">Вы искали</div>
+              <button class="search-bar__section-action" @click="clearSearchHistory(); refreshHistory();">
+                Очистить
+              </button>
+            </div>
+            <div class="search-bar__history-list">
+              <div
+                v-for="item in searchHistory"
+                :key="item"
+                class="search-bar__history-row"
+                @click="selectQuery(item)"
+              >
+                <svg class="search-bar__history-icon" viewBox="0 0 24 24" width="16" height="16" fill="none">
+                  <circle cx="12" cy="12" r="10" stroke="#999" stroke-width="1.5"/>
+                  <polyline points="12 6 12 12 16 14" stroke="#999" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+                <span class="search-bar__history-text">{{ item }}</span>
+                <button
+                  class="search-bar__history-delete"
+                  @click.stop="removeSearchHistory(item); refreshHistory();"
+                >
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none">
+                    <path d="M18 6L6 18M6 6l12 12" stroke="#999" stroke-width="2" stroke-linecap="round"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
           <!-- Trending / Often searched -->
           <div v-if="trending.length" class="search-bar__section">
             <div class="search-bar__section-title">Часто ищут</div>
@@ -320,7 +352,7 @@ import {
   onMounted,
   onUnmounted,
 } from 'vue';
-import { useSearchSuggestions } from '@/composables/useSearchSuggestions';
+import { useSearchSuggestions, getSearchHistory, addSearchHistory, removeSearchHistory, clearSearchHistory } from '@/composables/useSearchSuggestions';
 
 /**
  * SearchBar — строка поиска с двумя режимами:
@@ -370,6 +402,12 @@ const {
   suggestions,
   fetchRecommendations,
 } = useSearchSuggestions();
+
+const searchHistory = ref([]);
+
+function refreshHistory() {
+  searchHistory.value = getSearchHistory();
+}
 
 // Sync composable query with prop
 watch(
@@ -432,6 +470,7 @@ function onInput(e) {
 
 function onFocus() {
   openDropdown();
+  refreshHistory();
   fetchRecommendations();
 }
 
@@ -446,6 +485,8 @@ function onEnter() {
 function selectQuery(q) {
   emit('update:modelValue', q);
   searchQuery.value = q;
+  addSearchHistory(q);
+  refreshHistory();
   closeDropdown();
   emit('submit', q);
 }
@@ -737,6 +778,68 @@ onUnmounted(() => {
   background: none;
   color: var(--color-primary);
   font-weight: 600;
+}
+
+/* History */
+.search-bar__section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.search-bar__section-action {
+  font-size: 12px;
+  color: var(--color-primary);
+  background: none;
+  border: none;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.search-bar__history-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.search-bar__history-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+
+.search-bar__history-row:hover {
+  background: var(--color-bg);
+}
+
+.search-bar__history-icon {
+  flex-shrink: 0;
+}
+
+.search-bar__history-text {
+  flex: 1;
+  font-size: 14px;
+  color: var(--color-text);
+}
+
+.search-bar__history-delete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.search-bar__history-row:hover .search-bar__history-delete {
+  opacity: 1;
 }
 
 /* Empty state */
