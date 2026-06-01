@@ -38,11 +38,17 @@ def get_provider_config(provider: str) -> dict:
 def get_provider_credentials(provider: str) -> tuple[str, str]:
     if provider == "google":
         if not settings.google_client_id or not settings.google_client_secret:
-            raise HTTPException(status_code=500, detail="Google OAuth credentials not configured")
+            raise HTTPException(
+                status_code=503,
+                detail="Вход через Google временно недоступен. Попробуйте позже или используйте email.",
+            )
         return settings.google_client_id, settings.google_client_secret
     elif provider == "yandex":
         if not settings.yandex_client_id or not settings.yandex_client_secret:
-            raise HTTPException(status_code=500, detail="Yandex OAuth credentials not configured")
+            raise HTTPException(
+                status_code=503,
+                detail="Вход через Яндекс временно недоступен. Попробуйте позже или используйте email.",
+            )
         return settings.yandex_client_id, settings.yandex_client_secret
     raise HTTPException(status_code=400, detail="Unsupported provider")
 
