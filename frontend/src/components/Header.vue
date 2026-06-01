@@ -12,7 +12,7 @@
     </div>
 
     <div class="header__search-desktop">
-      <SearchBar v-model="headerSearchQuery" @keyup.enter="onSearchSubmit" />
+      <SearchBar v-model="headerSearchQuery" data-testid="header-search-bar" @keyup.enter="onSearchSubmit" />
     </div>
 
     <div class="header__actions">

@@ -8,7 +8,7 @@
       <input
         type="text"
         class="search-bar__input"
-        data-testid="search-bar"
+        :data-testid="dataTestid"
         placeholder="Поиск товаров..."
         :value="modelValue"
         @input="$emit('update:modelValue', $event.target.value)"
@@ -22,6 +22,10 @@ defineProps({
   modelValue: {
     type: String,
     default: '',
+  },
+  dataTestid: {
+    type: String,
+    default: 'search-bar',
   },
 });
 
