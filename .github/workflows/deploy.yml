@@ -132,6 +132,8 @@ jobs:
             --set frontend.image=${{ env.FRONTEND_IMAGE }}-test:${{ github.sha }} \
             --set env.secrets.YANDEX_CLIENT_ID=${{ secrets.YANDEX_CLIENT_ID }} \
             --set env.secrets.YANDEX_CLIENT_SECRET=${{ secrets.YANDEX_CLIENT_SECRET }} \
+            --set env.secrets.GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }} \
+            --set env.secrets.GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }} \
             --namespace promelectron-test \
             --create-namespace
           kubectl rollout status deployment/promelectron-api -n promelectron-test --timeout=120s
@@ -242,6 +244,8 @@ jobs:
             --set frontend.image=${{ env.FRONTEND_IMAGE }}:${{ github.sha }} \
             --set env.secrets.YANDEX_CLIENT_ID=${{ secrets.YANDEX_CLIENT_ID }} \
             --set env.secrets.YANDEX_CLIENT_SECRET=${{ secrets.YANDEX_CLIENT_SECRET }} \
+            --set env.secrets.GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }} \
+            --set env.secrets.GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }} \
             --namespace promelectron \
             --create-namespace
           kubectl rollout status deployment/promelectron-api -n promelectron --timeout=120s
