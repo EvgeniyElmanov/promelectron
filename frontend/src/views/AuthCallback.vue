@@ -33,10 +33,7 @@ onMounted(async () => {
       params: { code }
     });
 
-    setAuth(response.data.access_token, {
-      id: response.data.user_id,
-      email: response.data.email,
-    });
+    setAuth(response.data.access_token, response.data.user);
 
     await mergeCartOnLogin();
     router.push('/');

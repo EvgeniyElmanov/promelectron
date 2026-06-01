@@ -21,11 +21,41 @@ else:
 
 
 @pytest.fixture(autouse=True)
-async def flush_redis():
-    """Flush Redis DB before each test to ensure cache isolation."""
-    from src.app.core.redis_client import redis_client
+async def flush_redis(monkeypatch):
+    """Flush Redis DB before each test to ensure cache isolation.
+    
+    If Redis is not available, mock it to avoid connection errors.
+    """
+    from src.app.core.redis_client import RedisClient
 
-    await redis_client.flushdb()
+    class FakeRedis:
+        async def flushdb(self):
+            pass
+        async def get(self, key):
+            return None
+        async def setex(self, key, ttl, value):
+            pass
+        async def delete(self, *keys):
+            pass
+        async def scan_iter(self, match):
+            if False:
+                yield
+
+    # Check if Redis is available
+    try:
+        import redis.asyncio
+        r = redis.asyncio.Redis.from_url(os.getenv("REDIS_URL", "redis://redis:6379/0"))
+        await r.ping()
+        await r.close()
+        redis_available = True
+    except Exception:
+        redis_available = False
+
+    if not redis_available:
+        fake = FakeRedis()
+        monkeypatch.setattr(RedisClient, "get_instance", classmethod(lambda cls: fake))
+
+    await RedisClient.flushdb()
 
 
 @pytest.fixture(autouse=True)

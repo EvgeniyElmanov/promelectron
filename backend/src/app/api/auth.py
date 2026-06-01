@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 import httpx
+from urllib.parse import urlencode
 
 from src.app.db.database import get_db
 from src.app.models.user import User
@@ -23,7 +24,7 @@ OAUTH_PROVIDERS = {
         "auth_url": "https://oauth.yandex.ru/authorize",
         "token_url": "https://oauth.yandex.ru/token",
         "user_info_url": "https://login.yandex.ru/info?format=json",
-        "scope": "login:email",
+        "scope": "login:email login:info",
     },
 }
 
@@ -32,6 +33,18 @@ def get_provider_config(provider: str) -> dict:
     if provider not in OAUTH_PROVIDERS:
         raise HTTPException(status_code=400, detail="Unsupported provider")
     return OAUTH_PROVIDERS[provider]
+
+
+def get_provider_credentials(provider: str) -> tuple[str, str]:
+    if provider == "google":
+        if not settings.google_client_id or not settings.google_client_secret:
+            raise HTTPException(status_code=500, detail="Google OAuth credentials not configured")
+        return settings.google_client_id, settings.google_client_secret
+    elif provider == "yandex":
+        if not settings.yandex_client_id or not settings.yandex_client_secret:
+            raise HTTPException(status_code=500, detail="Yandex OAuth credentials not configured")
+        return settings.yandex_client_id, settings.yandex_client_secret
+    raise HTTPException(status_code=400, detail="Unsupported provider")
 
 
 @router.get("/profile", response_model=UserOut)
@@ -45,8 +58,7 @@ async def get_auth_profile(
 @router.get("/{provider}/login")
 async def oauth_login(provider: str):
     config = get_provider_config(provider)
-
-    client_id = settings.google_client_id if provider == "google" else settings.yandex_client_id
+    client_id, _ = get_provider_credentials(provider)
     redirect_uri = f"{settings.frontend_url}/auth/callback"
 
     auth_params = {
@@ -57,8 +69,7 @@ async def oauth_login(provider: str):
         "state": provider,
     }
 
-    query = "&".join(f"{k}={v}" for k, v in auth_params.items())
-    auth_url = f"{config['auth_url']}?{query}"
+    auth_url = f"{config['auth_url']}?{urlencode(auth_params)}"
 
     return {"url": auth_url}
 
@@ -70,9 +81,7 @@ async def oauth_callback(
     db: AsyncSession = Depends(get_db),
 ):
     config = get_provider_config(provider)
-
-    client_id = settings.google_client_id if provider == "google" else settings.yandex_client_id
-    client_secret = settings.google_client_secret if provider == "google" else settings.yandex_client_secret
+    client_id, client_secret = get_provider_credentials(provider)
     redirect_uri = f"{settings.frontend_url}/auth/callback"
 
     # 1. Обмен кода на токен
@@ -102,7 +111,7 @@ async def oauth_callback(
         user_info = user_resp.json()
 
     email = user_info.get("email") or user_info.get("default_email")
-    provider_id = str(user_info.get("sub") or user_info.get("id"))
+    provider_id = str(user_info.get("id") or user_info.get("sub"))
 
     if not email:
         raise HTTPException(status_code=400, detail="Email not provided by provider")
@@ -111,15 +120,35 @@ async def oauth_callback(
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalars().first()
 
+    # Извлекаем доп. данные из профиля провайдера
+    full_name = user_info.get("name") or user_info.get("real_name") or user_info.get("display_name")
+    avatar_url = user_info.get("picture") or user_info.get("default_avatar_id")
+    if avatar_url and provider == "yandex" and not avatar_url.startswith("http"):
+        avatar_url = f"https://avatars.yandex.net/get-yapic/{avatar_url}/islands-200"
+
     if not user:
         user = User(
             email=email,
+            full_name=full_name,
+            avatar_url=avatar_url,
             hashed_password="",  # OAuth-пользователь без пароля
             is_active=True,
         )
         db.add(user)
         await db.commit()
         await db.refresh(user)
+    else:
+        # Обновляем профиль если данные пустые
+        updated = False
+        if full_name and not user.full_name:
+            user.full_name = full_name
+            updated = True
+        if avatar_url and not user.avatar_url:
+            user.avatar_url = avatar_url
+            updated = True
+        if updated:
+            await db.commit()
+            await db.refresh(user)
 
     # 4. Привязка соц. аккаунта
     social_result = await db.execute(
@@ -139,6 +168,11 @@ async def oauth_callback(
         )
         db.add(social)
         await db.commit()
+    else:
+        # Обновляем токен если изменился
+        if social.access_token != token_data.get("access_token"):
+            social.access_token = token_data.get("access_token")
+            await db.commit()
 
     # 5. Генерация JWT
     jwt_token = create_access_token(data={"sub": user.email, "role": user.role.value})
@@ -146,6 +180,12 @@ async def oauth_callback(
     return {
         "access_token": jwt_token,
         "token_type": "bearer",
-        "user_id": user.id,
-        "email": user.email,
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "full_name": user.full_name,
+            "avatar_url": user.avatar_url,
+            "role": user.role.value,
+            "created_at": user.created_at.isoformat() if user.created_at else None,
+        },
     }

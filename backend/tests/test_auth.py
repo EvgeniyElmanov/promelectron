@@ -188,3 +188,155 @@ class TestAuthAPI:
         )
         assert response.status_code == 400
         assert "Incorrect old password" in response.json()["detail"]
+
+
+def _make_oauth_settings(overrides: dict):
+    from src.app.core.config import Settings, settings as original
+    kwargs = {
+        "secret_key": original.secret_key,
+        "algorithm": original.algorithm,
+        "access_token_expire_minutes": original.access_token_expire_minutes,
+        "database_url": original.database_url,
+        "google_client_id": original.google_client_id,
+        "google_client_secret": original.google_client_secret,
+        "yandex_client_id": original.yandex_client_id,
+        "yandex_client_secret": original.yandex_client_secret,
+        "frontend_url": original.frontend_url,
+        "smtp_host": original.smtp_host,
+        "smtp_port": original.smtp_port,
+        "smtp_user": original.smtp_user,
+        "smtp_password": original.smtp_password,
+        "smtp_from": original.smtp_from,
+        "smtp_tls": original.smtp_tls,
+        "redis_url": original.redis_url,
+        "api_base_url": original.api_base_url,
+        "minio_endpoint": original.minio_endpoint,
+        "minio_access_key": original.minio_access_key,
+        "minio_secret_key": original.minio_secret_key,
+        "minio_bucket": original.minio_bucket,
+        "minio_secure": original.minio_secure,
+        "onec_api_url": original.onec_api_url,
+        "onec_api_key": original.onec_api_key,
+    }
+    kwargs.update(overrides)
+    return Settings(**kwargs)
+
+
+class TestOAuth:
+    """Тесты для OAuth авторизации."""
+
+    @pytest.mark.asyncio
+    async def test_google_login_url(self, client, monkeypatch):
+        """Эндпоинт /auth/google/login возвращает корректный URL."""
+        new_settings = _make_oauth_settings({
+            "google_client_id": "test-google-client-id",
+            "google_client_secret": "test-google-secret",
+        })
+        monkeypatch.setattr("src.app.api.auth.settings", new_settings)
+
+        response = await client.get("/api/v1/auth/google/login")
+        assert response.status_code == 200
+        data = response.json()
+        assert "url" in data
+        assert "accounts.google.com" in data["url"]
+        assert "client_id=test-google-client-id" in data["url"]
+        assert "response_type=code" in data["url"]
+        assert "state=google" in data["url"]
+
+    @pytest.mark.asyncio
+    async def test_google_callback_creates_user(self, client, test_session, monkeypatch):
+        """Google callback создает нового пользователя и social_account."""
+        new_settings = _make_oauth_settings({
+            "google_client_id": "test-google-client-id",
+            "google_client_secret": "test-google-secret",
+        })
+        monkeypatch.setattr("src.app.api.auth.settings", new_settings)
+
+        # Мокаем httpx.AsyncClient
+        class FakeResponse:
+            def __init__(self, json_data, status_code=200):
+                self._json = json_data
+                self.status_code = status_code
+
+            def json(self):
+                return self._json
+
+        class FakeAsyncClient:
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *args):
+                pass
+
+            async def post(self, url, **kwargs):
+                return FakeResponse({"access_token": "fake-google-token"})
+
+            async def get(self, url, **kwargs):
+                return FakeResponse({
+                    "id": "123456789",
+                    "email": "googleuser@example.com",
+                    "name": "Google User",
+                    "picture": "https://example.com/avatar.jpg",
+                })
+
+        monkeypatch.setattr("src.app.api.auth.httpx.AsyncClient", FakeAsyncClient)
+
+        response = await client.get("/api/v1/auth/google/callback?code=fake-code")
+        assert response.status_code == 200
+        data = response.json()
+        assert "access_token" in data
+        assert data["token_type"] == "bearer"
+        assert data["user"]["email"] == "googleuser@example.com"
+        assert data["user"]["full_name"] == "Google User"
+        assert data["user"]["avatar_url"] == "https://example.com/avatar.jpg"
+        assert data["user"]["role"] == "user"
+
+    @pytest.mark.asyncio
+    async def test_google_callback_existing_user(self, client, test_user, monkeypatch):
+        """Google callback привязывает social_account к существующему пользователю."""
+        new_settings = _make_oauth_settings({
+            "google_client_id": "test-google-client-id",
+            "google_client_secret": "test-google-secret",
+        })
+        monkeypatch.setattr("src.app.api.auth.settings", new_settings)
+
+        class FakeResponse:
+            def __init__(self, json_data, status_code=200):
+                self._json = json_data
+                self.status_code = status_code
+
+            def json(self):
+                return self._json
+
+        class FakeAsyncClient:
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *args):
+                pass
+
+            async def post(self, url, **kwargs):
+                return FakeResponse({"access_token": "fake-google-token"})
+
+            async def get(self, url, **kwargs):
+                return FakeResponse({
+                    "id": "987654321",
+                    "email": test_user.email,
+                    "name": "Updated Name",
+                    "picture": "https://example.com/new-avatar.jpg",
+                })
+
+        monkeypatch.setattr("src.app.api.auth.httpx.AsyncClient", FakeAsyncClient)
+
+        response = await client.get("/api/v1/auth/google/callback?code=fake-code")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["user"]["email"] == test_user.email
+        assert data["user"]["id"] == test_user.id
+
+    @pytest.mark.asyncio
+    async def test_unsupported_provider(self, client):
+        """Неподдерживаемый провайдер возвращает 400."""
+        response = await client.get("/api/v1/auth/facebook/login")
+        assert response.status_code == 400
+        assert "Unsupported provider" in response.json()["detail"]
