@@ -11,6 +11,10 @@
       </nav>
     </div>
 
+    <div class="header__search-desktop">
+      <SearchBar v-model="headerSearchQuery" @keyup.enter="onSearchSubmit" />
+    </div>
+
     <div class="header__actions">
       <!-- Notifications -->
       <div v-if="isAuthenticated" class="header__action-item header__notif-wrap">
@@ -110,6 +114,7 @@ import { useAuth } from '@/composables/useAuth';
 import { useCart } from '@/composables/useCart';
 import { useNotifications } from '@/composables/useNotifications';
 import ToastContainer from '@/components/ToastContainer.vue';
+import SearchBar from '@/components/SearchBar.vue';
 import api from '@/services/api';
 
 const { isAuthenticated, isSupplier } = useAuth();
@@ -133,6 +138,12 @@ onMounted(fetchFavoritesCount);
 watch(isAuthenticated, fetchFavoritesCount);
 const notifOpen = ref(false);
 const router = useRouter();
+const headerSearchQuery = ref('');
+
+const onSearchSubmit = () => {
+  const q = headerSearchQuery.value.trim();
+  router.push({ path: '/', query: q ? { q } : undefined });
+};
 
 // Always call useNotifications — it handles auth internally
 const notifApi = useNotifications();
@@ -266,6 +277,10 @@ const vClickOutside = {
   gap: 12px;
 }
 
+.header__search-desktop {
+  display: none;
+}
+
 .header__action-item {
   display: flex;
   flex-direction: column;
@@ -283,6 +298,12 @@ const vClickOutside = {
 }
 
 @media (min-width: 768px) {
+  .header__search-desktop {
+    display: block;
+    flex: 1;
+    max-width: 600px;
+    margin: 0 24px;
+  }
   .header__actions {
     gap: 20px;
   }

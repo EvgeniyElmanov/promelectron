@@ -1,6 +1,6 @@
 <template>
   <div class="home">
-    <SearchBar v-model="searchQuery" />
+    <SearchBar v-model="searchQuery" class="home__search-bar" />
     <CategoryChips @select="handleCategorySelect" />
     <PromoBanner />
 
@@ -113,6 +113,7 @@
 
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import ProductCard from '@/components/ProductCard.vue';
 import SearchBar from '@/components/SearchBar.vue';
 import CategoryChips from '@/components/CategoryChips.vue';
@@ -120,6 +121,7 @@ import PromoBanner from '@/components/PromoBanner.vue';
 import SkeletonProductCard from '@/components/SkeletonProductCard.vue';
 import api from '@/services/api';
 
+const route = useRoute();
 const products = ref([]);
 const searchQuery = ref('');
 const selectedCategory = ref(null);
@@ -209,6 +211,9 @@ watch(searchQuery, () => {
 });
 
 onMounted(async () => {
+  if (route.query.q) {
+    searchQuery.value = String(route.query.q);
+  }
   await fetchProducts();
 
   // Infinite scroll via IntersectionObserver
@@ -226,6 +231,12 @@ onMounted(async () => {
 <style scoped>
 .home {
   background: var(--color-bg);
+}
+
+@media (min-width: 768px) {
+  .home__search-bar {
+    display: none;
+  }
 }
 
 .home__section {
