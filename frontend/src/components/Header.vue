@@ -5,7 +5,6 @@
       
       <!-- Desktop Navigation -->
       <nav class="header__nav">
-        <router-link to="/" class="header__nav-link" :class="{ 'header__nav-link--active': $route.path === '/' }">Главная</router-link>
         <router-link v-if="isSupplier" to="/supplier-dashboard" class="header__nav-link" :class="{ 'header__nav-link--active': $route.path.startsWith('/supplier-dashboard') }">Дашборд</router-link>
         <router-link v-if="isSupplier" to="/my-products" class="header__nav-link" :class="{ 'header__nav-link--active': $route.path.startsWith('/my-products') }">Мои товары</router-link>
         <router-link v-if="isSupplier" to="/supplier-orders" class="header__nav-link" :class="{ 'header__nav-link--active': $route.path.startsWith('/supplier-orders') }">Мои заказы</router-link>
@@ -46,7 +45,7 @@
         </div>
       </div>
 
-      <router-link to="/orders" class="header__action-item" v-if="isAuthenticated">
+      <router-link to="/orders" class="header__action-item">
         <div class="header__icon">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
