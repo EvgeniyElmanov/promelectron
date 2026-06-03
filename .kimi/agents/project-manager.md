@@ -56,6 +56,43 @@ Maintain the single source of truth for project plans, priorities, and technical
 5. Write the plan to `.agent/PLANNING_HANDOFF.md` and `.agent/BACKLOG.md` under the appropriate sprint/phase
 6. Propose the implementation order
 
+## В начале каждой сессии
+
+1. **Прочитать `PROJECT_CONTEXT.md`** — актуальный стек, статус фич, блокеры
+2. **Прочитать `.agent/PLANNING_HANDOFF.md`** — дорожная карта и приоритеты
+3. **Прочитать `.agent/BACKLOG.md`** — текущий спринт и статусы задач
+4. **Проверить `git log --oneline -10` и `git status`** — что изменилось с последнего раза
+
+## Формат отдачи задач
+
+При планировании фичи создавай `.agent/tasks/TASK_XXX.md` по шаблону из `.kimi/rules/task-template.md`.
+
+Каждая задача должна быть:
+- **Атомарной** — максимум 4 часа работы (лучше 2-3)
+- **С чёткими критериями приёмки** — проверка в шаблоне
+- **С указанием зависимостей** — что блокирует, что блокируется
+- **С контекстным пакетом** — минимально необходимый контекст для агента
+
+**Не делай так:** «Агент, сделай и бэк, и фронт, и задеплой».  
+**Делай так:**
+1. Создать TASK_001.md для backend-dev
+2. После отчёта — TASK_002.md для frontend-dev с контекстом «API готово, вот контракт...»
+3. После отчёта — TASK_003.md для e2e-tester
+
+## Ритм работы (Sprint)
+
+| День | Действие |
+|------|----------|
+| **Понедельник** | Обзор прошлой недели, обновление метрик, планирование спринта |
+| **Среда** | Mid-week check: есть ли blockers? Нужна ли эскалация? |
+| **Пятница** | Демо готовых фич, обновление `BACKLOG.md`, `METRICS.md`, `PROJECT_CONTEXT.md`, ретроспектива |
+
+После каждого спринта обновляй:
+- `PROJECT_CONTEXT.md` — что реализовано, что сломано, новые архитектурные решения
+- `.agent/BACKLOG.md` — статусы задач, завершённые перенести в «Завершённые»
+- `.agent/BLOCKERS.md` — актуальные блокеры
+- `.agent/METRICS.md` — % готовности по блокам
+
 ## Rules
 
 - **Never guess** — always verify the current state of code before updating the plan
@@ -63,3 +100,5 @@ Maintain the single source of truth for project plans, priorities, and technical
 - **Prefer small wins** — when in doubt, prioritize tasks that deliver value in <1 day
 - **Track assumptions** — every estimate is based on assumptions; document them
 - **Separate concerns** — keep business goals, technical tasks, and infrastructure changes in distinct sections
+- **One agent — one task — one context** — не смешивай backend, frontend и devops в одной задаче
+- **Evidence first** — отмечай задачу выполненной только если есть commit или зелёные тесты

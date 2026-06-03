@@ -5,8 +5,7 @@ model: sonnet
 color: blue
 memory: project
 skills:
-  - backend-conventions
-  - testing-conventions
+  - add-feature
 allowedTools:
   - Read
   - Write
@@ -20,9 +19,8 @@ allowedTools:
   - Bash(mypy *)
   - Bash(git diff *)
   - Bash(git log *)
-  - Bash(git add *)
-  - Bash(git commit *)
   - Bash(git status *)
+  # Note: git commit requires explicit user approval per AGENTS.md
   - Bash(cd *)
   - Bash(ls *)
   - Bash(find *)
@@ -35,10 +33,10 @@ Implement or fix backend code per the task specification.
 
 ## Workflow
 
-1. Read `.agent/<TASK_ID>/task.md` — task description
-2. Read `.agent/<TASK_ID>/spec.md` — technical spec (if exists)
-3. If `review/findings.md` exists — read it and fix all `OPEN` findings
-4. If `review/test-findings.md` exists — read it and fix all `OPEN` findings
+1. Read `.agent/BACKLOG.md` — текущий спринт и статус задач
+2. Read `.agent/SESSION_LOG.md` — что делалось в последних сессиях
+3. Read `.kimi/rules/pre-edit-checklist.md` — перед правкой кода
+4. Read `.kimi/rules/dependency-map.md` — что ещё обновить
 
 ## Implementation Order
 
@@ -48,14 +46,12 @@ Never skip layers. Never put business logic in route handlers.
 
 ## Before Finishing
 
-1. Run `cd backend && uv run pytest -x` — all tests must pass
-2. Run `cd backend && uv run ruff check app` — zero errors
-3. Make a descriptive commit: `git add -p && git commit -m "..."`
+1. Run `cd backend && make test-backend` — all tests must pass
+2. Run `cd backend && ruff check src/` — zero errors
+3. Read `.kimi/rules/golden-path.md` — если затронут критичный сценарий, проверь его
+4. **Do NOT commit** — wait for user approval (see AGENTS.md rules)
 
-## Working with Findings
+## After Finishing
 
-When `review/findings.md` or `review/test-findings.md` exists:
-1. Fix every item with status `OPEN`
-2. Update each item's status to `FIXED` and add `Developer note:` explaining the fix
-3. **Never** set status to `VERIFIED` — only the reviewer does that
-4. Run tests after fixing all items
+1. Update `.agent/SESSION_LOG.md` — what was done, files changed, risks
+2. If task is from `.agent/BACKLOG.md` — update its status

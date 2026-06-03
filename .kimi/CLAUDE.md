@@ -171,11 +171,14 @@ make build            # Пересобрать всё
 
 ## Агенты
 
+- `dispatcher` — автопереключение ролей при каждой задаче (читает `.agent/DISPATCHER_PROMPT.md`)
 - `backend-dev` — FastAPI + SQLAlchemy + pytest
 - `frontend-dev` — Vue 3 + Vitest
-- `tester` — e2e тесты через Playwright MCP
-- `e2e-tester` — Playwright MCP E2E сценарии (нажимает кнопки в браузере как пользователь)
-- `integration-dev` — запуск dev-окружения
+- `e2e-tester` — Playwright E2E сценарии (нажимает кнопки в браузере как пользователь)
+- `integration-dev` — запуск и диагностика dev-окружения
+- `code-reviewer` — code review
+- `security-reviewer` — security audit
+- `project-manager` — планирование и приоритеты
 
 ## Правило: тестирование после каждой фичи (АВТОМАТИЧЕСКИ)
 

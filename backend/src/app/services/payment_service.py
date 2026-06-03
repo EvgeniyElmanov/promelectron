@@ -1,22 +1,29 @@
+import hashlib
+import hmac
+import logging
 from datetime import datetime, timezone
 
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from src.app.core.config import settings
 from src.app.models.cart import Cart, CartItem
 from src.app.models.order import Order
 from src.app.models.payment import Payment
 from src.app.models.user import User
 from src.app.services.email_service import EmailService
 from src.app.services.notification_service import NotificationService
+from src.app.services.yookassa_service import YooKassaService
+
+logger = logging.getLogger(__name__)
 
 
 class PaymentService:
     @staticmethod
     async def create_payment(order_id: int, user_id: int, db: AsyncSession) -> Payment:
-        """Создать платёж для заказа."""
+        """Создать платёж для заказа через ЮKassa."""
         result = await db.execute(
             select(Order)
             .where(Order.id == order_id, Order.user_id == user_id)
@@ -35,11 +42,25 @@ class PaymentService:
         if existing.scalars().first():
             raise HTTPException(status_code=400, detail="Payment already exists for this order")
 
+        # Создаём платёж в ЮKassa
+        yookassa_result = await YooKassaService.create_payment(
+            order_id=order.id,
+            amount=order.total_price,
+            description=f"Заказ №{order.id}",
+            user_id=order.user_id,
+        )
+
         payment = Payment(
             order_id=order.id,
             amount=order.total_price,
             status="pending",
-            provider_payment_id=f"mock_{order_id}_{int(datetime.now(timezone.utc).timestamp())}",
+            provider_payment_id=yookassa_result["yookassa_payment_id"],
+            yookassa_payment_id=yookassa_result["yookassa_payment_id"],
+            yookassa_status=yookassa_result["status"],
+            confirmation_url=yookassa_result["confirmation_url"],
+            yookassa_created_at=datetime.fromisoformat(
+                yookassa_result["created_at"].replace("Z", "+00:00")
+            ),
         )
         db.add(payment)
         await db.commit()
@@ -48,28 +69,14 @@ class PaymentService:
         return payment
 
     @staticmethod
-    async def confirm_payment(payment_id: int, db: AsyncSession) -> Payment:
-        """Подтвердить платёж (mock callback от платёжного шлюза)."""
-        result = await db.execute(
-            select(Payment)
-            .where(Payment.id == payment_id)
-            .options(selectinload(Payment.order).selectinload(Order.items))
-        )
-        payment = result.scalars().first()
-
-        if not payment:
-            raise HTTPException(status_code=404, detail="Payment not found")
-
+    async def _process_successful_payment(payment: Payment, db: AsyncSession) -> None:
+        """Обработка успешной оплаты: обновление статусов, очистка корзины, уведомления."""
         if payment.status == "paid":
-            raise HTTPException(status_code=400, detail="Payment already paid")
-
-        if payment.status == "cancelled":
-            raise HTTPException(status_code=400, detail="Payment is cancelled")
+            logger.info("Payment %s already marked as paid, skipping side-effects", payment.id)
+            return
 
         payment.status = "paid"
         payment.paid_at = datetime.now(timezone.utc)
-
-        # Обновляем статус заказа
         payment.order.status = "paid"
 
         await db.commit()
@@ -79,7 +86,6 @@ class PaymentService:
             cart_result = await db.execute(select(Cart).where(Cart.user_id == payment.order.user_id))
             cart = cart_result.scalars().first()
             if cart:
-                from sqlalchemy import delete
                 await db.execute(delete(CartItem).where(CartItem.cart_id == cart.id))
                 await db.commit()
 
@@ -93,13 +99,16 @@ class PaymentService:
                 items_for_email = []
                 for oi in payment.order.items:
                     from src.app.models.product import Product
+
                     prod_result = await db.execute(select(Product).where(Product.id == oi.product_id))
                     prod = prod_result.scalars().first()
-                    items_for_email.append({
-                        "product_name": prod.name if prod else "Товар",
-                        "quantity": oi.quantity,
-                        "price_at_time": float(oi.price_at_time),
-                    })
+                    items_for_email.append(
+                        {
+                            "product_name": prod.name if prod else "Товар",
+                            "quantity": oi.quantity,
+                            "price_at_time": float(oi.price_at_time),
+                        }
+                    )
                 await EmailService.send_order_confirmation(
                     to=user.email,
                     order_id=payment.order.id,
@@ -117,10 +126,61 @@ class PaymentService:
                     order_id=payment.order.id,
                 )
         except Exception:
-            import logging
-            logging.getLogger(__name__).exception("Failed to send payment confirmation side-effects")
+            logger.exception("Failed to send payment confirmation side-effects")
 
-        return payment
+    @staticmethod
+    async def handle_webhook(payload: dict, signature: str | None, db: AsyncSession) -> None:
+        """Обработать входящий webhook от ЮKassa."""
+        event = payload.get("event", "")
+        obj = payload.get("object", {})
+        yookassa_payment_id = obj.get("id")
+
+        if not yookassa_payment_id:
+            logger.warning("Webhook missing payment id: %s", payload)
+            return
+
+        # Validate signature if configured
+        if settings.yookassa_webhook_secret and signature:
+            expected = hmac.new(
+                settings.yookassa_webhook_secret.encode(),
+                payload.get("raw_body", "").encode(),
+                hashlib.sha256,
+            ).hexdigest()
+            if not hmac.compare_digest(expected, signature):
+                logger.warning("Invalid webhook signature for payment %s", yookassa_payment_id)
+                return
+
+        # Find payment in DB
+        result = await db.execute(
+            select(Payment)
+            .where(Payment.yookassa_payment_id == yookassa_payment_id)
+            .options(selectinload(Payment.order).selectinload(Order.items))
+        )
+        payment = result.scalars().first()
+
+        if not payment:
+            logger.warning("Webhook for unknown payment: %s", yookassa_payment_id)
+            return
+
+        yookassa_status = obj.get("status")
+        payment.yookassa_status = yookassa_status
+        payment.updated_at = datetime.now(timezone.utc)
+
+        if event == "payment.succeeded" or yookassa_status == "succeeded":
+            await PaymentService._process_successful_payment(payment, db)
+        elif event in ("payment.canceled", "payment.cancelled") or yookassa_status == "canceled":
+            payment.status = "cancelled"
+            await db.commit()
+        else:
+            await db.commit()
+
+        logger.info(
+            "Processed webhook for payment %s (YooKassa %s): event=%s status=%s",
+            payment.id,
+            yookassa_payment_id,
+            event,
+            yookassa_status,
+        )
 
     @staticmethod
     async def get_payment(payment_id: int, user_id: int, db: AsyncSession) -> Payment:
@@ -159,7 +219,22 @@ class PaymentService:
         if payment.status == "paid":
             raise HTTPException(status_code=400, detail="Cannot cancel paid payment")
 
+        # Try to cancel via YooKassa API if we have a real payment id
+        if payment.yookassa_payment_id:
+            try:
+                await YooKassaService.cancel_payment(payment.yookassa_payment_id)
+            except HTTPException as exc:
+                # If YooKassa says it's already canceled or cannot cancel, we still update DB
+                if exc.status_code != 400:
+                    raise
+                logger.info(
+                    "YooKassa cancel returned %s for payment %s, updating DB anyway",
+                    exc.status_code,
+                    payment.id,
+                )
+
         payment.status = "cancelled"
+        payment.yookassa_status = "canceled"
         await db.commit()
         await db.refresh(payment)
         return payment

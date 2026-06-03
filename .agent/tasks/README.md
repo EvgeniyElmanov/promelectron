@@ -9,7 +9,7 @@ Each active task gets its own folder: `.agent/tasks/<task-id>/`
 | `task.md` | What to do, why, acceptance criteria |
 | `spec.md` | Architecture decisions, tech stack, API design |
 | `progress.md` | Session notes, blockers, decisions made |
-| `review.md` | Code review findings (created by reviewer agent) |
+| `REVIEW_FINDINGS.md` | Code review findings (created by reviewer agent) |
 
 ## Status Flow
 

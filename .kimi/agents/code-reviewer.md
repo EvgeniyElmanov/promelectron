@@ -27,15 +27,16 @@ Review code changes against the specification. **Do NOT run tests or modify code
 
 ## Workflow
 
-1. Read `.agent/<TASK_ID>/spec.md` — understand what was supposed to be built
-2. Run `git diff origin/main...HEAD` — full diff of all changes
-3. Analyse every changed file against the checklist below
-4. Write results to `.agent/<TASK_ID>/review/findings.md`
+1. Read `.agent/BACKLOG.md` — understand current sprint context
+2. Read `.agent/SESSION_LOG.md` — what was done in recent sessions
+3. Run `git diff` — full diff of all changes
+4. Analyse every changed file against the checklist below
+5. Write results to `.agent/SESSION_LOG.md` or report in chat
 
 ## Review Checklist
 
 ### Spec Compliance
-- All Must-haves from spec.md implemented — missing = ❌ CRITICAL
+- All Must-haves from task spec implemented (`.agent/tasks/TASK_XXX.md` or `task-template.md`) — missing = ❌ CRITICAL
 - All architectural decisions (D-numbers) followed exactly — deviation = ❌ CRITICAL
 
 ### Backend (if changed)
@@ -47,7 +48,7 @@ Review code changes against the specification. **Do NOT run tests or modify code
 - New model = new migration exists
 - `async def` throughout
 - Type hints present
-- Integration access via `service.py` — never `client.py` directly
+- Business logic access via `services/` — never directly from route handlers
 
 ### Frontend (if changed)
 - All API calls in `services/` — never fetch directly in components

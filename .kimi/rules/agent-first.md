@@ -1,57 +1,46 @@
-# Agent-First Rule
+# Agent-First Rule (адаптировано под Kimi CLI)
 
-> Always delegate to specialized agents before doing work manually.
+> Используй специализированные агенты как **памятку и чеклист**, но помни: в Kimi CLI ты работаешь напрямую.
 
-## When to Use Agents
+## Как работают агенты в Kimi CLI
 
-You **MUST** use an agent (via `Agent` tool) when:
+В Kimi CLI нет «sub-processов». Агенты — это **промпты-инструкции** в `.kimi/agents/*.md`.  
+Ты читаешь инструкцию агента и сам выполняешь задачу, следуя его правилам.
 
-1. **The task requires >3 search queries** — exploring codebase, finding patterns, mapping dependencies
-2. **The task spans >3 files** — refactoring, feature implementation, bug investigation
-3. **A specialized agent exists** for the domain:
-   - `project-manager` — planning, audits, roadmap updates, priority assessment
-   - `backend-dev` — FastAPI, SQLAlchemy, migrations, services
-   - `frontend-dev` — Vue 3, components, API integration
-   - `code-reviewer` — quality checks, security review
-   - `e2e-tester` — Playwright tests, visual regression
-   - `tester` — unit tests, edge cases
-4. **You are updating .agent/PLANNING_HANDOFF.md or .agent/BACKLOG.md** — always delegate to `project-manager`
-5. **You are doing a security audit** — delegate to `code-reviewer` or `security-reviewer`
-6. **You are touching infra/docker/k8s** — delegate to `devops`
+## Когда читать инструкцию агента
 
-## When You MAY Skip Agents
+**Обязательно прочитай** `agents/<role>.md` перед задачей, если:
 
-You MAY skip agent delegation for:
-- Single-word typo fixes or obvious one-line bugs
-- Reading a single known file for quick context
-- Simple Q&A that does not require code changes
+1. **Задача >3 файлов** — refactoring, фича, баг
+2. **Есть специализированный агент** для домена:
+   - `backend-dev` — FastAPI, SQLAlchemy, миграции
+   - `frontend-dev` — Vue 3, компоненты, API интеграция
+   - `devops` — Helm, Docker, CI/CD
+   - `code-reviewer` — качество кода
+   - `security-reviewer` — security audit
+   - `project-manager` — планирование, BACKLOG.md
+3. **Меняешь `.agent/PLANNING_HANDOFF.md` или `.agent/BACKLOG.md`** — прочитай `project-manager.md`
+4. **Делаешь security audit** — прочитай `security-reviewer.md`
 
-For everything else — delegate to the appropriate agent.
+## Когда можно НЕ читать
 
-## How to Delegate
-
-1. **Choose the right agent** by matching the task domain to the agent description
-2. **Provide full context** in the prompt — agents don't see your current conversation automatically
-3. **Include relevant file paths** — don't make the agent search for what you already know
-4. **Set explicit goals** — what should the agent deliver (file updates, findings report, code changes)
-5. **Review agent output** — never blindly commit agent changes; verify correctness
+- Опечатка в одном слове
+- Прочитать один известный файл для контекста
+- Simple Q&A без изменений кода
 
 ## Anti-Patterns
 
-- ❌ Manually exploring 10+ files to understand a module
-- ❌ Updating .agent/PLANNING_HANDOFF.md or .agent/BACKLOG.md without `project-manager` audit
-- ❌ Writing backend code without checking if `backend-dev` agent has conventions
-- ❌ Doing security review alone instead of `security-reviewer`
-- ❌ Implementing a feature across backend+frontend as one giant step
-- ❌ Editing files directly — ALWAYS delegate to agent first
+- ❌ Начинать задачу без чтения `PROJECT_CONTEXT.md` и `BACKLOG.md`
+- ❌ Писать backend-код без проверки `pre-edit-checklist.md`
+- ❌ Менять модель БД без миграции
+- ❌ Делать фичу backend + frontend в одной задаче (разбивай)
 
-## Rationale
+## Workflow
 
-Agents are specialized sub-processes with:
-- **Fresh context** — no compactions, no drift from previous tasks
-- **Focused execution** — single goal, no distractions
-- **Reproducible results** — same prompt → same workflow → consistent quality
-- **Parallel execution** — multiple agents can work simultaneously on independent tasks
-- **Error detection** — agents catch bugs that manual editing misses
-
-Your ONLY manual work is **coordination, review, and final decisions** — never raw exploration, never direct file edits, never implementation without agent delegation.
+1. **Прочитай `SESSION_START.md`** — получи контекст
+2. **Определи роль** — по задаче (или роутер определит)
+3. **Прочитай `agents/<role>.md`** — правила зоны
+4. **Прочитай `pre-edit-checklist.md`** — перед правкой кода
+5. **Работай** — ты сам пишешь код, агент — это инструкция
+6. **Прочитай `golden-path.md`** — перед финишем проверь критичные сценарии
+7. **Отчёт** — обнови `SESSION_LOG.md`

@@ -28,6 +28,10 @@ class Settings:
     minio_secure: bool
     onec_api_url: str | None
     onec_api_key: str | None
+    yookassa_shop_id: str
+    yookassa_secret_key: str
+    yookassa_webhook_secret: str | None
+    yookassa_test_mode: bool
 
 
 settings = Settings(
@@ -57,6 +61,10 @@ settings = Settings(
     minio_secure=os.getenv("MINIO_SECURE", "true").lower() == "true",
     onec_api_url=os.getenv("ONEC_API_URL"),
     onec_api_key=os.getenv("ONEC_API_KEY"),
+    yookassa_shop_id=os.getenv("YOOKASSA_SHOP_ID", ""),
+    yookassa_secret_key=os.getenv("YOOKASSA_SECRET_KEY", ""),
+    yookassa_webhook_secret=os.getenv("YOOKASSA_WEBHOOK_SECRET"),
+    yookassa_test_mode=os.getenv("YOOKASSA_TEST_MODE", "true").lower() == "true",
 )
 
 SECRET_KEY = settings.secret_key

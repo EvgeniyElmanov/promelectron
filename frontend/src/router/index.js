@@ -19,6 +19,8 @@ import OrderDetail from '../views/OrderDetail.vue';
 import Checkout from '../views/Checkout.vue';
 import GuestCheckout from '../views/GuestCheckout.vue';
 import GuestOrderSuccess from '../views/GuestOrderSuccess.vue';
+import PaymentSuccess from '../views/PaymentSuccess.vue';
+import PaymentFailed from '../views/PaymentFailed.vue';
 import Notifications from '../views/Notifications.vue';
 
 const routes = [
@@ -31,6 +33,8 @@ const routes = [
   { path: '/checkout/:id', component: Checkout, meta: { requiresAuth: true } },
   { path: '/guest-checkout', component: GuestCheckout },
   { path: '/guest-order-success/:id', component: GuestOrderSuccess },
+  { path: '/payment/success', component: PaymentSuccess },
+  { path: '/payment/failed', component: PaymentFailed },
   { path: '/notifications', component: Notifications, meta: { requiresAuth: true } },
   { path: '/profile', component: Profile, meta: { requiresAuth: true } },
   { path: '/profile/edit', component: ProfileEdit, meta: { requiresAuth: true } },

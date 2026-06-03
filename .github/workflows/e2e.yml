@@ -17,6 +17,12 @@ on:
         required: true
         type: string
 
+env:
+  # YooKassa test credentials for E2E (test card 5555 5555 5555 4444)
+  YOOKASSA_SHOP_ID: ${{ vars.YOOKASSA_SHOP_ID || '54401' }}
+  YOOKASSA_SECRET_KEY: ${{ secrets.YOOKASSA_SECRET_KEY || 'test_Fh8hUAVVBGUGbjmlzba6TB0iyUbos_lueTHE-axOwM0' }}
+  YOOKASSA_TEST_MODE: ${{ vars.YOOKASSA_TEST_MODE || 'true' }}
+
 jobs:
   smoke:
     runs-on: self-hosted
@@ -41,6 +47,12 @@ jobs:
           curl -sf -o /dev/null "${{ env.FRONTEND_URL }}"
           echo "Frontend OK"
 
+      - name: YooKassa config check
+        run: |
+          echo "YooKassa test mode: ${{ env.YOOKASSA_TEST_MODE }}"
+          echo "YooKassa shop ID: ${{ env.YOOKASSA_SHOP_ID }}"
+          echo "YooKassa config OK"
+
   e2e:
     runs-on: self-hosted
     needs: smoke
@@ -60,13 +72,13 @@ jobs:
 
       - name: Install Playwright
         run: |
-          cd tests/e2e
+          cd frontend
           npm ci
           npx playwright install chromium
 
       - name: Run E2E tests
         run: |
-          cd tests/e2e
+          cd frontend
           BASE_URL="${{ env.BASE_URL }}" API_URL="${{ env.API_URL }}" \
             npx playwright test --reporter=html
 
@@ -75,5 +87,5 @@ jobs:
         if: always()
         with:
           name: playwright-report-${{ inputs.environment }}-${{ github.run_id }}
-          path: tests/e2e/playwright-report/
+          path: frontend/playwright-report/
           retention-days: 14

@@ -217,6 +217,10 @@ def _make_oauth_settings(overrides: dict):
         "minio_secure": original.minio_secure,
         "onec_api_url": original.onec_api_url,
         "onec_api_key": original.onec_api_key,
+        "yookassa_shop_id": original.yookassa_shop_id,
+        "yookassa_secret_key": original.yookassa_secret_key,
+        "yookassa_webhook_secret": original.yookassa_webhook_secret,
+        "yookassa_test_mode": original.yookassa_test_mode,
     }
     kwargs.update(overrides)
     return Settings(**kwargs)

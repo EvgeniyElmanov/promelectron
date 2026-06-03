@@ -33,59 +33,19 @@
         </div>
       </div>
 
-      <!-- Payment Form -->
+      <!-- Payment Info -->
       <div class="checkout__card">
-        <div class="checkout__section-title">Данные карты</div>
-
-        <div class="field">
-          <label class="field__label">Номер карты</label>
-          <input
-            v-model="cardNumber"
-            class="field__input"
-            placeholder="0000 0000 0000 0000"
-            maxlength="19"
-            inputmode="numeric"
-            data-testid="card-number"
-            @input="formatCardNumber"
-          />
+        <div class="checkout__section-title">Способ оплаты</div>
+        <div class="checkout__payment-method">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+            <line x1="1" y1="10" x2="23" y2="10"/>
+          </svg>
+          <span>Банковская карта или другой способ через ЮKassa</span>
         </div>
-
-        <div class="checkout__row">
-          <div class="field">
-            <label class="field__label">Срок действия</label>
-            <input
-              v-model="cardExpiry"
-              class="field__input"
-              placeholder="MM/YY"
-              maxlength="5"
-              inputmode="numeric"
-              data-testid="card-expiry"
-              @input="formatExpiry"
-            />
-          </div>
-          <div class="field">
-            <label class="field__label">CVV</label>
-            <input
-              v-model="cardCvv"
-              class="field__input"
-              placeholder="123"
-              maxlength="3"
-              inputmode="numeric"
-              data-testid="card-cvv"
-              @input="formatCvv"
-            />
-          </div>
-        </div>
-
-        <div class="field">
-          <label class="field__label">Имя держателя</label>
-          <input
-            v-model="cardHolder"
-            class="field__input"
-            placeholder="IVAN IVANOV"
-            data-testid="card-holder"
-          />
-        </div>
+        <p class="checkout__payment-note">
+          После нажатия «Оплатить» вы будете перенаправлены на защищённую страницу ЮKassa для ввода данных карты.
+        </p>
       </div>
 
       <!-- Security Note -->
@@ -94,17 +54,17 @@
           <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
           <path d="M7 11V7a5 5 0 0110 0v4"/>
         </svg>
-        <span>Тестовый платёж. Данные карты не сохраняются.</span>
+        <span>Данные карты вводятся на странице ЮKassa. Мы не храним и не обрабатываем их.</span>
       </div>
 
       <!-- Pay Button -->
       <button
         class="checkout__pay-btn"
-        :disabled="!isFormValid || processing"
+        :disabled="processing"
         data-testid="pay-button"
         @click="processPayment"
       >
-        <span v-if="processing">Обработка...</span>
+        <span v-if="processing">Переход к оплате...</span>
         <span v-else>Оплатить {{ formatPrice(order.total_price) }} ₽</span>
       </button>
 
@@ -121,12 +81,10 @@ import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import api from '@/services/api';
 import { useToast } from '@/composables/useToast';
-import { useCart } from '@/composables/useCart';
 
 const route = useRoute();
 const router = useRouter();
 const { add: toast } = useToast();
-const { syncCartCount } = useCart();
 
 const orderId = computed(() => route.params.id);
 
@@ -135,44 +93,8 @@ const loading = ref(true);
 const error = ref(null);
 const processing = ref(false);
 
-const cardNumber = ref('');
-const cardExpiry = ref('');
-const cardCvv = ref('');
-const cardHolder = ref('');
-
-const isFormValid = computed(() => {
-  return (
-    cardNumber.value.replace(/\s/g, '').length === 16 &&
-    cardExpiry.value.length === 5 &&
-    cardCvv.value.length >= 3 &&
-    cardHolder.value.trim().length >= 3
-  );
-});
-
 function formatPrice(value) {
   return Number(value).toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-}
-
-function formatCardNumber(e) {
-  let v = e.target.value.replace(/\D/g, '');
-  v = v.substring(0, 16);
-  const parts = [];
-  for (let i = 0; i < v.length; i += 4) {
-    parts.push(v.substring(i, i + 4));
-  }
-  cardNumber.value = parts.join(' ');
-}
-
-function formatExpiry(e) {
-  let v = e.target.value.replace(/\D/g, '').substring(0, 4);
-  if (v.length >= 2) {
-    v = v.substring(0, 2) + '/' + v.substring(2);
-  }
-  cardExpiry.value = v;
-}
-
-function formatCvv(e) {
-  cardCvv.value = e.target.value.replace(/\D/g, '').substring(0, 3);
 }
 
 const fetchOrder = async () => {
@@ -193,28 +115,24 @@ const fetchOrder = async () => {
 };
 
 const processPayment = async () => {
-  if (!isFormValid.value || processing.value) return;
+  if (processing.value) return;
   processing.value = true;
 
   try {
-    // Step 1: Create payment
-    const { data: paymentData } = await api.post(`/payments/${orderId.value}`);
-    const paymentId = paymentData.payment_id;
+    const { data } = await api.post(`/payments/${orderId.value}`);
+    const confirmationUrl = data.confirmation_url;
 
-    // Simulate processing delay for UX
-    await new Promise((resolve) => setTimeout(resolve, 1200));
+    if (!confirmationUrl) {
+      toast('Не удалось получить ссылку на оплату', 'error');
+      processing.value = false;
+      return;
+    }
 
-    // Step 2: Confirm payment (mock gateway callback)
-    await api.post(`/payments/${paymentId}/confirm`);
-
-    toast('Оплата прошла успешно!', 'success');
-    await syncCartCount();
-    await new Promise((resolve) => setTimeout(resolve, 600));
-    await router.push(`/orders/${orderId.value}`);
+    // Редирект на страницу оплаты ЮKassa
+    window.location.href = confirmationUrl;
   } catch (err) {
     const detail = err.response?.data?.detail;
-    toast(detail || 'Ошибка при оплате', 'error');
-  } finally {
+    toast(detail || 'Ошибка при создании платежа', 'error');
     processing.value = false;
   }
 };
@@ -292,40 +210,27 @@ onMounted(fetchOrder);
   margin-top: 4px;
 }
 
-.checkout__row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-
-.field {
+.checkout__payment-method {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-bottom: 12px;
-}
-
-.field__label {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--color-text);
-}
-
-.field__input {
-  padding: 12px 14px;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
   border-radius: 10px;
-  border: 1px solid var(--color-border);
-  background: var(--color-bg-white);
-  font-size: 16px;
+  background: var(--color-bg);
+  font-size: 14px;
   color: var(--color-text);
-  width: 100%;
-  font-family: monospace;
-  letter-spacing: 1px;
 }
 
-.field__input:focus {
-  outline: none;
-  border-color: var(--color-primary);
+.checkout__payment-method svg {
+  flex-shrink: 0;
+  color: var(--color-primary);
+}
+
+.checkout__payment-note {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin-top: 10px;
+  line-height: 1.4;
 }
 
 .checkout__security {

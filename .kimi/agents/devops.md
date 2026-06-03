@@ -5,7 +5,7 @@ model: sonnet
 color: orange
 memory: project
 skills:
-  - deploy-conventions
+  - add-feature
 allowedTools:
   - Read
   - Write

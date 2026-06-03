@@ -28,7 +28,7 @@ Perform code review on current changes.
    - Type hints
    - Error handling
    - Tests present
-4. Write findings to `review/quick-findings.md`
+4. Write findings to `.agent/REVIEW_FINDINGS.md` (or append to existing)
 
 ## Output Format
 

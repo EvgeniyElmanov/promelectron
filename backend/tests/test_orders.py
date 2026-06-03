@@ -27,6 +27,9 @@ class TestOrdersAPI:
     @pytest.mark.asyncio
     async def test_cancel_paid_order_fails(self, client, test_user, user_token, test_product):
         """Отмена оплаченного заказа — 400."""
+        from unittest.mock import AsyncMock, patch
+        from decimal import Decimal
+
         await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
         order_resp = await client.post(
             "/api/v1/orders/create",
@@ -35,9 +38,27 @@ class TestOrdersAPI:
         )
         order_id = order_resp.json()["id"]
 
-        payment_resp = await client.post(f"/api/v1/payments/{order_id}", headers={"Authorization": f"Bearer {user_token}"})
-        payment_id = payment_resp.json()["payment_id"]
-        await client.post(f"/api/v1/payments/{payment_id}/confirm", headers={"Authorization": f"Bearer {user_token}"})
+        mock_yookassa = AsyncMock(return_value={
+            "yookassa_payment_id": "test-yookassa-id",
+            "status": "pending",
+            "confirmation_url": "https://yoomoney.ru/checkout/test",
+            "amount": Decimal(str(test_product.price)),
+            "created_at": "2026-06-02T12:00:00.000Z",
+        })
+
+        with patch("src.app.services.payment_service.YooKassaService.create_payment", mock_yookassa):
+            payment_resp = await client.post(f"/api/v1/payments/{order_id}", headers={"Authorization": f"Bearer {user_token}"})
+
+        # Имитируем webhook от ЮKassa
+        webhook_payload = {
+            "event": "payment.succeeded",
+            "object": {
+                "id": "test-yookassa-id",
+                "status": "succeeded",
+                "amount": {"value": str(test_product.price), "currency": "RUB"},
+            },
+        }
+        await client.post("/api/v1/payments/yookassa/webhook", json=webhook_payload)
 
         response = await client.patch(f"/api/v1/orders/{order_id}/cancel", headers={"Authorization": f"Bearer {user_token}"})
         assert response.status_code == 400

@@ -5,8 +5,7 @@ model: sonnet
 color: green
 memory: project
 skills:
-  - web-conventions
-  - testing-conventions
+  - add-feature
 allowedTools:
   - Read
   - Write
@@ -18,9 +17,8 @@ allowedTools:
   - Bash(node *)
   - Bash(git diff *)
   - Bash(git log *)
-  - Bash(git add *)
-  - Bash(git commit *)
   - Bash(git status *)
+  # Note: git commit requires explicit user approval per AGENTS.md
   - Bash(cd *)
   - Bash(ls *)
   - Bash(find *)
@@ -33,10 +31,10 @@ Implement or fix Vue 3 frontend code per the task specification.
 
 ## Workflow
 
-1. Read `.agent/<TASK_ID>/task.md` — task description
-2. Read `.agent/<TASK_ID>/spec.md` — technical spec (if exists)
-3. If `review/findings.md` exists — read it and fix all `OPEN` findings
-4. If `review/test-findings.md` exists — read it and fix all `OPEN` findings
+1. Read `.agent/BACKLOG.md` — текущий спринт и статус задач
+2. Read `.agent/SESSION_LOG.md` — что делалось в последних сессиях
+3. Read `.kimi/rules/pre-edit-checklist.md` — перед правкой кода
+4. Read `.kimi/rules/dependency-map.md` — что ещё обновить
 
 ## Implementation Order
 
@@ -45,13 +43,11 @@ API service → composable → component → page → route → tests
 ## Before Finishing
 
 1. Run `cd frontend && npm run lint` — zero warnings
-2. Run `cd frontend && npm test` — all tests pass
-3. Make a descriptive commit: `git add -p && git commit -m "..."`
+2. Run `cd frontend && npm test -- --run` — all tests pass
+3. Read `.kimi/rules/golden-path.md` — если затронут критичный сценарий, проверь его
+4. **Do NOT commit** — wait for user approval (see AGENTS.md rules)
 
-## Working with Findings
+## After Finishing
 
-When findings files exist:
-1. Fix every `OPEN` item
-2. Update status to `FIXED` with `Developer note:` explaining the fix
-3. **Never** set status to `VERIFIED`
-4. Run tests after all fixes
+1. Update `.agent/SESSION_LOG.md` — what was done, files changed, risks
+2. If task is from `.agent/BACKLOG.md` — update its status

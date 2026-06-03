@@ -11,6 +11,9 @@ class PaymentOut(BaseModel):
     amount: Decimal
     status: str
     provider_payment_id: Optional[str] = None
+    yookassa_payment_id: Optional[str] = None
+    yookassa_status: Optional[str] = None
+    confirmation_url: Optional[str] = None
     created_at: datetime
     paid_at: Optional[datetime] = None
 
@@ -20,5 +23,5 @@ class PaymentOut(BaseModel):
 class PaymentCreateResponse(BaseModel):
     payment_id: int
     status: str
-    confirmation_url: str
+    confirmation_url: Optional[str] = None
     amount: Decimal

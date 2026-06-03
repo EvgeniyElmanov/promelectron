@@ -146,3 +146,138 @@ review-security: ## Security audit checklist
 
 check: lint test ## Полная проверка: lint + test + security checklist
 	@echo "=== Full Check Complete ==="
+
+# ─── Агент-утилиты ────────────────────────────────────────────────────────────
+
+agent-context: ## Контекст для агента: спринт, блокеры, последние коммиты
+	@echo "══════════════════════════════════════════════════════════════════"
+	@echo "                   AGENT CONTEXT — Promelectron"
+	@echo "══════════════════════════════════════════════════════════════════"
+	@echo ""
+	@echo "📋 PROJECT_CONTEXT.md:"
+	@echo "──────────────────────────────────────────────────────────────────"
+	@head -35 PROJECT_CONTEXT.md
+	@echo ""
+	@echo "🎯 Текущий спринт (BACKLOG.md):"
+	@echo "──────────────────────────────────────────────────────────────────"
+	@head -40 .agent/BACKLOG.md
+	@echo ""
+	@echo "⚠️  Активные блокеры (BLOCKERS.md):"
+	@echo "──────────────────────────────────────────────────────────────────"
+	@head -30 .agent/BLOCKERS.md
+	@echo ""
+	@echo "📝 Последние сессии (SESSION_LOG.md):"
+	@echo "──────────────────────────────────────────────────────────────────"
+	@head -20 .agent/SESSION_LOG.md
+	@echo ""
+	@echo "🔨 Последние коммиты:"
+	@echo "──────────────────────────────────────────────────────────────────"
+	@git log --oneline -10
+	@echo ""
+	@echo "📁 Незакоммиченные изменения:"
+	@echo "──────────────────────────────────────────────────────────────────"
+	@git status --short
+	@echo ""
+	@echo "══════════════════════════════════════════════════════════════════"
+
+# ─── Автоматический роутер задач ─────────────────────────────────────────────
+
+task: ## Запустить роутер задач: make task MSG="Описание задачи"
+	@if [ -z "$(MSG)" ]; then \
+		echo "❌ Укажи задачу: make task MSG='Описание задачи'"; \
+		echo ""; \
+		echo "Примеры:"; \
+		echo '  make task MSG="Создай API гостевой корзины"'; \
+		echo '  make task MSG="Исправь Helm шаблон для worker"'; \
+		echo '  make task MSG="Напиши E2E тест на checkout"'; \
+		exit 1; \
+	fi
+	@./scripts/kimi-task.sh "$(MSG)"
+
+ask: ## Диспетчер с гарантированным сбросом роли: make ask MSG="Описание задачи"
+	@if [ -z "$(MSG)" ]; then \
+		echo "❌ Укажи задачу: make ask MSG='Описание задачи'"; \
+		echo ""; \
+		echo "Примеры:"; \
+		echo '  make ask MSG="Создай API гостевой корзины"'; \
+		echo '  make ask MSG="Сделай страницу checkout"'; \
+		echo '  make ask MSG="Напиши E2E тест на checkout"'; \
+		echo ""; \
+		echo "💡 Отличие от 'make task': всегда сбрасывает предыдущую роль"; \
+		exit 1; \
+	fi
+	@./scripts/kimi-ask.sh "$(MSG)"
+
+task-compact: ## Компактный роутер (только инструкции, без полного контекста)
+	@if [ -z "$(MSG)" ]; then \
+		echo "❌ Укажи задачу: make task-compact MSG='Описание задачи'"; \
+		exit 1; \
+	fi
+	@echo ""
+	@echo "══════════════════════════════════════════════════════════════════"
+	@echo "  Agent Router — Компактный режим"
+	@echo "══════════════════════════════════════════════════════════════════"
+	@echo ""
+	@echo "🤖 Агент определяется по задаче автоматически"
+	@echo ""
+	@echo "💡 Инструкция для агента:"
+	@echo "──────────────────────────────────────────────────────────────────"
+	@echo 'Проект Promelectron. Задача: $(MSG)'
+	@echo ""
+	@echo "Перед работой прочитай PROJECT_CONTEXT.md, BACKLOG.md, BLOCKERS.md, SESSION_LOG.md."
+	@echo "Определи роль сам, прочитай .kimi/agents/<ROLE>.md и .kimi/rules/pre-edit-checklist.md."
+	@echo "После работы обнови SESSION_LOG.md."
+	@echo ""
+	@echo "══════════════════════════════════════════════════════════════════"
+	@echo ""
+	@echo "✅ Скопируй текст выше и вставь в Kimi CLI"
+	@echo "                   AGENT CONTEXT — Promelectron"
+	@echo "══════════════════════════════════════════════════════════════════"
+	@echo ""
+	@echo "📋 PROJECT_CONTEXT.md (последние 30 строк):"
+	@echo "──────────────────────────────────────────────────────────────────"
+	@head -35 PROJECT_CONTEXT.md
+	@echo ""
+	@echo "🎯 Текущий спринт (BACKLOG.md):"
+	@echo "──────────────────────────────────────────────────────────────────"
+	@head -40 .agent/BACKLOG.md
+	@echo ""
+	@echo "⚠️  Активные блокеры (BLOCKERS.md):"
+	@echo "──────────────────────────────────────────────────────────────────"
+	@head -30 .agent/BLOCKERS.md
+	@echo ""
+	@echo "📝 Последние сессии (SESSION_LOG.md):"
+	@echo "──────────────────────────────────────────────────────────────────"
+	@head -20 .agent/SESSION_LOG.md
+	@echo ""
+	@echo "🔨 Последние коммиты:"
+	@echo "──────────────────────────────────────────────────────────────────"
+	@git log --oneline -10
+	@echo ""
+	@echo "📁 Незакоммиченные изменения:"
+	@echo "──────────────────────────────────────────────────────────────────"
+	@git status --short
+	@echo ""
+	@echo "══════════════════════════════════════════════════════════════════"
+
+agent-status: ## Быстрый health-check проекта
+	@echo "══════════════════════════════════════════════════════════════════"
+	@echo "                   AGENT STATUS — Promelectron"
+	@echo "══════════════════════════════════════════════════════════════════"
+	@echo ""
+	@echo "🧪 Tests:"
+	@echo "  Backend:  make test-backend"
+	@echo "  Frontend: make test-frontend"
+	@echo "  E2E:      make test-e2e"
+	@echo ""
+	@echo "📊 Git:"
+	@git log -1 --oneline | sed 's/^/  Last commit: /'
+	@git status --short | wc -l | sed 's/^/  Uncommitted files: /'
+	@echo ""
+	@echo "🐳 Docker:"
+	@$(COMPOSE) ps --format "table {{.Service}}\t{{.Status}}" 2>/dev/null | sed 's/^/  /' || echo "  (not running)"
+	@echo ""
+	@echo "📦 Active blockers:"
+	@grep -c "🔴\|🟡" .agent/BLOCKERS.md 2>/dev/null | sed 's/^/  Count: /' || echo "  N/A"
+	@echo ""
+	@echo "══════════════════════════════════════════════════════════════════"

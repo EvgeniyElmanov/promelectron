@@ -60,6 +60,9 @@ services:
       MINIO_BUCKET: promelectron-uploads
       MINIO_SECURE: "false"
       ACCESS_TOKEN_EXPIRE_MINUTES: "30"
+      YOOKASSA_SHOP_ID: ${YOOKASSA_SHOP_ID:-}
+      YOOKASSA_SECRET_KEY: ${YOOKASSA_SECRET_KEY:-}
+      YOOKASSA_TEST_MODE: ${YOOKASSA_TEST_MODE:-true}
       YANDEX_CLIENT_ID: ${YANDEX_CLIENT_ID:-}
       YANDEX_CLIENT_SECRET: ${YANDEX_CLIENT_SECRET:-}
     volumes:
@@ -91,6 +94,9 @@ services:
       MINIO_BUCKET: promelectron-uploads
       MINIO_SECURE: "false"
       ACCESS_TOKEN_EXPIRE_MINUTES: "30"
+      YOOKASSA_SHOP_ID: ${YOOKASSA_SHOP_ID:-}
+      YOOKASSA_SECRET_KEY: ${YOOKASSA_SECRET_KEY:-}
+      YOOKASSA_TEST_MODE: ${YOOKASSA_TEST_MODE:-true}
     volumes:
       - .:/app
     depends_on:
@@ -118,6 +124,9 @@ services:
       MINIO_BUCKET: promelectron-uploads
       MINIO_SECURE: "false"
       ACCESS_TOKEN_EXPIRE_MINUTES: "30"
+      YOOKASSA_SHOP_ID: ${YOOKASSA_SHOP_ID:-}
+      YOOKASSA_SECRET_KEY: ${YOOKASSA_SECRET_KEY:-}
+      YOOKASSA_TEST_MODE: ${YOOKASSA_TEST_MODE:-true}
       YANDEX_CLIENT_ID: ${YANDEX_CLIENT_ID:-}
       YANDEX_CLIENT_SECRET: ${YANDEX_CLIENT_SECRET:-}
     volumes:

@@ -1,7 +1,7 @@
 # Блокеры Promelectron
 
-**Версия:** 1.0
-**Дата:** 2026-05-30
+**Версия:** 1.1
+**Дата:** 2026-06-02
 **Правило:** Project-manager проверяет каждый день в 10:00 MSK. Блокер >2 дней — эскалация пользователю.
 
 ---
@@ -10,10 +10,20 @@
 
 | ID | Дата | Блокер | Severity | Затронуто | Кто решает | Статус | План B | Дедлайн |
 |----|------|--------|----------|-----------|------------|--------|--------|---------|
-| BLK-001 | 2026-05-30 | `.github/` защищена — CI/CD правки требуют ручного доступа | P1 | Helm, deploy.yml | devops | ждёт доступа | Править вручную через админа | 2026-06-02 |
-| BLK-002 | 2026-05-30 | `worker.enabled=false` в Helm — Celery не работает в K8s | P0 | 1C sync, email, notifications | devops | в работе | Временно cron + manual trigger | 2026-06-02 |
+| BLK-001 | 2026-05-30 | `.github/` защищена — CI/CD правки требуют ручного доступа | P1 | Helm, deploy.yml, worker templates | devops | **🔴 эскалирован** | Править вручную через админа | 2026-06-02 |
+| BLK-002 | 2026-05-30 | `worker.enabled=false` в Helm + сломанная команда `python -m app.workers.queue_worker` — Celery не работает в K8s | P0 | 1C sync, email, notifications, background tasks | devops | **🔴 эскалирован** | Временно cron + manual trigger; docker-compose для worker | 2026-06-02 |
 | BLK-004 | 2026-05-30 | `API_BASE_URL` в K8s test окружении не настроен | P1 | E2E тесты, фронтенд | devops | ждёт конфиг | Hardcode в nginx.conf временно | 2026-06-05 |
 | BLK-005 | 2026-05-30 | Нет реальных SMTP кредов — email в fallback-режиме | P1 | Email notifications | project-manager | ждёт данных от пользователя | Graceful skip (уже реализовано) | 2026-06-10 |
+| BLK-006 | 2026-06-02 | Malformed revision ID в Alembic миграции `20260531_222559_guest_order_fields.py` (`revision = 'b1c2d3e4f5a6'`) — некорректная миграционная история | P1 | Миграции БД, `alembic upgrade head` | backend-dev | **🟡 в работе** | Пересоздать миграцию с корректным revision ID | 2026-06-04 |
+
+---
+
+## Эскалированные (>2 дней)
+
+| ID | Дата открытия | Дней открыт | Действие |
+|----|---------------|-------------|----------|
+| BLK-001 | 2026-05-30 | 3 | Требуется ручное разрешение пользователя для изменения `.github/workflows/` и push в main |
+| BLK-002 | 2026-05-30 | 3 | **P0**: Celery worker в K8s полностью неработоспособен. Нужен доступ к `.github/` для фикса CI/CD + правка Helm templates. Требуется решение: править вручную или дать доступ агенту. |
 
 ---
 

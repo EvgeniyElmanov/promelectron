@@ -8,16 +8,23 @@
 
 ## Блок 1: Контекст проекта
 
+> **Система агентов обновлена (2026-06-02):**  
+> - `PROJECT_CONTEXT.md` — единый источник контекста для всех агентов  
+> - `SESSION_START.md` — шаблон входа в сессию  
+> - `scripts/kimi-task.sh` — автоматический роутер выбора агента по задаче  
+> - `.agent/SESSION_LOG.md` — append-only лог изменений по сессиям  
+> - Подробнее: `ROUTER.md`
+
 ### 1.1 Что это
 Promelectron — маркетплейс в стиле Ozon.ru / Wildberries. Проект частично реализован, требуется доведение до production-ready состояния и дальнейшее масштабирование.
 
 ### 1.2 Текущий статус
 - **Backend:** FastAPI + SQLAlchemy 2.0 async + PostgreSQL 16 + Redis 7 + MinIO + Celery
 - **Frontend:** Vue 3 + Vite + Axios
-- **Tests:** Backend 102/102 ✅, Frontend 77/77 ✅, E2E 95/95 ✅
+- **Tests:** Backend 123/123 ✅, Frontend 80/80 ✅, E2E 95/95 ✅
 - **CI/CD:** GitHub Actions self-hosted runner → Harbor → K8s Helm
 - **Test env:** `promelectron-test.aidrivencode.ru`
-- **Готовность:** ~50% (MVP+ с базовой функциональностью)
+- **Готовность:** ~52% (MVP+ с гостевой корзиной и OAuth Yandex)
 
 ### 1.3 Целевая модель
 Функциональность и UX на уровне Ozon.ru:
@@ -124,7 +131,12 @@ graph TD
   └── Настроить backup БД
 
 Неделя 3-4:  Платежи (критично!)
-  ├── Интеграция ЮKassa
+  ├── Интеграция ЮKassa (подробный план: `.agent/tasks/TASK-001-yookassa-integration.md`)
+  │   ├── Phase 1: SDK + конфиг + env vars + Alembic миграция Payment
+  │   ├── Phase 2: YooKassaService (create/get payment) + обновить create_payment endpoint
+  │   ├── Phase 3: Webhook endpoint (succeeded/canceled) + проверка подписи
+  │   ├── Phase 4: Frontend редирект на confirmation_url + success page
+  │   └── Phase 5: Backend тесты + E2E тест с тестовой картой
   ├── Webhook обработка
   ├── Тестовые платежи
   └── Обновить checkout flow
