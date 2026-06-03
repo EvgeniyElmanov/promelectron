@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from collector.clickhouse_client import ClickHouseClient
@@ -79,7 +79,7 @@ async def sync_categories(ozon: OzonClient, ch: ClickHouseClient) -> None:
     ch.insert_rows("categories", _CATEGORIES_COLUMNS, rows)
     ch.optimize_table("categories")
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     ch.save_checkpoint(_SYNC_KEY, _ENTITY_TYPE, now, len(rows))
 
     logger.info("Categories sync complete: %d rows inserted", len(rows))

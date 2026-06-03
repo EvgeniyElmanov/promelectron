@@ -1,11 +1,11 @@
 from decimal import Decimal
 
 from fastapi import HTTPException
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.app.models.cart import Cart, CartItem
+from src.app.models.cart import Cart
 from src.app.models.delivery_method import DeliveryMethod
 from src.app.models.order import Order, OrderItem
 from src.app.models.product import Product

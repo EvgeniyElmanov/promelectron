@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
@@ -78,7 +78,7 @@ async def sync_analytics(
     since: str | None = None,
     full: bool = False,
 ) -> None:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     if since:
         date_from = datetime.fromisoformat(since).date()

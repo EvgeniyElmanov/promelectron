@@ -1,6 +1,5 @@
 import io
 import os
-import shutil
 from typing import Protocol
 
 from aiobotocore.session import get_session

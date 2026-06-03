@@ -1,7 +1,6 @@
 import functools
 import inspect
 import json
-from typing import Any
 
 from fastapi import Request
 from fastapi.encoders import jsonable_encoder

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -86,7 +86,7 @@ def _map_price_row(
 
 
 async def sync_prices(ozon: OzonClient, ch: ClickHouseClient) -> None:
-    synced_at = datetime.now(timezone.utc)
+    synced_at = datetime.now(UTC)
     logger.info("Starting prices sync at %s", synced_at.strftime("%Y-%m-%dT%H:%M:%SZ"))
 
     rows: list[tuple[Any, ...]] = []

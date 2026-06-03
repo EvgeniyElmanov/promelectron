@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -51,15 +51,15 @@ def _parse_decimal(value: Any) -> Decimal:
 
 def _parse_datetime(value: Any) -> datetime:
     if not value:
-        return datetime.fromtimestamp(0, tz=timezone.utc)
+        return datetime.fromtimestamp(0, tz=UTC)
     if isinstance(value, datetime):
-        return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value
+        return value.replace(tzinfo=UTC) if value.tzinfo is None else value
     try:
         text = str(value).rstrip("Z")
         dt = datetime.fromisoformat(text)
-        return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt
+        return dt.replace(tzinfo=UTC) if dt.tzinfo is None else dt
     except Exception:
-        return datetime.fromtimestamp(0, tz=timezone.utc)
+        return datetime.fromtimestamp(0, tz=UTC)
 
 
 def _extract_stock(stocks: list[dict[str, Any]], source: str) -> tuple[int, int]:
@@ -148,7 +148,7 @@ async def sync_products(ozon: OzonClient, ch: ClickHouseClient) -> None:
     ch.insert_rows("products", _PRODUCTS_COLUMNS, rows)
     ch.optimize_table("products")
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     ch.save_checkpoint(_SYNC_KEY, _ENTITY_TYPE, now, len(rows))
 
     logger.info("Products sync complete: %d rows inserted", len(rows))

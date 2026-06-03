@@ -41,13 +41,27 @@ class YooKassaService:
         return f"{base}/payment/success?order_id={order_id}"
 
     @staticmethod
+    def _ensure_configured() -> None:
+        """Ensure YooKassa SDK is configured with valid credentials."""
+        if not settings.yookassa_shop_id or not settings.yookassa_secret_key:
+            raise HTTPException(
+                status_code=503,
+                detail="YooKassa is not configured. Set YOOKASSA_SHOP_ID and YOOKASSA_SECRET_KEY.",
+            )
+
+    @staticmethod
     def _handle_sdk_error(error: ApiError) -> None:
-        """Convert YooKassa SDK exceptions to HTTPException."""
+        """Convert YooKassa SDK exceptions to HTTPException.
+
+        Note: UnauthorizedError from YooKassa means SHOP credentials are invalid,
+        NOT that the end-user is unauthorized. We return 502 to avoid triggering
+        frontend auto-logout on 401.
+        """
         message = getattr(error, "detail", str(error))
         if isinstance(error, BadRequestError):
             raise HTTPException(status_code=400, detail=f"YooKassa bad request: {message}")
         if isinstance(error, UnauthorizedError):
-            raise HTTPException(status_code=401, detail="YooKassa authentication failed")
+            raise HTTPException(status_code=502, detail="YooKassa shop credentials invalid")
         if isinstance(error, ForbiddenError):
             raise HTTPException(status_code=403, detail="YooKassa forbidden")
         if isinstance(error, NotFoundError):
@@ -65,6 +79,7 @@ class YooKassaService:
         user_id: int | None = None,
         receipt_data: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
+        cls._ensure_configured()
         """Create a new payment in YooKassa.
 
         Returns dict with:
@@ -126,6 +141,7 @@ class YooKassaService:
 
     @classmethod
     async def get_payment(cls, yookassa_payment_id: str) -> dict[str, Any]:
+        cls._ensure_configured()
         """Get payment info from YooKassa."""
         try:
             response = await asyncio.to_thread(
@@ -155,6 +171,7 @@ class YooKassaService:
 
     @classmethod
     async def cancel_payment(cls, yookassa_payment_id: str) -> dict[str, Any]:
+        cls._ensure_configured()
         """Cancel a payment in waiting_for_capture status."""
         idempotence_key = str(uuid.uuid4())
 
@@ -180,6 +197,7 @@ class YooKassaService:
         amount: Decimal,
         description: str = "Возврат",
     ) -> dict[str, Any]:
+        cls._ensure_configured()
         """Create a refund for a succeeded payment."""
         idempotence_key = str(uuid.uuid4())
 

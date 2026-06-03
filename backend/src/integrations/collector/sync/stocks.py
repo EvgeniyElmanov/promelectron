@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from collector.clickhouse_client import ClickHouseClient
@@ -37,7 +37,7 @@ def _map_stock_row(
 
 
 async def sync_stocks(ozon: OzonClient, ch: ClickHouseClient) -> None:
-    snapshot_at = datetime.now(timezone.utc)
+    snapshot_at = datetime.now(UTC)
     logger.info("Starting stocks snapshot at %s", snapshot_at.strftime("%Y-%m-%dT%H:%M:%SZ"))
 
     rows: list[tuple[Any, ...]] = []

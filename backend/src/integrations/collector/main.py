@@ -17,11 +17,11 @@ from collector.ozon_client import OzonClient
 from collector.sync.analytics import sync_analytics
 from collector.sync.categories import sync_categories
 from collector.sync.orders import sync_orders
+from collector.sync.price_timer import update_price_timer
 from collector.sync.prices import sync_prices
 from collector.sync.product_queries import sync_product_queries
 from collector.sync.products import sync_products
 from collector.sync.stocks import sync_stocks
-from collector.sync.price_timer import update_price_timer
 from collector.sync.transactions import sync_transactions
 
 logger = logging.getLogger("collector")

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
@@ -70,7 +70,7 @@ async def sync_product_queries(
     ozon: OzonClient,
     ch: ClickHouseClient,
 ) -> None:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     week_start = _get_week_start(now)
     date_from_str = week_start.strftime("%Y-%m-%dT00:00:00Z")
 

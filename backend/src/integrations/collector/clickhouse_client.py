@@ -3,8 +3,9 @@ from __future__ import annotations
 import logging
 import pathlib
 import re
-from datetime import datetime, timezone
-from typing import Any, Sequence
+from collections.abc import Sequence
+from datetime import UTC, datetime
+from typing import Any
 
 import clickhouse_connect
 from clickhouse_connect.driver import Client
@@ -165,7 +166,7 @@ class ClickHouseClient:
 
     def optimize_table(self, table: str) -> None:
         if table not in _ALLOWED_TABLES:
-            raise ValueError("optimize_table called with unknown table: %r" % table)
+            raise ValueError(f"optimize_table called with unknown table: {table!r}")
         self.client.command(f"OPTIMIZE TABLE {table} FINAL")
         logger.debug("OPTIMIZE TABLE %s FINAL completed", table)
 
@@ -184,7 +185,7 @@ class ClickHouseClient:
         if result.result_rows:
             val = result.result_rows[0][0]
             if isinstance(val, datetime):
-                return val.replace(tzinfo=timezone.utc) if val.tzinfo is None else val
+                return val.replace(tzinfo=UTC) if val.tzinfo is None else val
         return None
 
     def save_checkpoint(
@@ -194,7 +195,7 @@ class ClickHouseClient:
         last_synced_at: datetime,
         items_synced: int,
     ) -> None:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         self.insert_rows(
             "sync_checkpoints",
             ["sync_key", "entity_type", "last_synced_at", "synced_at", "items_synced"],
