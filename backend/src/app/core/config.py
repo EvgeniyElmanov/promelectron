@@ -32,6 +32,8 @@ class Settings:
     yookassa_secret_key: str
     yookassa_webhook_secret: str | None
     yookassa_test_mode: bool
+    yookassa_vat_code: int
+    yookassa_tax_system_code: int
 
 
 settings = Settings(
@@ -65,6 +67,8 @@ settings = Settings(
     yookassa_secret_key=os.getenv("YOOKASSA_SECRET_KEY", ""),
     yookassa_webhook_secret=os.getenv("YOOKASSA_WEBHOOK_SECRET"),
     yookassa_test_mode=os.getenv("YOOKASSA_TEST_MODE", "true").lower() == "true",
+    yookassa_vat_code=int(os.getenv("YOOKASSA_VAT_CODE", "1")),
+    yookassa_tax_system_code=int(os.getenv("YOOKASSA_TAX_SYSTEM_CODE", "1")),
 )
 
 SECRET_KEY = settings.secret_key

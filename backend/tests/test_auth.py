@@ -221,6 +221,8 @@ def _make_oauth_settings(overrides: dict):
         "yookassa_secret_key": original.yookassa_secret_key,
         "yookassa_webhook_secret": original.yookassa_webhook_secret,
         "yookassa_test_mode": original.yookassa_test_mode,
+        "yookassa_vat_code": original.yookassa_vat_code,
+        "yookassa_tax_system_code": original.yookassa_tax_system_code,
     }
     kwargs.update(overrides)
     return Settings(**kwargs)

@@ -45,6 +45,7 @@ required_files=(
     ".agent/SESSION_LOG.md"
     ".agent/PLANNING_HANDOFF.md"
     ".agent/DISPATCHER_PROMPT.md"
+    ".agent/ORCHESTRATOR_PROMPT.md"
     ".kimi/AGENTS.md"
     ".kimi/settings.json"
     "Makefile"
@@ -109,6 +110,33 @@ echo "🎯 Проверка skills..."
 
 existing_skills=$(ls -d .kimi/skills/*/ 2>/dev/null | sed 's|/$||' | xargs -n1 basename | sort | tr '\n' ' ')
 ok "Skills: $existing_skills"
+
+# ─── 5a. Проверка orchestrator ────────────────────────────────────
+
+echo ""
+echo "🤖 Проверка orchestrator..."
+
+if [ -f ".kimi/agents/orchestrator.md" ]; then
+    ok "orchestrator.md существует"
+else
+    warn "orchestrator.md не найден"
+fi
+
+if [ -f "scripts/kimi-auto.sh" ]; then
+    if [ -x "scripts/kimi-auto.sh" ]; then
+        ok "scripts/kimi-auto.sh executable"
+    else
+        warn "scripts/kimi-auto.sh не executable"
+    fi
+else
+    warn "scripts/kimi-auto.sh не найден"
+fi
+
+if grep -q "^auto:" Makefile 2>/dev/null; then
+    ok "Makefile target 'auto' существует"
+else
+    warn "Makefile target 'auto' не найден"
+fi
 
 # ─── 5. Rules consistency ─────────────────────────────────────────
 

@@ -208,6 +208,21 @@ ask: ## Диспетчер с гарантированным сбросом ро
 	fi
 	@./scripts/kimi-ask.sh "$(MSG)"
 
+auto: ## Полный авто-режим: определяет роли сам, запускает orchestrator при необходимости
+	@if [ -z "$(MSG)" ]; then \
+		echo "❌ Укажи задачу: make auto MSG='Описание задачи'"; \
+		echo ""; \
+		echo "Примеры:"; \
+		echo '  make auto MSG="Добавь промокоды в корзину"'; \
+		echo '  make auto MSG="Исправь баг в оформлении заказа"'; \
+		echo '  make auto MSG="Настрой CI/CD для staging"'; \
+		echo '  make auto MSG="Security audit проекта"'; \
+		echo ""; \
+		echo "💡 Система сама определит роли и выберет режим (single/multi-agent)."; \
+		exit 1; \
+	fi
+	@./scripts/kimi-auto.sh "$(MSG)"
+
 task-compact: ## Компактный роутер (только инструкции, без полного контекста)
 	@if [ -z "$(MSG)" ]; then \
 		echo "❌ Укажи задачу: make task-compact MSG='Описание задачи'"; \

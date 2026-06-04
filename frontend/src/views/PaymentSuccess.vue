@@ -55,11 +55,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { useRoute } from 'vue-router';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import api from '@/services/api';
 
 const route = useRoute();
+const router = useRouter();
 const orderId = ref(route.query.order_id || route.params.id);
 const order = ref(null);
 const loading = ref(true);
@@ -167,6 +168,13 @@ onMounted(async () => {
   // Start polling if order is still pending and we have an order id
   if (order.value && order.value.status !== 'paid' && order.value.status !== 'cancelled' && order.value.status !== 'canceled') {
     startPolling();
+  }
+});
+
+// Redirect to /payment/failed if order was cancelled
+watch(order, (newOrder) => {
+  if (newOrder && (newOrder.status === 'cancelled' || newOrder.status === 'canceled')) {
+    router.replace(`/payment/failed?order_id=${orderId.value}`);
   }
 });
 

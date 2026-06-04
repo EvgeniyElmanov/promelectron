@@ -131,9 +131,9 @@ Product.price → Numeric      →  Product variants / Seller payouts
 | GET | `/api/v1/cart/` | ✅ | Корзина авторизованного |
 | POST | `/api/v1/orders/` | ✅ | Создать заказ |
 | GET | `/api/v1/orders/` | ✅ | История заказов |
-| POST | `/api/v1/payments/{order_id}/` | 🔄 | Создать платёж ЮKassa (was mock) |
-| POST | `/api/v1/payments/yookassa/webhook/` | ⏳ | Webhook от ЮKassa |
-| POST | `/api/v1/payments/{payment_id}/confirm/` | ❌ | **Удалить** — mock endpoint |
+| POST | `/api/v1/payments/{order_id}/` | ✅ | Создать платёж ЮKassa |
+| POST | `/api/v1/payments/yookassa/webhook/` | ✅ | Webhook от ЮKassa (payment.succeeded / payment.canceled) |
+| POST | `/api/v1/payments/{payment_id}/cancel/` | ✅ | Отменить платёж (до оплаты) |
 | GET | `/api/v1/payments/{payment_id}/` | ✅ | Информация о платеже |
 | POST | `/api/v1/payments/{payment_id}/cancel/` | ✅ | Отменить платёж |
 

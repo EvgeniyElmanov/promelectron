@@ -10,7 +10,7 @@ from sqlalchemy.orm import selectinload
 
 from src.app.core.config import settings
 from src.app.models.cart import Cart, CartItem
-from src.app.models.order import Order
+from src.app.models.order import Order, OrderItem
 from src.app.models.payment import Payment
 from src.app.models.user import User
 from src.app.services.email_service import EmailService
@@ -27,7 +27,10 @@ class PaymentService:
         result = await db.execute(
             select(Order)
             .where(Order.id == order_id, Order.user_id == user_id)
-            .options(selectinload(Order.items))
+            .options(
+                selectinload(Order.items).selectinload(OrderItem.product),
+                selectinload(Order.user),
+            )
         )
         order = result.scalars().first()
 
@@ -42,12 +45,43 @@ class PaymentService:
         if existing.scalars().first():
             raise HTTPException(status_code=400, detail="Payment already exists for this order")
 
+        # Build receipt data for 54-FZ
+        receipt_data = None
+        customer_email = None
+        if order.user and order.user.email:
+            customer_email = order.user.email
+        elif order.guest_email:
+            customer_email = order.guest_email
+
+        if customer_email and order.items:
+            receipt_items = []
+            for oi in order.items:
+                receipt_items.append(
+                    {
+                        "description": (oi.product.name if oi.product else "Товар")[:128],
+                        "quantity": f"{oi.quantity:.2f}",
+                        "amount": {
+                            "value": f"{float(oi.price_at_time * oi.quantity):.2f}",
+                            "currency": "RUB",
+                        },
+                        "vat_code": settings.yookassa_vat_code,
+                        "payment_subject": "commodity",
+                        "payment_mode": "full_payment",
+                    }
+                )
+            receipt_data = {
+                "customer": {"email": customer_email},
+                "items": receipt_items,
+                "tax_system_code": settings.yookassa_tax_system_code,
+            }
+
         # Создаём платёж в ЮKassa
         yookassa_result = await YooKassaService.create_payment(
             order_id=order.id,
             amount=order.total_price,
             description=f"Заказ №{order.id}",
             user_id=order.user_id,
+            receipt_data=receipt_data,
         )
 
         payment = Payment(
