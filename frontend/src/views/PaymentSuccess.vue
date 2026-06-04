@@ -7,25 +7,40 @@
       </svg>
     </div>
 
-    <h1 class="payment-result__title">Оплата прошла успешно!</h1>
+    <h1 class="payment-result__title">{{ title }}</h1>
     <p class="payment-result__subtitle">
-      Заказ №{{ orderId }} оплачен. Мы отправили подтверждение на ваш email.
+      {{ subtitle }}
     </p>
 
-    <div v-if="loading" class="payment-result__loading">
+    <div v-if="loading || polling" class="payment-result__loading">
       <div class="payment-result__spinner"></div>
       <p>Проверяем статус заказа...</p>
+      <p v-if="pollCount > 0" class="payment-result__poll-info">
+        Попытка {{ pollCount }} из {{ maxPolls }}
+      </p>
     </div>
 
     <div v-else-if="order" class="payment-result__details">
       <div class="payment-result__row">
         <span>Статус</span>
-        <span class="payment-result__badge payment-result__badge--success">{{ order.status === 'paid' ? 'Оплачен' : order.status }}</span>
+        <span
+          class="payment-result__badge"
+          :class="badgeClass"
+        >
+          {{ displayStatus }}
+        </span>
       </div>
       <div class="payment-result__row">
         <span>Сумма</span>
         <span class="payment-result__amount">{{ formatPrice(order.total_price) }} ₽</span>
       </div>
+    </div>
+
+    <div v-if="!loading && !polling && order && order.status !== 'paid'" class="payment-result__notice">
+      <p>
+        Если вы уже оплатили заказ, статус обновится в течение нескольких минут.
+        Мы отправим вам email с подтверждением.
+      </p>
     </div>
 
     <div class="payment-result__actions">
@@ -40,7 +55,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute } from 'vue-router';
 import api from '@/services/api';
 
@@ -48,10 +63,57 @@ const route = useRoute();
 const orderId = ref(route.query.order_id || route.params.id);
 const order = ref(null);
 const loading = ref(true);
+const polling = ref(false);
+const pollCount = ref(0);
+const maxPolls = 15;
+const pollInterval = 3000; // 3 seconds
+let pollTimer = null;
 
 function formatPrice(value) {
   return Number(value).toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 }
+
+const displayStatus = computed(() => {
+  if (!order.value) return '';
+  const map = {
+    paid: 'Оплачен',
+    pending: 'Ожидает оплаты',
+    awaiting_payment: 'Ожидает оплаты',
+    cancelled: 'Отменён',
+    canceled: 'Отменён',
+  };
+  return map[order.value.status] || order.value.status;
+});
+
+const badgeClass = computed(() => {
+  if (!order.value) return '';
+  const classes = {
+    paid: 'payment-result__badge--success',
+    pending: 'payment-result__badge--warning',
+    awaiting_payment: 'payment-result__badge--warning',
+    cancelled: 'payment-result__badge--error',
+    canceled: 'payment-result__badge--error',
+  };
+  return classes[order.value.status] || '';
+});
+
+const title = computed(() => {
+  if (!order.value) return 'Обработка платежа...';
+  if (order.value.status === 'paid') return 'Оплата прошла успешно!';
+  if (order.value.status === 'cancelled' || order.value.status === 'canceled') return 'Платёж отменён';
+  return 'Платёж в обработке';
+});
+
+const subtitle = computed(() => {
+  if (!order.value) return 'Пожалуйста, подождите...';
+  if (order.value.status === 'paid') {
+    return `Заказ №${orderId.value} оплачен. Мы отправили подтверждение на ваш email.`;
+  }
+  if (order.value.status === 'cancelled' || order.value.status === 'canceled') {
+    return `Заказ №${orderId.value} был отменён.`;
+  }
+  return `Заказ №${orderId.value} ожидает подтверждения оплаты.`;
+});
 
 const fetchOrder = async () => {
   if (!orderId.value) {
@@ -68,7 +130,49 @@ const fetchOrder = async () => {
   }
 };
 
-onMounted(fetchOrder);
+const startPolling = () => {
+  if (pollTimer) return;
+  polling.value = true;
+  pollCount.value = 0;
+
+  pollTimer = setInterval(async () => {
+    pollCount.value += 1;
+    try {
+      const { data } = await api.get(`/orders/${orderId.value}`);
+      order.value = data;
+
+      if (data.status === 'paid' || data.status === 'cancelled' || data.status === 'canceled') {
+        stopPolling();
+      }
+    } catch (err) {
+      console.error('Polling error:', err);
+    }
+
+    if (pollCount.value >= maxPolls) {
+      stopPolling();
+    }
+  }, pollInterval);
+};
+
+const stopPolling = () => {
+  if (pollTimer) {
+    clearInterval(pollTimer);
+    pollTimer = null;
+  }
+  polling.value = false;
+};
+
+onMounted(async () => {
+  await fetchOrder();
+  // Start polling if order is still pending and we have an order id
+  if (order.value && order.value.status !== 'paid' && order.value.status !== 'cancelled' && order.value.status !== 'canceled') {
+    startPolling();
+  }
+});
+
+onUnmounted(() => {
+  stopPolling();
+});
 </script>
 
 <style scoped>
@@ -128,6 +232,12 @@ onMounted(fetchOrder);
   to { transform: rotate(360deg); }
 }
 
+.payment-result__poll-info {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin-top: 8px;
+}
+
 .payment-result__details {
   background: var(--color-bg-white);
   border-radius: 16px;
@@ -162,9 +272,30 @@ onMounted(fetchOrder);
   color: #0d7a3e;
 }
 
+.payment-result__badge--warning {
+  background: #fff8e1;
+  color: #b78900;
+}
+
+.payment-result__badge--error {
+  background: #fce8e6;
+  color: #c5221f;
+}
+
 .payment-result__amount {
   font-weight: 700;
   font-size: 16px;
+}
+
+.payment-result__notice {
+  background: var(--color-bg-white);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 24px;
+  text-align: left;
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  line-height: 1.4;
 }
 
 .payment-result__actions {

@@ -279,3 +279,19 @@ YYYY-MM-DD HH:MM | <role> | <краткое описание>
 **Риски:** Нет
 
 ---
+
+## 2026-06-04 15:52
+
+**Роль:** project-manager (added mixed-role mode)
+
+**Что сделано:**
+- SESSION_START.md: добавлен раздел 'Вариант: Сквозная фича' для задач, требующих нескольких ролей (например, YooKassa E2E → CI/CD → backend → Helm)
+- .agent/DISPATCHER_PROMPT.md: добавлено исключение для сквозных задач — диспетчер работает гибко, не сбрасывая контекст между блоками
+- .kimi/agents/dispatcher.md: добавлено то же исключение для сквозных задач
+- audit-agents.sh: проходит (все проверки OK)
+
+**Файлы изменены:** SESSION_START.md, .agent/DISPATCHER_PROMPT.md, .kimi/agents/dispatcher.md
+
+**Риски:** Нет
+
+---

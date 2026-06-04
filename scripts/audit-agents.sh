@@ -15,12 +15,12 @@ WARNINGS=0
 
 error() {
     echo "  ❌ $1"
-    ((ERRORS++))
+    ((ERRORS++)) || true
 }
 
 warn() {
     echo "  ⚠️  $1"
-    ((WARNINGS++))
+    ((WARNINGS++)) || true
 }
 
 ok() {
