@@ -68,7 +68,7 @@ When analyzing task status, verify:
 - [ ] **Frontend linked** — check views, router, API calls
 - [ ] **Env vars set** — check `config.py`, `.env.example`, K8s manifests
 - [ ] **CI covers it** — check `.github/workflows/` (if accessible)
-- [ ] **Docs updated** — check `README.md`, `AGENTS.md`
+- [ ] **Docs updated** — check `README.md`, `.kimi/AGENTS.md`
 
 Never rely on `ROADMAP.md` alone — it becomes stale.
 

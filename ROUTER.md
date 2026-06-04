@@ -6,22 +6,30 @@
 
 ## Быстрый старт
 
-### Способ 1: Диспетчер (рекомендуется, только Kimi CLI)
+### Способ 1: Auto-Orchestrator — всё сам (рекомендуется для начинающих)
+```
+Прочитай .agent/ORCHESTRATOR_PROMPT.md и следуй инструкциям.
+Задача: Добавь промокоды в корзину
+```
+Orchestrator сам определит роли, запустит изолированных Agent'ов и соберёт отчёт. Никаких залипаний ролей.
+
+### Способ 2: Диспетчер (ручное переключение ролей)
 ```
 Прочитай .agent/DISPATCHER_PROMPT.md и следуй инструкциям.
 Задача: Создай API для промокодов
 ```
 Диспетчер автоматически определит роль, сбросит предыдущую и переключится.
 
-### Способ 2: Фиксированная роль (если знаешь, кто нужен)
+### Способ 3: Фиксированная роль (если знаешь, кто нужен)
 ```
 Роль: backend-dev. Задача: Создай API для промокодов
 ```
 
-### Способ 3: Bash-скрипт (если удобно через терминал)
+### Способ 4: Bash-скрипт (через терминал)
 ```bash
-make task MSG="Создай API для промокодов"
-make ask MSG="Сделай страницу checkout"   # с гарантированным сбросом роли
+make auto MSG="Добавь промокоды в корзину"   # авто-режим: определит роли сам
+make task MSG="Создай API для промокодов"    # промпт с автоопределением роли
+make ask MSG="Сделай страницу checkout"      # с гарантированным сбросом роли
 ```
 
 ---
@@ -30,7 +38,8 @@ make ask MSG="Сделай страницу checkout"   # с гарантиро�
 
 | Роль | Ключевые слова в задаче | Когда выбирать |
 |------|------------------------|--------------|
-| `dispatcher` | Любые — диспетчер анализирует все задачи | Рекомендуется для сессий с задачами разных ролей |
+| `orchestrator` | Любые — система сама определит роли | Рекомендуется для начинающих и сквозных фич |
+| `dispatcher` | Любые — диспетчер анализирует все задачи | Для сессий с задачами разных ролей |
 | `backend-dev` | API, endpoint, backend, бэк, model, schema, service, route, migration, alembic, SQLAlchemy, FastAPI, pytest, БД, таблица, webhook, JWT, OAuth, payment, заказ, order, корзина (API), cart (API), auth (backend), admin (API) | Только backend задачи |
 | `frontend-dev` | frontend, фронт, Vue, component, страница, page, view, Pinia, store, composable, UI, UX, форма, form, CSS, HTML, Axios, router, localStorage, корзина (UI), cart (UI), login (UI), checkout (UI) | Только frontend задачи |
 | `devops` | Docker, K8s, Helm, nginx, CI/CD, deploy, деплой, инфраструктура, infra, SSL, VPN, backup, Sentry, monitoring, pod, container, Harbor, GitHub Actions, workflow, secret, config | Только devops задачи |
@@ -88,15 +97,17 @@ make ask MSG="Сделай страницу checkout"   # с гарантиро�
 
 | Файл | Назначение |
 |------|-----------|
-| `.agent/DISPATCHER_PROMPT.md` | **Главный файл.** Инструкции диспетчера для автопереключения ролей внутри Kimi CLI. |
-| `.kimi/agents/dispatcher.md` | Универсальный диспетчер-агент. Альтернатива DISPATCHER_PROMPT.md. |
+| `.agent/ORCHESTRATOR_PROMPT.md` | **Главный файл для начинающих.** Мета-агент: авто-определение ролей + делегирование через Agent tool. |
+| `.agent/DISPATCHER_PROMPT.md` | Инструкции диспетчера для ручного переключения ролей внутри Kimi CLI. |
+| `.kimi/agents/dispatcher.md` | Универсальный диспетчер-агент. |
 | `PROJECT_CONTEXT.md` | Единый источник контекста (читается агентами). |
 | `.agent/BACKLOG.md` | Текущий спринт (читается агентами). |
 | `.agent/BLOCKERS.md` | Блокеры (читаются агентами). |
 | `.agent/SESSION_LOG.md` | Лог сессий (читается агентами). |
+| `scripts/kimi-auto.sh` | Shell-скрипт авто-режима: определяет роли, формирует orchestrator-промпт. |
 | `scripts/kimi-task.sh` | Shell-скрипт роутера (опционально, через терминал). |
 | `scripts/kimi-ask.sh` | Shell-скрипт с гарантированным сбросом роли (опционально). |
-| `Makefile` | `make task MSG="..."` и `make ask MSG="..."` (опционально). |
+| `Makefile` | `make auto MSG="..."`, `make task MSG="..."`, `make ask MSG="..."`. |
 | `.kimi/skills/auto-agent/SKILL.md` | Skill для Kimi CLI. Активируется через `/skill auto-agent`. |
 
 ---

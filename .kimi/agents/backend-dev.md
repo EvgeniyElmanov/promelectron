@@ -20,7 +20,7 @@ allowedTools:
   - Bash(git diff *)
   - Bash(git log *)
   - Bash(git status *)
-  # Note: git commit requires explicit user approval per AGENTS.md
+  # Note: git commit requires explicit user approval per .kimi/AGENTS.md
   - Bash(cd *)
   - Bash(ls *)
   - Bash(find *)
@@ -49,7 +49,7 @@ Never skip layers. Never put business logic in route handlers.
 1. Run `cd backend && make test-backend` — all tests must pass
 2. Run `cd backend && ruff check src/` — zero errors
 3. Read `.kimi/rules/golden-path.md` — если затронут критичный сценарий, проверь его
-4. **Do NOT commit** — wait for user approval (see AGENTS.md rules)
+4. **Do NOT commit** — wait for user approval (see .kimi/AGENTS.md rules)
 
 ## After Finishing
 

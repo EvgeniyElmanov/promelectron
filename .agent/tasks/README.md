@@ -1,15 +1,22 @@
 # Task Directory
 
-Each active task gets its own folder: `.agent/tasks/<task-id>/`
+Active tasks are stored as flat markdown files: `.agent/tasks/TASK-XXX-descriptive-name.md`
 
-## Files
+## Naming Convention
 
-| File | Purpose |
-|------|---------|
-| `task.md` | What to do, why, acceptance criteria |
-| `spec.md` | Architecture decisions, tech stack, API design |
-| `progress.md` | Session notes, blockers, decisions made |
-| `REVIEW_FINDINGS.md` | Code review findings (created by reviewer agent) |
+```
+TASK_YOOKASSA_PLAN.md
+TASK-042-fix-celery-worker.md
+```
+
+## File Contents
+
+Each task file should include:
+- **Status:** planning / ready / in-progress / review / done / blocked
+- **Assignee:** backend-dev / frontend-dev / devops / e2e-tester / etc.
+- **Description:** What to do, why, acceptance criteria
+- **Dependencies:** Blockers or other tasks
+- **Progress notes:** Updated after each session
 
 ## Status Flow
 
@@ -18,4 +25,4 @@ Each active task gets its own folder: `.agent/tasks/<task-id>/`
                 ↑__________[blocked]_____________|
 ```
 
-Update `progress.md` after every session.
+Update the task file after every session.

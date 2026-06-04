@@ -45,35 +45,36 @@ class PaymentService:
         if existing.scalars().first():
             raise HTTPException(status_code=400, detail="Payment already exists for this order")
 
-        # Build receipt data for 54-FZ
+        # Build receipt data for 54-FZ (only for non-self-employed merchants)
         receipt_data = None
-        customer_email = None
-        if order.user and order.user.email:
-            customer_email = order.user.email
-        elif order.guest_email:
-            customer_email = order.guest_email
+        if settings.yookassa_receipt_enabled:
+            customer_email = None
+            if order.user and order.user.email:
+                customer_email = order.user.email
+            elif order.guest_email:
+                customer_email = order.guest_email
 
-        if customer_email and order.items:
-            receipt_items = []
-            for oi in order.items:
-                receipt_items.append(
-                    {
-                        "description": (oi.product.name if oi.product else "Товар")[:128],
-                        "quantity": f"{oi.quantity:.2f}",
-                        "amount": {
-                            "value": f"{float(oi.price_at_time * oi.quantity):.2f}",
-                            "currency": "RUB",
-                        },
-                        "vat_code": settings.yookassa_vat_code,
-                        "payment_subject": "commodity",
-                        "payment_mode": "full_payment",
-                    }
-                )
-            receipt_data = {
-                "customer": {"email": customer_email},
-                "items": receipt_items,
-                "tax_system_code": settings.yookassa_tax_system_code,
-            }
+            if customer_email and order.items:
+                receipt_items = []
+                for oi in order.items:
+                    receipt_items.append(
+                        {
+                            "description": (oi.product.name if oi.product else "Товар")[:128],
+                            "quantity": f"{oi.quantity:.2f}",
+                            "amount": {
+                                "value": f"{float(oi.price_at_time * oi.quantity):.2f}",
+                                "currency": "RUB",
+                            },
+                            "vat_code": settings.yookassa_vat_code,
+                            "payment_subject": "commodity",
+                            "payment_mode": "full_payment",
+                        }
+                    )
+                receipt_data = {
+                    "customer": {"email": customer_email},
+                    "items": receipt_items,
+                    "tax_system_code": settings.yookassa_tax_system_code,
+                }
 
         # Создаём платёж в ЮKassa
         yookassa_result = await YooKassaService.create_payment(

@@ -223,6 +223,7 @@ def _make_oauth_settings(overrides: dict):
         "yookassa_test_mode": original.yookassa_test_mode,
         "yookassa_vat_code": original.yookassa_vat_code,
         "yookassa_tax_system_code": original.yookassa_tax_system_code,
+        "yookassa_receipt_enabled": original.yookassa_receipt_enabled,
     }
     kwargs.update(overrides)
     return Settings(**kwargs)

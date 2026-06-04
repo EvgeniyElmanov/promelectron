@@ -34,6 +34,7 @@ class Settings:
     yookassa_test_mode: bool
     yookassa_vat_code: int
     yookassa_tax_system_code: int
+    yookassa_receipt_enabled: bool
 
 
 settings = Settings(
@@ -69,6 +70,7 @@ settings = Settings(
     yookassa_test_mode=os.getenv("YOOKASSA_TEST_MODE", "true").lower() == "true",
     yookassa_vat_code=int(os.getenv("YOOKASSA_VAT_CODE", "1")),
     yookassa_tax_system_code=int(os.getenv("YOOKASSA_TAX_SYSTEM_CODE", "1")),
+    yookassa_receipt_enabled=os.getenv("YOOKASSA_RECEIPT_ENABLED", "false").lower() == "true",
 )
 
 SECRET_KEY = settings.secret_key

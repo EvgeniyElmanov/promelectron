@@ -18,7 +18,7 @@ allowedTools:
   - Bash(git diff *)
   - Bash(git log *)
   - Bash(git status *)
-  # Note: git commit requires explicit user approval per AGENTS.md
+  # Note: git commit requires explicit user approval per .kimi/AGENTS.md
   - Bash(cd *)
   - Bash(ls *)
   - Bash(find *)
@@ -45,7 +45,7 @@ API service → composable → component → page → route → tests
 1. Run `cd frontend && npm run lint` — zero warnings
 2. Run `cd frontend && npm test -- --run` — all tests pass
 3. Read `.kimi/rules/golden-path.md` — если затронут критичный сценарий, проверь его
-4. **Do NOT commit** — wait for user approval (see AGENTS.md rules)
+4. **Do NOT commit** — wait for user approval (see .kimi/AGENTS.md rules)
 
 ## After Finishing
 

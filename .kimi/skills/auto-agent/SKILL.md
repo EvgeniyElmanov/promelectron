@@ -16,6 +16,7 @@ disable-model-invocation: false
 
 | Роль | Ключевые слова |
 |------|---------------|
+| `orchestrator` | Любые — система сама определит роли | Авто-определение + делегирование через Agent tool |
 | `backend-dev` | API, endpoint, backend, бэк, model, schema, service, route, migration, alembic, SQLAlchemy, FastAPI, pytest, БД, таблица, webhook, JWT, OAuth (backend), payment, заказ, order, корзина (API), auth (backend), admin (API) |
 | `frontend-dev` | frontend, фронт, Vue, component, страница, page, view, Pinia, store, composable, UI, UX, форма, form, адаптив, CSS, HTML, Axios, router, localStorage, корзина (UI), login (UI), checkout (UI) |
 | `devops` | Docker, K8s, Kubernetes, Helm, nginx, CI/CD, deploy, деплой, инфраструктура, infra, SSL, VPN, backup, Sentry, monitoring, pod, container, Harbor, GitHub Actions, workflow, secret, config |
@@ -24,7 +25,9 @@ disable-model-invocation: false
 | `security-reviewer` | security, аудит, audit, уязвимость, vulnerability, SQL injection, XSS, CSRF |
 | `project-manager` | roadmap, план, спринт, sprint, приоритет, prioritize, бэклог, backlog, оцени, estimate, planning |
 
-**Правило:** Если ключевые слова смешанные (например, "Сделай API и фронт"), выбери **основную** роль (обычно backend-dev), а фронтенд сделай отдельной задачей позже.
+**Правило:** Если ключевые слова смешанные (например, "Сделай API и фронт"):
+- **В orchestrator-режиме:** запусти `.agent/ORCHESTRATOR_PROMPT.md` — он сам разберётся
+- **В диспетчер-режиме:** выбери **основную** роль (обычно backend-dev), а фронтенд сделай отдельной задачей позже
 
 ### Шаг 2: Чтение контекста
 
@@ -69,10 +72,11 @@ disable-model-invocation: false
 > ⚠️ В рамках одной сессии Kimi CLI LLM может "залипнуть" в предыдущей роли. Если последние 5+ сообщений были в роли backend-dev, а новая задача — frontend, модель может продолжить как backend-dev.
 >
 > **Решения (по надёжности):**
-> 1. **Диспетчер:** Начни сессию с `.kimi/agents/dispatcher.md` — он сбрасывает роль при каждом запросе и перечитывает нужный агент-файл
-> 2. **Скрипт:** `make task MSG="..."` для каждой задачи (скрипт формирует полный промпт с правильной ролью)
-> 3. Новая сессия Kimi CLI
-> 4. Явно указать роль: `Роль: frontend-dev. Задача: ...`
+> 1. **Orchestrator:** Начни сессию с `.agent/ORCHESTRATOR_PROMPT.md` — изолированные Agent'ы, никаких залипаний
+> 2. **Диспетчер:** Начни сессию с `.kimi/agents/dispatcher.md` — он сбрасывает роль при каждом запросе
+> 3. **Скрипт:** `make auto MSG="..."` или `make ask MSG="..."` для каждой задачи
+> 4. Новая сессия Kimi CLI
+> 5. Явно указать роль: `Роль: frontend-dev. Задача: ...`
 
 ## Анти-паттерны
 
