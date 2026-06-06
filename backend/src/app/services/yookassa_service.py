@@ -152,14 +152,19 @@ class YooKassaService:
             logger.exception("YooKassa get_payment failed")
             cls._handle_sdk_error(exc)
 
+        refunded_amount = getattr(response, "refunded_amount", None)
+        refunded_value = (
+            Decimal(str(getattr(refunded_amount, "value", "0")))
+            if refunded_amount is not None
+            else Decimal("0")
+        )
+
         return {
             "yookassa_payment_id": response.id,
             "status": response.status,
             "paid": getattr(response, "paid", False),
             "amount": Decimal(str(response.amount.value)),
-            "refunded_amount": Decimal(str(getattr(response, "refunded_amount", {}).get("value", "0")))
-            if getattr(response, "refunded_amount", None)
-            else Decimal("0"),
+            "refunded_amount": refunded_value,
             "payment_method_type": getattr(
                 getattr(response, "payment_method", None),
                 "type",
