@@ -255,37 +255,46 @@ class PaymentService:
     @staticmethod
     async def sync_payment_status_by_order(order_id: int, user_id: int, db: AsyncSession) -> Payment:
         """Синхронизировать статус платежа по ID заказа."""
-        result = await db.execute(
-            select(Payment)
-            .where(Payment.order_id == order_id)
-            .options(selectinload(Payment.order).selectinload(Order.items))
-        )
-        payment = result.scalars().first()
+        try:
+            result = await db.execute(
+                select(Payment)
+                .where(Payment.order_id == order_id)
+                .options(selectinload(Payment.order).selectinload(Order.items))
+            )
+            payment = result.scalars().first()
 
-        if not payment:
-            raise HTTPException(status_code=404, detail="Payment not found for this order")
+            if not payment:
+                raise HTTPException(status_code=404, detail="Payment not found for this order")
 
-        if payment.order.user_id != user_id:
-            raise HTTPException(status_code=403, detail="Access denied")
+            if payment.order is None:
+                raise HTTPException(status_code=500, detail="Order not loaded for payment")
 
-        if not payment.yookassa_payment_id:
-            raise HTTPException(status_code=400, detail="Payment has no YooKassa ID")
+            if payment.order.user_id != user_id:
+                raise HTTPException(status_code=403, detail="Access denied")
 
-        # Fetch latest status from YooKassa
-        yookassa_data = await YooKassaService.get_payment(payment.yookassa_payment_id)
-        payment.yookassa_status = yookassa_data["status"]
-        payment.updated_at = datetime.now(timezone.utc)
+            if not payment.yookassa_payment_id:
+                raise HTTPException(status_code=400, detail="Payment has no YooKassa ID")
 
-        if yookassa_data["status"] == "succeeded" or yookassa_data.get("paid"):
-            await PaymentService._process_successful_payment(payment, db)
-        elif yookassa_data["status"] == "canceled":
-            payment.status = "cancelled"
-            await db.commit()
-        else:
-            await db.commit()
+            # Fetch latest status from YooKassa
+            yookassa_data = await YooKassaService.get_payment(payment.yookassa_payment_id)
+            payment.yookassa_status = yookassa_data["status"]
+            payment.updated_at = datetime.now(timezone.utc)
 
-        await db.refresh(payment)
-        return payment
+            if yookassa_data["status"] == "succeeded" or yookassa_data.get("paid"):
+                await PaymentService._process_successful_payment(payment, db)
+            elif yookassa_data["status"] == "canceled":
+                payment.status = "cancelled"
+                await db.commit()
+            else:
+                await db.commit()
+
+            await db.refresh(payment)
+            return payment
+        except HTTPException:
+            raise
+        except Exception as exc:
+            logger.exception("sync_payment_status_by_order failed for order %s", order_id)
+            raise HTTPException(status_code=500, detail=f"Sync failed: {type(exc).__name__}: {exc}") from exc
 
     @staticmethod
     async def get_payment(payment_id: int, user_id: int, db: AsyncSession) -> Payment:
