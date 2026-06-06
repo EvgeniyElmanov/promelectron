@@ -110,6 +110,17 @@ class PaymentService:
             logger.info("Payment %s already marked as paid, skipping side-effects", payment.id)
             return
 
+        if payment.order is None:
+            logger.warning("Payment %s has no associated order, skipping side-effects", payment.id)
+            return
+
+        # Загружаем данные ДО commit, чтобы избежать lazy-load после expire в async SQLAlchemy
+        order_id = payment.order.id
+        order_user_id = payment.order.user_id
+        order_total_price = float(payment.order.total_price)
+        order_shipping_address = payment.order.shipping_address
+        order_items = list(payment.order.items)
+
         payment.status = "paid"
         payment.paid_at = datetime.now(timezone.utc)
         payment.order.status = "paid"
@@ -117,22 +128,20 @@ class PaymentService:
         await db.commit()
 
         # Очищаем корзину пользователя после успешной оплаты
-        if payment.order.user_id:
-            cart_result = await db.execute(select(Cart).where(Cart.user_id == payment.order.user_id))
+        if order_user_id:
+            cart_result = await db.execute(select(Cart).where(Cart.user_id == order_user_id))
             cart = cart_result.scalars().first()
             if cart:
                 await db.execute(delete(CartItem).where(CartItem.cart_id == cart.id))
                 await db.commit()
 
-        await db.refresh(payment)
-
         # Отправляем email о подтверждении оплаты (best-effort)
         try:
-            user_result = await db.execute(select(User).where(User.id == payment.order.user_id))
+            user_result = await db.execute(select(User).where(User.id == order_user_id))
             user = user_result.scalars().first()
             if user:
                 items_for_email = []
-                for oi in payment.order.items:
+                for oi in order_items:
                     from src.app.models.product import Product
 
                     prod_result = await db.execute(select(Product).where(Product.id == oi.product_id))
@@ -146,10 +155,10 @@ class PaymentService:
                     )
                 await EmailService.send_order_confirmation(
                     to=user.email,
-                    order_id=payment.order.id,
-                    total_price=float(payment.order.total_price),
+                    order_id=order_id,
+                    total_price=order_total_price,
                     items=items_for_email,
-                    shipping_address=payment.order.shipping_address,
+                    shipping_address=order_shipping_address,
                 )
 
                 await NotificationService.create_notification(
@@ -157,8 +166,8 @@ class PaymentService:
                     user_id=user.id,
                     type="order_paid",
                     title="Заказ оплачен",
-                    message=f"Заказ №{payment.order.id} на сумму {float(payment.order.total_price):,.0f} ₽ успешно оплачен.",
-                    order_id=payment.order.id,
+                    message=f"Заказ №{order_id} на сумму {order_total_price:,.0f} ₽ успешно оплачен.",
+                    order_id=order_id,
                 )
         except Exception:
             logger.exception("Failed to send payment confirmation side-effects")
