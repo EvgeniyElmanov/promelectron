@@ -96,7 +96,7 @@ class YooKassaService:
                 "value": f"{amount:.2f}",
                 "currency": "RUB",
             },
-            "capture": True,
+            "capture": settings.yookassa_capture_auto,
             "confirmation": {
                 "type": "redirect",
                 "return_url": cls._build_return_url(order_id),
@@ -116,6 +116,7 @@ class YooKassaService:
             order_id,
             amount,
         )
+        logger.debug("YooKassa create_payment request params: %s", params)
 
         try:
             response = await asyncio.to_thread(
@@ -129,8 +130,7 @@ class YooKassaService:
 
         result = response
         confirmation = result.confirmation or {}
-
-        return {
+        response_dict = {
             "yookassa_payment_id": result.id,
             "status": result.status,
             "confirmation_url": getattr(confirmation, "confirmation_url", None),
@@ -138,11 +138,14 @@ class YooKassaService:
             "created_at": result.created_at,
             "test": getattr(result, "test", False),
         }
+        logger.debug("YooKassa create_payment response: %s", response_dict)
+        return response_dict
 
     @classmethod
     async def get_payment(cls, yookassa_payment_id: str) -> dict[str, Any]:
         cls._ensure_configured()
         """Get payment info from YooKassa."""
+        logger.debug("YooKassa get_payment request: id=%s", yookassa_payment_id)
         try:
             response = await asyncio.to_thread(
                 Payment.find_one,
@@ -159,7 +162,7 @@ class YooKassaService:
             else Decimal("0")
         )
 
-        return {
+        result = {
             "yookassa_payment_id": response.id,
             "status": response.status,
             "paid": getattr(response, "paid", False),
@@ -173,6 +176,8 @@ class YooKassaService:
             "created_at": response.created_at,
             "captured_at": getattr(response, "captured_at", None),
         }
+        logger.debug("YooKassa get_payment response: %s", result)
+        return result
 
     @classmethod
     async def cancel_payment(cls, yookassa_payment_id: str) -> dict[str, Any]:
@@ -193,6 +198,36 @@ class YooKassaService:
         return {
             "yookassa_payment_id": response.id,
             "status": response.status,
+        }
+
+    @classmethod
+    async def capture_payment(cls, yookassa_payment_id: str, amount: Decimal | None = None) -> dict[str, Any]:
+        cls._ensure_configured()
+        """Capture (confirm) a payment in waiting_for_capture status."""
+        idempotence_key = str(uuid.uuid4())
+
+        params: dict[str, Any] = {}
+        if amount is not None:
+            params["amount"] = {
+                "value": f"{amount:.2f}",
+                "currency": "RUB",
+            }
+
+        try:
+            response = await asyncio.to_thread(
+                Payment.capture,
+                yookassa_payment_id,
+                params,
+                idempotency_key=idempotence_key,
+            )
+        except ApiError as exc:
+            logger.exception("YooKassa capture_payment failed")
+            cls._handle_sdk_error(exc)
+
+        return {
+            "yookassa_payment_id": response.id,
+            "status": response.status,
+            "paid": getattr(response, "paid", False),
         }
 
     @classmethod

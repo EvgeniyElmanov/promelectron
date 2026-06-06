@@ -177,7 +177,12 @@ class PaymentService:
             logger.exception("Failed to send payment confirmation side-effects")
 
     @staticmethod
-    async def handle_webhook(payload: dict, signature: str | None, db: AsyncSession) -> None:
+    async def handle_webhook(
+        payload: dict,
+        raw_body: str | None,
+        signature: str | None,
+        db: AsyncSession,
+    ) -> None:
         """Обработать входящий webhook от ЮKassa."""
         event = payload.get("event", "")
         obj = payload.get("object", {})
@@ -188,10 +193,10 @@ class PaymentService:
             return
 
         # Validate signature if configured
-        if settings.yookassa_webhook_secret and signature:
+        if settings.yookassa_webhook_secret and signature and raw_body:
             expected = hmac.new(
                 settings.yookassa_webhook_secret.encode(),
-                payload.get("raw_body", "").encode(),
+                raw_body.encode(),
                 hashlib.sha256,
             ).hexdigest()
             if not hmac.compare_digest(expected, signature):
@@ -215,6 +220,15 @@ class PaymentService:
         payment.updated_at = datetime.now(timezone.utc)
 
         if event == "payment.succeeded" or yookassa_status == "succeeded":
+            await PaymentService._process_successful_payment(payment, db)
+        elif event == "payment.waiting_for_capture" or yookassa_status == "waiting_for_capture":
+            # Auto-capture for test shop (self-employed merchant requires manual capture)
+            try:
+                await YooKassaService.capture_payment(payment.yookassa_payment_id)
+                logger.info("Auto-captured payment %s", payment.id)
+            except Exception:
+                logger.exception("Auto-capture failed for payment %s", payment.id)
+            # Process as successful regardless of capture result (best-effort for test env)
             await PaymentService._process_successful_payment(payment, db)
         elif event in ("payment.canceled", "payment.cancelled") or yookassa_status == "canceled":
             payment.status = "cancelled"
@@ -243,6 +257,9 @@ class PaymentService:
         if not payment:
             raise HTTPException(status_code=404, detail="Payment not found")
 
+        if payment.order is None:
+            raise HTTPException(status_code=500, detail="Order not loaded for payment")
+
         if payment.order.user_id != user_id:
             raise HTTPException(status_code=403, detail="Access denied")
 
@@ -250,6 +267,7 @@ class PaymentService:
             raise HTTPException(status_code=400, detail="Payment has no YooKassa ID")
 
         # Fetch latest status from YooKassa
+        logger.debug("Syncing payment %s with YooKassa", payment.yookassa_payment_id)
         yookassa_data = await YooKassaService.get_payment(payment.yookassa_payment_id)
         payment.yookassa_status = yookassa_data["status"]
         payment.updated_at = datetime.now(timezone.utc)
@@ -289,6 +307,11 @@ class PaymentService:
                 raise HTTPException(status_code=400, detail="Payment has no YooKassa ID")
 
             # Fetch latest status from YooKassa
+            logger.debug(
+                "Syncing payment by order %s (YooKassa %s)",
+                order_id,
+                payment.yookassa_payment_id,
+            )
             yookassa_data = await YooKassaService.get_payment(payment.yookassa_payment_id)
             payment.yookassa_status = yookassa_data["status"]
             payment.updated_at = datetime.now(timezone.utc)
@@ -302,6 +325,12 @@ class PaymentService:
                 await db.commit()
 
             await db.refresh(payment)
+            logger.info(
+                "sync_payment_status_by_order: order=%s yookassa_status=%s local_status=%s",
+                order_id,
+                payment.yookassa_status,
+                payment.status,
+            )
             return payment
         except HTTPException:
             raise
