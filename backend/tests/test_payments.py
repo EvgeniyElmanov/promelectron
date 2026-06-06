@@ -53,7 +53,7 @@ class TestPaymentsAPI:
 
     @pytest.mark.asyncio
     async def test_create_payment_duplicate(self, client, test_user, user_token, test_product):
-        """Повторное создание платежа для того же заказа — 400."""
+        """Повторное создание платежа для того же заказа — возвращаем существующий."""
         # Создаём заказ
         await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
         order_resp = await client.post(
@@ -73,12 +73,16 @@ class TestPaymentsAPI:
 
         # Создаём платёж
         with patch("src.app.services.payment_service.YooKassaService.create_payment", mock_yookassa):
-            await client.post(f"/api/v1/payments/{order_id}", headers={"Authorization": f"Bearer {user_token}"})
+            first = await client.post(f"/api/v1/payments/{order_id}", headers={"Authorization": f"Bearer {user_token}"})
+            assert first.status_code == 200
+            first_data = first.json()
 
-        # Пытаемся создать платёж снова
-        response = await client.post(f"/api/v1/payments/{order_id}", headers={"Authorization": f"Bearer {user_token}"})
-        assert response.status_code == 400
-        assert "already exists" in response.json()["detail"]
+            # Повторный запрос — возвращаем тот же платёж (не 400)
+            second = await client.post(f"/api/v1/payments/{order_id}", headers={"Authorization": f"Bearer {user_token}"})
+            assert second.status_code == 200
+            second_data = second.json()
+            assert second_data["payment_id"] == first_data["payment_id"]
+            assert second_data["confirmation_url"] == first_data["confirmation_url"]
 
     @pytest.mark.asyncio
     async def test_get_payment(self, client, test_user, user_token, test_product):

@@ -40,10 +40,14 @@ class PaymentService:
         if order.status != "pending":
             raise HTTPException(status_code=400, detail="Order is not in pending status")
 
-        # Проверяем, что платёж ещё не создан
-        existing = await db.execute(select(Payment).where(Payment.order_id == order_id))
-        if existing.scalars().first():
-            raise HTTPException(status_code=400, detail="Payment already exists for this order")
+        # Проверяем, не создан ли платёж ранее
+        existing_result = await db.execute(select(Payment).where(Payment.order_id == order_id))
+        existing_payment = existing_result.scalars().first()
+        if existing_payment:
+            if existing_payment.status == "paid":
+                raise HTTPException(status_code=400, detail="Order is already paid")
+            # Возвращаем существующий платёж, чтобы frontend мог перейти к оплате
+            return existing_payment
 
         # Build receipt data for 54-FZ (only for non-self-employed merchants)
         receipt_data = None
