@@ -73,6 +73,7 @@ const orderId = ref(route.query.order_id || route.params.id);
 const order = ref(null);
 const loading = ref(true);
 const polling = ref(false);
+const syncing = ref(false);
 const pollCount = ref(0);
 const maxPolls = 15;
 const pollInterval = 3000; // 3 seconds
