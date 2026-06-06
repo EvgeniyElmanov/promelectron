@@ -29,7 +29,7 @@
 | 9 | E2E тесты гостевой корзины | e2e-tester | P0 | **done** ✅ | #3, #4 | 2 дня | — |
 | 10 | Product.price → Numeric(10,2) + Alembic | backend-dev | P0 | todo | — | 2 дня | BLK-006 |
 | 11 | OAuth Google ID — production настройка (credentials, redirect URI, валидация) | backend-dev + devops | P0 | **done** ✅ | — | 2 дня | — |
-| 11a | Вписать GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET в `.env` и SOPS secrets | devops | P0 | **todo** | #11 | 1 день | — |
+| 11a | Вписать GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET в `.env` и SOPS secrets | devops | P0 | **done** ✅ | #11 | 1 день | — |
 | 12 | OAuth Yandex ID — production настройка (credentials, redirect URI, валидация) | backend-dev + devops | P0 | **done** ✅ | — | 2 дня | — |
 | 13 | Исправить malformed revision ID в миграции `20260531_222559_guest_order_fields.py` | backend-dev | P0 | **in_progress** | — | 1 день | BLK-006 |
 | 14 | Добавить `.dockerignore` в `backend/` | devops | P1 | todo | — | 1 день | — |
@@ -58,6 +58,7 @@
 | 26 | Перенести email/notification в Celery (async) | backend-dev | P1 | #6, #19 | 1 неделя |
 | 27 | Добавить `state` nonce в OAuth flow | backend-dev | P2 | #11, #12 | 2 дня |
 | 28 | Lazy loading для admin/supplier views | frontend-dev | P2 | — | 3 дня |
+| 40 | Унифицировать хранение OAuth секретов: перенести Google/Yandex из GitHub Secrets в SOPS | devops | P2 | — | 1 день |
 
 ---
 

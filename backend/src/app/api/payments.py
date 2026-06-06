@@ -48,6 +48,20 @@ async def cancel_payment(
     return payment
 
 
+@router.post("/{payment_id}/sync", response_model=PaymentOut)
+async def sync_payment_status(
+    payment_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Синхронизировать статус платежа с ЮKassa (ручная проверка).
+
+    Полезно когда webhook не пришёл или нужно принудительно обновить статус.
+    """
+    payment = await PaymentService.sync_payment_status(payment_id=payment_id, user_id=current_user.id, db=db)
+    return payment
+
+
 @router.post("/yookassa/webhook")
 async def yookassa_webhook(
     request: Request,
