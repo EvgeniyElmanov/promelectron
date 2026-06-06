@@ -12,7 +12,17 @@
       {{ subtitle }}
     </p>
 
-    <div v-if="loading || polling || syncing" class="payment-result__loading">
+    <div v-if="error" class="payment-result__error" data-testid="payment-error">
+      <p class="payment-result__error-text">{{ error }}</p>
+      <button
+        class="payment-result__btn payment-result__btn--primary"
+        @click="fetchOrder"
+      >
+        Повторить
+      </button>
+    </div>
+
+    <div v-else-if="loading || polling || syncing" class="payment-result__loading">
       <div class="payment-result__spinner"></div>
       <p>Проверяем статус заказа...</p>
       <p v-if="pollCount > 0" class="payment-result__poll-info">
@@ -72,6 +82,7 @@ const router = useRouter();
 const orderId = ref(route.query.order_id || route.params.id);
 const order = ref(null);
 const loading = ref(true);
+const error = ref(null);
 const polling = ref(false);
 const syncing = ref(false);
 const pollCount = ref(0);
@@ -108,6 +119,7 @@ const badgeClass = computed(() => {
 });
 
 const title = computed(() => {
+  if (error.value) return 'Ошибка';
   if (!order.value) return 'Обработка платежа...';
   if (order.value.status === 'paid') return 'Оплата прошла успешно!';
   if (order.value.status === 'cancelled' || order.value.status === 'canceled') return 'Платёж отменён';
@@ -115,6 +127,7 @@ const title = computed(() => {
 });
 
 const subtitle = computed(() => {
+  if (error.value) return '';
   if (!order.value) return 'Пожалуйста, подождите...';
   if (order.value.status === 'paid') {
     return `Заказ №${orderId.value} оплачен. Мы отправили подтверждение на ваш email.`;
@@ -128,13 +141,20 @@ const subtitle = computed(() => {
 const fetchOrder = async () => {
   if (!orderId.value) {
     loading.value = false;
+    error.value = 'Заказ не найден';
     return;
   }
+  error.value = null;
+  loading.value = true;
   try {
     const { data } = await api.get(`/orders/${orderId.value}`);
     order.value = data;
   } catch (err) {
-    console.error('Failed to fetch order:', err);
+    if (err.response?.status === 404) {
+      error.value = 'Заказ не найден или был удалён';
+    } else {
+      error.value = 'Не удалось загрузить заказ';
+    }
   } finally {
     loading.value = false;
   }
@@ -326,6 +346,18 @@ onUnmounted(() => {
   font-size: 14px;
   color: var(--color-text-secondary);
   line-height: 1.4;
+}
+
+.payment-result__error {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--color-danger);
+  margin-bottom: 24px;
+}
+
+.payment-result__error-text {
+  margin-bottom: 16px;
+  font-size: 15px;
 }
 
 .payment-result__actions {

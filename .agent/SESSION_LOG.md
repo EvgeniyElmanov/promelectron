@@ -14,6 +14,12 @@ YYYY-MM-DD HH:MM | <role> | <краткое описание>
 
 ## Записи (новые сверху)
 
+### 2026-06-06 10:31 | frontend-dev | Исправлен баг в PaymentSuccess.vue: обработка 404 и ошибок fetchOrder
+  Изменено:
+  - `frontend/src/views/PaymentSuccess.vue` — добавлен `error` ref, `fetchOrder` теперь устанавливает `error.value` при 404 и других ошибках, добавлен блок ошибки в template с `data-testid="payment-error"` и кнопкой "Повторить", title/subtitle при ошибке не показывают "Обработка платежа...", добавлены стили `.payment-result__error`
+  Риск/Техдолг: Нет
+  Блокер: Нет
+
 ### 2026-06-02 21:00 | frontend-dev | YK-005: Frontend редирект на ЮKassa
   Изменено:
   - `frontend/src/views/Checkout.vue` — убраны поля карты, логика: создание платежа → редирект на `confirmation_url`
