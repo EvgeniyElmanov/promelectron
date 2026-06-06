@@ -272,7 +272,12 @@ class PaymentService:
         payment.yookassa_status = yookassa_data["status"]
         payment.updated_at = datetime.now(timezone.utc)
 
-        if yookassa_data["status"] == "succeeded" or yookassa_data.get("paid"):
+        if yookassa_data["status"] in ("succeeded", "waiting_for_capture") or yookassa_data.get("paid"):
+            if yookassa_data["status"] == "waiting_for_capture":
+                try:
+                    await YooKassaService.capture_payment(payment.yookassa_payment_id)
+                except Exception:
+                    logger.exception("Manual sync capture failed for payment %s", payment.id)
             await PaymentService._process_successful_payment(payment, db)
         elif yookassa_data["status"] == "canceled":
             payment.status = "cancelled"
@@ -316,7 +321,12 @@ class PaymentService:
             payment.yookassa_status = yookassa_data["status"]
             payment.updated_at = datetime.now(timezone.utc)
 
-            if yookassa_data["status"] == "succeeded" or yookassa_data.get("paid"):
+            if yookassa_data["status"] in ("succeeded", "waiting_for_capture") or yookassa_data.get("paid"):
+                if yookassa_data["status"] == "waiting_for_capture":
+                    try:
+                        await YooKassaService.capture_payment(payment.yookassa_payment_id)
+                    except Exception:
+                        logger.exception("Manual sync capture failed for payment %s", payment.id)
                 await PaymentService._process_successful_payment(payment, db)
             elif yookassa_data["status"] == "canceled":
                 payment.status = "cancelled"
