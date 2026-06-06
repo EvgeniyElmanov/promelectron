@@ -12,12 +12,13 @@
       {{ subtitle }}
     </p>
 
-    <div v-if="loading || polling" class="payment-result__loading">
+    <div v-if="loading || polling || syncing" class="payment-result__loading">
       <div class="payment-result__spinner"></div>
       <p>Проверяем статус заказа...</p>
       <p v-if="pollCount > 0" class="payment-result__poll-info">
         Попытка {{ pollCount }} из {{ maxPolls }}
       </p>
+      <p v-if="syncing">Проверяем статус в ЮKassa...</p>
     </div>
 
     <div v-else-if="order" class="payment-result__details">
@@ -36,11 +37,18 @@
       </div>
     </div>
 
-    <div v-if="!loading && !polling && order && order.status !== 'paid'" class="payment-result__notice">
+    <div v-if="!loading && !polling && !syncing && order && order.status !== 'paid'" class="payment-result__notice">
       <p>
-        Если вы уже оплатили заказ, статус обновится в течение нескольких минут.
-        Мы отправим вам email с подтверждением.
+        Если вы уже оплатили заказ, нажмите кнопку ниже для проверки статуса.
       </p>
+      <button
+        class="payment-result__btn payment-result__btn--primary"
+        :disabled="syncing"
+        @click="checkPaymentStatus"
+      >
+        <span v-if="syncing">Проверка...</span>
+        <span v-else>Проверить статус оплаты</span>
+      </button>
     </div>
 
     <div class="payment-result__actions">
@@ -170,6 +178,19 @@ onMounted(async () => {
     startPolling();
   }
 });
+
+const checkPaymentStatus = async () => {
+  if (!orderId.value) return;
+  syncing.value = true;
+  try {
+    await api.post(`/payments/sync-by-order/${orderId.value}`);
+    await fetchOrder();
+  } catch (err) {
+    console.error('Failed to sync payment status:', err);
+  } finally {
+    syncing.value = false;
+  }
+};
 
 // Redirect to /payment/failed if order was cancelled
 watch(order, (newOrder) => {

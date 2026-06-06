@@ -253,6 +253,41 @@ class PaymentService:
         return payment
 
     @staticmethod
+    async def sync_payment_status_by_order(order_id: int, user_id: int, db: AsyncSession) -> Payment:
+        """Синхронизировать статус платежа по ID заказа."""
+        result = await db.execute(
+            select(Payment)
+            .where(Payment.order_id == order_id)
+            .options(selectinload(Payment.order).selectinload(Order.items))
+        )
+        payment = result.scalars().first()
+
+        if not payment:
+            raise HTTPException(status_code=404, detail="Payment not found for this order")
+
+        if payment.order.user_id != user_id:
+            raise HTTPException(status_code=403, detail="Access denied")
+
+        if not payment.yookassa_payment_id:
+            raise HTTPException(status_code=400, detail="Payment has no YooKassa ID")
+
+        # Fetch latest status from YooKassa
+        yookassa_data = await YooKassaService.get_payment(payment.yookassa_payment_id)
+        payment.yookassa_status = yookassa_data["status"]
+        payment.updated_at = datetime.now(timezone.utc)
+
+        if yookassa_data["status"] == "succeeded" or yookassa_data.get("paid"):
+            await PaymentService._process_successful_payment(payment, db)
+        elif yookassa_data["status"] == "canceled":
+            payment.status = "cancelled"
+            await db.commit()
+        else:
+            await db.commit()
+
+        await db.refresh(payment)
+        return payment
+
+    @staticmethod
     async def get_payment(payment_id: int, user_id: int, db: AsyncSession) -> Payment:
         """Получить информацию о платеже (проверяем принадлежность пользователю)."""
         result = await db.execute(

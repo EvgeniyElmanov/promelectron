@@ -62,6 +62,20 @@ async def sync_payment_status(
     return payment
 
 
+@router.post("/sync-by-order/{order_id}", response_model=PaymentOut)
+async def sync_payment_status_by_order(
+    order_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Синхронизировать статус платежа по ID заказа.
+
+    Frontend-friendly endpoint — не нужно знать payment_id.
+    """
+    payment = await PaymentService.sync_payment_status_by_order(order_id=order_id, user_id=current_user.id, db=db)
+    return payment
+
+
 @router.post("/yookassa/webhook")
 async def yookassa_webhook(
     request: Request,
