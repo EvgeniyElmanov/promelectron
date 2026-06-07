@@ -29,7 +29,10 @@ class TestPaymentsAPI:
             "created_at": "2026-06-02T12:00:00.000Z",
         })
 
-        with patch("src.app.services.payment_service.YooKassaService.create_payment", mock_yookassa):
+        with (
+            patch("src.app.services.payment_service.YooKassaService.is_configured", return_value=True),
+            patch("src.app.services.payment_service.YooKassaService.create_payment", mock_yookassa),
+        ):
             payment_resp = await client.post(
                 f"/api/v1/payments/{order_id}",
                 headers={"Authorization": f"Bearer {user_token}"},
@@ -72,7 +75,10 @@ class TestPaymentsAPI:
         })
 
         # Создаём платёж
-        with patch("src.app.services.payment_service.YooKassaService.create_payment", mock_yookassa):
+        with (
+            patch("src.app.services.payment_service.YooKassaService.is_configured", return_value=True),
+            patch("src.app.services.payment_service.YooKassaService.create_payment", mock_yookassa),
+        ):
             first = await client.post(f"/api/v1/payments/{order_id}", headers={"Authorization": f"Bearer {user_token}"})
             assert first.status_code == 200
             first_data = first.json()
@@ -103,7 +109,10 @@ class TestPaymentsAPI:
             "created_at": "2026-06-02T12:00:00.000Z",
         })
 
-        with patch("src.app.services.payment_service.YooKassaService.create_payment", mock_yookassa):
+        with (
+            patch("src.app.services.payment_service.YooKassaService.is_configured", return_value=True),
+            patch("src.app.services.payment_service.YooKassaService.create_payment", mock_yookassa),
+        ):
             payment_resp = await client.post(f"/api/v1/payments/{order_id}", headers={"Authorization": f"Bearer {user_token}"})
             payment_id = payment_resp.json()["payment_id"]
 
@@ -130,7 +139,10 @@ class TestPaymentsAPI:
             "created_at": "2026-06-02T12:00:00.000Z",
         })
 
-        with patch("src.app.services.payment_service.YooKassaService.create_payment", mock_yookassa):
+        with (
+            patch("src.app.services.payment_service.YooKassaService.is_configured", return_value=True),
+            patch("src.app.services.payment_service.YooKassaService.create_payment", mock_yookassa),
+        ):
             payment_resp = await client.post(f"/api/v1/payments/{order_id}", headers={"Authorization": f"Bearer {user_token}"})
             payment_id = payment_resp.json()["payment_id"]
 
@@ -159,7 +171,10 @@ class TestPaymentsAPI:
             "created_at": "2026-06-02T12:00:00.000Z",
         })
 
-        with patch("src.app.services.payment_service.YooKassaService.create_payment", mock_yookassa):
+        with (
+            patch("src.app.services.payment_service.YooKassaService.is_configured", return_value=True),
+            patch("src.app.services.payment_service.YooKassaService.create_payment", mock_yookassa),
+        ):
             await client.post(f"/api/v1/payments/{order_id}", headers={"Authorization": f"Bearer {user_token}"})
 
         # Отправляем webhook (raw_body передаётся автоматически через Request)

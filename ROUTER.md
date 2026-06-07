@@ -6,30 +6,32 @@
 
 ## Быстрый старт
 
-### Способ 1: Auto-Orchestrator — всё сам (рекомендуется для начинающих)
+### Способ 1: Master Skill /promelectron (рекомендуется)
 ```
-Прочитай .agent/ORCHESTRATOR_PROMPT.md и следуй инструкциям.
+/promelectron
 Задача: Добавь промокоды в корзину
 ```
-Orchestrator сам определит роли, запустит изолированных Agent'ов и соберёт отчёт. Никаких залипаний ролей.
+Загружает мастер-скилл с полным реестром агентов, роутингом и правилами. Агент сам определит роль и будет работать по инструкциям.
 
-### Способ 2: Диспетчер (ручное переключение ролей)
+### Способ 2: Workflow-скиллы (для сложных процессов)
 ```
-Прочитай .agent/DISPATCHER_PROMPT.md и следуй инструкциям.
-Задача: Создай API для промокодов
+/implement "Добавь промокоды в корзину"        # полный цикл разработки
+/fix "Исправь race condition в корзине"        # багфикс workflow
+/deploy test                                   # деплой
+/review                                        # code review
+/context-sync                                  # актуализация контекста
 ```
-Диспетчер автоматически определит роль, сбросит предыдущую и переключится.
 
 ### Способ 3: Фиксированная роль (если знаешь, кто нужен)
 ```
 Роль: backend-dev. Задача: Создай API для промокодов
 ```
 
-### Способ 4: Bash-скрипт (через терминал)
+### Способ 4: Bash-скрипт (через терминал, опционально)
 ```bash
-make auto MSG="Добавь промокоды в корзину"   # авто-режим: определит роли сам
 make task MSG="Создай API для промокодов"    # промпт с автоопределением роли
 make ask MSG="Сделай страницу checkout"      # с гарантированным сбросом роли
+make check                                    # lint + test
 ```
 
 ---
@@ -38,8 +40,10 @@ make ask MSG="Сделай страницу checkout"      # с гарантир
 
 | Роль | Ключевые слова в задаче | Когда выбирать |
 |------|------------------------|--------------|
-| `orchestrator` | Любые — система сама определит роли | Рекомендуется для начинающих и сквозных фич |
-| `dispatcher` | Любые — диспетчер анализирует все задачи | Для сессий с задачами разных ролей |
+| `promelectron` | Любые — мастер-скилл сам определит роль | Рекомендуется всегда. Загружай первым. |
+| `implement` | Новая фича, API, страница, компонент | Полный цикл: архитектор → dev → review → QA → MR |
+| `fix` | Баг, ошибка, crash, не работает | Анализ → воспроизведение → фикс → тест |
+| `deploy` | Деплой, release, production | GitHub Actions → watch → E2E smoke test |
 | `backend-dev` | API, endpoint, backend, бэк, model, schema, service, route, migration, alembic, SQLAlchemy, FastAPI, pytest, БД, таблица, webhook, JWT, OAuth, payment, заказ, order, корзина (API), cart (API), auth (backend), admin (API) | Только backend задачи |
 | `frontend-dev` | frontend, фронт, Vue, component, страница, page, view, Pinia, store, composable, UI, UX, форма, form, CSS, HTML, Axios, router, localStorage, корзина (UI), cart (UI), login (UI), checkout (UI) | Только frontend задачи |
 | `devops` | Docker, K8s, Helm, nginx, CI/CD, deploy, деплой, инфраструктура, infra, SSL, VPN, backup, Sentry, monitoring, pod, container, Harbor, GitHub Actions, workflow, secret, config | Только devops задачи |
@@ -97,9 +101,9 @@ make ask MSG="Сделай страницу checkout"      # с гарантир
 
 | Файл | Назначение |
 |------|-----------|
-| `.agent/ORCHESTRATOR_PROMPT.md` | **Главный файл для начинающих.** Мета-агент: авто-определение ролей + делегирование через Agent tool. |
-| `.agent/DISPATCHER_PROMPT.md` | Инструкции диспетчера для ручного переключения ролей внутри Kimi CLI. |
-| `.kimi/agents/dispatcher.md` | Универсальный диспетчер-агент. |
+| `.kimi/skills/promelectron/SKILL.md` | **Главный скилл.** Мастер-скилл с реестром агентов, роутингом, workflow и правилами. Загружай через `/promelectron`. |
+| `.kimi/skills/implement/SKILL.md` | Полный цикл разработки: архитектор → dev → review → QA → MR. Загружай через `/implement`. |
+| `.kimi/skills/fix/SKILL.md` | Багфикс workflow. Загружай через `/fix`. |
 | `PROJECT_CONTEXT.md` | Единый источник контекста (читается агентами). |
 | `.agent/BACKLOG.md` | Текущий спринт (читается агентами). |
 | `.agent/BLOCKERS.md` | Блокеры (читаются агентами). |
@@ -108,7 +112,8 @@ make ask MSG="Сделай страницу checkout"      # с гарантир
 | `scripts/kimi-task.sh` | Shell-скрипт роутера (опционально, через терминал). |
 | `scripts/kimi-ask.sh` | Shell-скрипт с гарантированным сбросом роли (опционально). |
 | `Makefile` | `make auto MSG="..."`, `make task MSG="..."`, `make ask MSG="..."`. |
-| `.kimi/skills/auto-agent/SKILL.md` | Skill для Kimi CLI. Активируется через `/skill auto-agent`. |
+| `.kimi/skills/review/SKILL.md` | Code review skill. Загружай через `/review`. |
+| `.kimi/skills/context-sync/SKILL.md` | Синхронизация контекста. Загружай через `/context-sync`. |
 
 ---
 

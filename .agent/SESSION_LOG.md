@@ -14,6 +14,17 @@ YYYY-MM-DD HH:MM | <role> | <краткое описание>
 
 ## Записи (новые сверху)
 
+### 2026-06-07 09:15 | backend-dev | Исправлен баг повторной оплаты заказа
+  Изменено:
+  - `backend/src/app/services/payment_service.py` — `PaymentService.create_payment()` теперь при существующем неоплаченном платеже создаёт новый платёж в ЮKassa (или mock) и обновляет существующую запись в БД новыми `yookassa_payment_id`, `confirmation_url`, `yookassa_status`, `yookassa_created_at`, `updated_at`. Раньше возвращался старый `confirmation_url` с истёкшим платежом.
+  - `backend/tests/test_payments.py` — добавлен патч `YooKassaService.is_configured` (return_value=True) в тесты, использующие мок `create_payment`, чтобы они корректно отрабатывали в окружении без YOOKASSA_SHOP_ID/SECRET_KEY.
+  - `backend/tests/test_notifications.py` — аналогичный патч `is_configured` в `test_payment_generates_notification`.
+  - `backend/tests/test_orders.py` — аналогичный патч `is_configured` в `test_cancel_paid_order_fails`.
+  Риск/Техдолг:
+  - Поле `order_id` в `Payment` остаётся `unique=True`, поэтому при повторной оплате обновляется существующая запись (не создаётся новая). Это корректно с точки зрения бизнес-логики (один заказ = один платёж в БД).
+  - При переходе от mock к реальной YooKassa логика не изменится — всё равно вызывается `YooKassaService.create_payment` и обновляется запись.
+  Блокер: Нет
+
 ### 2026-06-06 10:45 | backend-dev | Диагностика YooKassa: debug-логи, webhook raw_body fix, debug endpoint
   Изменено:
   - `backend/src/app/services/yookassa_service.py` — добавлено debug-логирование request/response в create_payment/get_payment; capture теперь берётся из `settings.yookassa_capture_auto` (было hardcoded True)

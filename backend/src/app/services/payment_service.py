@@ -47,8 +47,10 @@ class PaymentService:
         if existing_payment:
             if existing_payment.status == "paid":
                 raise HTTPException(status_code=400, detail="Order is already paid")
-            # Возвращаем существующий платёж, чтобы frontend мог перейти к оплате
-            return existing_payment
+            payment = existing_payment
+            payment.status = "pending"
+        else:
+            payment = None
 
         # Build receipt data for 54-FZ (only for non-self-employed merchants)
         receipt_data = None
@@ -101,19 +103,31 @@ class PaymentService:
                 "test": True,
             }
 
-        payment = Payment(
-            order_id=order.id,
-            amount=order.total_price,
-            status="pending",
-            provider_payment_id=yookassa_result["yookassa_payment_id"],
-            yookassa_payment_id=yookassa_result["yookassa_payment_id"],
-            yookassa_status=yookassa_result["status"],
-            confirmation_url=yookassa_result["confirmation_url"],
-            yookassa_created_at=datetime.fromisoformat(
+        if payment is None:
+            payment = Payment(
+                order_id=order.id,
+                amount=order.total_price,
+                status="pending",
+                provider_payment_id=yookassa_result["yookassa_payment_id"],
+                yookassa_payment_id=yookassa_result["yookassa_payment_id"],
+                yookassa_status=yookassa_result["status"],
+                confirmation_url=yookassa_result["confirmation_url"],
+                yookassa_created_at=datetime.fromisoformat(
+                    yookassa_result["created_at"].replace("Z", "+00:00")
+                ),
+            )
+            db.add(payment)
+        else:
+            payment.amount = order.total_price
+            payment.provider_payment_id = yookassa_result["yookassa_payment_id"]
+            payment.yookassa_payment_id = yookassa_result["yookassa_payment_id"]
+            payment.yookassa_status = yookassa_result["status"]
+            payment.confirmation_url = yookassa_result["confirmation_url"]
+            payment.yookassa_created_at = datetime.fromisoformat(
                 yookassa_result["created_at"].replace("Z", "+00:00")
-            ),
-        )
-        db.add(payment)
+            )
+            payment.updated_at = datetime.now(timezone.utc)
+
         await db.commit()
         await db.refresh(payment)
 

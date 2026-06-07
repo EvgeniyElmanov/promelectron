@@ -10,20 +10,23 @@
 
 > 📘 Подробное руководство — в [`HOWTO.md`](./HOWTO.md).
 
-### Auto-Orchestrator — всё сам (рекомендуется для начинающих)
+### Master Skill /promelectron (рекомендуется)
 
 ```
-Прочитай .agent/ORCHESTRATOR_PROMPT.md и следуй инструкциям.
+/promelectron
 Задача: <описание задачи>
 ```
 
-Orchestrator сам определит роли и запустит изолированных Agent'ов. Никаких залипаний.
+Загружает мастер-скилл проекта с полным реестром агентов, роутингом, workflow и правилами. Агент сам определит роль и будет работать по инструкциям.
 
-### Диспетчер — ручное переключение
+### Workflow-скиллы (для сложных процессов)
 
 ```
-Прочитай .agent/DISPATCHER_PROMPT.md и следуй инструкциям.
-Задача: <описание задачи>
+/implement <описание фичи>     # полный цикл: архитектор → dev → review → QA → MR
+/fix <описание бага>           # багфикс: анализ → воспроизведение → фикс → тест
+/deploy <test|prod>            # деплой через GitHub Actions
+/review [--security-only]      # code review текущих изменений
+/context-sync                  # обновление PROJECT_CONTEXT.md и BACKLOG.md
 ```
 
 ### Фиксированная роль
@@ -73,13 +76,15 @@ make status                  # git + tests + lint
 
 ## Skills
 
-| Skill | Описание |
-|-------|----------|
-| `add-feature` | Полный цикл добавления фичи |
-| `plan-maintainer` | Поддержка плана (BACKLOG.md, PLANNING_HANDOFF.md) |
-| `review` | Code review |
-| `security-check` | Security audit |
-| `auto-agent` | Автоматический выбор агента по задаче |
+| Skill | Описание | Команда |
+|-------|----------|---------|
+| `promelectron` | **Мастер-скилл.** Реестр агентов, роутинг, workflow, правила. Загружай всегда первым. | `/promelectron` |
+| `implement` | Полный цикл разработки: архитектор → git branch → dev → review (max 3) → QA (max 2) → MR | `/implement` |
+| `fix` | Багфикс workflow: анализ → воспроизведение → фикс → тест → golden path check | `/fix` |
+| `deploy` | Деплой в test/prod через GitHub Actions + E2E smoke test | `/deploy` |
+| `review` | Code review: security + quality + tests. Записывает findings в `.agent/REVIEW_FINDINGS.md` | `/review` |
+| `context-sync` | Синхронизация PROJECT_CONTEXT.md, BACKLOG.md, BLOCKERS.md по реальному состоянию кода | `/context-sync` |
+| `plan-maintainer` | Поддержка плана (BACKLOG.md, PLANNING_HANDOFF.md) | `/plan-maintainer` |
 
 ## Settings
 
@@ -98,12 +103,13 @@ make status                  # git + tests + lint
 
 ## Workflow
 
-1. **Анализ** — читаем `.agent/DISPATCHER_PROMPT.md` или `PROJECT_CONTEXT.md`
-2. **Backend** — model → schema → service → route → tests
-3. **Frontend** — component → API integration → tests
-4. **Review** — security + quality checklist
-5. **Tests** — pytest + vitest + playwright
-6. **Commit** — только после явного разрешения пользователя
+1. **Entry** — загружаем `/promelectron` (мастер-скилл) или workflow-скилл (`/implement`, `/fix`, etc.)
+2. **Анализ** — читаем `PROJECT_CONTEXT.md`, `.agent/BACKLOG.md`, `.agent/BLOCKERS.md`
+3. **Backend** — model → schema → service → route → tests
+4. **Frontend** — API service → composable → component → page → route → tests
+5. **Review** — security + quality checklist (через `/review`)
+6. **Tests** — pytest + vitest + playwright
+7. **Commit** — только после явного разрешения пользователя
 
 ## Обязательные файлы для чтения
 

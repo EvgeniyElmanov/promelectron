@@ -44,7 +44,10 @@ class TestNotificationsAPI:
             "created_at": "2026-06-02T12:00:00.000Z",
         })
 
-        with patch("src.app.services.payment_service.YooKassaService.create_payment", mock_yookassa):
+        with (
+            patch("src.app.services.payment_service.YooKassaService.is_configured", return_value=True),
+            patch("src.app.services.payment_service.YooKassaService.create_payment", mock_yookassa),
+        ):
             await client.post(f"/api/v1/payments/{order_id}", headers={"Authorization": f"Bearer {user_token}"})
 
         # Имитируем webhook от ЮKassa
