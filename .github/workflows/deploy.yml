@@ -183,9 +183,13 @@ jobs:
           retention-days: 14
 
   deploy-prod:
-    needs: build
+    needs: [build, test-e2e]
     runs-on: self-hosted
-    if: inputs.environment == 'prod' || inputs.environment == 'all'
+    if: |
+      always() &&
+      (inputs.environment == 'prod' || inputs.environment == 'all') &&
+      needs.build.result == 'success' &&
+      (needs.test-e2e.result == 'success' || needs.test-e2e.result == 'skipped')
     environment: production
     steps:
       - name: Checkout
