@@ -122,15 +122,29 @@ else
     warn "orchestrator.md не найден"
 fi
 
-if [ -f "scripts/kimi-auto.sh" ]; then
-    if [ -x "scripts/kimi-auto.sh" ]; then
-        ok "scripts/kimi-auto.sh executable"
+if [ -f "scripts/kimi.py" ]; then
+    if [ -x "scripts/kimi.py" ]; then
+        ok "scripts/kimi.py executable"
     else
-        warn "scripts/kimi-auto.sh не executable"
+        warn "scripts/kimi.py не executable"
+    fi
+    if python3 -m py_compile scripts/kimi.py 2>/dev/null; then
+        ok "scripts/kimi.py синтаксически корректен"
+    else
+        error "scripts/kimi.py имеет синтаксические ошибки"
     fi
 else
-    warn "scripts/kimi-auto.sh не найден"
+    warn "scripts/kimi.py не найден"
 fi
+
+# Проверяем, что старые bash-скрипты удалены
+for old_script in scripts/kimi-task.sh scripts/kimi-ask.sh scripts/kimi-auto.sh scripts/test-router.sh; do
+    if [ -f "$old_script" ]; then
+        warn "$old_script — устаревший bash-скрипт, нужно удалить"
+    else
+        ok "$old_script — удалён"
+    fi
+done
 
 if grep -q "^auto:" Makefile 2>/dev/null; then
     ok "Makefile target 'auto' существует"

@@ -47,7 +47,7 @@ class TestOrdersAPI:
         })
 
         with patch("src.app.services.payment_service.YooKassaService.create_payment", mock_yookassa):
-            payment_resp = await client.post(f"/api/v1/payments/{order_id}", headers={"Authorization": f"Bearer {user_token}"})
+            await client.post(f"/api/v1/payments/{order_id}", headers={"Authorization": f"Bearer {user_token}"})
 
         # Имитируем webhook от ЮKassa
         webhook_payload = {
@@ -68,9 +68,6 @@ class TestOrdersAPI:
     async def test_cancel_other_user_order(self, client, test_user, user_token, test_product):
         """Отмена чужого заказа — 404."""
         # Create another user
-        from src.app.models.user import RoleEnum, User
-        from src.app.utils.auth import hash_password
-        from src.app.db.database import get_db
         # This is tricky in test, just check 404 for non-existent order
         response = await client.patch("/api/v1/orders/99999/cancel", headers={"Authorization": f"Bearer {user_token}"})
         assert response.status_code == 404

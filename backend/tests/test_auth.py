@@ -224,6 +224,7 @@ def _make_oauth_settings(overrides: dict):
         "yookassa_vat_code": original.yookassa_vat_code,
         "yookassa_tax_system_code": original.yookassa_tax_system_code,
         "yookassa_receipt_enabled": original.yookassa_receipt_enabled,
+        "yookassa_capture_auto": original.yookassa_capture_auto,
     }
     kwargs.update(overrides)
     return Settings(**kwargs)

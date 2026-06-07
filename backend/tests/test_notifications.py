@@ -45,8 +45,7 @@ class TestNotificationsAPI:
         })
 
         with patch("src.app.services.payment_service.YooKassaService.create_payment", mock_yookassa):
-            payment_resp = await client.post(f"/api/v1/payments/{order_id}", headers={"Authorization": f"Bearer {user_token}"})
-            payment_id = payment_resp.json()["payment_id"]
+            await client.post(f"/api/v1/payments/{order_id}", headers={"Authorization": f"Bearer {user_token}"})
 
         # Имитируем webhook от ЮKassa
         webhook_payload = {

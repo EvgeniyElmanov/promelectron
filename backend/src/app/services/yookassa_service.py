@@ -36,6 +36,10 @@ class YooKassaService:
     """Service for interacting with YooKassa API."""
 
     @staticmethod
+    def is_configured() -> bool:
+        return bool(settings.yookassa_shop_id and settings.yookassa_secret_key)
+
+    @staticmethod
     def _build_return_url(order_id: int) -> str:
         base = settings.frontend_url.rstrip("/")
         return f"{base}/payment/success?order_id={order_id}"

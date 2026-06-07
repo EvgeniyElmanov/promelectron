@@ -15,6 +15,7 @@
 | BLK-004 | 2026-05-30 | `API_BASE_URL` в K8s test окружении не настроен | P1 | E2E тесты, фронтенд | devops | ждёт конфиг | Hardcode в nginx.conf временно | 2026-06-05 |
 | BLK-005 | 2026-05-30 | Нет реальных SMTP кредов — email в fallback-режиме | P1 | Email notifications | project-manager | ждёт данных от пользователя | Graceful skip (уже реализовано) | 2026-06-10 |
 | BLK-006 | 2026-06-02 | Malformed revision ID в Alembic миграции `20260531_222559_guest_order_fields.py` (`revision = 'b1c2d3e4f5a6'`) — некорректная миграционная история | P1 | Миграции БД, `alembic upgrade head` | backend-dev | **🟡 в работе** | Пересоздать миграцию с корректным revision ID | 2026-06-04 |
+| BLK-007 | 2026-06-06 | YooKassa test shop отклоняет платежи со страницы 'Не сработало'. API create_payment работает (curl + backend debug endpoint возвращают confirmation_url), но оплата на странице YooKassa не проходит. Возможные причины: capture=True для self-employed merchant, IP/регион блокировка, временный сбой YooKassa, неверная тестовая карта. | P1 | Интеграция платежей, E2E тест checkout | backend-dev | **🔴 в работе** | Проверить с YOOKASSA_CAPTURE_AUTO=false; проверить тестовую карту 5555...4444; проверить регион сервера | 2026-06-07 |
 
 ---
 

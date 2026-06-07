@@ -14,6 +14,21 @@ YYYY-MM-DD HH:MM | <role> | <краткое описание>
 
 ## Записи (новые сверху)
 
+### 2026-06-06 10:45 | backend-dev | Диагностика YooKassa: debug-логи, webhook raw_body fix, debug endpoint
+  Изменено:
+  - `backend/src/app/services/yookassa_service.py` — добавлено debug-логирование request/response в create_payment/get_payment; capture теперь берётся из `settings.yookassa_capture_auto` (было hardcoded True)
+  - `backend/src/app/services/payment_service.py` — handle_webhook теперь принимает `raw_body` для корректной проверки подписи; добавлены defensive проверки `payment.order is None`; добавлено info-логирование в sync_payment_status_by_order
+  - `backend/src/app/api/payments.py` — webhook endpoint теперь считывает `await request.body()` ДО `request.json()` и передаёт raw_body в сервис; добавлен debug endpoint `POST /payments/debug/yookassa/create` (только при test_mode)
+  - `backend/src/app/core/config.py` — добавлен `yookassa_capture_auto` (env `YOOKASSA_CAPTURE_AUTO`, default true)
+  - `.env.example` — добавлена `YOOKASSA_CAPTURE_AUTO=true`
+  - `backend/scripts/diagnose_yookassa.py` — standalone скрипт для диагностики прямого SDK-вызова
+  - `backend/tests/test_auth.py` — исправлен `_make_oauth_settings` под новое поле Settings
+  - `backend/tests/test_payments.py`, `test_orders.py`, `test_notifications.py` — убраны unused variables (ruff F841)
+  Риск/Техдолг:
+  - Возможный блокер: YooKassa test shop может отклонять платежи с capture=True для self-employed merchant. Рекомендуется протестировать с `YOOKASSA_CAPTURE_AUTO=false`.
+  - Возможный блокер: серверы за пределами РФ могут быть заблокированы YooKassa (известная проблема).
+  Блокер: Нет
+
 ### 2026-06-06 10:31 | frontend-dev | Исправлен баг в PaymentSuccess.vue: обработка 404 и ошибок fetchOrder
   Изменено:
   - `frontend/src/views/PaymentSuccess.vue` — добавлен `error` ref, `fetchOrder` теперь устанавливает `error.value` при 404 и других ошибках, добавлен блок ошибки в template с `data-testid="payment-error"` и кнопкой "Повторить", title/subtitle при ошибке не показывают "Обработка платежа...", добавлены стили `.payment-result__error`

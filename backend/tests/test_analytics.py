@@ -58,7 +58,6 @@ class TestSupplierAnalytics:
     @pytest.mark.asyncio
     async def test_supplier_analytics_isolation(self, client, test_user, user_token, test_supplier, supplier_token, test_session):
         """Аналитика изолирована по поставщикам."""
-        from src.app.models.supplier import Supplier
 
         # Создаём второго поставщика с товаром и заказом
         other_user = User(
@@ -168,7 +167,6 @@ class TestSupplierAnalytics:
     @pytest.mark.asyncio
     async def test_supplier_analytics_top_products_limit(self, client, test_user, user_token, test_supplier, supplier_token, test_product, test_category, test_session):
         """Top products ограничен 5 элементами."""
-        from src.app.models.supplier import Supplier
 
         # Создаём 6 товаров для поставщика
         result = await test_session.execute(select(Supplier).where(Supplier.user_id == test_supplier.id))

@@ -1,6 +1,7 @@
 import hashlib
 import hmac
 import logging
+import uuid
 from datetime import datetime, timezone
 
 from fastapi import HTTPException
@@ -80,14 +81,25 @@ class PaymentService:
                     "tax_system_code": settings.yookassa_tax_system_code,
                 }
 
-        # Создаём платёж в ЮKassa
-        yookassa_result = await YooKassaService.create_payment(
-            order_id=order.id,
-            amount=order.total_price,
-            description=f"Заказ №{order.id}",
-            user_id=order.user_id,
-            receipt_data=receipt_data,
-        )
+        # Создаём платёж в ЮKassa (или mock для dev-режима)
+        if YooKassaService.is_configured():
+            yookassa_result = await YooKassaService.create_payment(
+                order_id=order.id,
+                amount=order.total_price,
+                description=f"Заказ №{order.id}",
+                user_id=order.user_id,
+                receipt_data=receipt_data,
+            )
+        else:
+            logger.info("YooKassa not configured — creating mock payment for order %s", order.id)
+            yookassa_result = {
+                "yookassa_payment_id": f"mock-{uuid.uuid4()}",
+                "status": "pending",
+                "confirmation_url": f"{settings.frontend_url.rstrip('/')}/payment/success?order_id={order.id}&mock=1",
+                "amount": order.total_price,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "test": True,
+            }
 
         payment = Payment(
             order_id=order.id,
@@ -403,4 +415,34 @@ class PaymentService:
         payment.yookassa_status = "canceled"
         await db.commit()
         await db.refresh(payment)
+        return payment
+
+    @staticmethod
+    async def confirm_mock_payment_by_order(order_id: int, user_id: int, db: AsyncSession) -> Payment:
+        """Подтвердить mock-платёж (для dev-режима без реальной YooKassa)."""
+        result = await db.execute(
+            select(Payment)
+            .where(Payment.order_id == order_id)
+            .options(selectinload(Payment.order).selectinload(Order.items))
+        )
+        payment = result.scalars().first()
+
+        if not payment:
+            raise HTTPException(status_code=404, detail="Payment not found for this order")
+
+        if payment.order is None:
+            raise HTTPException(status_code=500, detail="Order not loaded for payment")
+
+        if payment.order.user_id != user_id:
+            raise HTTPException(status_code=403, detail="Access denied")
+
+        if not payment.yookassa_payment_id or not payment.yookassa_payment_id.startswith("mock-"):
+            raise HTTPException(status_code=400, detail="Not a mock payment")
+
+        if payment.status == "paid":
+            return payment
+
+        await PaymentService._process_successful_payment(payment, db)
+        await db.refresh(payment)
+        logger.info("Mock payment confirmed for order %s", order_id)
         return payment

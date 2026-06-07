@@ -192,7 +192,7 @@ task: ## Запустить роутер задач: make task MSG="Описан
 		echo '  make task MSG="Напиши E2E тест на checkout"'; \
 		exit 1; \
 	fi
-	@./scripts/kimi-task.sh "$(MSG)"
+	@python3 scripts/kimi.py task "$(MSG)"
 
 ask: ## Диспетчер с гарантированным сбросом роли: make ask MSG="Описание задачи"
 	@if [ -z "$(MSG)" ]; then \
@@ -206,7 +206,7 @@ ask: ## Диспетчер с гарантированным сбросом ро
 		echo "💡 Отличие от 'make task': всегда сбрасывает предыдущую роль"; \
 		exit 1; \
 	fi
-	@./scripts/kimi-ask.sh "$(MSG)"
+	@python3 scripts/kimi.py ask "$(MSG)"
 
 auto: ## Полный авто-режим: определяет роли сам, запускает orchestrator при необходимости
 	@if [ -z "$(MSG)" ]; then \
@@ -221,7 +221,7 @@ auto: ## Полный авто-режим: определяет роли сам,
 		echo "💡 Система сама определит роли и выберет режим (single/multi-agent)."; \
 		exit 1; \
 	fi
-	@./scripts/kimi-auto.sh "$(MSG)"
+	@python3 scripts/kimi.py auto "$(MSG)"
 
 task-compact: ## Компактный роутер (только инструкции, без полного контекста)
 	@if [ -z "$(MSG)" ]; then \

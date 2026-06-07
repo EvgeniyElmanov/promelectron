@@ -202,6 +202,7 @@ make test-e2e      # Playwright
 
 | Дата | Что изменилось | Кто |
 |------|---------------|-----|
+| 2026-06-06 | YooKassa диагностика: добавлено debug-логирование, исправлен webhook raw_body bug, добавлен debug endpoint `/payments/debug/yookassa/create/`, capture теперь конфигурируется через `YOOKASSA_CAPTURE_AUTO`. 127 backend тестов зелёные. | backend-dev |
 | 2026-06-03 | YooKassa E2E тест проходит с тестовой картой (5555...4444). Обновлён checkout.spec.js. 96/96 E2E + 127 backend тестов зелёные. | e2e-tester |
 | 2026-06-03 | CI/CD готов к YooKassa: `.env.example`, Helm values (test/prod), GitHub Actions e2e.yml обновлены. Test/prod secrets уже содержат YOOKASSA_SHOP_ID/SECRET_KEY (SOPS). | devops |
 | 2026-06-02 | Создан PROJECT_CONTEXT.md | project-manager |

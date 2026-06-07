@@ -160,9 +160,9 @@ class TestPaymentsAPI:
         })
 
         with patch("src.app.services.payment_service.YooKassaService.create_payment", mock_yookassa):
-            payment_resp = await client.post(f"/api/v1/payments/{order_id}", headers={"Authorization": f"Bearer {user_token}"})
+            await client.post(f"/api/v1/payments/{order_id}", headers={"Authorization": f"Bearer {user_token}"})
 
-        # Отправляем webhook
+        # Отправляем webhook (raw_body передаётся автоматически через Request)
         webhook_payload = {
             "event": "payment.succeeded",
             "object": {

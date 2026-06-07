@@ -193,6 +193,10 @@ const stopPolling = () => {
 };
 
 onMounted(async () => {
+  // Auto-confirm mock payments in dev mode
+  if (route.query.mock === '1' && orderId.value) {
+    await confirmMockPayment();
+  }
   await fetchOrder();
   // Start polling if order is still pending and we have an order id
   if (order.value && order.value.status !== 'paid' && order.value.status !== 'cancelled' && order.value.status !== 'canceled') {
@@ -208,6 +212,18 @@ const checkPaymentStatus = async () => {
     await fetchOrder();
   } catch (err) {
     console.error('Failed to sync payment status:', err);
+  } finally {
+    syncing.value = false;
+  }
+};
+
+const confirmMockPayment = async () => {
+  if (!orderId.value) return;
+  syncing.value = true;
+  try {
+    await api.post(`/payments/${orderId.value}/mock-confirm`);
+  } catch (err) {
+    console.error('Failed to confirm mock payment:', err);
   } finally {
     syncing.value = false;
   }
