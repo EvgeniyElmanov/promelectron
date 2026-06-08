@@ -145,48 +145,11 @@ jobs:
           kubectl rollout status deployment/promelectron-api -n promelectron-test --timeout=120s
           kubectl rollout status deployment/promelectron-frontend -n promelectron-test --timeout=120s
 
-  test-smoke:
-    needs: deploy-test
-    runs-on: self-hosted
-    steps:
-      - name: API health check
-        run: |
-          curl -sf https://api.promelectron-test.aidrivencode.ru/health | grep -q '"status"'
-          echo "API OK"
-
-      - name: Frontend reachable
-        run: |
-          curl -sf -o /dev/null https://promelectron-test.aidrivencode.ru
-          echo "Frontend OK"
-
-
   test-e2e:
-    needs: test-smoke
-    runs-on: self-hosted
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install Playwright
-        run: |
-          cd frontend
-          npm ci
-          npx playwright install chromium
-
-      - name: Run E2E tests
-        run: |
-          cd frontend
-          BASE_URL=https://promelectron-test.aidrivencode.ru \
-          API_URL=https://api.promelectron-test.aidrivencode.ru \
-            npx playwright test --reporter=html --workers=4
-
-      - name: Upload report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: playwright-report-test-${{ github.run_id }}
-          path: frontend/playwright-report/
-          retention-days: 14
+    needs: deploy-test
+    uses: ./.github/workflows/e2e.yml
+    with:
+      environment: test
 
   deploy-prod:
     needs: [build, test-e2e]
