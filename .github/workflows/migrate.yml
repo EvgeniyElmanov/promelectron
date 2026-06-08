@@ -35,12 +35,23 @@ jobs:
             echo "NAMESPACE=promelectron-test" >> $GITHUB_ENV
           fi
 
+      - name: Wait for API deployment
+        env:
+          KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
+        run: |
+          kubectl rollout status deployment/promelectron-api \
+            -n ${{ env.NAMESPACE }} --timeout=120s
+
       - name: Run alembic ${{ inputs.action }}
         env:
           KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
         run: |
           POD=$(kubectl get pods -n ${{ env.NAMESPACE }} -l app=promelectron-api \
             -o jsonpath='{.items[0].metadata.name}')
+          if [ -z "$POD" ]; then
+            echo "ERROR: No promelectron-api pod found in ${{ env.NAMESPACE }}"
+            exit 1
+          fi
           echo "Running: alembic ${{ inputs.action }} on $POD in ${{ env.NAMESPACE }}"
           kubectl exec -n ${{ env.NAMESPACE }} $POD -- \
             alembic ${{ inputs.action }}
