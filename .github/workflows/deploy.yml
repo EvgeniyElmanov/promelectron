@@ -134,8 +134,14 @@ jobs:
             --set env.secrets.YANDEX_CLIENT_SECRET=${{ secrets.YANDEX_CLIENT_SECRET }} \
             --set env.secrets.GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }} \
             --set env.secrets.GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }} \
+            --set env.secrets.MINIO_ACCESS_KEY=${{ secrets.MINIO_ACCESS_KEY }} \
+            --set env.secrets.MINIO_SECRET_KEY=${{ secrets.MINIO_SECRET_KEY }} \
+            --set env.secrets.MINIO_ROOT_USER=${{ secrets.MINIO_ROOT_USER }} \
+            --set env.secrets.MINIO_ROOT_PASSWORD=${{ secrets.MINIO_ROOT_PASSWORD }} \
             --namespace promelectron-test \
-            --create-namespace
+            --create-namespace \
+            --wait \
+            --wait-for-jobs
           kubectl rollout status deployment/promelectron-api -n promelectron-test --timeout=120s
           kubectl rollout status deployment/promelectron-frontend -n promelectron-test --timeout=120s
 
@@ -250,8 +256,14 @@ jobs:
             --set env.secrets.YANDEX_CLIENT_SECRET=${{ secrets.YANDEX_CLIENT_SECRET }} \
             --set env.secrets.GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }} \
             --set env.secrets.GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }} \
+            --set env.secrets.MINIO_ACCESS_KEY=${{ secrets.MINIO_ACCESS_KEY }} \
+            --set env.secrets.MINIO_SECRET_KEY=${{ secrets.MINIO_SECRET_KEY }} \
+            --set env.secrets.MINIO_ROOT_USER=${{ secrets.MINIO_ROOT_USER }} \
+            --set env.secrets.MINIO_ROOT_PASSWORD=${{ secrets.MINIO_ROOT_PASSWORD }} \
             --namespace promelectron \
-            --create-namespace
+            --create-namespace \
+            --wait \
+            --wait-for-jobs
           kubectl rollout status deployment/promelectron-api -n promelectron --timeout=120s
           kubectl rollout status deployment/promelectron-frontend -n promelectron --timeout=120s
 
