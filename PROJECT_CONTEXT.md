@@ -1,13 +1,13 @@
 ---
 sprint: "Sprint 1"
 sprint_dates: "2026-06-01 — 2026-06-14"
-last_update: "2026-06-03"
-last_commit: "f9c605d"
-commit_message: "feat(cart): redirect guests to login on checkout instead of guest-checkout"
-blockers_count: 5
-blockers_p0: 1
-blockers_p1: 4
-backend_tests: "123/123"
+last_update: "2026-06-11"
+last_commit: "9628457"
+commit_message: "fix(ci): remove latest tag, add YooKassa secrets to deploy"
+blockers_count: 1
+blockers_p0: 0
+blockers_p1: 1
+backend_tests: "127/127"
 frontend_tests: "80/80"
 e2e_tests: "96/96"
 ---
@@ -29,7 +29,7 @@ e2e_tests: "96/96"
 |------|-----------|
 | Backend | Python 3.12, FastAPI, SQLAlchemy 2.0 **async**, PostgreSQL 16, Redis 7, MinIO, Celery |
 | Frontend | Vue 3 + Vite + Composition API + Axios, nginx:alpine (runtime) |
-| Infra | Docker Compose (dev), K8s Helm (prod), GitHub Actions self-hosted runner → Harbor |
+| Infra | Docker Compose (dev), K8s Helm (prod), GitHub Actions self-hosted runner → Harbor, kubectl, k9s, OpenVPN |
 | Tests | pytest (backend), vitest (frontend), Playwright (E2E) |
 | Auth | JWT Bearer + localStorage (планируется HttpOnly cookies + refresh tokens) |
 
@@ -44,6 +44,7 @@ e2e_tests: "96/96"
 - [x] **Админ-панель** — CRUD товаров, категорий, заказов
 - [x] **Уведомления** — WebSocket real-time
 - [x] **Загрузка файлов** — MinIO + local fallback
+- [x] **ЮKassa (test)** — создание платежей, webhook, auto-capture, отмена, возврат
 - [x] **Тесты зелёные** — Backend 127/127 ✅, Frontend 80/80 ✅, E2E 96/96 ✅
 
 ---
@@ -52,13 +53,13 @@ e2e_tests: "96/96"
 
 | Фича | Статус | Блокер | Примечание |
 |------|--------|--------|------------|
-| **ЮKassa (реальные платежи)** | 🔄 in_progress | — | Заменяет mock-оплату. Webhook в todo. |
-| **Убрать hardcoded secrets** | 🔄 in_progress | — | SECRET_KEY, SEED_SECRET, docker-compose, Helm placeholders |
-| **Sentry (мониторинг)** | 🔄 in_progress | — | Backend + frontend |
-| **Backup БД** | 🔄 in_progress | — | pg_dump → S3/MinIO |
-| **Helm worker templates** | 🚫 blocked | BLK-001, BLK-002 | Celery command сломан, `worker.enabled=false` |
-| **Product.price → Numeric(10,2)** | ⏳ todo | BLK-006 | Ждёт фикса миграции |
-| **Malformed Alembic revision** | 🟡 in_progress | — | `20260531_222559_guest_order_fields.py` |
+| **ЮKassa (production креды)** | 🔄 in_progress | — | Test-режим работает. Нужны live-креды для prod. |
+| **Убрать hardcoded secrets** | ✅ done | — | Все креды вынесены в GitHub Secrets / SOPS. SECRET_KEY восстановлен. |
+| **Sentry (мониторинг)** | ⏳ todo | — | Backend + frontend |
+| **Backup БД** | ⏳ todo | — | pg_dump → S3/MinIO |
+| **Helm worker templates** | ✅ done | — | Celery worker работает в K8s. |
+| **Product.price → Numeric(10,2)** | ⏳ todo | — | Ждёт отдельной задачи |
+| **Malformed Alembic revision** | ✅ done | — | Миграции чистые, история корректна |
 
 ---
 
@@ -66,11 +67,7 @@ e2e_tests: "96/96"
 
 | ID | Уровень | Описание | Кто решает | Дедлайн |
 |----|---------|----------|------------|---------|
-| **BLK-002** | P0 | Celery worker в K8s полностью неработоспособен (сломанная команда + `enabled=false`) | devops | 2026-06-02 🔴 эскалирован |
-| **BLK-001** | P1 | `.github/` защищена — CI/CD правки требуют ручного доступа | devops | 2026-06-02 🔴 эскалирован |
-| **BLK-006** | P1 | Malformed revision ID в Alembic миграции `20260531_222559_guest_order_fields.py` | backend-dev | 2026-06-04 |
-| **BLK-004** | P1 | `API_BASE_URL` в K8s test окружении не настроен | devops | 2026-06-05 |
-| **BLK-005** | P1 | Нет реальных SMTP кредов — email в fallback-режиме | project-manager | 2026-06-10 |
+| **BLK-005** | P1 | Нет реальных SMTP кредов — email в fallback-режиме | project-manager | 2026-06-15 |
 
 > **Правило:** Блокер >2 дней — эскалация пользователю.
 
@@ -202,7 +199,9 @@ make test-e2e      # Playwright
 
 | Дата | Что изменилось | Кто |
 |------|---------------|-----|
+| 2026-06-11 | **Исправлена YooKassa в test**: креды были `FILL_ME` → восстановлены тестовые. Исправлен CICD: `ImagePullBackOff` из-за `latest` → деплой по SHA. Восстановлен Secret `promelectron-secrets` (были удалены DATABASE_URL, SECRET_KEY). Полный флоу работает: регистрация → корзина → заказ → платёж. Коммит `9628457`. | devops |
 | 2026-06-06 | YooKassa диагностика: добавлено debug-логирование, исправлен webhook raw_body bug, добавлен debug endpoint `/payments/debug/yookassa/create/`, capture теперь конфигурируется через `YOOKASSA_CAPTURE_AUTO`. 127 backend тестов зелёные. | backend-dev |
 | 2026-06-03 | YooKassa E2E тест проходит с тестовой картой (5555...4444). Обновлён checkout.spec.js. 96/96 E2E + 127 backend тестов зелёные. | e2e-tester |
 | 2026-06-03 | CI/CD готов к YooKassa: `.env.example`, Helm values (test/prod), GitHub Actions e2e.yml обновлены. Test/prod secrets уже содержат YOOKASSA_SHOP_ID/SECRET_KEY (SOPS). | devops |
 | 2026-06-02 | Создан PROJECT_CONTEXT.md | project-manager |
+| 2026-06-10 | Настроен локальный доступ к K8s: kubectl, k9s, kubeconfig, Kubernetes MCP, VPN (khen.ovpn). Кластер autonoma @ 30.30.30.20. Namespace: promenectron-test / promelectron. | devops |

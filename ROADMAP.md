@@ -50,7 +50,9 @@
 
 ### Спринт 7 — Настройка production-окружения
 
-#### 7.1 Email (SMTP) для production
+#### 7.1 Email (SMTP) для production 🔄
+**Статус:** В работе
+
 **Задача:** Настроить сервисный email для отправки писем всем пользователям.
 
 **Варианты решения:**
@@ -62,58 +64,14 @@
 1. Зарегистрироваться на https://www.mailgun.com/
 2. Создать домен (или использовать sandbox)
 3. Получить SMTP credentials
-4. Заполнить `.env`:
-   ```
-   SMTP_HOST=smtp.mailgun.org
-   SMTP_PORT=587
-   SMTP_USER=postmaster@mg.myshop.ru
-   SMTP_PASSWORD=your-mailgun-api-key
-   SMTP_FROM=MyShop <noreply@myshop.ru>
-   SMTP_TLS=true
-   ```
+4. Заполнить GitHub Secrets: `SMTP_USER`, `SMTP_PASSWORD`
 5. Протестировать: оформить заказ с реальным email
 
-#### 7.2 OAuth 2.0 — Google ID 🔄
-**Статус:** В работе (добавлено в Sprint 1, BACKLOG.md #11)
+#### 7.2 OAuth 2.0 — Google ID ✅
+**Статус:** Готово (test + prod credentials настроены)
 
-**Задача:** Настроить авторизацию через Google для реальных пользователей.
-
-**Что нужно сделать:**
-1. Перейти в [Google Cloud Console](https://console.cloud.google.com/)
-2. Создать проект (или использовать существующий)
-3. Включить API: **Google+ API** / **Google Identity Toolkit**
-4. Создать OAuth 2.0 credentials (Web application)
-5. Добавить Authorized redirect URI:
-   - Dev: `http://localhost:5173/auth/callback`
-   - Prod: `https://myshop.ru/auth/callback`
-6. Скопировать **Client ID** и **Client Secret**
-7. Заполнить `.env`:
-   ```
-   GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
-   GOOGLE_CLIENT_SECRET=your-client-secret
-   ```
-8. Протестировать: кнопка «Войти через Google» на странице логина
-
-#### 7.3 OAuth 2.0 — Yandex ID 🔄
-**Статус:** В работе (добавлено в Sprint 1, BACKLOG.md #12)
-
-**Задача:** Настроить авторизацию через Яндекс.
-
-**Что нужно сделать:**
-1. Перейти в [Yandex OAuth](https://oauth.yandex.ru/)
-2. Создать приложение
-3. Выбрать платформу: **Веб-сервисы**
-4. Добавить Callback URL:
-   - Dev: `http://localhost:5173/auth/callback`
-   - Prod: `https://myshop.ru/auth/callback`
-5. Выбрать необходимые доступы: **Доступ к email-адресу**, **Доступ к данным Яндекс ID**
-6. Скопировать **Client ID** и **Client Secret**
-7. Заполнить `.env`:
-   ```
-   YANDEX_CLIENT_ID=your-client-id
-   YANDEX_CLIENT_SECRET=your-client-secret
-   ```
-8. Протестировать: кнопка «Войти через Яндекс» на странице логина
+#### 7.3 OAuth 2.0 — Yandex ID ✅
+**Статус:** Готово (test + prod credentials настроены)
 
 ---
 
@@ -131,11 +89,14 @@
 - [x] Топ-товары по продажам
 - [x] Управление пользователями (список, блокировка)
 
-### Спринт 10 — Платёжный шлюз (mock) ✅
-- [x] Интеграция с тестовым шлюзом (mock)
+### Спринт 10 — Платёжный шлюз (ЮKassa) ✅
+- [x] Интеграция с ЮKassa (test режим)
+- [x] Создание платежей, confirmation_url для редиректа
+- [x] Webhook от ЮKassa (payment.succeeded / payment.canceled)
+- [x] Auto-capture для тестового магазина
+- [x] Отмена и возврат платежей
 - [x] Статус «оплачен» после успешной оплаты
-- [x] Страница оплаты с формой карты
-- [x] Кнопка «Оплатить» в списке заказов
+- [ ] **Осталось:** live-креды для prod (YOOKASSA_SHOP_ID / YOOKASSA_SECRET_KEY)
 
 ### Спринт 11 — Уведомления внутри приложения
 - [ ] Toast-уведомления о смене статуса заказа (real-time)
