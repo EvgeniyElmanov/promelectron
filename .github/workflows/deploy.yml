@@ -138,6 +138,8 @@ jobs:
             --set env.secrets.MINIO_SECRET_KEY=${{ secrets.MINIO_SECRET_KEY }} \
             --set env.secrets.MINIO_ROOT_USER=${{ secrets.MINIO_ROOT_USER }} \
             --set env.secrets.MINIO_ROOT_PASSWORD=${{ secrets.MINIO_ROOT_PASSWORD }} \
+            --set env.secrets.YOOKASSA_SHOP_ID=54401 \
+            --set env.secrets.YOOKASSA_SECRET_KEY=test_Fh8hUAVVBGUGbjmlzba6TB0iyUbos_lueTHE-axOwM0 \
             --namespace promelectron-test \
             --create-namespace \
             --wait \
@@ -223,6 +225,8 @@ jobs:
             --set env.secrets.MINIO_SECRET_KEY=${{ secrets.MINIO_SECRET_KEY }} \
             --set env.secrets.MINIO_ROOT_USER=${{ secrets.MINIO_ROOT_USER }} \
             --set env.secrets.MINIO_ROOT_PASSWORD=${{ secrets.MINIO_ROOT_PASSWORD }} \
+            --set env.secrets.YOOKASSA_SHOP_ID=${{ secrets.YOOKASSA_SHOP_ID }} \
+            --set env.secrets.YOOKASSA_SECRET_KEY=${{ secrets.YOOKASSA_SECRET_KEY }} \
             --namespace promelectron \
             --create-namespace \
             --wait \
