@@ -86,8 +86,8 @@ const error = ref(null);
 const polling = ref(false);
 const syncing = ref(false);
 const pollCount = ref(0);
-const maxPolls = 15;
-const pollInterval = 3000; // 3 seconds
+const maxPolls = 30;
+const pollInterval = 2000; // 2 seconds
 let pollTimer = null;
 
 function formatPrice(value) {
@@ -168,6 +168,8 @@ const startPolling = () => {
   pollTimer = setInterval(async () => {
     pollCount.value += 1;
     try {
+      // Force sync with YooKassa API, then refresh order
+      await api.post(`/payments/sync-by-order/${orderId.value}`);
       const { data } = await api.get(`/orders/${orderId.value}`);
       order.value = data;
 
@@ -198,9 +200,15 @@ onMounted(async () => {
     await confirmMockPayment();
   }
   await fetchOrder();
-  // Start polling if order is still pending and we have an order id
+
+  // If order is still pending, force sync with YooKassa immediately
   if (order.value && order.value.status !== 'paid' && order.value.status !== 'cancelled' && order.value.status !== 'canceled') {
-    startPolling();
+    await checkPaymentStatus();
+
+    // Start polling only if still pending after forced sync
+    if (order.value && order.value.status !== 'paid' && order.value.status !== 'cancelled' && order.value.status !== 'canceled') {
+      startPolling();
+    }
   }
 });
 
