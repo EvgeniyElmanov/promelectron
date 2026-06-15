@@ -8,7 +8,7 @@
       <div class="address-field">
         <label class="address-field__label">Область / край / республика</label>
         <AutocompleteInput
-          v-model="modelValue.region"
+          v-model="region"
           field="region"
           :options="RUSSIAN_REGIONS"
           placeholder=""
@@ -20,7 +20,7 @@
       <div class="address-field">
         <label class="address-field__label">Район / округ / район города</label>
         <AutocompleteInput
-          v-model="modelValue.district"
+          v-model="district"
           field="district"
           :context="suggestionContext"
           placeholder=""
@@ -32,7 +32,7 @@
       <div class="address-field address-field--wide">
         <label class="address-field__label">Город / населённый пункт <span class="required">*</span></label>
         <AutocompleteInput
-          v-model="modelValue.city"
+          v-model="city"
           field="city"
           :options="RUSSIAN_CITIES"
           :context="suggestionContext"
@@ -45,7 +45,7 @@
       <div class="address-field address-field--wide">
         <label class="address-field__label">Улица / проспект / переулок <span class="required">*</span></label>
         <AutocompleteInput
-          v-model="modelValue.street"
+          v-model="street"
           field="street"
           :context="suggestionContext"
           placeholder=""
@@ -57,7 +57,7 @@
       <div class="address-field">
         <label class="address-field__label">Дом / строение / корпус <span class="required">*</span></label>
         <input
-          v-model="modelValue.house"
+          v-model="house"
           type="text"
           placeholder=""
           class="address-field__input"
@@ -68,7 +68,7 @@
       <div class="address-field">
         <label class="address-field__label">Квартира / офис / этаж</label>
         <input
-          v-model="modelValue.apartment"
+          v-model="apartment"
           type="text"
           placeholder=""
           class="address-field__input"
@@ -93,9 +93,23 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue']);
 
+function makeField(key) {
+  return computed({
+    get: () => props.modelValue[key] || '',
+    set: (value) => emit('update:modelValue', { ...props.modelValue, [key]: value }),
+  });
+}
+
+const region = makeField('region');
+const district = makeField('district');
+const city = makeField('city');
+const street = makeField('street');
+const house = makeField('house');
+const apartment = makeField('apartment');
+
 const suggestionContext = computed(() => ({
-  region: props.modelValue.region || '',
-  city: props.modelValue.city || '',
+  region: region.value,
+  city: city.value,
 }));
 
 function onSuggestionSelect(item) {

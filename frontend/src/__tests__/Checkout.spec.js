@@ -133,7 +133,7 @@ describe('Checkout.vue', () => {
       return Promise.resolve({ data: {} });
     });
 
-    const wrapper = await mountComponent();
+    await mountComponent();
     await flushPromises();
 
     expect(router.currentRoute.value.path).toBe('/orders/42');

@@ -33,7 +33,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useAddressSuggestions } from '@/composables/useAddressSuggestions';
 
 const props = defineProps({

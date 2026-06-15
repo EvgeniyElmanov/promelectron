@@ -112,7 +112,7 @@ const addToCart = async () => {
   try {
     await addToCartStore(props.product.id, 1, props.product);
     toast('Добавлено в корзину', 'success');
-  } catch (err) {
+  } catch {
     toast('Не удалось добавить в корзину', 'error');
   } finally {
     isLoading.value = false;

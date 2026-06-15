@@ -187,14 +187,12 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue';
-import { useRouter } from 'vue-router';
 import api from '@/services/api';
 import { useAuth } from '@/composables/useAuth';
 import AddressForm from '@/components/AddressForm.vue';
 import SkeletonProfile from '@/components/SkeletonProfile.vue';
 
-const router = useRouter();
-const { user: authUser, setAuth } = useAuth();
+const { setAuth } = useAuth();
 
 const loading = ref(true);
 const savingProfile = ref(false);

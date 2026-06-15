@@ -71,7 +71,7 @@
         <div v-if="isEdit" class="field">
           <label class="field__label">Фотографии</label>
           <div class="image-grid">
-            <div v-for="(img, idx) in localImages" :key="img" class="image-thumb">
+            <div v-for="img in localImages" :key="img" class="image-thumb">
               <img :src="img" alt="" />
               <button type="button" class="image-thumb__remove" @click="removeImage(img)">&times;</button>
             </div>
