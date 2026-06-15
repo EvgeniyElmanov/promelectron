@@ -42,8 +42,10 @@ skills: [auto-agent]
 | `code-reviewer` | review, ревью, code review, findings, quality | Весь проект |
 | `security-reviewer` | security, аудит, уязвимость, SQL injection, XSS | Весь проект |
 | `project-manager` | roadmap, план, спринт, приоритет, бэклог, оценка | Планирование |
+| `architect` | спроектируй, архитектура, spec, техническое задание | Проектирование |
+| `qa` | протестируй, acceptance criteria, полная проверка | Оркестрация тестов |
 
-**Смешанные:** API+фронт → backend+frontend. Деплой+backend → devops+backend.
+**Смешанные:** API+фронт → backend+frontend. Деплой+backend → devops+backend. Проектирование+реализация → architect → backend/frontend.
 
 ---
 
@@ -63,10 +65,10 @@ skills: [auto-agent]
 
 ## Типовые пайплайны
 
-**Новая фича:** backend-dev → frontend-dev → code-reviewer → (e2e-tester)
-**Баг:** определи зону → делегируй → code-reviewer
+**Новая фича:** architect → backend-dev → frontend-dev → code-reviewer → qa
+**Баг:** определи зону → делегируй → code-reviewer → qa
 **Деплой:** devops → e2e-tester → (security-reviewer)
-**Security audit:** security-reviewer → исправления → code-reviewer
+**Security audit:** security-reviewer → исправления → code-reviewer → qa
 
 ---
 

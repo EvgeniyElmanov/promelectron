@@ -44,9 +44,9 @@ required_files=(
     ".agent/BLOCKERS.md"
     ".agent/SESSION_LOG.md"
     ".agent/PLANNING_HANDOFF.md"
-    ".agent/DISPATCHER_PROMPT.md"
-    ".agent/ORCHESTRATOR_PROMPT.md"
     ".kimi/AGENTS.md"
+    ".kimi/agents/dispatcher.md"
+    ".kimi/agents/orchestrator.md"
     ".kimi/settings.json"
     "Makefile"
 )
@@ -67,7 +67,8 @@ echo "🗑️  Проверка устаревших файлов..."
 obsolete_files=(
     ".agent/AGENTS.md"
     ".agent/CONTEXT.md"
-    ".kimi/agents/qa.md"
+    ".agent/DISPATCHER_PROMPT.md"
+    ".agent/ORCHESTRATOR_PROMPT.md"
 )
 
 for file in "${obsolete_files[@]}"; do
@@ -89,6 +90,10 @@ for f in .kimi/agents/*.md; do
     links=$(grep -oP '(?<!`)\.(agent|kimi)/[^ ]+\.md(?!`)' "$f" 2>/dev/null || true)
     if [ -n "$links" ]; then
         echo "$links" | while read -r link; do
+            # Пропускаем шаблонные placeholder'ы вида <task-id>
+            if [[ "$link" == *'<'*'>'* ]]; then
+                continue
+            fi
             if [ ! -f "$link" ]; then
                 echo "  ❌ $agent → $link (НЕ НАЙДЕН)"
             fi
@@ -110,6 +115,20 @@ echo "🎯 Проверка skills..."
 
 existing_skills=$(ls -d .kimi/skills/*/ 2>/dev/null | sed 's|/$||' | xargs -n1 basename | sort | tr '\n' ' ')
 ok "Skills: $existing_skills"
+
+# ─── 4a. Консистентность агентов в .kimi/AGENTS.md ────────────────
+
+echo ""
+echo "🤖 Проверка реестра агентов..."
+
+for f in .kimi/agents/*.md; do
+    agent=$(basename "$f" .md)
+    if grep -q "\`$agent\`" .kimi/AGENTS.md; then
+        ok "$agent.md зарегистрирован в .kimi/AGENTS.md"
+    else
+        error "$agent.md НЕ зарегистрирован в .kimi/AGENTS.md"
+    fi
+done
 
 # ─── 5a. Проверка orchestrator ────────────────────────────────────
 
@@ -237,10 +256,10 @@ done
 echo ""
 echo "🚀 Проверка SESSION_START.md..."
 
-if grep -q "DISPATCHER_PROMPT.md" SESSION_START.md; then
-    ok "Диспетчер (DISPATCHER_PROMPT.md) присутствует в SESSION_START.md"
+if grep -q "/promelectron" SESSION_START.md; then
+    ok "Master skill /promelectron присутствует в SESSION_START.md"
 else
-    error "Диспетчер ОТСУТСТВУЕТ в SESSION_START.md"
+    error "Master skill /promelectron ОТСУТСТВУЕТ в SESSION_START.md"
 fi
 
 if grep -q "Замени \`<ROLE>\`" SESSION_START.md; then

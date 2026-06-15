@@ -276,6 +276,8 @@ make dev         # запуск стека
 | `code-reviewer` | review, ревью, проверь код, findings, quality | Code review | "Проверь код PR #42" |
 | `security-reviewer` | security, аудит, уязвимость, SQL injection | Security audit | "Audit API на SQL injection" |
 | `project-manager` | план, спринт, приоритет, бэклог, оценка | Планирование | "Оцени сроки интеграции ЮKassa" |
+| `architect` | спроектируй, архитектура, spec, техническое задание, дизайн решения, trade-off | Проектирование фичи | "Спроектируй интеграцию с доставкой" |
+| `qa` | протестируй, проверь перед merge, acceptance criteria, тесты все, pytest + vitest + playwright | Полная проверка | "Проверь ветку feature/X перед merge" |
 
 ---
 

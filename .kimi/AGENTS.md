@@ -51,10 +51,12 @@ make status                  # git + tests + lint
 |-------|-----------|------|
 | `orchestrator` | **Мета-агент:** авто-определение ролей, делегирование через Agent tool | `agents/orchestrator.md` |
 | `dispatcher` | Автопереключение ролей при каждой задаче | `agents/dispatcher.md` |
+| `architect` | Анализ, trade-offs, написание `spec.md` перед реализацией | `agents/architect.md` |
 | `backend-dev` | FastAPI + SQLAlchemy + pytest | `agents/backend-dev.md` |
 | `frontend-dev` | Vue 3 + Vitest | `agents/frontend-dev.md` |
 | `code-reviewer` | Quality review | `agents/code-reviewer.md` |
 | `e2e-tester` | Playwright E2E | `agents/e2e-tester.md` |
+| `qa` | Оркестрация pytest + vitest + Playwright, проверка Acceptance Criteria | `agents/qa.md` |
 | `integration-dev` | Dev-окружение | `agents/integration-dev.md` |
 | `security-reviewer` | Security audit | `agents/security-reviewer.md` |
 | `project-manager` | План, приоритеты, roadmap | `agents/project-manager.md` |

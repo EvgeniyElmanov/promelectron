@@ -35,11 +35,7 @@
       "command": "npx",
       "args": ["-y", "kubernetes-mcp-server@latest"],
       "env": {
-        "KUBECONFIG": "/home/evgeniy/.kube/pokutiy",
-        "HTTPS_PROXY": "",
-        "HTTP_PROXY": "",
-        "https_proxy": "",
-        "http_proxy": ""
+        "KUBECONFIG": "/home/evgeniy/.kube/config"
       }
     }
   }

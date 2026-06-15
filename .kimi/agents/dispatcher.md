@@ -64,6 +64,8 @@ allowedTools:
 | `code-reviewer` | review, ревью, code review, проверь код, findings, quality, качество кода |
 | `security-reviewer` | security, аудит, audit, уязвимость, vulnerability, SQL injection, XSS, CSRF |
 | `project-manager` | roadmap, план, спринт, sprint, приоритет, prioritize, бэклог, backlog, оцени, estimate, planning |
+| `architect` | спроектируй, архитектура, spec, техническое задание, дизайн решения, trade-off, проектирование |
+| `qa` | протестируй, проверь перед merge, acceptance criteria, тесты все, полная проверка, qa |
 
 **Если задача смешанная** (например, "Сделай API и фронт для промокодов"): выбери **основную** роль (обычно backend-dev), а вторую часть сделай отдельной задачей позже.
 
@@ -89,13 +91,16 @@ allowedTools:
 ### Шаг 4: Выполни задачу
 
 Работай СТРОГО по правилам выбранного агента:
+- **architect:** context → questions → trade-offs → spec.md
 - **backend-dev:** model → schema → service → route → tests
 - **frontend-dev:** API service → composable → component → page → route → tests
 - **devops:** Helm/Docker → CI/CD → verify deploy
 - **e2e-tester:** scenario → selectors → test → run
+- **qa:** pytest + vitest + playwright → Acceptance Criteria → test-findings.md
 - **code-reviewer:** diff → security → quality → findings
 - **security-reviewer:** auth → injection → data exposure → business logic
 - **project-manager:** read plans → analyze → update → report
+- **integration-dev:** diagnose → start/stop → verify local environment
 
 ### Шаг 5: Отчёт и сброс
 

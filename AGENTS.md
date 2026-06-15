@@ -94,6 +94,11 @@ Code review текущих изменений:
 
 ## Агенты
 
+### `architect`
+**Зона:** Анализ и проектирование перед реализацией
+**Workflow:** контекст → вопросы → trade-offs → `spec.md`
+**Правило:** не пишет код, только спецификацию
+
 ### `backend-dev`
 **Зона:** `backend/src/app/`, `backend/tests/`
 **Workflow:** model → schema → service → route → tests
@@ -133,7 +138,8 @@ Code review текущих изменений:
 ### `qa`
 **Запускает:** pytest + vitest + Playwright
 **Проверяет:** Acceptance Criteria из spec.md
-**Пишет:** `review/test-findings.md`
+**Пишет:** `.agent/<task-id>/review/test-findings.md`
+**Отличие от `e2e-tester`:** `qa` — оркестрация всех тестов; `e2e-tester` — разработка Playwright-сценариев
 
 ### `devops`
 **Зона:** `infra/`, `.github/workflows/`
@@ -171,6 +177,25 @@ Code review текущих изменений:
 
 ### Sequential Thinking MCP
 Для сложных задач: разбивает на шаги, проверяет логику.
+
+### Kubernetes MCP
+Инструменты для работы с Kubernetes кластером:
+- `kubectl` — чтение ресурсов, логи, exec
+- **Lens** / **k9s** — GUI/TUI для просмотра кластера
+- **Требуется VPN:** `sudo openvpn --config "/home/evgeniy/Загрузки/khen (1)/khen/khen.ovpn"`
+- **Kubeconfig:** `~/.kube/config` (KUBECONFIG env)
+- **Кластер:** `autonoma` @ https://30.30.30.20:6443
+- **Test namespace:** `promelectron-test`
+- **Prod namespace:** `promelectron`
+
+**Команды для логов:**
+```bash
+kubectl logs -n promenectron-test -l app=backend --tail=200
+kubectl get pods -n promenectron-test
+kubectl exec -n promenectron-test -it <pod> -- /bin/sh
+```
+
+**Предупреждение:** Сервер API `30.30.30.20` доступен только через VPN. Без VPN — timeout.
 
 ## Permissions (безопасность)
 

@@ -47,7 +47,9 @@ mkdir -p .agent/<task-id>/review
 
 ## Step 2: Architect Phase (skip if --quick)
 
-Ты — архитектор. Проанализируй задачу в контексте проекта:
+Ты — `architect` проекта Promelectron. Работай строго по правилам `.kimi/agents/architect.md`.
+
+Проанализируй задачу в контексте проекта:
 
 1. Прочитай существующий код, чтобы понять структуру
 2. Задай уточняющие вопросы пользователю, если что-то неясно — **жди ответа**
@@ -194,11 +196,25 @@ Task directory: .agent/<task-id>/
 
 ## Step 6: QA Loop (max 2 iterations)
 
-1. Вызови `qa` (или выполни сам, если нет qa-агента):
+1. Вызови `qa` через `Agent`:
 ```
-Запусти тесты и проверь acceptance criteria.
-Task directory: .agent/<task-id>/
-Прочитай spec.md. Результат запиши в .agent/<task-id>/review/test-findings.md.
+Ты — qa проекта Promelectron.
+Прочитай:
+1. .agent/<task-id>/task.md
+2. .agent/<task-id>/spec.md
+3. PROJECT_CONTEXT.md
+4. .agent/BACKLOG.md
+5. .agent/BLOCKERS.md
+6. .kimi/agents/qa.md
+7. .kimi/rules/golden-path.md
+
+Запусти полную проверку:
+- backend: pytest
+- frontend: vitest
+- E2E: Playwright
+
+Сверь результаты с Acceptance Criteria из spec.md.
+Результат запиши в .agent/<task-id>/review/test-findings.md.
 ```
 
 2. Прочитай `.agent/<task-id>/review/test-findings.md`

@@ -14,6 +14,63 @@ YYYY-MM-DD HH:MM | <role> | <краткое описание>
 
 ## Записи (новые сверху)
 
+### 2026-06-15 06:55 | dispatcher | Обновлён audit-скрипт под актуальную систему агентов
+  Изменено:
+  - `scripts/audit-agents.sh` — удалены legacy требования `.agent/DISPATCHER_PROMPT.md` и `.agent/ORCHESTRATOR_PROMPT.md`.
+  - Добавлена проверка обязательных файлов `.kimi/agents/dispatcher.md` и `.kimi/agents/orchestrator.md`.
+  - `.kimi/agents/qa.md` убран из списка устаревших файлов (теперь валидный агент).
+  - Broken link check теперь игнорирует шаблонные placeholder'ы вида `<task-id>`.
+  - Проверка `SESSION_START.md` теперь ищёт master skill `/promelectron` вместо удалённого `DISPATCHER_PROMPT.md`.
+  - Добавлена проверка, что каждый `.kimi/agents/*.md` зарегистрирован в `.kimi/AGENTS.md`.
+  - Обновлён `.agent/SESSION_LOG.md` (эта запись).
+  Результат:
+  - `bash scripts/audit-agents.sh` проходит без ошибок и предупреждений.
+  Риск/Техдолг: Нет
+  Блокер: Нет
+
+### 2026-06-15 06:45 | dispatcher | Добавлены полноценные агенты architect и qa
+  Изменено:
+  - Создан `.kimi/agents/architect.md` — роль для анализа, trade-offs и написания `spec.md` перед реализацией; не пишет код.
+  - Создан `.kimi/agents/qa.md` — роль для оркестрации pytest + vitest + Playwright и проверки Acceptance Criteria; отличие от `e2e-tester` зафиксировано (qa — все тесты, e2e-tester — Playwright-сценарии).
+  - В Memory MCP добавлены сущности `architect` и `qa` и связи: dispatcher/orchestrator → обе роли; architect designs_for backend-dev/frontend-dev; qa tests backend-dev/frontend-dev и orchestrates e2e-tester.
+  - Обновлены индексы и инструкции: `.kimi/AGENTS.md`, `AGENTS.md` (корневой), `SESSION_START.md`, `.kimi/agents/dispatcher.md`, `.kimi/agents/orchestrator.md`, `.kimi/skills/implement/SKILL.md`.
+  - Обновлён `.agent/SESSION_LOG.md` (эта запись).
+  Результат:
+  - `/implement` теперь явно использует `architect` (Step 2) и `qa` (Step 6) как полноценных агентов.
+  - Все роли, упоминаемые в документации, теперь имеют файлы и сущности в памяти.
+  Риск/Техдолг:
+  - Нужно следить, чтобы `qa` и `e2e-tester` не дублировались: qa запускает E2E на финальной проверке, e2e-tester разрабатывает и поддерживает сценарии.
+  Блокер: Нет
+
+### 2026-06-15 06:23 | dispatcher | Аудит системы агентов: исправлена Memory MCP — добавлены сущности агентов
+  Изменено:
+  - Проведён полный аудит `.kimi/agents/*.md`, `AGENTS.md`, `SESSION_START.md`, `PROJECT_CONTEXT.md`.
+  - В Memory MCP создан корневой узел `Promelectron` (project) и сущности для всех ролей: dispatcher, orchestrator, backend-dev, frontend-dev, devops, e2e-tester, code-reviewer, security-reviewer, project-manager, integration-dev.
+  - Удалены висячие отношения от несуществующего `DevOps agent`; созданы корректные отношения `devops manages Kubernetes Autonoma Cluster` и `devops requires OpenVPN Khen`.
+  - Добавлены workflow-отношения: dispatcher selects_role_for каждого агента, orchestrator delegates_to агентам, code-reviewer/security-reviewer/e2e-tester связаны с dev-агентами.
+  - Обновлён `.agent/SESSION_LOG.md` (эта запись).
+  Результат:
+  - Новые сессии теперь могут обращаться к агентам по имени через Memory MCP; граф целостный (нет dangling relations).
+  - Правильные идентификаторы агентов зафиксированы: kebab-case имена файлов `.kimi/agents/<role>.md` (backend-dev, frontend-dev, code-reviewer и т.д.).
+  Риск/Техдолг:
+  - Необходимо в дальнейшем создавать сущности `feature`, `bug`, `decision` по мере работы, как предусмотрено Memory MCP.
+  - workflow-роли `architect` и `qa` упоминаются в документации, но не имеют отдельных файлов в `.kimi/agents/` — при желании можно добавить позже.
+  Блокер: Нет
+
+### 2026-06-10 20:58 | devops | Починен worker CrashLoopBackOff (OOMKilled) в K8s test
+  Изменено:
+  - `infra/helm/templates/worker-deployment.yaml` — concurrency=2 (было 8 prefork), max-tasks-per-child=50, --without-heartbeat/gossip/mingle. Убраны сломанные probes (`celery inspect ping` не работает в контейнере → вызывал перезапуски).
+  - `infra/helm/values.yaml` — worker memory: request 256Mi (было 128Mi), limit 512Mi (было 256Mi).
+  - Worker deployment применён в `promelectron-test` через `kubectl apply` ( Helm release `promelectron-test` отсутствует в кластере — поды созданы не через Helm, нет labels `app.kubernetes.io/managed-by=Helm`).
+  Результат:
+  - Worker стабилен: `1/1 Running`, 0 рестартов, Celery v5.6.3 ready, concurrency=2, подключен к Redis.
+  - Старый pod (549 рестартов) заменён.
+  Риск/Техдолг:
+  - Probes убраны полностью. В будущем можно добавить простую livenessProbe (`pgrep celery`) если понадобится.
+  - Api/frontend/migrate deployment'ы всё ещё ссылаются на `latest` image → периодически появляются битые поды с `ImagePullBackOff`. Нужно либо восстановить Helm release, либо пропатчить image tag вручную.
+  - K8s API доступен только через VPN (khen.ovpn), соединение нестабильно — периодические `i/o timeout`.
+  Блокер: BLK-002 частично снят (worker работает), BLK-001 актуален (`.github/` защищена, Helm workflow не восстановлен).
+
 ### 2026-06-07 09:15 | backend-dev | Исправлен баг повторной оплаты заказа
   Изменено:
   - `backend/src/app/services/payment_service.py` — `PaymentService.create_payment()` теперь при существующем неоплаченном платеже создаёт новый платёж в ЮKassa (или mock) и обновляет существующую запись в БД новыми `yookassa_payment_id`, `confirmation_url`, `yookassa_status`, `yookassa_created_at`, `updated_at`. Раньше возвращался старый `confirmation_url` с истёкшим платежом.
@@ -327,3 +384,24 @@ YYYY-MM-DD HH:MM | <role> | <краткое описание>
 **Риски:** Нет
 
 ---
+
+---
+
+## 2026-06-10 19:40
+
+**Роль:** devops
+
+**Что сделано:**
+- Установлен kubectl → `~/.local/bin/kubectl` (v1.36.1)
+- Установлен k9s → `~/.local/bin/k9s` (v0.50.3)
+- Создан kubeconfig → `~/.kube/config` (chmod 600)
+- Обновлён `.mcp.json`: Kubernetes MCP теперь указывает на `KUBECONFIG=/home/evgeniy/.kube/config`, убраны PROXY переменные
+- Обновлён `AGENTS.md`: добавлен раздел "Kubernetes MCP" с командами kubectl, VPN, namespace'ами
+- Обновлён `PROJECT_CONTEXT.md`: добавлена инфра-строка про kubectl/k9s/OpenVPN, дата обновлена, добавлена запись в историю
+- Обновлён `.kimi/rules/infra.md`: добавлен раздел "Local K8s Access" с путями, namespace'ами, командами логов
+- Lens (.deb/AppImage) — не удалось скачать автоматически (сетевые ограничения), рекомендуется ручная установка
+- VPN (khen.ovpn) — требует `sudo` пароль, запущен zenity-диалог или требуется ручной запуск: `sudo openvpn --config "/home/evgeniy/Загрузки/khen (1)/khen/khen.ovpn"`
+
+**Файлы изменены:** `.mcp.json`, `AGENTS.md`, `PROJECT_CONTEXT.md`, `.kimi/rules/infra.md`
+
+**Риски:** kubeconfig содержит client cert+key (sensitive), права 600 установлены. VPN без sudo недоступен.

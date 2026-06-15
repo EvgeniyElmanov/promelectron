@@ -85,3 +85,31 @@ Worker deployment is disabled (`worker.enabled: false`). The queue_worker module
 ## E2E
 
 Global setup calls `POST /api/v1/seed` with `x-seed-secret: promelectron-test-seed-2024` to create test users and categories before tests run. No seed step in CI pipeline.
+
+## Local K8s Access
+
+Для работы с кластером требуется:
+
+1. **VPN:** `sudo openvpn --config "/home/evgeniy/Загрузки/khen (1)/khen/khen.ovpn"`
+2. **kubectl** + kubeconfig в `~/.kube/config` (chmod 600)
+3. **k9s** — TUI альтернатива Lens (`~/.local/bin/k9s`)
+4. **Lens** — GUI (устанавливается вручную через .deb)
+
+### Namespace'ы
+- Test: `promelectron-test` → `promelectron-test.aidrivencode.ru`
+- Prod: `promelectron` → `promelectron.aidrivencode.ru`
+
+### Кластер
+- **Context:** `autonoma`
+- **Server:** `https://30.30.30.20:6443`
+- **Kubeconfig:** `/home/evgeniy/.kube/config`
+
+### Логи
+```bash
+# Бэкенд
+kubectl logs -n promenectron-test -l app=backend --tail=200
+
+# Все поды в namespace
+kubectl get pods -n promenectron-test
+kubectl describe pod -n promenectron-test <pod>
+```
