@@ -41,7 +41,10 @@ class RedisClient:
     @classmethod
     async def set(cls, key: str, value: str, ttl: int) -> None:
         redis = cls.get_instance()
-        await redis.setex(key, ttl, value)
+        if ttl > 0:
+            await redis.setex(key, ttl, value)
+        else:
+            await redis.set(key, value)
 
     @classmethod
     async def delete(cls, key: str) -> None:

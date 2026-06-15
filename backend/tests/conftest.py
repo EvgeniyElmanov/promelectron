@@ -29,17 +29,27 @@ async def flush_redis(monkeypatch):
     from src.app.core.redis_client import RedisClient
 
     class FakeRedis:
+        _store: dict = {}
+
         async def flushdb(self):
-            pass
+            self._store.clear()
+
         async def get(self, key):
-            return None
+            return self._store.get(key)
+
+        async def set(self, key, value):
+            self._store[key] = value
+
         async def setex(self, key, ttl, value):
-            pass
+            self._store[key] = value
+
         async def delete(self, *keys):
-            pass
+            for key in keys:
+                self._store.pop(key, None)
+
         async def scan_iter(self, match):
-            if False:
-                yield
+            for key in self._store:
+                yield key
 
     # Check if Redis is available
     try:

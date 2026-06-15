@@ -9,6 +9,7 @@ from src.app.models.user import User
 from src.app.models.social_account import SocialAccount
 from src.app.schemas.user import UserOut
 from src.app.core.config import settings
+from src.app.services.feature_flags import is_enabled
 from src.app.utils.auth import create_access_token, get_current_user
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -35,12 +36,17 @@ def get_provider_config(provider: str) -> dict:
     return OAUTH_PROVIDERS[provider]
 
 
-def get_provider_credentials(provider: str) -> tuple[str, str]:
+async def get_provider_credentials(provider: str) -> tuple[str, str]:
     if provider == "google":
-        if not settings.google_client_id or not settings.google_client_secret:
+        if not await is_enabled("google_oauth", default=True):
             raise HTTPException(
                 status_code=503,
                 detail="Вход через Google временно недоступен. Попробуйте позже или используйте email.",
+            )
+        if not settings.google_client_id or not settings.google_client_secret:
+            raise HTTPException(
+                status_code=503,
+                detail="Вход через Google не настроен. Попробуйте позже или используйте email.",
             )
         return settings.google_client_id, settings.google_client_secret
     elif provider == "yandex":
@@ -61,10 +67,20 @@ async def get_auth_profile(
     return current_user
 
 
+@router.get("/providers/")
+async def oauth_providers():
+    """Вернуть доступность OAuth-провайдеров для текущего окружения."""
+    return {
+        "google": await is_enabled("google_oauth", default=True)
+        and bool(settings.google_client_id),
+        "yandex": bool(settings.yandex_client_id),
+    }
+
+
 @router.get("/{provider}/login")
 async def oauth_login(provider: str):
     config = get_provider_config(provider)
-    client_id, _ = get_provider_credentials(provider)
+    client_id, _ = await get_provider_credentials(provider)
     redirect_uri = f"{settings.frontend_url}/auth/callback"
 
     auth_params = {
@@ -87,7 +103,7 @@ async def oauth_callback(
     db: AsyncSession = Depends(get_db),
 ):
     config = get_provider_config(provider)
-    client_id, client_secret = get_provider_credentials(provider)
+    client_id, client_secret = await get_provider_credentials(provider)
     redirect_uri = f"{settings.frontend_url}/auth/callback"
 
     # 1. Обмен кода на токен

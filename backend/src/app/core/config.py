@@ -36,6 +36,7 @@ class Settings:
     yookassa_tax_system_code: int
     yookassa_receipt_enabled: bool
     yookassa_capture_auto: bool
+    google_oauth_enabled: bool
 
 
 settings = Settings(
@@ -73,6 +74,7 @@ settings = Settings(
     yookassa_tax_system_code=int(os.getenv("YOOKASSA_TAX_SYSTEM_CODE", "1")),
     yookassa_receipt_enabled=os.getenv("YOOKASSA_RECEIPT_ENABLED", "false").lower() == "true",
     yookassa_capture_auto=os.getenv("YOOKASSA_CAPTURE_AUTO", "true").lower() == "true",
+    google_oauth_enabled=os.getenv("GOOGLE_OAUTH_ENABLED", "true").lower() == "true",
 )
 
 SECRET_KEY = settings.secret_key

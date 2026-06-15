@@ -225,6 +225,7 @@ def _make_oauth_settings(overrides: dict):
         "yookassa_tax_system_code": original.yookassa_tax_system_code,
         "yookassa_receipt_enabled": original.yookassa_receipt_enabled,
         "yookassa_capture_auto": original.yookassa_capture_auto,
+        "google_oauth_enabled": original.google_oauth_enabled,
     }
     kwargs.update(overrides)
     return Settings(**kwargs)
@@ -241,6 +242,8 @@ class TestOAuth:
             "google_client_secret": "test-google-secret",
         })
         monkeypatch.setattr("src.app.api.auth.settings", new_settings)
+
+        monkeypatch.setattr("src.app.services.feature_flags.settings", new_settings)
 
         response = await client.get("/api/v1/auth/google/login")
         assert response.status_code == 200
@@ -259,6 +262,7 @@ class TestOAuth:
             "google_client_secret": "test-google-secret",
         })
         monkeypatch.setattr("src.app.api.auth.settings", new_settings)
+        monkeypatch.setattr("src.app.services.feature_flags.settings", new_settings)
 
         # Мокаем httpx.AsyncClient
         class FakeResponse:
@@ -307,6 +311,7 @@ class TestOAuth:
             "google_client_secret": "test-google-secret",
         })
         monkeypatch.setattr("src.app.api.auth.settings", new_settings)
+        monkeypatch.setattr("src.app.services.feature_flags.settings", new_settings)
 
         class FakeResponse:
             def __init__(self, json_data, status_code=200):
@@ -348,3 +353,71 @@ class TestOAuth:
         response = await client.get("/api/v1/auth/facebook/login")
         assert response.status_code == 400
         assert "Unsupported provider" in response.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_oauth_providers(self, client, monkeypatch):
+        """Эндпоинт /auth/providers/ возвращает доступность провайдеров."""
+        new_settings = _make_oauth_settings({
+            "google_client_id": "test-google-client-id",
+            "google_client_secret": "test-google-secret",
+            "yandex_client_id": "test-yandex-client-id",
+            "yandex_client_secret": "test-yandex-secret",
+            "google_oauth_enabled": True,
+        })
+        monkeypatch.setattr("src.app.api.auth.settings", new_settings)
+        monkeypatch.setattr("src.app.services.feature_flags.settings", new_settings)
+
+        response = await client.get("/api/v1/auth/providers/")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["google"] is True
+        assert data["yandex"] is True
+
+    @pytest.mark.asyncio
+    async def test_google_login_disabled(self, client, monkeypatch):
+        """Google login возвращает 503, если google_oauth выключен."""
+        new_settings = _make_oauth_settings({
+            "google_client_id": "test-google-client-id",
+            "google_client_secret": "test-google-secret",
+            "google_oauth_enabled": False,
+        })
+        monkeypatch.setattr("src.app.api.auth.settings", new_settings)
+        monkeypatch.setattr("src.app.services.feature_flags.settings", new_settings)
+
+        response = await client.get("/api/v1/auth/google/login")
+        assert response.status_code == 503
+        assert "Google" in response.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_google_callback_disabled(self, client, monkeypatch):
+        """Google callback возвращает 503, если google_oauth выключен."""
+        new_settings = _make_oauth_settings({
+            "google_client_id": "test-google-client-id",
+            "google_client_secret": "test-google-secret",
+            "google_oauth_enabled": False,
+        })
+        monkeypatch.setattr("src.app.api.auth.settings", new_settings)
+        monkeypatch.setattr("src.app.services.feature_flags.settings", new_settings)
+
+        response = await client.get("/api/v1/auth/google/callback?code=fake-code")
+        assert response.status_code == 503
+        assert "Google" in response.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_oauth_providers_google_disabled(self, client, monkeypatch):
+        """/auth/providers/ отдаёт google=false, если google_oauth выключен."""
+        new_settings = _make_oauth_settings({
+            "google_client_id": "test-google-client-id",
+            "google_client_secret": "test-google-secret",
+            "yandex_client_id": "test-yandex-client-id",
+            "yandex_client_secret": "test-yandex-secret",
+            "google_oauth_enabled": False,
+        })
+        monkeypatch.setattr("src.app.api.auth.settings", new_settings)
+        monkeypatch.setattr("src.app.services.feature_flags.settings", new_settings)
+
+        response = await client.get("/api/v1/auth/providers/")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["google"] is False
+        assert data["yandex"] is True
