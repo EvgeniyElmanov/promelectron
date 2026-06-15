@@ -69,6 +69,10 @@ const mockCategories = [
   { id: 2, name: 'Ноутбуки', description: 'Компьютеры' },
 ];
 
+const mockFeatureFlags = [
+  { name: 'google_oauth', enabled: true, env_default: true, redis_override: null, source: 'env' },
+];
+
 describe('Admin.vue', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -79,9 +83,15 @@ describe('Admin.vue', () => {
       if (url === '/admin/top-products') return Promise.resolve({ data: mockTopProducts });
       if (url === '/admin/users') return Promise.resolve({ data: mockUsers });
       if (url === '/categories/') return Promise.resolve({ data: mockCategories });
+      if (url === '/admin/feature-flags') return Promise.resolve({ data: mockFeatureFlags });
       return Promise.resolve({ data: {} });
     });
-    mockPatch.mockResolvedValue({ data: {} });
+    mockPatch.mockImplementation((url) => {
+      if (url === '/admin/feature-flags/google_oauth') {
+        return Promise.resolve({ data: { name: 'google_oauth', enabled: false, source: 'redis' } });
+      }
+      return Promise.resolve({ data: {} });
+    });
     mockDelete.mockResolvedValue({ data: {} });
   });
 
@@ -183,5 +193,30 @@ describe('Admin.vue', () => {
     await flushPromises();
 
     expect(wrapper.text()).toContain('Новая категория');
+  });
+
+  it('отображает фичатоглы', async () => {
+    const wrapper = mount(Admin, { global: { plugins: [router] } });
+    await flushPromises();
+
+    const table = wrapper.find('[data-testid="feature-flags-table"]');
+    expect(table.exists()).toBe(true);
+    expect(table.text()).toContain('google_oauth');
+    expect(table.text()).toContain('Включён');
+  });
+
+  it('переключает фичатогл по клику', async () => {
+    const wrapper = mount(Admin, { global: { plugins: [router] } });
+    await flushPromises();
+
+    const button = wrapper.find('[data-testid="feature-flag-google_oauth"]');
+    expect(button.exists()).toBe(true);
+    expect(button.text()).toContain('Выключить');
+
+    await button.trigger('click');
+    await flushPromises();
+
+    expect(mockPatch).toHaveBeenCalledWith('/admin/feature-flags/google_oauth', { enabled: false });
+    expect(toastFn).toHaveBeenCalledWith('Флаг "google_oauth" выключен', 'success');
   });
 });

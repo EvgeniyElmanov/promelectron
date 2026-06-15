@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.app.db.database import get_db
@@ -8,11 +8,19 @@ from src.app.models.user import User
 from src.app.schemas.admin import (
     AdminUserOut,
     DashboardStats,
+    FeatureFlagOut,
+    FeatureFlagUpdate,
     OrdersByDayItem,
     TopProductItem,
 )
 from src.app.schemas.order import AdminOrderUpdate, OrderOut
 from src.app.services.admin_service import AdminService
+from src.app.services.feature_flags import (
+    KNOWN_FEATURE_FLAGS,
+    get_flag_status,
+    list_flags,
+    set_enabled,
+)
 from src.app.services.order_service import OrderService
 from src.app.utils.auth import get_current_active_admin
 
@@ -86,3 +94,24 @@ async def update_admin_order(
     db: AsyncSession = Depends(get_db),
 ):
     return await OrderService.update_order_by_admin(order_id=order_id, data=data, current_user=current_user, db=db)
+
+
+@router.get("/admin/feature-flags", response_model=list[FeatureFlagOut])
+async def get_feature_flags(
+    current_user: User = Depends(get_current_active_admin),
+):
+    """Список всех известных feature flags с текущими значениями."""
+    return await list_flags(default=False)
+
+
+@router.patch("/admin/feature-flags/{flag}", response_model=FeatureFlagOut)
+async def update_feature_flag(
+    flag: str,
+    data: FeatureFlagUpdate,
+    current_user: User = Depends(get_current_active_admin),
+):
+    """Включить/выключить feature flag в Redis."""
+    if flag not in KNOWN_FEATURE_FLAGS:
+        raise HTTPException(status_code=400, detail=f"Unknown feature flag: {flag}")
+    await set_enabled(flag, data.enabled)
+    return await get_flag_status(flag, default=False)

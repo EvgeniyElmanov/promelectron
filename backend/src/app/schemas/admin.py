@@ -41,3 +41,15 @@ class AdminUserOut(BaseModel):
             "created_at": obj.created_at.isoformat() if obj.created_at else None,
         }
         return cls(**data)
+
+
+class FeatureFlagOut(BaseModel):
+    name: str
+    enabled: bool
+    env_default: bool | None
+    redis_override: bool | None
+    source: str
+
+
+class FeatureFlagUpdate(BaseModel):
+    enabled: bool

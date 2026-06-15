@@ -292,6 +292,51 @@
       </div>
     </div>
 
+    <!-- Feature Flags Tab -->
+    <div v-show="!isMobile || activeTab === 'featureFlags'" class="admin__tab-panel">
+      <div class="admin__section">
+        <div class="admin__section-header">
+          <h2 class="admin__section-title">Фичатоглы</h2>
+        </div>
+        <div v-if="loading.featureFlags" class="admin__loading">Загрузка...</div>
+        <div v-else-if="featureFlags.length === 0" class="admin__empty">Нет настроенных тоглов</div>
+        <div v-else class="admin__table-wrapper">
+          <table class="admin__table" data-testid="feature-flags-table">
+            <thead>
+              <tr>
+                <th>Флаг</th>
+                <th>Состояние</th>
+                <th>Источник</th>
+                <th class="admin__table-actions">Действия</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="flag in featureFlags" :key="flag.name">
+                <td>{{ flag.name }}</td>
+                <td>
+                  <span class="admin__status-badge" :class="flag.enabled ? 'admin__status-badge--active' : 'admin__status-badge--inactive'">
+                    {{ flag.enabled ? 'Включён' : 'Выключен' }}
+                  </span>
+                </td>
+                <td>{{ sourceLabel(flag.source) }}</td>
+                <td class="admin__table-actions">
+                  <button
+                    class="admin__btn admin__btn--small"
+                    :class="flag.enabled ? 'admin__btn--danger' : 'admin__btn--success'"
+                    @click="toggleFeatureFlag(flag.name, !flag.enabled)"
+                    :disabled="loading.featureFlags"
+                    :data-testid="`feature-flag-${flag.name}`"
+                  >
+                    {{ flag.enabled ? 'Выключить' : 'Включить' }}
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <!-- Category Modal -->
     <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
       <div class="modal">
@@ -404,6 +449,7 @@ const tabs = [
   { key: 'users', label: 'Пользователи' },
   { key: 'categories', label: 'Категории' },
   { key: 'delivery', label: 'Доставка' },
+  { key: 'featureFlags', label: 'Фичатоглы' },
 ];
 const activeTab = ref('dashboard');
 
@@ -416,6 +462,7 @@ const loading = ref({
   categories: false,
   delivery: false,
   orders: false,
+  featureFlags: false,
 });
 
 // Data
@@ -426,6 +473,7 @@ const users = ref([]);
 const categories = ref([]);
 const deliveryMethods = ref([]);
 const orders = ref([]);
+const featureFlags = ref([]);
 const orderFilterStatus = ref('');
 const orderStatuses = [
   { value: '', label: 'Все' },
@@ -524,6 +572,15 @@ function statusLabel(status) {
     cancelled: 'Отменён',
   };
   return labels[status] || status;
+}
+
+function sourceLabel(source) {
+  const labels = {
+    redis: 'Redis (ручной)',
+    env: 'Переменная окружения',
+    default: 'По умолчанию',
+  };
+  return labels[source] || source;
 }
 
 // Fetch data
@@ -766,12 +823,39 @@ const handleOrderSubmit = async () => {
   }
 };
 
+const fetchFeatureFlags = async () => {
+  loading.value.featureFlags = true;
+  try {
+    const { data } = await api.get('/admin/feature-flags');
+    featureFlags.value = data;
+  } catch {
+    toast('Не удалось загрузить фичатоглы', 'error');
+  } finally {
+    loading.value.featureFlags = false;
+  }
+};
+
+const toggleFeatureFlag = async (flagName, enabled) => {
+  loading.value.featureFlags = true;
+  try {
+    const { data } = await api.patch(`/admin/feature-flags/${flagName}`, { enabled });
+    const idx = featureFlags.value.findIndex((f) => f.name === flagName);
+    if (idx !== -1) featureFlags.value[idx] = data;
+    toast(`Флаг "${flagName}" ${data.enabled ? 'включён' : 'выключен'}`, 'success');
+  } catch (err) {
+    toast(err.response?.data?.detail || 'Ошибка при переключении флага', 'error');
+  } finally {
+    loading.value.featureFlags = false;
+  }
+};
+
 onMounted(() => {
   fetchDashboard();
   fetchUsers();
   fetchCategories();
   fetchDeliveryMethodsAdmin();
   fetchOrders();
+  fetchFeatureFlags();
 });
 </script>
 

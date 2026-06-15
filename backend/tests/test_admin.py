@@ -212,3 +212,73 @@ class TestAdminOrders:
             headers={"Authorization": f"Bearer {user_token}"},
         )
         assert response.status_code == 403
+
+
+class TestAdminFeatureFlags:
+    """Тесты управления feature flags в админке."""
+
+    @pytest.mark.asyncio
+    async def test_admin_list_feature_flags(self, client, test_admin, admin_token):
+        """Админ получает список feature flags."""
+        response = await client.get(
+            "/api/v1/admin/feature-flags",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert isinstance(data, list)
+        assert any(f["name"] == "google_oauth" for f in data)
+        for flag in data:
+            assert "name" in flag
+            assert "enabled" in flag
+            assert "source" in flag
+
+    @pytest.mark.asyncio
+    async def test_admin_toggle_feature_flag(self, client, test_admin, admin_token):
+        """Админ может включить/выключить feature flag."""
+        response = await client.patch(
+            "/api/v1/admin/feature-flags/google_oauth",
+            json={"enabled": False},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["name"] == "google_oauth"
+        assert data["enabled"] is False
+        assert data["source"] == "redis"
+
+        # Включаем обратно
+        response = await client.patch(
+            "/api/v1/admin/feature-flags/google_oauth",
+            json={"enabled": True},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert response.status_code == 200
+        assert response.json()["enabled"] is True
+
+    @pytest.mark.asyncio
+    async def test_user_cannot_access_feature_flags(self, client, test_user, user_token):
+        """Обычный пользователь не может управлять фичатоглами."""
+        response = await client.get(
+            "/api/v1/admin/feature-flags",
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert response.status_code == 403
+
+        response = await client.patch(
+            "/api/v1/admin/feature-flags/google_oauth",
+            json={"enabled": False},
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert response.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_admin_unknown_feature_flag(self, client, test_admin, admin_token):
+        """Попытка переключить неизвестный флаг — 400."""
+        response = await client.patch(
+            "/api/v1/admin/feature-flags/unknown_flag",
+            json={"enabled": True},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert response.status_code == 400
+        assert "Unknown feature flag" in response.json()["detail"]

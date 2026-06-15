@@ -141,6 +141,8 @@ Product.price → Numeric      →  Product variants / Seller payouts
 | GET | `/api/v1/admin/products/` | ✅ | Список товаров (admin) |
 | POST | `/api/v1/admin/products/` | ✅ | Создать товар |
 | GET | `/api/v1/admin/orders/` | ✅ | Список заказов (admin) |
+| GET | `/api/v1/admin/feature-flags` | ✅ | Список feature flags (admin) |
+| PATCH | `/api/v1/admin/feature-flags/{flag}` | ✅ | Переключить feature flag (admin) |
 
 > **Trailing slash обязателен во всех путях.**
 
@@ -200,7 +202,7 @@ make test-e2e      # Playwright
 
 | Дата | Что изменилось | Кто |
 |------|---------------|-----|
-| 2026-06-15 | **Feature flags + Google OAuth toggle**: добавлен сервис `feature_flags.py` на Redis, endpoint `/auth/providers/`, guard на Google OAuth endpoints (`503` при отключении), frontend скрывает кнопку Google если провайдер недоступен. Новые тесты backend/frontend. Управление через `GOOGLE_OAUTH_ENABLED` env или Redis `feature:google_oauth`. | backend-dev / frontend-dev |
+| 2026-06-15 | **Feature flags + Google OAuth toggle**: добавлен сервис `feature_flags.py` на Redis, endpoint `/auth/providers/`, guard на Google OAuth endpoints (`503` при отключении), frontend скрывает кнопку Google если провайдер недоступен. Админка: вкладка «Фичатоглы» + API `GET/PATCH /admin/feature-flags`. Новые тесты backend/frontend. Управление через `GOOGLE_OAUTH_ENABLED` env, Redis `feature:google_oauth` или UI админки. | backend-dev / frontend-dev |
 | 2026-06-11 | **Исправлена YooKassa в test**: креды были `FILL_ME` → восстановлены тестовые. Исправлен CICD: `ImagePullBackOff` из-за `latest` → деплой по SHA. Восстановлен Secret `promelectron-secrets` (были удалены DATABASE_URL, SECRET_KEY). Полный флоу работает: регистрация → корзина → заказ → платёж. Коммит `9628457`. | devops |
 | 2026-06-06 | YooKassa диагностика: добавлено debug-логирование, исправлен webhook raw_body bug, добавлен debug endpoint `/payments/debug/yookassa/create/`, capture теперь конфигурируется через `YOOKASSA_CAPTURE_AUTO`. 127 backend тестов зелёные. | backend-dev |
 | 2026-06-03 | YooKassa E2E тест проходит с тестовой картой (5555...4444). Обновлён checkout.spec.js. 96/96 E2E + 127 backend тестов зелёные. | e2e-tester |
