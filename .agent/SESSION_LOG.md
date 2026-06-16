@@ -14,6 +14,21 @@ YYYY-MM-DD HH:MM | <role> | <краткое описание>
 
 ## Записи (новые сверху)
 
+### 2026-06-16 23:50 | devops | Deploy admin-section-tabs to test
+  Изменено:
+  - Запущен GitHub Actions workflow `deploy.yml` для окружения `test`.
+  - Commit: `93612a3` (`feat(admin): section tabs navigation`).
+  - Исправлен E2E-тест `frontend/e2e/admin.spec.js` — заменены неоднозначные селекторы заголовков на `data-testid="admin-section-panel-*"`.
+  - `.agent/SESSION_LOG.md` — эта запись.
+  Результат:
+  - `build` — ✅
+  - `deploy-test` — ✅
+  - `test-e2e / smoke` — ✅
+  - `test-e2e / e2e` — ✅
+  - Run URL: https://github.com/AutonomaCo/promelectron/actions/runs/27629450675
+  Риск/Техдолг: Нет
+  Блокер: Нет
+
 ### 2026-06-16 18:10 | frontend-dev | admin-section-tabs — unified section tabs in Admin.vue
   Изменено:
   - `frontend/src/views/Admin.vue` — заменена мобильная таб-навигация на единую горизонтальную навигацию по всем разделам (Дашборд, Пользователи, Категории, Способы доставки, Заказы, Фичатоглы); вкладки работают на десктопе и мобильных (overflow-x: auto); активный раздел показывается через `v-show`, остальные скрыты; по умолчанию активен «Дашборд»; добавлены `data-testid` для табов (`admin-section-tab-*`) и панелей (`admin-section-panel-*`); внутри раздела «Категории» сохранены подвкладки корневых категорий.
