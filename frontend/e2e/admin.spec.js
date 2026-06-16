@@ -18,13 +18,13 @@ test.describe('Admin Panel', () => {
 
     // 3. Dashboard is active by default
     await expect(page.locator('[data-testid="admin-section-tab-dashboard"]')).toHaveClass(/admin__tab--active/);
-    await expect(page.locator('.admin__section-title:has-text("Заказы за 7 дней")')).toBeVisible();
+    await expect(page.locator('[data-testid="admin-section-panel-dashboard"]')).toBeVisible();
 
     // 4. Switch to Users tab
     await page.click('[data-testid="admin-section-tab-users"]');
     await expect(page.locator('[data-testid="admin-section-tab-users"]')).toHaveClass(/admin__tab--active/);
-    await expect(page.locator('.admin__section-title:has-text("Пользователи")')).toBeVisible();
-    await expect(page.locator('.admin__section-title:has-text("Заказы за 7 дней")')).not.toBeVisible();
+    await expect(page.locator('[data-testid="admin-section-panel-users"]')).toBeVisible();
+    await expect(page.locator('[data-testid="admin-section-panel-dashboard"]')).toBeHidden();
 
     // 5. Switch to Categories tab
     await page.click('[data-testid="admin-section-tab-categories"]');
@@ -35,17 +35,17 @@ test.describe('Admin Panel', () => {
     // 6. Switch to Delivery tab
     await page.click('[data-testid="admin-section-tab-delivery"]');
     await expect(page.locator('[data-testid="admin-section-tab-delivery"]')).toHaveClass(/admin__tab--active/);
-    await expect(page.locator('.admin__section-title:has-text("Способы доставки")')).toBeVisible();
+    await expect(page.locator('[data-testid="admin-section-panel-delivery"]')).toBeVisible();
 
     // 7. Switch to Orders tab
     await page.click('[data-testid="admin-section-tab-orders"]');
     await expect(page.locator('[data-testid="admin-section-tab-orders"]')).toHaveClass(/admin__tab--active/);
-    await expect(page.locator('.admin__section-title:has-text("Заказы")')).toBeVisible();
+    await expect(page.locator('[data-testid="admin-section-panel-orders"]')).toBeVisible();
 
     // 8. Switch to Feature Flags tab
     await page.click('[data-testid="admin-section-tab-feature-flags"]');
     await expect(page.locator('[data-testid="admin-section-tab-feature-flags"]')).toHaveClass(/admin__tab--active/);
-    await expect(page.locator('.admin__section-title:has-text("Фичатоглы")')).toBeVisible();
+    await expect(page.locator('[data-testid="admin-section-panel-feature-flags"]')).toBeVisible();
   });
 
   test('admin can view admin page and categories table', async ({ page }) => {
