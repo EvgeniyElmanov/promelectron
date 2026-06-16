@@ -2,7 +2,7 @@
 sprint: "Sprint 1"
 sprint_dates: "2026-06-01 — 2026-06-14"
 last_update: "2026-06-16"
-last_commit: "235fe13"
+last_commit: "f469859"
 commit_message: "feat(admin): unified section tabs for admin panel"
 blockers_count: 1
 blockers_p0: 0
