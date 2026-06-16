@@ -46,7 +46,7 @@ class Settings:
 settings = Settings(
     secret_key=os.getenv("SECRET_KEY", "your-secret-key-here"),
     algorithm=os.getenv("ALGORITHM", "HS256"),
-    access_token_expire_minutes=int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30")),
+    access_token_expire_minutes=int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440")),
     database_url=os.getenv(
         "DATABASE_URL", "postgresql+asyncpg://shop_user:shop_password@localhost/shop_db"
     ),
@@ -76,7 +76,8 @@ settings = Settings(
     yookassa_test_mode=os.getenv("YOOKASSA_TEST_MODE", "true").lower() == "true",
     yookassa_vat_code=int(os.getenv("YOOKASSA_VAT_CODE", "1")),
     yookassa_tax_system_code=int(os.getenv("YOOKASSA_TAX_SYSTEM_CODE", "1")),
-    yookassa_receipt_enabled=os.getenv("YOOKASSA_RECEIPT_ENABLED", "false").lower() == "true",
+    yookassa_receipt_enabled=os.getenv("YOOKASSA_RECEIPT_ENABLED", "false").lower()
+    == "true",
     yookassa_capture_auto=os.getenv("YOOKASSA_CAPTURE_AUTO", "true").lower() == "true",
     google_oauth_enabled=os.getenv("GOOGLE_OAUTH_ENABLED", "true").lower() == "true",
     cdek_account=os.getenv("CDEK_ACCOUNT", ""),
