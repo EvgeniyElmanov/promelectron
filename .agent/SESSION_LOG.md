@@ -14,6 +14,26 @@ YYYY-MM-DD HH:MM | <role> | <краткое описание>
 
 ## Записи (новые сверху)
 
+### 2026-06-16 10:40 | code-reviewer / e2e-tester | admin-categories-tabs — ревью, правки, E2E
+  Изменено:
+  - `frontend/src/composables/useCategories.js` — `loadMore()` теперь добавляет новые элементы через `push(...)` вместо замены списка.
+  - `frontend/src/views/Admin.vue` — добавлен debounce поиска категорий (~300 мс).
+  - `backend/tests/test_categories.py` — отформатирован `ruff format`.
+  - `.agent/admin-categories-tabs/review/findings.md` — все FINDINGS отмечены как FIXED, статус APPROVED (итерация 2).
+  - `frontend/e2e/admin.spec.js` — прогнан E2E-сценарий создания корневой категории и подкатегории, переключения вкладки, cleanup.
+  - `PROJECT_CONTEXT.md` — обновлены метрики (`backend_tests: 157/157`, `frontend_tests: 106/106`, `e2e_tests: 98/98`), API Inventory, Frontend Map, история изменений.
+  - `.agent/SESSION_LOG.md` — эта запись.
+  Результат:
+  - `make test-backend` — 157/157 ✅
+  - `npm test -- --run` (frontend) — 106/106 ✅
+  - `npm run lint` (frontend) — чисто ✅
+  - `npx playwright test e2e/admin.spec.js --workers=1` — 2/2 ✅
+  - Code review — APPROVED (итерация 2, все FINDINGS FIXED).
+  Риск/Техдолг:
+  - API `GET /categories/` изменил формат ответа — все потребители обновлены, но внешние интеграции могут зависеть от старого формата.
+  - Вкладки показывают только один уровень вложенности; глубокая иерархия не поддерживается.
+  Блокер: Нет
+
 ### 2026-06-16 19:55 | frontend-dev | Admin categories tabs — frontend
   Изменено:
   - `frontend/src/composables/useCategories.js` — новый composable: загрузка всех категорий для вкладок/селектора родителя, загрузка отображаемых категорий по активной вкладке/поиску/пагинации.
