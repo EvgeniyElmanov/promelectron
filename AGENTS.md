@@ -1,422 +1,177 @@
 # 🤖 AI Agent System — Promelectron
 
-## Быстрый старт
+This project uses **Kimi Code CLI** skills and agent prompts stored in `.kimi-code/` and `.kimi/agents/`.
+
+## Quick start
 
 ```bash
-# Вызвать агента на задачу
-/implement "Добавить промокоды в корзину"
+# Implement a new feature (full cycle)
+/implement "Add promo codes to cart"
 
-# Задеплоить
+# Deploy to test or prod
 /deploy test
 
-# Проверить код
+# Review current changes
 /review
 
-# Починить тесты
+# Fix failing tests
 /fix-test
 ```
 
-## Архитектура агентов
+## Where things live
+
+| Path | Purpose |
+|------|---------|
+| `.kimi-code/skills/` | Kimi-discoverable skills (`/implement`, `/fix`, `/review`, `/deploy`, `/context-sync`, `/plan-maintainer`, `/promelectron`) |
+| `.kimi-code/mcp.json` | MCP server configuration (Playwright, Filesystem, Memory, Sequential Thinking, Kubernetes) |
+| `.kimi-code/config.example.toml` | Example user-level Kimi Code CLI config (copy relevant sections to `~/.kimi-code/config.toml`) |
+| `.kimi/agents/*.md` | Role prompts for subagents (architect, backend-dev, frontend-dev, code-reviewer, security-reviewer, e2e-tester, qa, devops, project-manager, integration-dev, dispatcher) |
+| `.kimi/rules/*.md` | Shared rules: pre-edit checklist, golden path, dependency map, security, prompt format, task template |
+| `scripts/implement-pipeline.py` | Helper for task IDs, git worktrees, and review-loop state |
+| `.agent/<task-id>/` | Per-task working directory (`task.md`, `spec.md`, `review/findings.md`, `review/test-findings.md`) |
+| `.worktrees/implement-<task-id>/` | Isolated git worktree for the feature branch |
+
+## `/implement` pipeline
 
 ```
-┌─────────────┐
-│  Пользователь│
-└──────┬──────┘
-       │
-       ▼
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│  /implement │────▶│  Architect  │────▶│   backend   │
-│  (команда)  │     │  (spec.md)  │     │   /frontend │
-└─────────────┘     └─────────────┘     └──────┬──────┘
-                                                │
-                       ┌─────────────┐         │
-                       │  code-review│◀────────┘
-                       │ (findings)  │
-                       └──────┬──────┘
-                              │
-                       ┌──────┴──────┐
-                       │     QA      │
-                       │(test-results)│
-                       └──────┬──────┘
-                              │
-                       ┌──────┴──────┐
-                       │  Merge PR   │
-                       └─────────────┘
+User: /implement "Add promo codes to cart"
+        │
+        ▼
+   Create .agent/<task-id>/
+        │
+        ▼
+   Architect subagent (plan mode)
+   → reads context, asks questions, writes spec.md
+   → ExitPlanMode → user approves
+        │
+        ▼
+   git worktree add .worktrees/implement-<task-id> -b feature/<task-id>
+        │
+        ▼
+   Developer subagent
+   → backend-dev and/or frontend-dev in the worktree
+        │
+        ▼
+   Code reviewer subagent (max 3 iterations)
+   → writes .agent/<task-id>/review/findings.md
+        │
+        ▼
+   QA / e2e-tester subagent
+   → writes/updates E2E tests, runs pytest + vitest + Playwright
+   → writes .agent/<task-id>/review/test-findings.md
+        │
+        ▼
+   Report to user
+   → merge only with explicit user approval
 ```
 
-## Команды
+### Flags
 
-### `/implement <описание> [--quick] [--backend-only] [--frontend-only]`
+- `--quick` — skip the architect/spec phase
+- `--backend-only` — only backend development
+- `--frontend-only` — only frontend development
 
-Полный цикл разработки фичи:
-1. **Architect** — пишет `spec.md` (техническое задание)
-2. **Git branch** — `feature/<task-id>`
-3. **Developer** — пишет код (backend-dev / frontend-dev)
-4. **Code Review** — проверка качества (max 3 итерации)
-5. **QA** — прогон тестов (max 2 итерации)
-6. **Merge Request** — `gh pr create`
+## Agent registry
 
-**Флаги:**
-- `--quick` — пропустить архитектурную фазу (для простых задач)
-- `--backend-only` — только backend
-- `--frontend-only` — только frontend
+| Role | File | When to use |
+|------|------|-------------|
+| `architect` | `.kimi/agents/architect.md` | Design before implementation; writes `spec.md` |
+| `backend-dev` | `.kimi/agents/backend-dev.md` | FastAPI/SQLAlchemy/service/route/tests |
+| `frontend-dev` | `.kimi/agents/frontend-dev.md` | Vue 3/Pinia/composables/API/tests |
+| `code-reviewer` | `.kimi/agents/code-reviewer.md` | Quality review after development |
+| `security-reviewer` | `.kimi/agents/security-reviewer.md` | Security pass for auth/payments/webhooks/files/admin |
+| `e2e-tester` | `.kimi/agents/e2e-tester.md` | Playwright UI validation |
+| `qa` | `.kimi/agents/qa.md` | Full test pyramid + Acceptance Criteria |
+| `devops` | `.kimi/agents/devops.md` | Helm, Docker, CI/CD, secrets |
+| `project-manager` | `.kimi/agents/project-manager.md` | Roadmap, backlog, planning |
+| `integration-dev` | `.kimi/agents/integration-dev.md` | Start/stop/diagnose local dev environment |
+| `dispatcher` | `.kimi/agents/dispatcher.md` | Auto role selection for ad-hoc tasks |
 
-### `/deploy <test|prod>`
+## Rules (shared conventions)
 
-Деплой через GitHub Actions:
-1. Проверяет git status
-2. Запускает `gh workflow run deploy.yml`
-3. Для prod — спрашивает подтверждение
-4. После деплоя запускает E2E
+| Rule | Description | Paths |
+|------|-------------|-------|
+| `.kimi/rules/pre-edit-checklist.md` | Checks before every code change | all code |
+| `.kimi/rules/golden-path.md` | Critical user flows that must not break | all code |
+| `.kimi/rules/dependency-map.md` | What to update when a file changes | all code |
+| `.kimi/rules/security.md` | Security checklist | all code |
+| `.kimi/rules/prompt-format.md` | Task format for agents | user prompts |
+| `.kimi/rules/task-template.md` | Task template for backlog items | `.agent/tasks/` |
 
-### `/review`
+## MCP servers
 
-Code review текущих изменений:
-1. Читает `git diff`
-2. Проверяет security (auth, SQL injection, PII)
-3. Проверяет quality (type hints, tests, обработка ошибок)
-4. Пишет `review/findings.md`
+Configured in `.kimi-code/mcp.json`:
 
-### `/fix-test`
+- **Playwright** — browser automation for E2E tests
+- **Filesystem** — project file access
+- **Memory** — persistent knowledge graph
+- **Sequential Thinking** — reflective problem solving
+- **Kubernetes** — cluster introspection and operations
 
-Исправление падающих тестов:
-1. Запускает все тесты
-2. Анализирует ошибки
-3. Чинит код или тесты
-4. Перезапускает
+## Permissions
 
-### `/new-migration <описание>`
-
-Создание Alembic миграции:
-1. Проверяет модели
-2. Генерирует миграцию
-3. Проверяет `alembic upgrade head`
-
-## Агенты
-
-### `architect`
-**Зона:** Анализ и проектирование перед реализацией
-**Workflow:** контекст → вопросы → trade-offs → `spec.md`
-**Правило:** не пишет код, только спецификацию
-
-### `backend-dev`
-**Зона:** `backend/src/app/`, `backend/tests/`
-**Workflow:** model → schema → service → route → tests
-**Before finish:** `pytest -x` + `ruff check`
-
-### `frontend-dev`
-**Зона:** `frontend/src/`
-**Workflow:** component → API integration → test
-**Before finish:** `npm test -- --run`
-
-### `security-reviewer`
-**Проверяет:**
-- Missing auth checks
-- SQL injection
-- PII exposure
-- Price manipulation
-- Race conditions
-**Классификация:** CRITICAL / HIGH / MEDIUM / LOW
-
-### `code-reviewer`
-**Проверяет:**
-- Бизнес-логика не в route handlers
-- Type hints
-- Обработка ошибок
-- Тесты на новый код
-**Не редактирует код** — только пишет findings
-
-### `tester` / `e2e-tester`
-**Инструмент:** Playwright MCP
-**Сценарии:**
-- Главная: поиск, категории, карточки
-- Регистрация → вход → заказ
-- Корзина: добавление, удаление, оформление
-- Профиль: редактирование, адрес
-- Админ: пользователи, заказы, категории
-
-### `qa`
-**Запускает:** pytest + vitest + Playwright
-**Проверяет:** Acceptance Criteria из spec.md
-**Пишет:** `.agent/<task-id>/review/test-findings.md`
-**Отличие от `e2e-tester`:** `qa` — оркестрация всех тестов; `e2e-tester` — разработка Playwright-сценариев
-
-### `devops`
-**Зона:** `infra/`, `.github/workflows/`
-**Deploy:** Helm upgrade, kubectl, Docker
-**Правило:** test → prod (никогда наоборот)
-
-## Rules (правила конвенций)
-
-| Rule | Описание | Пути |
-|------|----------|------|
-| `api.md` | Route handlers thin, business logic in services | `backend/src/app/api/**/*.py` |
-| `models.md` | SQLAlchemy conventions | `backend/src/app/models/**/*.py` |
-| `testing.md` | Test conventions | `backend/tests/**/*.py`, `frontend/src/__tests__/**/*.js` |
-| `security.md` | Security checklist | Весь проект |
-| `git.md` | Git workflow | `.git/` |
-
-## MCP Integration
-
-### Playwright MCP
-Инструменты браузера для E2E:
-- `browser_navigate` — открыть страницу
-- `browser_click` — кликнуть
-- `browser_type` — ввести текст
-- `browser_snapshot` — посмотреть DOM
-- `browser_take_screenshot` — скриншот
-
-### Filesystem MCP
-Доступ к файлам проекта без bash.
-
-### Memory MCP
-Сохраняет контекст между сессиями:
-- Entities (фичи, баги, решения)
-- Relations (зависимости)
-- Observations (факты о проекте)
-
-### Sequential Thinking MCP
-Для сложных задач: разбивает на шаги, проверяет логику.
-
-### Kubernetes MCP
-Инструменты для работы с Kubernetes кластером:
-- `kubectl` — чтение ресурсов, логи, exec
-- **Lens** / **k9s** — GUI/TUI для просмотра кластера
-- **Требуется VPN:** `sudo openvpn --config "/home/evgeniy/Загрузки/khen (1)/khen/khen.ovpn"`
-- **Kubeconfig:** `~/.kube/config` (KUBECONFIG env)
-- **Кластер:** `autonoma` @ https://30.30.30.20:6443
-- **Test namespace:** `promelectron-test`
-- **Prod namespace:** `promelectron`
-
-**Команды для логов:**
-```bash
-kubectl logs -n promenectron-test -l app=backend --tail=200
-kubectl get pods -n promenectron-test
-kubectl exec -n promenectron-test -it <pod> -- /bin/sh
-```
-
-**Предупреждение:** Сервер API `30.30.30.20` доступен только через VPN. Без VPN — timeout.
-
-## Permissions (безопасность)
-
-**Разрешено:**
+**Allowed:**
 - `make *`, `pytest *`, `alembic *`, `ruff *`
-- `git status`, `git diff`, `git log`
+- `git status`, `git diff`, `git log`, `git worktree *`, `git commit *` (feature branches only)
 - `npm *`, `npx *`
 - `docker *`, `kubectl *`, `helm *`
 - `gh workflow run *`, `gh run *`
 
-**Запрещено:**
+**Forbidden:**
 - `rm -rf *`
 - `git push --force *`
 - `git reset --hard *`
 - `DROP *`, `truncate *`
 
-## Hooks
+## Project context
 
-### PostToolUse (Edit|Write)
-```bash
-cd backend && ruff check --fix --quiet "$CLAUDE_TOOL_INPUT_FILE" 2>/dev/null; true
-```
+`PROJECT_CONTEXT.md` is the single source of truth for stack, features, blockers, and API inventory. Every agent reads it at the start of a session. After significant changes, append a short note describing what changed.
 
-Автоформатирование Python после каждого изменения.
+## Red flags
 
-## PROJECT_CONTEXT.md
+- ❌ Create a DB model without an Alembic migration
+- ❌ Write an endpoint without a test
+- ❌ Delete an old component before the new one works
+- ❌ Commit with `console.log` / `debugger`
+- ❌ Commit without user approval
+- ✅ Push to `main` only by explicit user request (normally use PR)
 
-В корне репозитория есть `PROJECT_CONTEXT.md` — единый «живой» источник контекста проекта.  
-**Каждый агент читает его в начале сессии.** После значимых изменений агент дописывает вниз кратко: что изменилось и как теперь работает.
+## Known pitfalls (Promelectron)
 
----
+> Real issues that have already happened. Check before committing.
 
-## Система агентов (обновлено 2026-06-02)
+### 1. Tests must not touch dev/prod DB
+`conftest.py` uses a separate test database. Always run `make test-backend` (PostgreSQL in Docker), never `pytest` locally on SQLite.
 
-Проект использует файловую систему агентов в `.kimi/`:
-
-| Файл | Назначение |
-|------|-----------|
-| `PROJECT_CONTEXT.md` | Единый источник контекста — стек, фичи, блокеры, API |
-| `SESSION_START.md` | Шаблон входа в сессию (автовыбор роли + контекст) |
-| `ROUTER.md` | Документация роутера |
-| `scripts/kimi-task.sh` | Автоматический роутер задач |
-| `.kimi/agents/*.md` | Инструкции для каждой роли |
-| `.kimi/rules/*.md` | Правила: checklist, golden-path, dependency-map |
-| `.agent/SESSION_LOG.md` | Append-only лог изменений |
-
----
-
-## Workflow пример
-
-### Задача: "Добавить промокоды"
-
-```
-Пользователь: /implement "Добавить промокоды в корзину"
-
-1. Architect:
-   - Читает код корзины и заказов
-   - Пишет spec.md:
-     * Model: PromoCode (code, discount_type, amount, limit, expires_at)
-     * API: POST /cart/apply-promo, GET /admin/promo-codes
-     * Frontend: поле в корзине
-     * Tests: backend + frontend
-
-2. Пользователь подтверждает spec
-
-3. Git branch: feature/add-promo-codes
-
-4. backend-dev:
-   - Создаёт model PromoCode
-   - Создаёт schema PromoCodeCreate, PromoCodeOut
-   - Создаёт service PromoCodeService
-   - Добавляет API endpoints
-   - Пишет тесты test_promo_codes.py
-
-5. frontend-dev:
-   - Добавляет поле в Cart.vue
-   - Добавляет API вызов applyPromo
-   - Обновляет отображение итога
-   - Пишет тесты Cart.spec.js
-
-6. code-reviewer:
-   - Проверяет код
-   - Пишет findings.md
-   - Если APPROVED → идём дальше
-   - Если FIXES_NEEDED → чиним (max 3 итерации)
-
-7. QA:
-   - Запускает pytest, vitest, Playwright
-   - Проверяет Acceptance Criteria
-   - Пишет test-findings.md
-   - Если TESTS_PASSED → идём дальше
-   - Если TESTS_FAILED → чиним (max 2 итерации)
-
-8. Merge Request:
-   - git push origin feature/add-promo-codes
-   - gh pr create --title "feat: promo codes" ...
-   - Сообщает пользователю ссылку на PR
-```
-
-## Красные флаги (нельзя)
-
-- ❌ Создать модель БД, но не создать миграцию
-- ❌ Написать endpoint, но не написать тест
-- ❌ Удалить старый компонент, а новый ещё не работает
-- ❌ Закоммитить с `console.log`, `debugger`
-- ✅ Push в main разрешён по явному запросу пользователя (обычно используем PR)
-- ❌ Коммит без разрешения пользователя
-
-## 🪤 Известные ловушки и ошибки (Promelectron)
-
-> Реальные проблемы, которые уже случались. Проверять перед коммитом.
-
-### 1. Тесты не должны трогать dev/prod БД
-**Что случилось:** `conftest.py` использовал `DATABASE_URL` напрямую → `drop_all` в фикстуре снёс все таблицы dev-БД.
-**Фикс:** Всегда использовать отдельную тестовую БД:
-```python
-# conftest.py
-_env_url = os.getenv("DATABASE_URL", "")
-if "postgresql" in _env_url:
-    TEST_DATABASE_URL = _env_url.rsplit("/", 1)[0] + "/promelectron_test"
-else:
-    TEST_DATABASE_URL = "sqlite+aiosqlite:///./test.db"
-```
-**Проверка:** `docker exec postgres psql -U postgres -d promelectron -c "\dt"` — таблицы должны быть.
-
-### 2. Rate limiting ломает тесты
-**Что случилось:** `slowapi` блокировал тестовые запросы → `KeyError`, `429`.
-**Фикс:** Сброс лимитера в `client` fixture:
-```python
-@pytest.fixture
-async def client(test_session):
-    from src.app.utils.rate_limiter import limiter
-    limiter.reset()  # Очищаем счётчики перед каждым тестом
-    ...
-```
+### 2. Rate limiting breaks tests
+Reset the limiter in the `client` fixture.
 
 ### 3. SQLite ≠ PostgreSQL
-**Что случилось:** Тесты, написанные под SQLite, падали на PostgreSQL:
-- `ForeignKeyViolationError` — SQLite игнорирует FK по умолчанию
-- `UniqueViolationError` — SQLite не всегда проверяет unique
-- `ProgrammingError` — различия в SQL синтаксисе
-**Фикс:** Всегда запускать `make test-backend` (PostgreSQL в Docker), никогда `pytest` локально на SQLite.
+Foreign keys, unique constraints, and SQL syntax differ. Test against PostgreSQL.
 
-### 4. Trailing slash в FastAPI
-**Что случилось:** `api.get('/categories')` → 307 redirect → axios теряет заголовки/теряется в CORS.
-**Фикс:** Всегда использовать trailing slash, как в декораторе:
-```javascript
-// Правильно
-api.get('/categories/')   // @router.get("/")
-api.post('/categories/')  // @router.post("/")
-```
+### 4. Trailing slash in FastAPI
+`api.get('/categories/')` matches `@router.get("/")`. Missing trailing slash causes 307/CORS issues.
 
-### 5. Docker node_modules permissions
-**Что случилось:** `npm install` в контейнере (`node:20-alpine`, root) создаёт `node_modules` с `root:root` → хост не может писать.
-**Фикс:** После работы с Docker:
-```bash
-sudo chown -R $(whoami):$(whoami) frontend/node_modules
-```
-**Или:** всегда ставить зависимости на хосте, а не в контейнере.
+### 5. Docker `node_modules` permissions
+After `npm install` in a container, fix ownership with `sudo chown -R $(whoami):$(whoami) frontend/node_modules`.
 
-### 6. docker-entrypoint.sh executable bit
-**Что случилось:** Volume mount перезаписывает файл из хоста → теряется `+x` → `permission denied` при старте.
-**Фикс:** Проверять перед запуском:
-```bash
-chmod +x backend/docker-entrypoint.sh
-```
+### 6. `docker-entrypoint.sh` executable bit
+Run `chmod +x backend/docker-entrypoint.sh` before starting.
 
-### 7. docker-entrypoint.sh игнорирует аргументы
-**Что случилось:** Entrypoint всегда запускает `seed_data.py + uvicorn`, `$@` не передаётся → `make migrate` не работает.
-**Фикс (workaround):** В Makefile использовать `--entrypoint ""`:
-```makefile
-migrate:
-	docker compose run --rm --entrypoint "" api alembic upgrade head
-```
+### 7. `docker-entrypoint.sh` ignores arguments
+Use `--entrypoint ""` for one-off commands: `docker compose run --rm --entrypoint "" api alembic upgrade head`.
 
-### 8. Vite proxy hostname в Docker
-**Что случилось:** `target: 'http://127.0.0.1:8000'` в `vite.config.js` — frontend контейнер не может достучаться до `127.0.0.1` хоста.
-**Фикс:** Использовать имя сервиса:
-```javascript
-proxy: { '/api': { target: 'http://api:8000', changeOrigin: true } }
-```
+### 8. Vite proxy hostname in Docker
+Use service name: `proxy: { '/api': { target: 'http://api:8000', changeOrigin: true } }`.
 
-### 9. Alembic version без таблиц
-**Что случилось:** `drop_all` снёс таблицы, но `alembic_version` остался → `alembic upgrade head` считает, что всё на месте.
-**Фикс:**
-```sql
-DELETE FROM alembic_version;
--- Затем
-alembic upgrade head
-```
+### 9. Alembic version without tables
+If `drop_all` removed tables but `alembic_version` remains, run `DELETE FROM alembic_version;` then `alembic upgrade head`.
 
-### 10. Duplicate route без guard
-**Что случилось:** Два `path: '/admin'` — первый без `meta: { requiresAdmin }` перехватывал все запросы.
-**Фикс:** Только один маршрут с guard:
-```javascript
-// ❌ Неправильно
-{ path: '/admin', component: Admin },
-{ path: '/admin', component: Admin, meta: { requiresAuth: true, requiresAdmin: true } }
+### 10. Duplicate route without guard
+Keep only one route definition with the correct `meta` guards.
 
-// ✅ Правильно
-{ path: '/admin', component: Admin, meta: { requiresAuth: true, requiresAdmin: true } }
-```
+### 11. Path traversal in filename
+Sanitize filenames with `os.path.basename` and `os.path.realpath` checks.
 
-### 11. Path traversal в filename
-**Что случилось:** `os.path.join(UPLOAD_DIR, str(product_id), filename)` с `filename=../../etc/passwd`.
-**Фикс:** Санитизация:
-```python
-safe = os.path.basename(filename)
-if not safe or safe.startswith("."):
-    raise HTTPException(400, "Invalid filename")
-real_fp = os.path.realpath(os.path.join(UPLOAD_DIR, str(product_id), safe))
-real_base = os.path.realpath(os.path.join(UPLOAD_DIR, str(product_id)))
-if not real_fp.startswith(real_base + os.sep):
-    raise HTTPException(400, "Invalid filename")
-```
-
-### 12. Race condition на stock
-**Что случилось:** `SELECT stock` → проверка → `UPDATE stock` в отдельных шагах → overselling при параллельных запросах.
-**Фикс:** `SELECT FOR UPDATE`:
-```python
-product_result = await db.execute(
-    select(Product).where(Product.id == ...).with_for_update()
-)
-```
+### 12. Race condition on stock
+Use `SELECT FOR UPDATE` when decrementing stock.

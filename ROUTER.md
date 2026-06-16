@@ -1,78 +1,68 @@
-# ROUTER — Автоматический выбор агента
+# ROUTER — Agent routing for Promelectron
 
-> **Цель:** Ты просто описываешь задачу — система сама выбирает агента, собирает контекст и начинает работу.
+> Describe the task — the system picks the right agent, gathers context, and starts working.
 
----
+## Quick start
 
-## Быстрый старт
-
-### Способ 1: Master Skill /promelectron (рекомендуется)
-```
-/promelectron
-Задача: Добавь промокоды в корзину
-```
-Загружает мастер-скилл с полным реестром агентов, роутингом и правилами. Агент сам определит роль и будет работать по инструкциям.
-
-### Способ 2: Workflow-скиллы (для сложных процессов)
-```
-/implement "Добавь промокоды в корзину"        # полный цикл разработки
-/fix "Исправь race condition в корзине"        # багфикс workflow
-/deploy test                                   # деплой
-/review                                        # code review
-/context-sync                                  # актуализация контекста
-```
-
-### Способ 3: Фиксированная роль (если знаешь, кто нужен)
-```
-Роль: backend-dev. Задача: Создай API для промокодов
-```
-
-### Способ 4: Bash-скрипт (через терминал, опционально)
-```bash
-make task MSG="Создай API для промокодов"    # промпт с автоопределением роли
-make ask MSG="Сделай страницу checkout"      # с гарантированным сбросом роли
-make check                                    # lint + test
-```
-
----
-
-## Как работает роутинг
-
-| Роль | Ключевые слова в задаче | Когда выбирать |
-|------|------------------------|--------------|
-| `promelectron` | Любые — мастер-скилл сам определит роль | Рекомендуется всегда. Загружай первым. |
-| `implement` | Новая фича, API, страница, компонент | Полный цикл: архитектор → dev → review → QA → MR |
-| `fix` | Баг, ошибка, crash, не работает | Анализ → воспроизведение → фикс → тест |
-| `deploy` | Деплой, release, production | GitHub Actions → watch → E2E smoke test |
-| `backend-dev` | API, endpoint, backend, бэк, model, schema, service, route, migration, alembic, SQLAlchemy, FastAPI, pytest, БД, таблица, webhook, JWT, OAuth, payment, заказ, order, корзина (API), cart (API), auth (backend), admin (API) | Только backend задачи |
-| `frontend-dev` | frontend, фронт, Vue, component, страница, page, view, Pinia, store, composable, UI, UX, форма, form, CSS, HTML, Axios, router, localStorage, корзина (UI), cart (UI), login (UI), checkout (UI) | Только frontend задачи |
-| `devops` | Docker, K8s, Helm, nginx, CI/CD, deploy, деплой, инфраструктура, infra, SSL, VPN, backup, Sentry, monitoring, pod, container, Harbor, GitHub Actions, workflow, secret, config | Только devops задачи |
-| `e2e-tester` | E2E, Playwright, тест сценарий, test scenario, browser, click, end-to-end, regression, регресс, spec | Только E2E задачи |
-| `code-reviewer` | review, ревью, code review, проверь код, findings, quality | Только review |
-| `security-reviewer` | security, аудит, audit, уязвимость, vulnerability, SQL injection, XSS, CSRF | Только security audit |
-| `project-manager` | roadmap, план, спринт, sprint, приоритет, prioritize, бэклог, backlog, оцени, estimate, planning | Только планирование |
-
-**Если задача смешанная** (например, «Сделай API и фронт для промокодов»):
-1. Роутер выбирает **backend-dev** как основную роль
-2. После завершения — создаёт отдельную задачу для `frontend-dev`
-
----
-
-## Архитектура
+### Option 1: Workflow skills (recommended)
 
 ```
-Пользователь → описывает задачу
+/implement "Add promo codes to cart"     # full feature cycle
+/fix "Race condition in cart add"        # bug-fix workflow
+/deploy test                             # deploy via GitHub Actions
+/review                                  # code review current changes
+/context-sync                            # update project context files
+```
+
+### Option 2: Fixed role (when you know who you need)
+
+```
+Role: backend-dev. Task: add email validation to registration.
+```
+
+### Option 3: Dispatcher (ad-hoc tasks)
+
+```
+Read .kimi/agents/dispatcher.md and follow its instructions strictly.
+Task: Create an API for promo codes.
+```
+
+## How routing works
+
+| Role | Keywords in task | When to choose |
+|------|------------------|----------------|
+| `implement` | New feature, API, page, component | Full cycle: architect → dev → review → QA |
+| `fix` | Bug, error, crash, not working | Analyze → reproduce → fix → test |
+| `deploy` | Deploy, release, production | GitHub Actions → watch → E2E smoke test |
+| `backend-dev` | API, endpoint, backend, model, schema, service, route, migration, alembic, SQLAlchemy, FastAPI, pytest, DB, table, webhook, JWT, OAuth (backend), payment, order, cart (API), auth (backend), admin (API) | Backend-only tasks |
+| `frontend-dev` | frontend, Vue, component, page, view, Pinia, store, composable, UI, UX, form, responsive, CSS, Axios, router, localStorage, cart (UI), login (UI), checkout (UI) | Frontend-only tasks |
+| `devops` | Docker, K8s, Kubernetes, Helm, nginx, CI/CD, deploy, infra, SSL, VPN, backup, Sentry, monitoring, pod, container, GitHub Actions, workflow, secret, config | Infrastructure tasks |
+| `e2e-tester` | E2E, Playwright, test scenario, browser, click, end-to-end, regression, spec | E2E scenarios |
+| `code-reviewer` | review, code review, findings, quality | Code review |
+| `security-reviewer` | security, audit, vulnerability, SQL injection, XSS, CSRF | Security audit |
+| `project-manager` | roadmap, plan, sprint, prioritize, backlog, estimate, planning | Planning |
+| `qa` | test, acceptance criteria, full check, qa | Full test pyramid |
+| `integration-dev` | dev environment, services won't start, ports, health check | Local environment ops |
+
+**Mixed tasks** (e.g. "API and frontend for promos"):
+1. `/implement` picks the primary role and may run backend + frontend sequentially.
+2. For ad-hoc mixed work, use the dispatcher.
+
+## Architecture
+
+```
+User describes task
        │
        ▼
 ┌─────────────────────────────┐
-│  scripts/kimi-task.sh       │
-│  (keyword-based routing)    │
+│  /implement or /fix skill   │
+│  (in .kimi-code/skills/)    │
 └─────────────┬───────────────┘
               │
        ┌──────┴──────┐
        ▼             ▼
   ┌─────────┐  ┌──────────┐
-  │Читает   │  │Читает    │
+  │ Reads   │  │ Reads    │
   │PROJECT_ │  │BACKLOG,  │
   │CONTEXT  │  │BLOCKERS  │
   └────┬────┘  └────┬─────┘
@@ -80,56 +70,37 @@ make check                                    # lint + test
        └─────┬──────┘
              ▼
   ┌──────────────────────┐
-  │ Формирует полный     │
-  │ промпт с контекстом  │
+  │ Spawns subagent      │
+  │ (architect/dev/QA)   │
   └──────────┬───────────┘
-             │
              ▼
   ┌──────────────────────┐
-  │ Копирует в буфер     │
-  │ (xclip / wl-copy)    │
-  └──────────┬───────────┘
-             │
-             ▼
-      Пользователь вставляет
-      в Kimi CLI → Enter
+  │ Writes task artifacts│
+  │ (spec, findings)     │
+  └──────────────────────┘
 ```
 
----
+## Files
 
-## Файлы системы
+| File | Purpose |
+|------|---------|
+| `.kimi-code/skills/promelectron/SKILL.md` | Master skill with agent registry and golden rules |
+| `.kimi-code/skills/implement/SKILL.md` | Full feature cycle |
+| `.kimi-code/skills/fix/SKILL.md` | Bug-fix workflow |
+| `.kimi-code/skills/review/SKILL.md` | Code review workflow |
+| `.kimi-code/skills/deploy/SKILL.md` | Deployment workflow |
+| `.kimi-code/skills/context-sync/SKILL.md` | Context synchronization |
+| `.kimi-code/skills/plan-maintainer/SKILL.md` | Backlog/planning maintenance |
+| `.kimi/agents/<ROLE>.md` | Role prompts |
+| `.kimi/rules/*.md` | Shared conventions |
+| `PROJECT_CONTEXT.md` | Single source of truth |
+| `.agent/BACKLOG.md` | Current sprint |
+| `.agent/BLOCKERS.md` | Active blockers |
+| `.agent/SESSION_LOG.md` | Session log |
 
-| Файл | Назначение |
-|------|-----------|
-| `.kimi/skills/promelectron/SKILL.md` | **Главный скилл.** Мастер-скилл с реестром агентов, роутингом, workflow и правилами. Загружай через `/promelectron`. |
-| `.kimi/skills/implement/SKILL.md` | Полный цикл разработки: архитектор → dev → review → QA → MR. Загружай через `/implement`. |
-| `.kimi/skills/fix/SKILL.md` | Багфикс workflow. Загружай через `/fix`. |
-| `PROJECT_CONTEXT.md` | Единый источник контекста (читается агентами). |
-| `.agent/BACKLOG.md` | Текущий спринт (читается агентами). |
-| `.agent/BLOCKERS.md` | Блокеры (читаются агентами). |
-| `.agent/SESSION_LOG.md` | Лог сессий (читается агентами). |
-| `scripts/kimi-auto.sh` | Shell-скрипт авто-режима: определяет роли, формирует orchestrator-промпт. |
-| `scripts/kimi-task.sh` | Shell-скрипт роутера (опционально, через терминал). |
-| `scripts/kimi-ask.sh` | Shell-скрипт с гарантированным сбросом роли (опционально). |
-| `Makefile` | `make auto MSG="..."`, `make task MSG="..."`, `make ask MSG="..."`. |
-| `.kimi/skills/review/SKILL.md` | Code review skill. Загружай через `/review`. |
-| `.kimi/skills/context-sync/SKILL.md` | Синхронизация контекста. Загружай через `/context-sync`. |
+## Adding a new role
 
----
-
-## Ограничение: смена роли внутри сессии
-
-> ⚠️ **Важно:** Роутер (`scripts/kimi-task.sh`) формирует промпт **перед** началом сессии. В рамках одной сессии Kimi CLI LLM может "залипнуть" в предыдущей роли.
->
-> **Если в активной сессии нужна другая роль:**
-> 1. `make task MSG="..."` — скрипт сформирует полный промпт с правильной ролью (рекомендуется)
-> 2. Начни новую сессию Kimi CLI
-> 3. Явно укажи роль: `Роль: frontend-dev. Задача: ...`
-
-## Добавление новой роли
-
-1. Создать `.kimi/agents/<new-role>.md` — промпт агента
-2. Добавить keywords в `scripts/kimi-task.sh` (функция `detect_role`)
-3. Добавить keywords в `.kimi/agents/dispatcher.md` (таблицу роутинга)
-4. Добавить keywords в `.kimi/skills/auto-agent/SKILL.md` (таблицу роутинга)
-5. Обновить `ROUTER.md` и `SESSION_START.md` (таблицы ролей)
+1. Create `.kimi/agents/<new-role>.md` — role prompt
+2. Add keywords to `.kimi/agents/dispatcher.md`
+3. Update `ROUTER.md` and `SESSION_START.md`
+4. If the role is part of `/implement`, update `.kimi-code/skills/implement/SKILL.md`

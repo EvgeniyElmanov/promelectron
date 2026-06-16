@@ -1,359 +1,236 @@
-# SESSION_START — Полное руководство по работе с агентами Promelectron
+# SESSION_START — Working with Promelectron agents
 
-> **Всё работает через Skills в Kimi CLI.** Загрузил скилл — работай.
+> Everything runs through **Kimi Code CLI skills** in `.kimi-code/skills/`.
 
----
+## Contents
 
-## 📋 Содержание
+1. [Quick start (first time)](#quick-start-first-time)
+2. [Daily workflow](#daily-workflow)
+3. [Workflow modes](#workflow-modes)
+4. [Task format (5 elements)](#task-format-5-elements)
+5. [Roles and example tasks](#roles-and-example-tasks)
+6. [After a task](#after-a-task)
+7. [If something goes wrong](#if-something-goes-wrong)
+8. [Useful files](#useful-files)
 
-1. [Быстрый старт (первый раз)](#быстрый-старт-первый-раз)
-2. [Ежедневная работа](#ежедневная-работа)
-3. [Режимы работы](#режимы-работы)
-4. [Работа через терминал IDE](#работа-через-терминал-ide)
-5. [Формат задачи (5 элементов)](#формат-задачи-5-элементов)
-6. [Роли и примеры задач](#роли-и-примеры-задач)
-7. [Что делать после задачи](#что-делать-после-задачи)
-8. [Если что-то пошло не так](#если-что-то-пошло-не-так)
-9. [Полезные файлы](#полезные-файлы)
+## Quick start (first time)
 
----
+### Step 1: Choose a mode
 
-## Быстрый старт (первый раз)
+| If you... | Use |
+|-----------|-----|
+| Don't know the role | [Workflow `/implement`](#mode-a-full-feature-cycle-implement) |
+| Need a bug fixed | [Workflow `/fix`](#mode-b-bug-fix-fix) |
+| Know the exact role | [Fixed role](#mode-c-fixed-role) |
+| Need planning/roadmap | [Project manager](#mode-d-project-manager) |
 
-### Шаг 1: Выбери режим
+### Step 2: Load the skill
 
-| Если ты... | Используй |
-|-----------|----------|
-| Не знаешь, кто нужен (backend/frontend/devops) | [Master Skill `/promelectron`](#режим-a-master-skill-promelectron) |
-| Работаешь в одной роли целый день | [Фиксированная роль](#режим-b-фиксированная-роль) |
-| Нужна новая фича от идеи до Merge Request | [Workflow `/implement`](#режим-c-полный-цикл-фичи-implement) |
-| Нужно исправить баг | [Workflow `/fix`](#режим-d-багфикс-fix) |
-
-### Шаг 2: Загрузи скилл
-
-**Для любой задачи (рекомендуется):**
+For a full feature cycle:
 ```
-/promelectron
-Задача: <описание>
+/implement "Add promo codes to cart"
 ```
 
-**Для полного цикла фичи:**
+For a bug:
 ```
-/implement <описание фичи>
-```
-
-**Для багфикса:**
-```
-/fix <описание бага>
+/fix "Race condition when adding to cart"
 ```
 
-### Шаг 3: Напиши задачу
+### Step 3: Follow the subagent
+
+The skill spawns subagents (architect → developer → reviewer → QA). Approve the spec when asked, then let the pipeline run.
+
+## Daily workflow
+
+After loading a workflow skill, just describe tasks:
 
 ```
-Задача: Добавь промокоды в корзину
-```
-
----
-
-## Ежедневная работа
-
-После загрузки `/promelectron` просто пиши задачи:
-
-```
-Задача: Исправь баг в оформлении заказа
+/implement "Add a discount field to orders"
 ```
 
 ```
-Задача: Настрой CI/CD для staging
+/fix "Checkout button is disabled on mobile"
 ```
 
 ```
-Задача: Напиши E2E тест на checkout
+/review
 ```
 
-Агент сам определит роль и переключится.
+The skill routes to the correct subagent automatically.
 
-> ⚠️ **В длинной сессии (5+ задач) возможно залипание роли.**
-> Если агент ведёт себя странно — перезагрузи скилл: `/promelectron`
+## Workflow modes
 
----
+### Mode A: Full feature cycle `/implement`
 
-## Режимы работы
+> For tasks that need design, development, review, and QA.
 
-### Режим A: Master Skill `/promelectron` (рекомендуется)
-
-> Не знаешь роли? Не проблема. Загрузил скилл — система сама разберётся.
-
-**Как работает:**
-1. Загружается мастер-скилл с полным реестром агентов
-2. При каждом запросе анализирует задачу и определяет роль
-3. Читает `PROJECT_CONTEXT.md`, `BACKLOG.md`, `BLOCKERS.md`
-4. Читает инструкции `.kimi/agents/<ROLE>.md`
-5. Выполняет задачу по workflow выбранной роли
-
-**Начало сессии (один раз):**
 ```
-/promelectron
+/implement "Add promo codes to cart"
 ```
 
-**Все следующие задачи:**
-```
-Задача: Добавь промокоды в корзину
-```
-
-**Когда использовать:**
-- Не знаешь, backend это или frontend
-- Задача явно смешанная (API + UI)
-- Хочешь "написал и забыл"
-- Работаешь с задачами разных ролей в одной сессии
-
-**Когда НЕ использовать:**
-- Нужен жёсткий контроль над каждым шагом
-- Задача критичная и требует ручного review после каждого шага — тогда используй `/implement`
-
----
-
-### Режим B: Фиксированная роль
-
-> Если целый день только backend (или только frontend) — не нужен диспетчер.
-
-**Начало сессии:**
-```
-Роль: backend-dev. Задача: Добавь валидацию email в регистрацию.
-
-Прочитай PROJECT_CONTEXT.md, BACKLOG.md, BLOCKERS.md, SESSION_LOG.md.
-Прочитай .kimi/agents/backend-dev.md и .kimi/rules/pre-edit-checklist.md.
-После работы обнови SESSION_LOG.md.
-```
-
-**Все следующие задачи:**
-```
-Задача: Добавь пагинацию в список заказов
-```
-
-> ⚠️ **Важно:** В фиксированной роли смена на другую роль работает плохо. Если понадобилось переключиться — используй `/promelectron` или начни новую сессию.
-
----
-
-### Режим C: Полный цикл фичи `/implement`
-
-> Для задач, где нужен полный цикл: архитектор → разработка → ревью → QA → Merge Request.
-
-**Пример:**
-```
-/implement "Добавь промокоды в корзину"
-```
-
-**Как работает:**
-1. **Architect phase** — анализ, уточняющие вопросы, spec.md
-2. **Git branch** — `feature/<task-id>`
+How it works:
+1. **Architect** — analysis, questions, `spec.md` (plan mode; requires approval)
+2. **Git worktree** — `.worktrees/implement-<task-id>` on branch `feature/<task-id>`
 3. **Backend dev** — model → schema → service → route → tests
 4. **Frontend dev** — API → composable → component → page → tests
-5. **Code Review** — max 3 итерации
-6. **QA** — max 2 итерации
-7. **Merge Request** — `gh pr create`
+5. **Code review** — max 3 iterations
+6. **QA / E2E** — pytest + vitest + Playwright
+7. **Report** — merge only with explicit approval
 
-**Когда использовать:**
-- Новая фича затрагивает backend + frontend
-- Нужно пройти review и QA перед merge
-- Хочешь полный контроль и traceability (spec.md, findings.md)
+Flags:
+- `--quick` — skip architect/spec phase
+- `--backend-only` — backend only
+- `--frontend-only` — frontend only
 
-**Флаги:**
-- `--quick` — пропустить архитектурную фазу
-- `--backend-only` — только backend
-- `--frontend-only` — только frontend
+### Mode B: Bug fix `/fix`
 
----
+> For bugs: analyze → reproduce → fix → test.
 
-### Режим D: Багфикс `/fix`
-
-> Для багов: анализ → воспроизведение → фикс → тест.
-
-**Пример:**
 ```
-/fix "Исправь race condition в добавлении товара в корзину"
+/fix "Race condition in cart add"
 ```
 
-**Как работает:**
-1. Определяет роль по описанию бага
-2. Читает контекст и недавний git log
-3. Воспроизводит баг (пишет минимальный тест)
-4. Исправляет **причину**, не симптом
-5. Запускает тесты
-6. Проверяет golden path, если затронут
+How it works:
+1. Determines role from description
+2. Reads context and recent git log
+3. Reproduces the bug (writes a minimal test)
+4. Fixes the cause, not the symptom
+5. Runs tests
+6. Checks golden path if touched
 
-**Когда использовать:**
-- Пользователь сообщил о баге
-- Тест падает
-- Что-то "сломалось"
+Flags:
+- `--backend` — explicitly backend bug
+- `--frontend` — explicitly frontend bug
+- `--infra` — infrastructure bug
 
-**Флаги:**
-- `--backend` — явно backend баг
-- `--frontend` — явно frontend баг
-- `--infra` — инфраструктурный баг
+### Mode C: Fixed role
 
----
+> If you work in one role all day.
 
-## Работа через терминал IDE
+```
+Role: backend-dev. Task: add email validation to registration.
 
-### Вариант 1: Через `make` (для lint/test)
+Read PROJECT_CONTEXT.md, BACKLOG.md, BLOCKERS.md, SESSION_LOG.md.
+Read .kimi/agents/backend-dev.md and .kimi/rules/pre-edit-checklist.md.
+After work update SESSION_LOG.md.
+```
+
+### Mode D: Project manager
+
+> For planning, priorities, and roadmap.
+
+```
+Role: project-manager. Task: prioritize backlog for next sprint.
+```
+
+## Working through the terminal
+
+Useful `make` commands:
 
 ```bash
 make check       # lint + test
-make status      # git + сервисы
-make dev         # запуск стека
+make status      # git + services
+make dev         # start the stack
+make stop        # stop the stack
+make test-backend
+make test-frontend
+make test-e2e
 ```
 
-> **Не используй** `make auto`, `make task`, `make ask` — это legacy, скиллы заменили их.
+## Task format (5 elements)
 
-### Вариант 2: Через VS Code Tasks
-
-Нажми **Ctrl+Shift+P** → **Tasks: Run Task** → выбери:
-
-| Задача | Что делает |
-|--------|-----------|
-| `Dev: Запустить стек` | `make dev` |
-| `Test: Backend` | `make test-backend` |
-| `Test: Frontend` | `make test-frontend` |
-
-> Файл задач: `.vscode/tasks.json`
-
----
-
-## Формат задачи (5 элементов)
-
-Чем конкретнее задача — тем лучше результат.
+The more specific the task, the better the result.
 
 ```
-[РОЛЬ] Задача: [что сделать, одно предложение]
-Файл: [конкретный файл или зона]
-Рядом: [связанные файлы, которые тоже затронутся]
-Нельзя ломать: [что трогать нельзя]
-Проверь: [как убедиться, что работает]
+[ROLE] Task: [one sentence]
+File: [specific file or zone]
+Related: [related files that will also change]
+Do not break: [boundaries]
+Verify: [how to confirm it works]
 ```
 
-### Примеры
+### Examples
 
 **Backend:**
 ```
-[backend-dev] Задача: Добавить поле promo_code в модель Order
-Файл: backend/src/app/models/order.py
-Рядом: backend/src/app/schemas/order.py, backend/src/app/services/order_service.py
-Нельзя ломать: существующие миграции, таблицу payments
-Проверь: pytest tests/test_orders.py && ruff check backend/src/app/models/order.py
+[backend-dev] Task: add promo_code field to Order model
+File: backend/src/app/models/order.py
+Related: backend/src/app/schemas/order.py, backend/src/app/services/order_service.py
+Do not break: existing migrations, payments table
+Verify: pytest tests/test_orders.py && ruff check backend/src/app/models/order.py
 ```
 
 **Frontend:**
 ```
-[frontend-dev] Задача: Добавить поле ввода промокода в Cart.vue
-Файл: frontend/src/views/Cart.vue
-Рядом: frontend/src/services/cart.js, frontend/src/stores/cart.js
-Нельзя ломать: существующий расчёт итоговой суммы, мобильную вёрстку
-Проверь: npm run test:unit Cart && проверь адаптивность (375px)
+[frontend-dev] Task: add promo code input to Cart.vue
+File: frontend/src/views/Cart.vue
+Related: frontend/src/services/cart.js, frontend/src/stores/cart.js
+Do not break: existing total calculation, mobile layout
+Verify: npm run test:unit Cart && check responsiveness (375px)
 ```
 
-**DevOps:**
+More details in `.kimi/rules/prompt-format.md`.
+
+## Roles and example tasks
+
+| Role | Keywords | Typical task | Example |
+|------|----------|--------------|---------|
+| `backend-dev` | API, model, migration, service, endpoint, FastAPI, SQLAlchemy, pytest | Backend models, schemas, services, routes, tests | "Add POST /promo/apply endpoint" |
+| `frontend-dev` | Vue, component, page, form, Pinia, UI, CSS | Components, stores, composables, tests | "Add promo input in Cart.vue" |
+| `devops` | Docker, Helm, K8s, CI/CD, deploy, nginx, secret | Helm, Docker, CI/CD | "Add migration check to deploy.yml" |
+| `e2e-tester` | E2E, Playwright, test scenario, browser, click | Playwright tests | "Write checkout test with test card" |
+| `code-reviewer` | review, code review, findings, quality | Code review | "Review PR #42" |
+| `security-reviewer` | security, audit, vulnerability, SQL injection | Security audit | "Audit API for SQL injection" |
+| `project-manager` | plan, sprint, prioritize, backlog, estimate | Planning, priorities, roadmap | "Estimate YooKassa integration timeline" |
+| `architect` | design, architecture, spec, technical task, trade-off | Feature design | "Design delivery integration" |
+| `qa` | test, acceptance criteria, full check, qa | Full verification | "Check feature/X branch before merge" |
+
+## After a task
+
+Agents update:
+
+1. `.agent/SESSION_LOG.md` — what was done, files changed, risks
+2. `.agent/BACKLOG.md` — task status (if from sprint)
+3. `.agent/BLOCKERS.md` — new blockers (if any)
+4. `PROJECT_CONTEXT.md` — if architecture changed
+
+Before reporting:
+- [ ] Tests pass (`make test`)
+- [ ] Lint is clean (`make lint`)
+- [ ] Critical paths from `.kimi/rules/golden-path.md` are not broken
+
+## If something goes wrong
+
+### The agent is not following the expected role
+
+1. Reload the workflow skill: `/implement ...` or `/fix ...`
+2. Start a new Kimi CLI session
+3. Explicitly specify the role: `Role: frontend-dev. Task: ...`
+
+### You want two independent tasks at once
+
+Don't write: "Create API and fix Helm"
+
+Write two messages:
 ```
-[devops] Задача: Добавить YOOKASSA_SECRET_KEY в Helm secrets
-Файл: infra/helm/templates/secrets.yaml
-Рядом: infra/helm/values.yaml, .env.example
-Нельзя ломать: существующие секреты (DATABASE_URL, JWT_SECRET)
-Проверь: helm template . | grep -A5 yookassa
-```
-
-> Подробнее — в `.kimi/rules/prompt-format.md`
-
----
-
-## Роли и примеры задач
-
-| Роль | Ключевые слова | Типичная задача | Пример |
-|------|---------------|-----------------|--------|
-| `backend-dev` | API, модель, миграция, сервис, endpoint, FastAPI, SQLAlchemy, pytest, БД, webhook, JWT, заказ, корзина (API) | API, модели, миграции, сервисы | "Добавить endpoint POST /promo/apply" |
-| `frontend-dev` | Vue, компонент, страница, форма, Pinia, UI, CSS, router, корзина (UI), checkout (UI) | Компоненты, stores, composables | "Сделать форму ввода промокода в Cart.vue" |
-| `devops` | Docker, Helm, K8s, CI/CD, деплой, nginx, secret, config, мониторинг | Helm, Docker, CI/CD | "Добавить проверку миграций в deploy.yml" |
-| `e2e-tester` | E2E, Playwright, тест сценарий, browser, click | Playwright тесты | "Написать тест на checkout с тестовой картой" |
-| `code-reviewer` | review, ревью, проверь код, findings, quality | Code review | "Проверь код PR #42" |
-| `security-reviewer` | security, аудит, уязвимость, SQL injection | Security audit | "Audit API на SQL injection" |
-| `project-manager` | план, спринт, приоритет, бэклог, оценка | Планирование | "Оцени сроки интеграции ЮKassa" |
-| `architect` | спроектируй, архитектура, spec, техническое задание, дизайн решения, trade-off | Проектирование фичи | "Спроектируй интеграцию с доставкой" |
-| `qa` | протестируй, проверь перед merge, acceptance criteria, тесты все, pytest + vitest + playwright | Полная проверка | "Проверь ветку feature/X перед merge" |
-
----
-
-## Что делать после задачи
-
-Агент **обязан** обновить:
-
-1. **`.agent/SESSION_LOG.md`** — что сделано, файлы, риски
-2. **`.agent/BACKLOG.md`** — статус задачи (если из спринта)
-3. **`.agent/BLOCKERS.md`** — новые блокеры (если появились)
-4. **`PROJECT_CONTEXT.md`** — если архитектура изменилась
-
-**Проверь перед отчётом:**
-- [ ] Тесты проходят (`make test`)
-- [ ] Линт чистый (`make lint`)
-- [ ] Критичные сценарии не сломаны (`.kimi/rules/golden-path.md`)
-
----
-
-## Если что-то пошло не так
-
-### Агент "залип" — не сменил роль
-
-**Признаки:**
-- Нет строки `🔄 Сброс роли...` в начале ответа
-- Агент отвечает в стиле предыдущей роли (backend пишет Vue)
-- Агент говорит "как frontend-dev я бы..." вместо переключения
-
-**Решения (по надёжности):**
-
-1. **Перезагрузить скилл (~95%):**
-   ```
-   /promelectron
-   Задача: <...>
-   ```
-
-2. **Новая сессия Kimi CLI (100%):**
-   Закрой сессию и открой новую. Контекст полностью чистый.
-
-3. **Явное указание роли:**
-   ```
-   Роль: frontend-dev. Задача: Сделай страницу checkout
-   ```
-
-### Система выбрала не ту роль
-
-**Решение:** Уточни формулировку или укажи роль явно:
-```
-Роль: frontend-dev. Задача: Сделай страницу checkout
-```
-
-### Хочу две независимые задачи разом
-
-**Не пиши:** `Сделай API и исправь Helm`
-
-**Пиши двумя сообщениями:**
-```
-Задача: Создай API для X
+Task: create API for X
 ```
 ```
-Задача: Исправь Helm шаблон для Y
+Task: fix Helm template for Y
 ```
 
----
+## Useful files
 
-## Полезные файлы
-
-| Файл | Когда читать |
-|------|-------------|
-| `.kimi/rules/prompt-format.md` | Перед тем, как формулировать задачу |
-| `.kimi/rules/pre-edit-checklist.md` | Перед правкой кода — тесты, миграции, env |
-| `.kimi/rules/dependency-map.md` | Перед правкой — что ещё обновить |
-| `.kimi/rules/golden-path.md` | Перед финишем — проверить критичные сценарии |
-| `.kimi/rules/task-template.md` | Если создаёшь новую задачу в `.agent/tasks/` |
-| `.kimi/HOWTO.md` | Подробное руководство с troubleshooting |
-| `.kimi/AGENTS.md` | Индекс всех агентов, скиллов и правил |
-| `PROJECT_CONTEXT.md` | В начале сессии — актуальный стек, статус, блокеры |
-| `.agent/BACKLOG.md` | В начале сессии — текущий спринт |
-| `.agent/BLOCKERS.md` | В начале сессии — активные блокеры |
+| File | When to read |
+|------|--------------|
+| `.kimi/rules/prompt-format.md` | Before formulating a task |
+| `.kimi/rules/pre-edit-checklist.md` | Before editing code |
+| `.kimi/rules/dependency-map.md` | Before changing a file |
+| `.kimi/rules/golden-path.md` | Before finishing |
+| `.kimi/rules/task-template.md` | When creating a new backlog item |
+| `.kimi/agents/<ROLE>.md` | When working in a fixed role |
+| `AGENTS.md` | Index of agents, skills, and rules |
+| `ROUTER.md` | Routing documentation |
+| `PROJECT_CONTEXT.md` | At session start — stack, status, blockers |
+| `.agent/BACKLOG.md` | At session start — current sprint |
+| `.agent/BLOCKERS.md` | At session start — active blockers |

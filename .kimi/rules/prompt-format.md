@@ -83,33 +83,31 @@
 
 ---
 
-## Исключение: Orchestrator mode
-
-Если используешь `.agent/ORCHESTRATOR_PROMPT.md` — можно писать менее формально:
-
-```
-Задача: Добавь промокоды в корзину
-```
-
-Orchestrator сам определит роли и разобьёт на подзадачи. Но если хочешь **контроль** — используй строгий формат.
-
----
-
 ## Как это автоматизировать
 
-### Вариант A: Руками (для сложных задач)
-Ты сам формулируешь задачу по шаблону и вставляешь в Kimi CLI.
+### Вариант A: Workflow skills (для полного цикла)
 
-### Вариант B: Через `make auto` (для простых задач)
-```bash
-make auto MSG="[backend-dev] Добавить поле promo_code в Order. Файл: models/order.py"
+```
+/implement "Добавь промокоды в корзину"
 ```
 
-Скрипт добавит контекст проекта и скопирует в буфер.
+Skill сам спроектирует, реализует, проверит и подготовит к merge.
 
-### Вариант C: Orchestrator (для сквозных фич)
+### Вариант B: Руками (для сложных или частичных задач)
+
+Ты сам формулируешь задачу по шаблону и вставляешь в Kimi CLI:
+
 ```
-Прочитай .agent/ORCHESTRATOR_PROMPT.md
+[backend-dev] Задача: Добавить поле promo_code в Order
+Файл: backend/src/app/models/order.py
+Рядом: backend/src/app/schemas/order.py, backend/src/app/services/order_service.py
+Нельзя ломать: существующие миграции, таблицу payments
+Проверь: pytest tests/test_orders.py && ruff check backend/src/app/models/order.py
+```
+
+### Вариант C: Диспетчер (для ad-hoc задач)
+
+```
+Read .kimi/agents/dispatcher.md and follow its instructions strictly.
 Задача: Добавь промокоды в корзину
 ```
-Orchestrator сам определит роли и сформулирует подзадачи.

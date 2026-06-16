@@ -1,0 +1,73 @@
+# Example user-level Kimi Code CLI config for Promelectron.
+# Copy relevant sections into ~/.kimi-code/config.toml
+# Project-level config.toml is NOT supported by Kimi Code CLI.
+
+# default_model = "kimi-code/kimi-for-coding"
+# default_thinking = true
+# default_permission_mode = "manual"
+# default_plan_mode = false
+# merge_all_available_skills = true
+# telemetry = true
+
+# ─── Permission Rules for /implement pipeline ───
+# These rules reduce approval friction for git worktrees, tests, and lint.
+
+[[permission.rules]]
+decision = "allow"
+pattern = "Bash(git worktree *)"
+reason = "Allow /implement to create isolated worktrees"
+
+[[permission.rules]]
+decision = "allow"
+pattern = "Bash(git commit *)"
+reason = "Allow developer subagent to commit to feature branches"
+
+[[permission.rules]]
+decision = "allow"
+pattern = "Bash(git merge *)"
+reason = "Allow merging feature branches after user approval"
+
+[[permission.rules]]
+decision = "allow"
+pattern = "Bash(make test-backend)"
+reason = "Run backend tests in Docker"
+
+[[permission.rules]]
+decision = "allow"
+pattern = "Bash(make test-frontend)"
+reason = "Run frontend unit tests"
+
+[[permission.rules]]
+decision = "allow"
+pattern = "Bash(make test-e2e)"
+reason = "Run Playwright E2E tests"
+
+[[permission.rules]]
+decision = "allow"
+pattern = "Bash(ruff check *)"
+reason = "Lint Python code"
+
+[[permission.rules]]
+decision = "allow"
+pattern = "Bash(npm run lint)"
+reason = "Lint frontend code"
+
+[[permission.rules]]
+decision = "allow"
+pattern = "Bash(npx playwright test *)"
+reason = "Run Playwright tests"
+
+[[permission.rules]]
+decision = "allow"
+pattern = "Bash(alembic *)"
+reason = "Run Alembic migrations"
+
+# ─── Hook: auto-lint Python after Edit/Write ───
+# Note: Kimi Code CLI hook variable for the touched file may differ from Claude's.
+# This hook lints the whole backend quietly; it is safe but slightly slower.
+
+[[hooks]]
+event = "PostToolUse"
+matcher = "Edit|Write"
+command = "cd backend && ruff check --fix --quiet 2>/dev/null; true"
+timeout = 30
