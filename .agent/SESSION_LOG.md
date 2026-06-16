@@ -14,6 +14,57 @@ YYYY-MM-DD HH:MM | <role> | <краткое описание>
 
 ## Записи (новые сверху)
 
+### 2026-06-16 10:40 | code-reviewer / e2e-tester | admin-categories-tabs — ревью, правки, E2E
+  Изменено:
+  - `frontend/src/composables/useCategories.js` — `loadMore()` теперь добавляет новые элементы через `push(...)` вместо замены списка.
+  - `frontend/src/views/Admin.vue` — добавлен debounce поиска категорий (~300 мс).
+  - `backend/tests/test_categories.py` — отформатирован `ruff format`.
+  - `.agent/admin-categories-tabs/review/findings.md` — все FINDINGS отмечены как FIXED, статус APPROVED (итерация 2).
+  - `frontend/e2e/admin.spec.js` — прогнан E2E-сценарий создания корневой категории и подкатегории, переключения вкладки, cleanup.
+  - `PROJECT_CONTEXT.md` — обновлены метрики (`backend_tests: 157/157`, `frontend_tests: 106/106`, `e2e_tests: 98/98`), API Inventory, Frontend Map, история изменений.
+  - `.agent/SESSION_LOG.md` — эта запись.
+  Результат:
+  - `make test-backend` — 157/157 ✅
+  - `npm test -- --run` (frontend) — 106/106 ✅
+  - `npm run lint` (frontend) — чисто ✅
+  - `npx playwright test e2e/admin.spec.js --workers=1` — 2/2 ✅
+  - Code review — APPROVED (итерация 2, все FINDINGS FIXED).
+  Риск/Техдолг:
+  - API `GET /categories/` изменил формат ответа — все потребители обновлены, но внешние интеграции могут зависеть от старого формата.
+  - Вкладки показывают только один уровень вложенности; глубокая иерархия не поддерживается.
+  Блокер: Нет
+
+### 2026-06-16 19:55 | frontend-dev | Admin categories tabs — frontend
+  Изменено:
+  - `frontend/src/composables/useCategories.js` — новый composable: загрузка всех категорий для вкладок/селектора родителя, загрузка отображаемых категорий по активной вкладке/поиску/пагинации.
+  - `frontend/src/views/Admin.vue` — раздел «Категории» переделан под горизонтальные вкладки корневых категорий + «Все»; добавлен поиск по названию; столбец «Товаров»; пагинация «Показать ещё»; empty-state для пустых вкладок; в модалке добавлен селектор `parent_id` с опцией «Без родителя».
+  - `frontend/src/components/ProductFormModal.vue` — адаптация под `CategoryListOut` (`data.items`).
+  - `frontend/src/components/CategoryChips.vue` — адаптация под `CategoryListOut` (`data.items`).
+  - `frontend/src/__tests__/Admin.spec.js` — моки под пагинированный ответ; новые тесты на вкладки, переключение, поиск, селектор родителя.
+  - `frontend/src/__tests__/Products.spec.js` — мок `/categories/` возвращает `{ items, total }`.
+  - `frontend/e2e/admin.spec.js` — E2E-сценарий создания корневой категории и подкатегории, переключения вкладки, cleanup.
+  Результат:
+  - `cd frontend && npm test -- --run` — 106/106 ✅
+  - `cd frontend && npm run lint` — чисто
+  Риск/Техдолг:
+  - `loading.categories` в `Admin.vue` больше не используется (заменён на `categoryLoading` из composable), можно убрать при cleanup.
+  Блокер: Нет
+
+### 2026-06-16 19:35 | backend-dev | Admin categories tabs — backend
+  Изменено:
+  - `backend/src/app/schemas/category.py` — `CategoryOut` дополнен `product_count`; добавлен `CategoryListOut` (`items`, `total`).
+  - `backend/src/app/services/category_service.py` — `list_categories` принимает `skip`, `limit`, `parent_id`, `q` и возвращает `(items, total)`; считает `product_count` через `func.count(Product.id).outerjoin(Product).group_by(Category.id)`; добавлена защита от циклов в `update_category` (нельзя выбрать потомка или саму себя родителем); `get_category`/`create_category`/`update_category` возвращают `product_count`.
+  - `backend/src/app/api/categories.py` — `GET /categories/` возвращает `CategoryListOut` с query-параметрами `skip`, `limit`, `parent_id`, `q`; trailing slash сохранён.
+  - `backend/tests/test_categories.py` — 7 новых тестов: пагинация, фильтр по `parent_id`, поиск `q`, создание подкатегории, защита от циклов, счётчик товаров, несуществующий родитель.
+  - `PROJECT_CONTEXT.md` — обновлён API Inventory и счётчик backend-тестов (`157/157`), добавлена запись в историю.
+  Результат:
+  - `make test-backend` — 157/157 ✅
+  - `ruff check` на изменённых файлах — чисто
+  - `ruff format --check` на изменённых файлах — чисто
+  Риск/Техдолг:
+  - Изменён контракт `GET /categories/` с `list[CategoryOut]` на `CategoryListOut`; frontend-потребители (`Admin.vue`, `ProductFormModal.vue`, `CategoryChips.vue`) и тесты должны быть обновлены отдельным frontend-dev.
+  Блокер: Нет
+
 ### 2026-06-16 13:25 | backend-dev / frontend-dev | Замена системы доставки на CDEK
   Изменено:
   - `backend/src/app/models/product.py` — поля weight_grams, length_cm, width_cm, height_cm.

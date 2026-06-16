@@ -20,7 +20,7 @@ vi.mock('@/services/api', () => ({
         return Promise.resolve({ data: { items: mockProducts, total: mockProducts.length } })
       }
       if (url === '/categories/') {
-        return Promise.resolve({ data: mockCategories })
+        return Promise.resolve({ data: { items: mockCategories, total: mockCategories.length } })
       }
       return Promise.resolve({ data: [] })
     }),

@@ -22,5 +22,11 @@ class CategoryUpdate(CategoryBase):
 class CategoryOut(CategoryBase):
     id: int
     created_at: datetime
+    product_count: int = 0
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class CategoryListOut(BaseModel):
+    items: list[CategoryOut]
+    total: int

@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.app.db.database import get_db
 from src.app.models.user import User
-from src.app.schemas.category import CategoryCreate, CategoryOut
+from src.app.schemas.category import CategoryCreate, CategoryListOut, CategoryOut
 from src.app.services.category_service import CategoryService
 from src.app.utils.auth import get_current_active_admin
 from src.app.utils.cache import cache_response, invalidate_cache
@@ -28,10 +28,19 @@ async def read_category(category_id: int, db: AsyncSession = Depends(get_db)):
     return await CategoryService.get_category(category_id=category_id, db=db)
 
 
-@router.get("/", response_model=list[CategoryOut])
+@router.get("/", response_model=CategoryListOut)
 @cache_response(ttl_seconds=3600)
-async def list_categories(db: AsyncSession = Depends(get_db)):
-    return await CategoryService.list_categories(db=db)
+async def list_categories(
+    skip: int = 0,
+    limit: int = 100,
+    parent_id: int | None = None,
+    q: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    items, total = await CategoryService.list_categories(
+        db=db, skip=skip, limit=limit, parent_id=parent_id, q=q
+    )
+    return CategoryListOut(items=items, total=total)
 
 
 @router.put("/{category_id}", response_model=CategoryOut)
@@ -59,4 +68,3 @@ async def delete_category(
     result = await CategoryService.delete_category(category_id=category_id, db=db)
     await invalidate_cache("/api/v1/categories*")
     return result
-
