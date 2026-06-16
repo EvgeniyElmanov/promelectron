@@ -1,6 +1,53 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Admin Panel', () => {
+  test('admin can navigate between section tabs', async ({ page }) => {
+    // 1. Login as admin
+    await page.goto('/login');
+    await page.fill('[data-testid="login-email"]', 'seed-admin@example.com');
+    await page.fill('[data-testid="login-password"]', 'seedpassword123');
+    await page.click('[data-testid="login-submit"]');
+    await expect(page).toHaveURL('/');
+
+    // 2. Navigate to admin page via profile
+    await page.goto('/profile');
+    await expect(page.locator('[data-testid="profile-page"]')).toBeVisible();
+    await page.click('[data-testid="profile-admin-link"]');
+    await expect(page).toHaveURL('/admin');
+    await expect(page.locator('[data-testid="admin-page"]')).toBeVisible();
+
+    // 3. Dashboard is active by default
+    await expect(page.locator('[data-testid="admin-section-tab-dashboard"]')).toHaveClass(/admin__tab--active/);
+    await expect(page.locator('.admin__section-title:has-text("Заказы за 7 дней")')).toBeVisible();
+
+    // 4. Switch to Users tab
+    await page.click('[data-testid="admin-section-tab-users"]');
+    await expect(page.locator('[data-testid="admin-section-tab-users"]')).toHaveClass(/admin__tab--active/);
+    await expect(page.locator('.admin__section-title:has-text("Пользователи")')).toBeVisible();
+    await expect(page.locator('.admin__section-title:has-text("Заказы за 7 дней")')).not.toBeVisible();
+
+    // 5. Switch to Categories tab
+    await page.click('[data-testid="admin-section-tab-categories"]');
+    await expect(page.locator('[data-testid="admin-section-tab-categories"]')).toHaveClass(/admin__tab--active/);
+    await expect(page.locator('[data-testid="categories-section"]')).toBeVisible();
+    await expect(page.locator('[data-testid="add-category-btn"]')).toBeVisible();
+
+    // 6. Switch to Delivery tab
+    await page.click('[data-testid="admin-section-tab-delivery"]');
+    await expect(page.locator('[data-testid="admin-section-tab-delivery"]')).toHaveClass(/admin__tab--active/);
+    await expect(page.locator('.admin__section-title:has-text("Способы доставки")')).toBeVisible();
+
+    // 7. Switch to Orders tab
+    await page.click('[data-testid="admin-section-tab-orders"]');
+    await expect(page.locator('[data-testid="admin-section-tab-orders"]')).toHaveClass(/admin__tab--active/);
+    await expect(page.locator('.admin__section-title:has-text("Заказы")')).toBeVisible();
+
+    // 8. Switch to Feature Flags tab
+    await page.click('[data-testid="admin-section-tab-feature-flags"]');
+    await expect(page.locator('[data-testid="admin-section-tab-feature-flags"]')).toHaveClass(/admin__tab--active/);
+    await expect(page.locator('.admin__section-title:has-text("Фичатоглы")')).toBeVisible();
+  });
+
   test('admin can view admin page and categories table', async ({ page }) => {
     // 1. Login as admin
     await page.goto('/login');
@@ -16,11 +63,8 @@ test.describe('Admin Panel', () => {
     await expect(page).toHaveURL('/admin');
     await expect(page.locator('[data-testid="admin-page"]')).toBeVisible();
 
-    // 3. Switch to Categories tab on mobile
-    const categoriesTab = page.locator('.admin__tab:has-text("Категории")');
-    if (await categoriesTab.isVisible().catch(() => false)) {
-      await categoriesTab.click();
-    }
+    // 3. Switch to Categories tab
+    await page.click('[data-testid="admin-section-tab-categories"]');
 
     // 4. Create a test category
     await page.click('[data-testid="add-category-btn"]');
@@ -58,11 +102,8 @@ test.describe('Admin Panel', () => {
     await page.click('[data-testid="profile-admin-link"]');
     await expect(page).toHaveURL('/admin');
 
-    // 3. Switch to Categories tab on mobile
-    const categoriesTab = page.locator('.admin__tab:has-text("Категории")');
-    if (await categoriesTab.isVisible().catch(() => false)) {
-      await categoriesTab.click();
-    }
+    // 3. Switch to Categories tab
+    await page.click('[data-testid="admin-section-tab-categories"]');
 
     // 4. Create root category
     await page.click('[data-testid="add-category-btn"]');
