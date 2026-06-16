@@ -2,21 +2,22 @@
   <div class="admin" data-testid="admin-page">
     <h1 class="admin__title">Панель администратора</h1>
 
-    <!-- Tab Navigation (mobile) -->
-    <div class="admin__tabs" v-if="isMobile">
+    <!-- Section Tab Navigation -->
+    <div class="admin__tabs">
       <button
-        v-for="tab in tabs"
+        v-for="tab in sectionTabs"
         :key="tab.key"
         class="admin__tab"
-        :class="{ 'admin__tab--active': activeTab === tab.key }"
-        @click="activeTab = tab.key"
+        :class="{ 'admin__tab--active': activeSectionTab === tab.key }"
+        :data-testid="`admin-section-tab-${tab.key}`"
+        @click="activeSectionTab = tab.key"
       >
         {{ tab.label }}
       </button>
     </div>
 
     <!-- Dashboard Tab -->
-    <div v-show="!isMobile || activeTab === 'dashboard'" class="admin__tab-panel">
+    <div v-show="activeSectionTab === 'dashboard'" class="admin__tab-panel" data-testid="admin-section-panel-dashboard">
       <!-- KPI Cards -->
       <div class="admin__kpi-grid">
         <div v-for="kpi in kpiData" :key="kpi.key" class="admin__kpi-card">
@@ -81,7 +82,7 @@
     </div>
 
     <!-- Users Tab -->
-    <div v-show="!isMobile || activeTab === 'users'" class="admin__tab-panel">
+    <div v-show="activeSectionTab === 'users'" class="admin__tab-panel" data-testid="admin-section-panel-users">
       <div class="admin__section">
         <div class="admin__section-header">
           <h2 class="admin__section-title">Пользователи</h2>
@@ -133,7 +134,7 @@
     </div>
 
     <!-- Categories Tab -->
-    <div v-show="!isMobile || activeTab === 'categories'" class="admin__tab-panel">
+    <div v-show="activeSectionTab === 'categories'" class="admin__tab-panel" data-testid="admin-section-panel-categories">
       <div class="admin__section" data-testid="categories-section">
         <div class="admin__section-header">
           <h2 class="admin__section-title">Категории</h2>
@@ -227,7 +228,7 @@
     </div>
 
     <!-- Delivery Tab -->
-    <div v-show="!isMobile || activeTab === 'delivery'" class="admin__tab-panel">
+    <div v-show="activeSectionTab === 'delivery'" class="admin__tab-panel" data-testid="admin-section-panel-delivery">
       <div class="admin__section">
         <div class="admin__section-header">
           <h2 class="admin__section-title">Способы доставки</h2>
@@ -283,7 +284,7 @@
     </div>
 
     <!-- Orders Tab -->
-    <div v-show="!isMobile || activeTab === 'orders'" class="admin__tab-panel">
+    <div v-show="activeSectionTab === 'orders'" class="admin__tab-panel" data-testid="admin-section-panel-orders">
       <div class="admin__section">
         <div class="admin__section-header">
           <h2 class="admin__section-title">Заказы</h2>
@@ -339,7 +340,7 @@
     </div>
 
     <!-- Feature Flags Tab -->
-    <div v-show="!isMobile || activeTab === 'featureFlags'" class="admin__tab-panel">
+    <div v-show="activeSectionTab === 'feature-flags'" class="admin__tab-panel" data-testid="admin-section-panel-feature-flags">
       <div class="admin__section">
         <div class="admin__section-header">
           <h2 class="admin__section-title">Фичатоглы</h2>
@@ -520,20 +521,16 @@ const onCategorySearchInput = (value) => {
   }, CATEGORY_SEARCH_DEBOUNCE_MS);
 };
 
-// Responsive
-const isMobile = ref(window.innerWidth < 768);
-window.addEventListener('resize', () => { isMobile.value = window.innerWidth < 768; });
-
-// Tabs
-const tabs = [
+// Section tabs
+const sectionTabs = [
   { key: 'dashboard', label: 'Дашборд' },
-  { key: 'orders', label: 'Заказы' },
   { key: 'users', label: 'Пользователи' },
   { key: 'categories', label: 'Категории' },
-  { key: 'delivery', label: 'Доставка' },
-  { key: 'featureFlags', label: 'Фичатоглы' },
+  { key: 'delivery', label: 'Способы доставки' },
+  { key: 'orders', label: 'Заказы' },
+  { key: 'feature-flags', label: 'Фичатоглы' },
 ];
-const activeTab = ref('dashboard');
+const activeSectionTab = ref('dashboard');
 
 // Loading states
 const loading = ref({

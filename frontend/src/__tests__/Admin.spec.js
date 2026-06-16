@@ -95,6 +95,13 @@ const mockFeatureFlags = [
   { name: 'google_oauth', enabled: true, env_default: true, redis_override: null, source: 'env' },
 ];
 
+const switchSectionTab = async (wrapper, key) => {
+  const tab = wrapper.find(`[data-testid="admin-section-tab-${key}"]`);
+  expect(tab.exists()).toBe(true);
+  await tab.trigger('click');
+  await flushPromises();
+};
+
 describe('Admin.vue', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -106,6 +113,8 @@ describe('Admin.vue', () => {
       if (url === '/admin/top-products') return Promise.resolve({ data: mockTopProducts });
       if (url === '/admin/users') return Promise.resolve({ data: mockUsers });
       if (url === '/categories/') return Promise.resolve({ data: matchCategoriesRequest(url, params) });
+      if (url === '/delivery-methods/') return Promise.resolve({ data: [] });
+      if (url === '/admin/orders') return Promise.resolve({ data: [] });
       if (url === '/admin/feature-flags') return Promise.resolve({ data: mockFeatureFlags });
       return Promise.resolve({ data: {} });
     });
@@ -158,14 +167,55 @@ describe('Admin.vue', () => {
     expect(wrapper.text()).toContain('12 продано');
   });
 
-  it('отображает список пользователей с ролями и статусами', async () => {
-    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 1024 });
-
+  it('по умолчанию активна вкладка Дашборд', async () => {
     const wrapper = mount(Admin, { global: { plugins: [router] } });
     await flushPromises();
 
-    // Переключаемся на вкладку пользователей
-    await wrapper.find('.admin__tab--active').exists(); // на десктопе табов нет, всё видно
+    const dashboardTab = wrapper.find('[data-testid="admin-section-tab-dashboard"]');
+    expect(dashboardTab.classes()).toContain('admin__tab--active');
+
+    expect(wrapper.find('[data-testid="admin-section-tab-users"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="admin-section-tab-categories"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="admin-section-tab-delivery"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="admin-section-tab-orders"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="admin-section-tab-feature-flags"]').exists()).toBe(true);
+  });
+
+  it('переключает секции при клике на табы', async () => {
+    const wrapper = mount(Admin, { global: { plugins: [router] } });
+    await flushPromises();
+
+    const isPanelVisible = (key) => {
+      const style = wrapper.find(`[data-testid="admin-section-panel-${key}"]`).attributes('style') || '';
+      return !style.includes('display: none');
+    };
+
+    expect(isPanelVisible('dashboard')).toBe(true);
+    expect(isPanelVisible('users')).toBe(false);
+
+    await switchSectionTab(wrapper, 'users');
+    expect(isPanelVisible('users')).toBe(true);
+    expect(isPanelVisible('dashboard')).toBe(false);
+
+    await switchSectionTab(wrapper, 'categories');
+    expect(isPanelVisible('categories')).toBe(true);
+    expect(isPanelVisible('users')).toBe(false);
+
+    await switchSectionTab(wrapper, 'delivery');
+    expect(isPanelVisible('delivery')).toBe(true);
+
+    await switchSectionTab(wrapper, 'orders');
+    expect(isPanelVisible('orders')).toBe(true);
+
+    await switchSectionTab(wrapper, 'feature-flags');
+    expect(isPanelVisible('feature-flags')).toBe(true);
+  });
+
+  it('отображает список пользователей с ролями и статусами', async () => {
+    const wrapper = mount(Admin, { global: { plugins: [router] } });
+    await flushPromises();
+
+    await switchSectionTab(wrapper, 'users');
 
     expect(wrapper.text()).toContain('Пользователи');
     expect(wrapper.text()).toContain('admin@example.com');
@@ -180,6 +230,8 @@ describe('Admin.vue', () => {
     const wrapper = mount(Admin, { global: { plugins: [router] } });
     await flushPromises();
 
+    await switchSectionTab(wrapper, 'categories');
+
     const categoriesSection = wrapper.find('[data-testid="categories-section"]');
     expect(categoriesSection.text()).toContain('Категории');
     expect(categoriesSection.text()).toContain('Смартфоны');
@@ -190,6 +242,8 @@ describe('Admin.vue', () => {
     const wrapper = mount(Admin, { global: { plugins: [router] } });
     await flushPromises();
 
+    await switchSectionTab(wrapper, 'categories');
+
     expect(wrapper.find('[data-testid="category-tab-all"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="category-tab-1"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="category-tab-2"]').exists()).toBe(true);
@@ -199,6 +253,8 @@ describe('Admin.vue', () => {
   it('переключает вкладку и фильтрует дочерние категории', async () => {
     const wrapper = mount(Admin, { global: { plugins: [router] } });
     await flushPromises();
+
+    await switchSectionTab(wrapper, 'categories');
 
     const tab = wrapper.find('[data-testid="category-tab-1"]');
     expect(tab.exists()).toBe(true);
@@ -223,6 +279,8 @@ describe('Admin.vue', () => {
     const wrapper = mount(Admin, { global: { plugins: [router] } });
     await flushPromises();
 
+    await switchSectionTab(wrapper, 'categories');
+
     const tab = wrapper.find('[data-testid="category-tab-2"]');
     await tab.trigger('click');
     await flushPromises();
@@ -238,6 +296,8 @@ describe('Admin.vue', () => {
     vi.useFakeTimers();
     const wrapper = mount(Admin, { global: { plugins: [router] } });
     await flushPromises();
+
+    await switchSectionTab(wrapper, 'categories');
 
     const searchInput = wrapper.find('[data-testid="category-search-input"]');
     await searchInput.setValue('iphone');
@@ -257,7 +317,9 @@ describe('Admin.vue', () => {
     const wrapper = mount(Admin, { global: { plugins: [router] } });
     await flushPromises();
 
-    const buttons = wrapper.findAll('.admin__btn--danger');
+    await switchSectionTab(wrapper, 'users');
+
+    const buttons = wrapper.findAll('[data-testid="user-row"] .admin__btn--danger');
     expect(buttons.length).toBeGreaterThan(0);
 
     await buttons[0].trigger('click');
@@ -270,6 +332,8 @@ describe('Admin.vue', () => {
   it('открывает модал создания категории', async () => {
     const wrapper = mount(Admin, { global: { plugins: [router] } });
     await flushPromises();
+
+    await switchSectionTab(wrapper, 'categories');
 
     const addBtn = wrapper.find('[data-testid="add-category-btn"]');
     expect(addBtn.exists()).toBe(true);
@@ -285,6 +349,8 @@ describe('Admin.vue', () => {
   it('показывает селектор родителя с опциями в модалке редактирования', async () => {
     const wrapper = mount(Admin, { global: { plugins: [router] } });
     await flushPromises();
+
+    await switchSectionTab(wrapper, 'categories');
 
     const editBtn = wrapper.find('[data-testid="category-row-3"] .admin__icon-btn--edit');
     await editBtn.trigger('click');
@@ -303,6 +369,8 @@ describe('Admin.vue', () => {
     const wrapper = mount(Admin, { global: { plugins: [router] } });
     await flushPromises();
 
+    await switchSectionTab(wrapper, 'feature-flags');
+
     const table = wrapper.find('[data-testid="feature-flags-table"]');
     expect(table.exists()).toBe(true);
     expect(table.text()).toContain('google_oauth');
@@ -312,6 +380,8 @@ describe('Admin.vue', () => {
   it('переключает фичатогл по клику', async () => {
     const wrapper = mount(Admin, { global: { plugins: [router] } });
     await flushPromises();
+
+    await switchSectionTab(wrapper, 'feature-flags');
 
     const button = wrapper.find('[data-testid="feature-flag-google_oauth"]');
     expect(button.exists()).toBe(true);

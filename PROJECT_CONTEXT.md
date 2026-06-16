@@ -2,13 +2,13 @@
 sprint: "Sprint 1"
 sprint_dates: "2026-06-01 — 2026-06-14"
 last_update: "2026-06-16"
-last_commit: "34803a6"
-commit_message: "fix(admin-categories-tabs): append pagination, debounce search, clean backend lint"
+last_commit: "235fe13"
+commit_message: "feat(admin): unified section tabs for admin panel"
 blockers_count: 1
 blockers_p0: 0
 blockers_p1: 1
 backend_tests: "157/157"
-frontend_tests: "106/106"
+frontend_tests: "108/108"
 e2e_tests: "98/98"
 ---
 
@@ -220,6 +220,7 @@ make test-e2e      # Playwright
 
 | Дата | Что изменилось | Кто |
 |------|---------------|-----|
+| 2026-06-16 | **admin-section-tabs (frontend)**: в `Admin.vue` добавлена единая горизонтальная таб-навигация по разделам админки (Дашборд, Пользователи, Категории, Способы доставки, Заказы, Фичатоглы) для десктопа и мобильных; по умолчанию активен Дашборд; добавлены `data-testid` для табов и панелей разделов. Обновлены unit-тесты `Admin.spec.js` и E2E `admin.spec.js`. Frontend-тесты: 108/108 ✅. | frontend-dev |
 | 2026-06-16 | **admin-categories-tabs — final review + E2E**: исправлены замечания ревью (append в пагинации, debounce поиска, backend lint). Code review: APPROVED. E2E admin.spec.js: 2/2 ✅. Обновлены `PROJECT_CONTEXT.md` и `SESSION_LOG.md`. | code-reviewer / e2e-tester |
 | 2026-06-16 | **Admin categories tabs (frontend)**: раздел «Категории» в `Admin.vue` переделан под горизонтальные вкладки корневых категорий + «Все» с фильтрацией дочерних; добавлен поиск, столбец «Товаров», пагинация «Показать ещё», empty-state; в модалке создания/редактирования добавлен селектор `parent_id`. Все потребители `GET /categories/` (`Admin.vue`, `ProductFormModal.vue`, `CategoryChips.vue`) адаптированы под `CategoryListOut`. Новые unit-тесты в `Admin.spec.js` и E2E-тест в `admin.spec.js`. | frontend-dev |
 | 2026-06-16 | **Admin categories tabs (backend)**: `GET /categories/` теперь возвращает пагинированный список с `items`/`total`, поддерживает `skip`, `limit`, `parent_id`, `q`; `CategoryOut` дополнен `parent_id` и `product_count`; `CategoryService.list_categories` считает товары через `func.count`; добавлена защита от циклов в `update_category`. Новые тесты в `backend/tests/test_categories.py`. | backend-dev |
