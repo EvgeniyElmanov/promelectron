@@ -235,15 +235,18 @@ describe('Admin.vue', () => {
   });
 
   it('ищет категории по названию', async () => {
+    vi.useFakeTimers();
     const wrapper = mount(Admin, { global: { plugins: [router] } });
     await flushPromises();
 
     const searchInput = wrapper.find('[data-testid="category-search-input"]');
     await searchInput.setValue('iphone');
+    vi.advanceTimersByTime(300);
     await flushPromises();
 
     expect(wrapper.find('[data-testid="category-row-3"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="category-row-4"]').exists()).toBe(false);
+    vi.useRealTimers();
   });
 
   it('блокирует пользователя по клику', async () => {

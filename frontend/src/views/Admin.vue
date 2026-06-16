@@ -168,7 +168,7 @@
             class="field__input"
             placeholder="Поиск по названию..."
             data-testid="category-search-input"
-            @input="setCategorySearchQuery(categorySearchQuery)"
+            @input="onCategorySearchInput(categorySearchQuery)"
           />
         </div>
 
@@ -507,6 +507,18 @@ const {
   setSearchQuery: setCategorySearchQuery,
   loadMore: loadMoreCategories,
 } = useCategories();
+
+let categorySearchTimeout = null;
+const CATEGORY_SEARCH_DEBOUNCE_MS = 300;
+
+const onCategorySearchInput = (value) => {
+  if (categorySearchTimeout) {
+    clearTimeout(categorySearchTimeout);
+  }
+  categorySearchTimeout = setTimeout(() => {
+    setCategorySearchQuery(value);
+  }, CATEGORY_SEARCH_DEBOUNCE_MS);
+};
 
 // Responsive
 const isMobile = ref(window.innerWidth < 768);

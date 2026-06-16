@@ -74,7 +74,15 @@ export function useCategories() {
   const loadMore = async () => {
     if (activeTab.value !== null) return;
     skip.value += PAGE_LIMIT;
-    await fetchDisplayedCategories();
+    try {
+      const { data } = await api.get('/categories/', {
+        params: buildListParams(),
+      });
+      displayedCategories.value.push(...(data.items || []));
+      total.value = data.total || 0;
+    } catch {
+      skip.value -= PAGE_LIMIT;
+    }
   };
 
   return {

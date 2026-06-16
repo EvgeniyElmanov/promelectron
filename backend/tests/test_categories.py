@@ -7,7 +7,7 @@ class TestCategoriesAPI:
     """Тесты для /api/v1/categories/"""
 
     @pytest.mark.asyncio
-    async def test_list_categories_pagination(self, client, test_session, test_admin):
+    async def test_list_categories_pagination(self, client, test_session):
         """Пагинация: skip и limit работают корректно."""
         for i in range(3):
             test_session.add(Category(name=f"Paginated Category {i}"))
@@ -70,10 +70,9 @@ class TestCategoriesAPI:
         assert "Alpha Phones" in names
         assert "Beta Laptops" not in names
 
+    @pytest.mark.usefixtures("test_admin")
     @pytest.mark.asyncio
-    async def test_create_subcategory_as_admin(
-        self, client, test_session, test_admin, admin_token
-    ):
+    async def test_create_subcategory_as_admin(self, client, test_session, admin_token):
         """Админ может создать подкатегорию, указав parent_id."""
         root = Category(name="Root For Subcategory")
         test_session.add(root)
@@ -91,9 +90,10 @@ class TestCategoriesAPI:
         assert data["parent_id"] == root.id
         assert data["product_count"] == 0
 
+    @pytest.mark.usefixtures("test_admin")
     @pytest.mark.asyncio
     async def test_update_category_cycle_protection(
-        self, client, test_session, test_admin, admin_token
+        self, client, test_session, admin_token
     ):
         """Нельзя выбрать потомка или саму категорию в качестве родителя."""
         root = Category(name="Root")
@@ -151,10 +151,9 @@ class TestCategoriesAPI:
         category = next(c for c in data["items"] if c["id"] == test_category.id)
         assert category["product_count"] == 1
 
+    @pytest.mark.usefixtures("test_admin")
     @pytest.mark.asyncio
-    async def test_create_category_invalid_parent_as_admin(
-        self, client, test_admin, admin_token
-    ):
+    async def test_create_category_invalid_parent_as_admin(self, client, admin_token):
         """Создание категории с несуществующим parent_id возвращает 404."""
         response = await client.post(
             "/api/v1/categories/",
