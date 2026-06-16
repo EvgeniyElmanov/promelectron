@@ -1,312 +1,154 @@
-# 📘 HOWTO — Работа с агентами Promelectron в Kimi CLI
+# 📘 HOWTO — Working with Promelectron agents in Kimi Code CLI
 
-> Практическое руководство: как переключать роли, не ломать контекст и выбирать правильный режим работы.
+> Practical guide: how to route tasks, keep context clean, and pick the right workflow.
 
----
+## 1. Problem we solved
 
-## 1. Проблема, которую мы решили
+Kimi Code CLI discovers project skills from `.kimi-code/skills/`. We moved all workflow skills there so `/implement`, `/fix`, `/review`, and `/deploy` work out of the box.
 
-**Kimi CLI не умеет переключать роли сам.** Роль — это просто текст в начале промпта. В длинной сессии LLM «прилипает» к предыдущей роли: если 5 задач подряд были backend, 6-я (frontend) тоже будет выполнена как backend.
+## 2. Three ways to work
 
-Мы сделали три механизма борьбы с этим:
+### Way A: Workflow skills (recommended)
 
-| Механизм | Надёжность | Когда использовать |
-|----------|-----------|-------------------|
-| **Диспетчер внутри сессии** (`DISPATCHER_PROMPT.md`) | ~70–90% | Обычная работа, много задач в одной сессии |
-| **Внешний генератор промпта** (`make ask`) | ~100% | Диспетчер «залип», нужна гарантия |
-| **Новая сессия Kimi CLI** | ~100% | Начало рабочего дня, смена крупного контекста |
-
----
-
-## 2. Три режима работы
-
-### Режим A: Диспетчер (автопереключение ролей) — рекомендуется
-
-Используй для обычных задач. Диспетчер сбрасывает роль при каждом новом сообщении.
-
-**Начало сессии (один раз):**
+Use for full feature cycles, bug fixes, reviews, and deploys.
 
 ```
-Прочитай .agent/DISPATCHER_PROMPT.md и следуй этим инструкциям строго.
+/implement "Add promo codes to cart"
+/fix "Race condition in cart add"
+/review
+/deploy test
 ```
 
-**Все следующие задачи:**
+The skill spawns subagents and manages the pipeline for you.
+
+### Way B: Fixed role
+
+Use if you work in one role all day.
 
 ```
-Задача: Создай API для промокодов
+Role: backend-dev. Task: add email validation to registration.
+
+Read PROJECT_CONTEXT.md, BACKLOG.md, BLOCKERS.md, SESSION_LOG.md.
+Read .kimi/agents/backend-dev.md and .kimi/rules/pre-edit-checklist.md.
+After work update SESSION_LOG.md.
 ```
 
-```
-Задача: Сделай страницу применения промокода
-```
+### Way C: Dispatcher (ad-hoc tasks)
+
+Use when you don't know the role and don't need a full workflow.
 
 ```
-Задача: Настрой CI/CD для нового сервиса
+Read .kimi/agents/dispatcher.md and follow its instructions strictly.
+Task: Create an API for promo codes.
 ```
 
-**Что произойдёт:**
-1. Kimi выведет `🔄 Диспетчер: сброс роли...`
-2. Определит роль по ключевым словам
-3. Прочитает `.kimi/agents/<ROLE>.md`
-4. Выполнит задачу по workflow агента
+## 3. How `/implement` works
 
----
+1. Creates `.agent/<task-id>/`
+2. Spawns architect subagent in plan mode → writes `spec.md` → waits for approval
+3. Creates git worktree `.worktrees/implement-<task-id>` on branch `feature/<task-id>`
+4. Spawns developer subagent(s) in the worktree
+5. Spawns code reviewer subagent → writes `review/findings.md` (max 3 iterations)
+6. Spawns QA/e2e-tester subagent → writes `review/test-findings.md`
+7. Reports to user; merge only with explicit approval
 
-### Режим B: Фиксированная роль (целый день в одной роли)
-
-Используй, если целый день работаешь только над backend или только над frontend. Меньше «магии» — меньше шансов ошибки.
-
-```
-Проект Promelectron. Роль: backend-dev. Задача: <описание>
-
-Прочитай PROJECT_CONTEXT.md, BACKLOG.md, BLOCKERS.md, SESSION_LOG.md.
-Прочитай .kimi/agents/backend-dev.md и .kimi/rules/pre-edit-checklist.md.
-После работы обнови SESSION_LOG.md.
-```
-
-> ⚠️ Если вдруг понадобилось переключиться на другую роль — не пытайся уговорить внутри фиксированной роли. Перейди в режим A (диспетчер) или начни новую сессию.
-
----
-
-### Режим C: Сквозная фича (cross-cutting, несколько ролей в одной задаче)
-
-Используй, когда одна фича требует работы нескольких ролей **последовательно**, в одном потоке.
-
-**Примеры:**
-- YooKassa E2E → CI/CD → backend → Helm
-- Новый платёжный метод: backend API + frontend форма + Helm secrets + E2E тест
-- Рефакторинг архитектуры: меняем модели, роуты, компоненты, CI
-
-```
-Проект Promelectron. Задача: YK-042 — Подключить YooKassa E2E → CI/CD → backend → Helm.
-
-Будет затронуто: e2e-tester, backend-dev, devops.
-Работай гибко — читай .kimi/agents/<ROLE>.md перед каждым значимым блоком.
-Перед правкой кода — .kimi/rules/pre-edit-checklist.md.
-После работы обнови SESSION_LOG.md.
-```
-
-**Как это работает:**
-- Контекст фичи сохраняется между блоками
-- Перед каждым блоком агент явно заявляет: «Сейчас работаю как devops»
-- Не нужно запускать диспетчера заново на каждом шаге
-
-**Когда НЕ использовать:**
-- Две независимые задачи («сделай API и ещё почини Docker») — здесь лучше диспетчер
-- Когда нужна строгая изоляция ролей
-
----
-
-## 3. Bash-helpers: `make task` и `make ask`
-
-Эти команды работают в твоём терминале и формируют готовый промпт для Kimi CLI.
-
-### `make task MSG="..."`
-
-- Определяет роль по ключевым словам (bash, не LLM)
-- Собирает контекст: PROJECT_CONTEXT.md, BACKLOG.md, BLOCKERS.md, SESSION_LOG.md
-- Вставляет инструкции агента
-- Копирует готовый промпт в буфер обмена
+## 4. Bash helpers
 
 ```bash
-make task MSG="Создай API гостевой корзины"
-make task MSG="Исправь Helm шаблон для worker"
-make task MSG="Напиши E2E тест на checkout"
+make check            # lint + test
+make dev              # start the stack
+make stop             # stop the stack
+make test-backend     # backend tests (PostgreSQL in Docker)
+make test-frontend    # frontend unit tests
+make test-e2e         # Playwright E2E tests
+make status           # git + services
 ```
 
-### `make ask MSG="..."`
-
-- То же самое, но **всегда начинает с диспетчера**
-- Гарантирует сброс предыдущей роли
-- Используй, если `make task` внутри длинной сессии не переключает роль
+Pipeline helper:
 
 ```bash
-make ask MSG="Сделай страницу checkout"
+python scripts/implement-pipeline.py setup "Add promo codes to cart"
+python scripts/implement-pipeline.py create-worktree <task-id>
+python scripts/implement-pipeline.py cleanup <task-id>
 ```
 
-### `make task-compact MSG="..."`
+## 5. How to tell the role switched
 
-- Короткий вариант без полного контекста
-- Полезен, если промпт `make task` не влезает в контекстное окно
+When using the dispatcher or a workflow skill, the subagent should state its role at the start. If the agent answers in the wrong style, reload the skill or start a new session.
 
-### Другие полезные команды
+## 6. Roles and zones
 
-```bash
-make agent-context   # показать спринт, блокеры, последние коммиты
-make agent-status    # быстрый health-check проекта
-make check           # lint + test
-make status          # git + сервисы
+| Role | Zone |
+|------|------|
+| `backend-dev` | `backend/src/app/`, `backend/tests/` |
+| `frontend-dev` | `frontend/src/` |
+| `devops` | `infra/`, `.github/workflows/` |
+| `e2e-tester` | `frontend/e2e/` |
+| `code-reviewer` | diff → findings |
+| `security-reviewer` | security findings |
+| `project-manager` | plans, backlog, roadmap |
+| `qa` | full test pyramid |
+| `integration-dev` | local dev environment |
+
+## 7. Required files
+
+Agents read:
+- `PROJECT_CONTEXT.md`
+- `.agent/BACKLOG.md`
+- `.agent/BLOCKERS.md`
+- `.agent/SESSION_LOG.md`
+- `.kimi/agents/<ROLE>.md`
+- `.kimi/rules/pre-edit-checklist.md`
+
+Agents update:
+- `.agent/SESSION_LOG.md`
+- `.agent/BACKLOG.md`
+- `.agent/BLOCKERS.md`
+- `PROJECT_CONTEXT.md` (if architecture changed)
+
+## 8. Troubleshooting
+
+### Skill is not recognized
+- Verify `.kimi-code/skills/` exists and contains `SKILL.md` files.
+- Kimi Code CLI loads skills automatically from `.kimi-code/skills/`.
+
+### Agent doesn't switch role
+1. Reload the workflow skill: `/implement ...`
+2. Start a new Kimi CLI session
+3. Explicitly specify the role: `Role: frontend-dev. Task: ...`
+
+### `make task` is missing
+The old `make task`/`make ask` helpers are legacy. Use workflow skills instead.
+
+### Agent didn't update SESSION_LOG.md
+In workflow skills this is part of the subagent prompt. In fixed-role mode, add it explicitly:
+```
+After work update SESSION_LOG.md.
 ```
 
----
-
-## 4. Как понять, что роль переключилась
-
-**Хорошие признаки:**
-- В начале ответа есть `🔄 Диспетчер: сброс роли...`
-- Затем `🎯 Роль определена: <ROLE>`
-- Агент говорит «я — backend-dev» или «следую инструкциям frontend-dev»
-
-**Признаки того, что диспетчер «залип»:**
-- Агент отвечает в стиле предыдущей роли (backend пытается писать Vue)
-- Нет сброса роли в начале ответа
-- Агент говорит «как frontend-dev я бы сделал...» вместо того чтобы переключиться
-
-**Что делать, если «залип»:**
-1. Попробуй `make ask MSG="..."` и вставь результат
-2. Или явно укажи роль: `Роль: frontend-dev. Задача: ...`
-3. Или начни новую сессию Kimi CLI
-
----
-
-## 5. Роли и их зоны
-
-| Роль | Ключевые слова | Что делает |
-|------|---------------|-----------|
-| `backend-dev` | API, модель, миграция, сервис, FastAPI, SQLAlchemy, pytest | Backend: модели, схемы, сервисы, роуты, тесты |
-| `frontend-dev` | Vue, компонент, страница, форма, Pinia, UI, CSS | Frontend: компоненты, stores, composables, тесты |
-| `devops` | Docker, K8s, Helm, CI/CD, деплой, nginx, secret | Инфраструктура, деплой, мониторинг |
-| `e2e-tester` | E2E, Playwright, тест сценарий, browser, click | End-to-end тесты |
-| `code-reviewer` | review, ревью, проверь код, findings | Code review, качество кода |
-| `security-reviewer` | security, аудит, уязвимость, SQL injection | Security audit |
-| `project-manager` | план, спринт, приоритет, бэклог, оценка | Планирование, приоритеты, roadmap |
-
-**Особые случаи:**
-- «Подключи API к форме оплаты» → `frontend-dev` (hybrid-правило)
-- «Сделай страницу checkout» → `frontend-dev`
-- «Сделай API и фронт для промокодов» → `backend-dev` (основная роль, если не указан cross-cutting режим)
-
----
-
-## 6. Обязательные файлы
-
-**Агент читает сам:**
-- `PROJECT_CONTEXT.md` — стек, статус, блокеры
-- `.agent/BACKLOG.md` — текущий спринт
-- `.agent/BLOCKERS.md` — активные блокеры
-- `.agent/SESSION_LOG.md` — история сессий
-- `.kimi/agents/<ROLE>.md` — инструкции роли
-
-**Агент обновляет после работы:**
-- `.agent/SESSION_LOG.md` — что сделано, файлы, риски
-- `.agent/BACKLOG.md` — статус задачи
-- `.agent/BLOCKERS.md` — новые блокеры
-- `PROJECT_CONTEXT.md` — если архитектура изменилась
-
----
-
-## 7. Troubleshooting
-
-### Диспетчер не переключается в длинной сессии
-
-**Причина:** LLM-инерция. Инструкция в начале сессии утратила вес.
-
-**Решения по надёжности:**
-1. `make ask MSG="..."` — внешний сброс роли
-2. `Роль: <ROLE>. Задача: ...` — явное указание
-3. Новая сессия Kimi CLI
-
-### `make task` выбрал не ту роль
-
-**Причина:** Ключевые слова конфликтуют или задача расплывчатая.
-
-**Решение:** Уточни формулировку или используй `make ask` + явную роль:
-```bash
-make ask MSG="Роль: frontend-dev. Сделай страницу checkout"
-```
-
-### Хочу две независимые задачи разом
-
-**Не пиши:** `Сделай API и исправь Helm`
-
-**Пиши двумя сообщениями:**
-```
-Задача: Создай API для X
-```
-```
-Задача: Исправь Helm шаблон для Y
-```
-
-Или используй режим C (cross-cutting), если это одна фича.
-
-### Агент не обновил SESSION_LOG.md
-
-**Проверь:** ты явно попросил? В режиме диспетчера это должно быть в инструкциях агента. В режиме фиксированной роли — указывай вручную:
-```
-...После работы обнови SESSION_LOG.md.
-```
-
----
-
-## 8. Профессиональный формат задачи (Prompt Engineering)
-
-> Чем конкретнее задача — тем лучше результат. LLM не умеет догадываться.
-
-### Формула: 5 элементов
+## 9. Task format (5 elements)
 
 ```
-[РОЛЬ] Задача: [что сделать, одно предложение]
-Файл: [конкретный файл или зона]
-Рядом: [связанные файлы, которые тоже затронутся]
-Нельзя ломать: [что трогать нельзя]
-Проверь: [как убедиться, что работает]
+[ROLE] Task: [one sentence]
+File: [specific file or zone]
+Related: [related files that will also change]
+Do not break: [boundaries]
+Verify: [how to confirm it works]
 ```
 
-### Пример: backend-dev
+See `.kimi/rules/prompt-format.md` for details.
 
-```
-[backend-dev] Задача: Добавить поле promo_code в модель Order
-Файл: backend/src/app/models/order.py
-Рядом: backend/src/app/schemas/order.py, backend/src/app/services/order_service.py
-Нельзя ломать: существующие миграции, таблицу payments
-Проверь: pytest tests/test_orders.py && ruff check backend/src/app/models/order.py
-```
+## 10. Quick-start checklist
 
-### Пример: frontend-dev
+- [ ] Open Kimi CLI in the project root
+- [ ] Run `/implement "<feature description>"`
+- [ ] Approve the architect's spec
+- [ ] Let the pipeline run
+- [ ] After completion check `.agent/SESSION_LOG.md`
 
-```
-[frontend-dev] Задача: Добавить поле ввода промокода в Cart.vue
-Файл: frontend/src/views/Cart.vue
-Рядом: frontend/src/services/cart.js, frontend/src/stores/cart.js
-Нельзя ломать: существующий расчёт итоговой суммы, мобильную вёрстку
-Проверь: npm run test:unit Cart && проверь адаптивность (375px)
-```
+## 11. Where to read more
 
-### Почему это работает
-
-| Элемент | Зачем |
-|---------|-------|
-| **Роль** | Убирает неопределённость. LLM сразу знает контекст. |
-| **Файл** | Сужает область поиска. Не "где-то в backend". |
-| **Рядом** | Предотвращает "висячие" изменения (API поменял, схему — нет). |
-| **Нельзя ломать** | Защита от регрессий. Явные границы. |
-| **Проверь** | Definition of Done. Агент знает, когда закончил. |
-
-### Что НЕ делать
-
-| ❌ Плохо | ✅ Хорошо |
-|----------|----------|
-| "Сделай API для промокодов" | "[backend-dev] Добавить POST /api/v1/promo/apply" |
-| "Почини баг в корзине" | "[backend-dev] Исправить race condition в add_item" |
-| "Настрой CI/CD" | "[devops] Добавить проверку миграций в deploy.yml" |
-
-> Подробнее — в `.kimi/rules/prompt-format.md`
-
----
-
-## 9. Быстрый старт (чек-лист)
-
-- [ ] Открыть Kimi CLI в корне проекта
-- [ ] Вставить: `Прочитай .agent/ORCHESTRATOR_PROMPT.md и следуй инструкциям`
-- [ ] Написать первую задачу по формату 5 элементов
-- [ ] Orchestrator сам определит роли и запустит Agent'ов
-- [ ] После завершения проверить `SESSION_LOG.md`
-
----
-
-## 10. Где почитать ещё
-
-- [SESSION_START.md](/SESSION_START.md) — шаблоны входа в сессию
-- [.kimi/AGENTS.md](/.kimi/AGENTS.md) — индекс агентов, skills, rules
-- [ROUTER.md](/ROUTER.md) — документация роутера
-- [.kimi/rules/pre-edit-checklist.md](/.kimi/rules/pre-edit-checklist.md) — что проверить перед правкой кода
+- [SESSION_START.md](/SESSION_START.md) — session entry templates
+- [AGENTS.md](/AGENTS.md) — agent index, skills, rules, permissions
+- [ROUTER.md](/ROUTER.md) — routing documentation
+- `.kimi/rules/pre-edit-checklist.md` — checks before editing code

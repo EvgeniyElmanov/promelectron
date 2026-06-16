@@ -354,7 +354,7 @@ graph TD
 | BLOCKERS.md | `.agent/BLOCKERS.md` | project-manager + все агенты | Ежедневно |
 | METRICS.md | `.agent/METRICS.md` | project-manager | Каждую пятницу |
 | DECISIONS.md | `.agent/DECISIONS.md` | project-manager | По каждому ADR |
-| AGENTS.md | `.kimi/AGENTS.md` | project-manager | По изменению ролей |
+| AGENTS.md | `AGENTS.md` | project-manager | По изменению ролей |
 | ROADMAP.md | `docs/ROADMAP.md` | project-manager | Каждый спринт |
 | CHANGELOG.md | `CHANGELOG.md` | project-manager | Каждый релиз |
 
@@ -419,7 +419,7 @@ graph TD
 - **GitHub:** `github.com/AutonomaCo/promelectron`
 - **CI/CD:** GitHub Actions → Harbor → K8s
 - **Docs:** `ARCHITECTURE.md` (общая архитектура)
-- **AGENTS.md:** `.kimi/AGENTS.md` — индекс агентов
+- **AGENTS.md:** `AGENTS.md` — индекс агентов, skills, rules
 
 ---
 

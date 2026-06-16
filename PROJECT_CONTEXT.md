@@ -1,14 +1,14 @@
 ---
 sprint: "Sprint 1"
 sprint_dates: "2026-06-01 — 2026-06-14"
-last_update: "2026-06-11"
-last_commit: "9628457"
-commit_message: "fix(ci): remove latest tag, add YooKassa secrets to deploy"
+last_update: "2026-06-16"
+last_commit: "—"
+commit_message: "feat(cdek): replace delivery system with CDEK integration"
 blockers_count: 1
 blockers_p0: 0
 blockers_p1: 1
-backend_tests: "127/127"
-frontend_tests: "80/80"
+backend_tests: "150/150"
+frontend_tests: "101/101"
 e2e_tests: "96/96"
 ---
 
@@ -45,7 +45,8 @@ e2e_tests: "96/96"
 - [x] **Уведомления** — WebSocket real-time
 - [x] **Загрузка файлов** — MinIO + local fallback
 - [x] **ЮKassa (test)** — создание платежей, webhook, auto-capture, отмена, возврат
-- [x] **Тесты зелёные** — Backend 127/127 ✅, Frontend 80/80 ✅, E2E 96/96 ✅
+- [x] **CDEK доставка** — расчёт тарифов, выбор ПВЗ/двери, автосоздание заказа после оплаты, вебхуки статусов
+- [x] **Тесты зелёные** — Backend 150/150 ✅, Frontend 101/101 ✅, E2E 96/96 ✅
 
 ---
 
@@ -146,6 +147,19 @@ Product.price → Numeric      →  Product variants / Seller payouts
 
 > **Trailing slash обязателен во всех путях.**
 
+### CDEK доставка
+| Метод | Путь | Статус | Описание |
+|-------|------|--------|----------|
+| POST | `/api/v1/cdek/calculate/` | ✅ | Расчёт тарифов CDEK |
+| GET | `/api/v1/cdek/pvz/` | ✅ | Список ПВЗ / постаматов |
+| GET | `/api/v1/cdek/suggest-cities/` | ✅ | Подсказка городов |
+| POST | `/api/v1/cdek/webhooks/cdek/` | ✅ | Webhook статусов CDEK |
+| POST | `/api/v1/cdek/orders/{order_id}/resync/` | ✅ | Повторная отправка заказа в CDEK |
+| GET | `/api/v1/supplier/profile/` | ✅ | Профиль поставщика (CDEK настройки) |
+| PATCH | `/api/v1/supplier/profile/` | ✅ | Обновление CDEK настроек поставщика |
+
+> **Trailing slash обязателен во всех путях.**
+
 ---
 
 ## Frontend Map 🗺️
@@ -176,6 +190,8 @@ Product.price → Numeric      →  Product variants / Seller payouts
 | `ProductGrid` | `src/components/ProductGrid.vue` | HomeView, CategoryView |
 | `CartItemList` | `src/components/cart/CartItemList.vue` | CartView |
 | `CheckoutButton` | `src/components/cart/CheckoutButton.vue` | CartView |
+| `CdekDeliveryWidget` | `src/components/CdekDeliveryWidget.vue` | CartView, GuestCheckout |
+| `ProductFormModal` | `src/components/ProductFormModal.vue` | Admin товары (вес/габариты) |
 
 ---
 
@@ -202,6 +218,7 @@ make test-e2e      # Playwright
 
 | Дата | Что изменилось | Кто |
 |------|---------------|-----|
+| 2026-06-16 | **Agent system migration**: migrated agent skills to Kimi Code CLI format in `.kimi-code/skills/` (`/implement`, `/fix`, `/review`, `/deploy`, `/context-sync`, `/plan-maintainer`, `/promelectron`). Added `.kimi-code/mcp.json` for MCP servers and `.kimi-code/config.example.toml` for user-level config. Rewrote `.kimi/agents/*.md` prompts without legacy YAML frontmatter. Created `scripts/implement-pipeline.py` helper for task IDs, git worktrees, and review-loop state. Updated `AGENTS.md`, `ROUTER.md`, `SESSION_START.md`, `.kimi/HOWTO.md`, `.gitignore`, and `.kimi/rules/pre-edit-checklist.md`. Removed legacy `.kimi/settings.json`, `.kimi/CLAUDE.md`, `.kimi/tester.md`, `.kimi/AGENTS.md`, `.kimi/skills/`, `.agent/CURSOR_RULES.md`, `.agent/START_HERE.md`, and root `.mcp.json`. | backend-dev / frontend-dev |
 | 2026-06-15 | **Feature flags + Google OAuth toggle**: добавлен сервис `feature_flags.py` на Redis, endpoint `/auth/providers/`, guard на Google OAuth endpoints (`503` при отключении), frontend скрывает кнопку Google если провайдер недоступен. Админка: вкладка «Фичатоглы» + API `GET/PATCH /admin/feature-flags`. Новые тесты backend/frontend. Управление через `GOOGLE_OAUTH_ENABLED` env, Redis `feature:google_oauth` или UI админки. | backend-dev / frontend-dev |
 | 2026-06-11 | **Исправлена YooKassa в test**: креды были `FILL_ME` → восстановлены тестовые. Исправлен CICD: `ImagePullBackOff` из-за `latest` → деплой по SHA. Восстановлен Secret `promelectron-secrets` (были удалены DATABASE_URL, SECRET_KEY). Полный флоу работает: регистрация → корзина → заказ → платёж. Коммит `9628457`. | devops |
 | 2026-06-06 | YooKassa диагностика: добавлено debug-логирование, исправлен webhook raw_body bug, добавлен debug endpoint `/payments/debug/yookassa/create/`, capture теперь конфигурируется через `YOOKASSA_CAPTURE_AUTO`. 127 backend тестов зелёные. | backend-dev |

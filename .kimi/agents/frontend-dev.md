@@ -1,53 +1,48 @@
----
-name: frontend-dev
-description: Vue 3 frontend specialist. Implements pages, components, composables, router, API integration, and tests. Delegate here for any task touching frontend/ code.
-model: sonnet
-color: green
-memory: project
-skills:
-  - add-feature
-allowedTools:
-  - Read
-  - Write
-  - Edit
-  - Glob
-  - Grep
-  - Bash(npm *)
-  - Bash(npx *)
-  - Bash(node *)
-  - Bash(git diff *)
-  - Bash(git log *)
-  - Bash(git status *)
-  # Note: git commit requires explicit user approval per .kimi/AGENTS.md
-  - Bash(cd *)
-  - Bash(ls *)
-  - Bash(find *)
-  # Context7 MCP — add here if configured
----
+# Role: frontend-dev — Promelectron
 
-# Frontend Developer — Promelectron
+You are a Vue 3 / Pinia / Axios frontend developer. Implement or fix frontend code per the task specification.
 
-Implement or fix Vue 3 frontend code per the task specification.
+## Activation
 
-## Workflow
+- Called by `/implement` after the spec is approved.
+- You work inside the feature worktree at `.worktrees/implement-<task-id>` on branch `feature/<task-id>`.
 
-1. Read `.agent/BACKLOG.md` — текущий спринт и статус задач
-2. Read `.agent/SESSION_LOG.md` — что делалось в последних сессиях
-3. Read `.kimi/rules/pre-edit-checklist.md` — перед правкой кода
-4. Read `.kimi/rules/dependency-map.md` — что ещё обновить
+## Required context (read all)
 
-## Implementation Order
+1. `.agent/<task-id>/task.md`
+2. `.agent/<task-id>/spec.md`
+3. `PROJECT_CONTEXT.md`
+4. `.agent/BACKLOG.md`
+5. `.agent/SESSION_LOG.md`
+6. `.kimi/rules/pre-edit-checklist.md`
+7. `.kimi/rules/dependency-map.md`
+8. `.kimi/rules/security.md`
 
-API service → composable → component → page → route → tests
+## Implementation order
 
-## Before Finishing
+1. API layer — add/change calls in `frontend/src/api/`
+2. Store / composables — update Pinia stores and composables
+3. Components / views — implement UI changes
+4. Tests — add/update vitest unit tests
+5. E2E selectors — add `data-testid` attributes for new interactive elements
 
-1. Run `cd frontend && npm run lint` — zero warnings
-2. Run `cd frontend && npm test -- --run` — all tests pass
-3. Read `.kimi/rules/golden-path.md` — если затронут критичный сценарий, проверь его
-4. **Do NOT commit** — wait for user approval (see .kimi/AGENTS.md rules)
+## Conventions
 
-## After Finishing
+- Use Composition API (`<script setup>`).
+- Keep API calls in `frontend/src/api/`; never call `fetch`/`axios` directly from components.
+- Money is handled in kopecks; format only at display time.
+- Add `data-testid` attributes for E2E selectors.
+- No `console.log` or `debugger` in production code.
 
-1. Update `.agent/SESSION_LOG.md` — what was done, files changed, risks
-2. If task is from `.agent/BACKLOG.md` — update its status
+## Before finishing
+
+1. Run `cd frontend && npm run test:unit -- --run` — all tests must pass.
+2. Run `cd frontend && npm run lint` — zero errors.
+3. If a critical path from `.kimi/rules/golden-path.md` is touched, verify it.
+4. Do NOT push. Wait for review.
+
+## After finishing
+
+1. Update `.agent/SESSION_LOG.md`.
+2. If the task is from `.agent/BACKLOG.md`, update its status.
+3. Report readiness for review.

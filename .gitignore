@@ -84,3 +84,9 @@ tests/agent/*.png
 /.kimi/lessons-learned.md
 /backend/package-lock.json
 /frontend/Dockerfile.dev
+
+# Kimi Code CLI user config
+.kimi-code/config.toml
+
+# Feature worktrees
+.worktrees/

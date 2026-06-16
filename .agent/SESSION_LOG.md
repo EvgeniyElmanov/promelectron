@@ -14,6 +14,45 @@ YYYY-MM-DD HH:MM | <role> | <краткое описание>
 
 ## Записи (новые сверху)
 
+### 2026-06-16 13:25 | backend-dev / frontend-dev | Замена системы доставки на CDEK
+  Изменено:
+  - `backend/src/app/models/product.py` — поля weight_grams, length_cm, width_cm, height_cm.
+  - `backend/src/app/models/supplier.py` — поля cdek_shipment_point, sender_name, sender_phone.
+  - `backend/src/app/models/order.py` — CDEK поля (tariff_code, delivery_mode, delivery_point, to_location, price, uuid, number, status).
+  - `backend/src/app/schemas/order.py`, `supplier.py`, `user.py`, `cart.py` — CDEK схемы, phone в UserUpdate, supplier_id/вес/габариты в корзине.
+  - `backend/src/app/services/cdek_client.py` — OAuth + calculator + orders + PVZ + city suggest + тестовый fallback.
+  - `backend/src/app/services/cdek_service.py` — build packages/sender/recipient, calculate, create order, webhook handler.
+  - `backend/src/app/api/cdek.py` — endpoints CDEK (с trailing slash) + supplier profile.
+  - `backend/src/app/services/order_service.py` — создание заказа с CDEK доставкой.
+  - `backend/src/app/services/payment_service.py` — запуск Celery task после оплаты.
+  - `backend/src/app/workers/cdek_tasks.py` — автосоздание заказа в CDEK с retry.
+  - `backend/src/app/workers/celery_app.py` — добавлен `cdek_tasks` в include.
+  - `backend/src/app/workers/onec_client.py`, `tasks.py` — синхронизация веса/габаритов из 1С.
+  - `backend/seed_data.py` — тестовый поставщик с CDEK настройками + обновление существующего поставщика.
+  - `backend/alembic/versions/` — миграции для CDEK полей и phone пользователя.
+  - `frontend/src/components/CdekDeliveryWidget.vue` — кастомный виджет доставки + data-testid для E2E.
+  - `frontend/src/views/Cart.vue`, `GuestCheckout.vue` — интеграция виджета.
+  - `frontend/src/components/ProductFormModal.vue` — вес/габариты товара.
+  - `frontend/src/views/SupplierDashboard.vue` — настройки CDEK поставщика.
+  - `frontend/src/views/ProfileEdit.vue` — поле телефона.
+  - `backend/tests/test_cdek.py` — новые тесты CDEK.
+  - `backend/tests/conftest.py`, `test_orders.py`, `test_guest_orders.py`, `test_notifications.py`, `test_payments.py`, `test_analytics.py`, `test_auth.py` — обновлены под CDEK схемы.
+  - `frontend/src/__tests__/GuestCheckout.spec.js`, `Checkout.spec.js` — обновлены под новый UI.
+  - `frontend/e2e/checkout.spec.js`, `profile.spec.js` — обновлены под CDEK и phone.
+  - `.env.example` — добавлены CDEK переменные.
+  - `PROJECT_CONTEXT.md` — обновлён контекст.
+  Результат:
+  - `make test-backend` — 150/150 ✅
+  - `make test-frontend` — 101/101 ✅
+  - `make test-e2e` — 96/96 ✅
+  - `ruff check .` — чисто
+  - `make lint-frontend` — чисто
+  Риск/Техдолг:
+  - Frontend использует кастомный fallback-виджет, а не официальный CDEK JS Widget (нужна точная ссылка/инициализация от CDEK).
+  - Мультивендорная корзина: CdekDeliveryWidget и CdekService.calculate_delivery используют supplier_id первого товара.
+  - Старый `DeliveryMethod` router/model всё ещё существуют, но не используются; требуется cleanup.
+  Блокер: Нет
+
 ### 2026-06-15 06:55 | dispatcher | Обновлён audit-скрипт под актуальную систему агентов
   Изменено:
   - `scripts/audit-agents.sh` — удалены legacy требования `.agent/DISPATCHER_PROMPT.md` и `.agent/ORCHESTRATOR_PROMPT.md`.
@@ -405,3 +444,28 @@ YYYY-MM-DD HH:MM | <role> | <краткое описание>
 **Файлы изменены:** `.mcp.json`, `AGENTS.md`, `PROJECT_CONTEXT.md`, `.kimi/rules/infra.md`
 
 **Риски:** kubeconfig содержит client cert+key (sensitive), права 600 установлены. VPN без sudo недоступен.
+
+---
+
+## 2026-06-16 06:15
+
+**Роль:** architect / backend-dev / frontend-dev (agent system migration)
+
+**Что сделано:**
+- Мигрировал систему агентов под формат Kimi Code CLI.
+- Создал `.kimi-code/skills/` с skill'ами: `/promelectron`, `/implement`, `/fix`, `/review`, `/deploy`, `/context-sync`, `/plan-maintainer`.
+- Добавил `.kimi-code/mcp.json` (Playwright, Filesystem, Memory, Sequential Thinking, Kubernetes MCP).
+- Добавил `.kimi-code/config.example.toml` с примером user-level конфига и permission rules.
+- Создал helper `scripts/implement-pipeline.py` для генерации task-id, git worktree и cleanup.
+- Переписал `.kimi/agents/*.md` без legacy YAML frontmatter: architect, backend-dev, frontend-dev, code-reviewer, security-reviewer, e2e-tester, qa, devops, project-manager, integration-dev, dispatcher.
+- Удалил legacy файлы: `.kimi/settings.json`, `.kimi/CLAUDE.md`, `.kimi/tester.md`, `.kimi/AGENTS.md`, `.kimi/skills/`, `.agent/CURSOR_RULES.md`, `.agent/START_HERE.md`, root `.mcp.json`.
+- Обновил документацию: `AGENTS.md`, `ROUTER.md`, `SESSION_START.md`, `.kimi/HOWTO.md`.
+- Обновил `.gitignore` (`.kimi-code/config.toml`, `.worktrees/`) и `.kimi/rules/pre-edit-checklist.md`.
+- Дописал запись в `PROJECT_CONTEXT.md`.
+
+**Файлы изменены:** `.kimi-code/**`, `.kimi/agents/*.md`, `.kimi/HOWTO.md`, `.kimi/rules/pre-edit-checklist.md`, `AGENTS.md`, `ROUTER.md`, `SESSION_START.md`, `PROJECT_CONTEXT.md`, `.gitignore`, `scripts/implement-pipeline.py`
+
+**Риски:**
+- Старые скрипты `make task` / `make ask` больше не нужны; используются workflow skills.
+- User-level config `~/.kimi-code/config.toml` должен быть настроен вручную для разрешения git worktree/test/lint.
+- Feature worktrees в `.worktrees/` исключены из git.
