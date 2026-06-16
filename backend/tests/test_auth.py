@@ -1,4 +1,20 @@
+from datetime import datetime, timedelta, timezone
+
 import pytest
+from jose import jwt
+
+from src.app.core.config import ACCESS_TOKEN_EXPIRE_MINUTES, ALGORITHM, SECRET_KEY
+
+
+def _decode_access_token(token: str) -> dict:
+    return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+
+
+def _assert_token_expiry(token: str):
+    payload = _decode_access_token(token)
+    now = datetime.now(timezone.utc)
+    expected_exp = now + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    assert abs(payload["exp"] - expected_exp.timestamp()) < 60
 
 
 class TestAuthAPI:
@@ -67,6 +83,17 @@ class TestAuthAPI:
         )
         assert response.status_code == 401
         assert "Incorrect email or password" in response.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_login_token_expiry_matches_settings(self, client, test_user):
+        """Токен входа имеет exp, соответствующий ACCESS_TOKEN_EXPIRE_MINUTES."""
+        response = await client.post(
+            "/api/v1/login",
+            json={"email": "testuser@example.com", "password": "password123"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        _assert_token_expiry(data["access_token"])
 
     @pytest.mark.asyncio
     async def test_get_me(self, client, test_user, user_token):
@@ -143,7 +170,9 @@ class TestAuthAPI:
         assert data["email"] == "newemail@example.com"
 
     @pytest.mark.asyncio
-    async def test_update_profile_duplicate_email(self, client, test_user, test_admin, user_token):
+    async def test_update_profile_duplicate_email(
+        self, client, test_user, test_admin, user_token
+    ):
         """Обновление email на уже существующий — 400."""
         response = await client.patch(
             "/api/v1/me",
@@ -192,6 +221,7 @@ class TestAuthAPI:
 
 def _make_oauth_settings(overrides: dict):
     from src.app.core.config import Settings, settings as original
+
     kwargs = {
         "secret_key": original.secret_key,
         "algorithm": original.algorithm,
@@ -241,10 +271,12 @@ class TestOAuth:
     @pytest.mark.asyncio
     async def test_google_login_url(self, client, monkeypatch):
         """Эндпоинт /auth/google/login возвращает корректный URL."""
-        new_settings = _make_oauth_settings({
-            "google_client_id": "test-google-client-id",
-            "google_client_secret": "test-google-secret",
-        })
+        new_settings = _make_oauth_settings(
+            {
+                "google_client_id": "test-google-client-id",
+                "google_client_secret": "test-google-secret",
+            }
+        )
         monkeypatch.setattr("src.app.api.auth.settings", new_settings)
 
         monkeypatch.setattr("src.app.services.feature_flags.settings", new_settings)
@@ -259,12 +291,16 @@ class TestOAuth:
         assert "state=google" in data["url"]
 
     @pytest.mark.asyncio
-    async def test_google_callback_creates_user(self, client, test_session, monkeypatch):
+    async def test_google_callback_creates_user(
+        self, client, test_session, monkeypatch
+    ):
         """Google callback создает нового пользователя и social_account."""
-        new_settings = _make_oauth_settings({
-            "google_client_id": "test-google-client-id",
-            "google_client_secret": "test-google-secret",
-        })
+        new_settings = _make_oauth_settings(
+            {
+                "google_client_id": "test-google-client-id",
+                "google_client_secret": "test-google-secret",
+            }
+        )
         monkeypatch.setattr("src.app.api.auth.settings", new_settings)
         monkeypatch.setattr("src.app.services.feature_flags.settings", new_settings)
 
@@ -288,12 +324,14 @@ class TestOAuth:
                 return FakeResponse({"access_token": "fake-google-token"})
 
             async def get(self, url, **kwargs):
-                return FakeResponse({
-                    "id": "123456789",
-                    "email": "googleuser@example.com",
-                    "name": "Google User",
-                    "picture": "https://example.com/avatar.jpg",
-                })
+                return FakeResponse(
+                    {
+                        "id": "123456789",
+                        "email": "googleuser@example.com",
+                        "name": "Google User",
+                        "picture": "https://example.com/avatar.jpg",
+                    }
+                )
 
         monkeypatch.setattr("src.app.api.auth.httpx.AsyncClient", FakeAsyncClient)
 
@@ -308,12 +346,16 @@ class TestOAuth:
         assert data["user"]["role"] == "user"
 
     @pytest.mark.asyncio
-    async def test_google_callback_existing_user(self, client, test_user, monkeypatch):
-        """Google callback привязывает social_account к существующему пользователю."""
-        new_settings = _make_oauth_settings({
-            "google_client_id": "test-google-client-id",
-            "google_client_secret": "test-google-secret",
-        })
+    async def test_oauth_token_expiry_matches_settings(
+        self, client, test_session, monkeypatch
+    ):
+        """Токен из Google callback имеет exp, соответствующий ACCESS_TOKEN_EXPIRE_MINUTES."""
+        new_settings = _make_oauth_settings(
+            {
+                "google_client_id": "test-google-client-id",
+                "google_client_secret": "test-google-secret",
+            }
+        )
         monkeypatch.setattr("src.app.api.auth.settings", new_settings)
         monkeypatch.setattr("src.app.services.feature_flags.settings", new_settings)
 
@@ -336,12 +378,61 @@ class TestOAuth:
                 return FakeResponse({"access_token": "fake-google-token"})
 
             async def get(self, url, **kwargs):
-                return FakeResponse({
-                    "id": "987654321",
-                    "email": test_user.email,
-                    "name": "Updated Name",
-                    "picture": "https://example.com/new-avatar.jpg",
-                })
+                return FakeResponse(
+                    {
+                        "id": "oauth-exp-123",
+                        "email": "oauthexp@example.com",
+                        "name": "OAuth Exp User",
+                        "picture": "https://example.com/avatar.jpg",
+                    }
+                )
+
+        monkeypatch.setattr("src.app.api.auth.httpx.AsyncClient", FakeAsyncClient)
+
+        response = await client.get("/api/v1/auth/google/callback?code=fake-code")
+        assert response.status_code == 200
+        data = response.json()
+        _assert_token_expiry(data["access_token"])
+
+    @pytest.mark.asyncio
+    async def test_google_callback_existing_user(self, client, test_user, monkeypatch):
+        """Google callback привязывает social_account к существующему пользователю."""
+        new_settings = _make_oauth_settings(
+            {
+                "google_client_id": "test-google-client-id",
+                "google_client_secret": "test-google-secret",
+            }
+        )
+        monkeypatch.setattr("src.app.api.auth.settings", new_settings)
+        monkeypatch.setattr("src.app.services.feature_flags.settings", new_settings)
+
+        class FakeResponse:
+            def __init__(self, json_data, status_code=200):
+                self._json = json_data
+                self.status_code = status_code
+
+            def json(self):
+                return self._json
+
+        class FakeAsyncClient:
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *args):
+                pass
+
+            async def post(self, url, **kwargs):
+                return FakeResponse({"access_token": "fake-google-token"})
+
+            async def get(self, url, **kwargs):
+                return FakeResponse(
+                    {
+                        "id": "987654321",
+                        "email": test_user.email,
+                        "name": "Updated Name",
+                        "picture": "https://example.com/new-avatar.jpg",
+                    }
+                )
 
         monkeypatch.setattr("src.app.api.auth.httpx.AsyncClient", FakeAsyncClient)
 
@@ -361,13 +452,15 @@ class TestOAuth:
     @pytest.mark.asyncio
     async def test_oauth_providers(self, client, monkeypatch):
         """Эндпоинт /auth/providers/ возвращает доступность провайдеров."""
-        new_settings = _make_oauth_settings({
-            "google_client_id": "test-google-client-id",
-            "google_client_secret": "test-google-secret",
-            "yandex_client_id": "test-yandex-client-id",
-            "yandex_client_secret": "test-yandex-secret",
-            "google_oauth_enabled": True,
-        })
+        new_settings = _make_oauth_settings(
+            {
+                "google_client_id": "test-google-client-id",
+                "google_client_secret": "test-google-secret",
+                "yandex_client_id": "test-yandex-client-id",
+                "yandex_client_secret": "test-yandex-secret",
+                "google_oauth_enabled": True,
+            }
+        )
         monkeypatch.setattr("src.app.api.auth.settings", new_settings)
         monkeypatch.setattr("src.app.services.feature_flags.settings", new_settings)
 
@@ -380,11 +473,13 @@ class TestOAuth:
     @pytest.mark.asyncio
     async def test_google_login_disabled(self, client, monkeypatch):
         """Google login возвращает 503, если google_oauth выключен."""
-        new_settings = _make_oauth_settings({
-            "google_client_id": "test-google-client-id",
-            "google_client_secret": "test-google-secret",
-            "google_oauth_enabled": False,
-        })
+        new_settings = _make_oauth_settings(
+            {
+                "google_client_id": "test-google-client-id",
+                "google_client_secret": "test-google-secret",
+                "google_oauth_enabled": False,
+            }
+        )
         monkeypatch.setattr("src.app.api.auth.settings", new_settings)
         monkeypatch.setattr("src.app.services.feature_flags.settings", new_settings)
 
@@ -395,11 +490,13 @@ class TestOAuth:
     @pytest.mark.asyncio
     async def test_google_callback_disabled(self, client, monkeypatch):
         """Google callback возвращает 503, если google_oauth выключен."""
-        new_settings = _make_oauth_settings({
-            "google_client_id": "test-google-client-id",
-            "google_client_secret": "test-google-secret",
-            "google_oauth_enabled": False,
-        })
+        new_settings = _make_oauth_settings(
+            {
+                "google_client_id": "test-google-client-id",
+                "google_client_secret": "test-google-secret",
+                "google_oauth_enabled": False,
+            }
+        )
         monkeypatch.setattr("src.app.api.auth.settings", new_settings)
         monkeypatch.setattr("src.app.services.feature_flags.settings", new_settings)
 
@@ -410,13 +507,15 @@ class TestOAuth:
     @pytest.mark.asyncio
     async def test_oauth_providers_google_disabled(self, client, monkeypatch):
         """/auth/providers/ отдаёт google=false, если google_oauth выключен."""
-        new_settings = _make_oauth_settings({
-            "google_client_id": "test-google-client-id",
-            "google_client_secret": "test-google-secret",
-            "yandex_client_id": "test-yandex-client-id",
-            "yandex_client_secret": "test-yandex-secret",
-            "google_oauth_enabled": False,
-        })
+        new_settings = _make_oauth_settings(
+            {
+                "google_client_id": "test-google-client-id",
+                "google_client_secret": "test-google-secret",
+                "yandex_client_id": "test-yandex-client-id",
+                "yandex_client_secret": "test-yandex-secret",
+                "google_oauth_enabled": False,
+            }
+        )
         monkeypatch.setattr("src.app.api.auth.settings", new_settings)
         monkeypatch.setattr("src.app.services.feature_flags.settings", new_settings)
 
