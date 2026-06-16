@@ -140,25 +140,62 @@
           <button class="admin__btn admin__btn--primary" @click="openCreateModal" data-testid="add-category-btn">+ Добавить</button>
         </div>
 
-        <SkeletonAdminTable v-if="loading.categories" />
+        <div class="admin__category-tabs">
+          <button
+            class="admin__category-tab"
+            :class="{ 'admin__category-tab--active': activeCategoryTab === null }"
+            data-testid="category-tab-all"
+            @click="setCategoryActiveTab(null)"
+          >
+            Все
+          </button>
+          <button
+            v-for="root in rootCategories"
+            :key="root.id"
+            class="admin__category-tab"
+            :class="{ 'admin__category-tab--active': activeCategoryTab === root.id }"
+            :data-testid="`category-tab-${root.id}`"
+            @click="setCategoryActiveTab(root.id)"
+          >
+            {{ root.name }}
+          </button>
+        </div>
 
-        <div v-else-if="categories.length === 0" class="admin__empty">Нет категорий</div>
+        <div class="admin__category-search">
+          <input
+            v-model="categorySearchQuery"
+            type="text"
+            class="field__input"
+            placeholder="Поиск по названию..."
+            data-testid="category-search-input"
+            @input="setCategorySearchQuery(categorySearchQuery)"
+          />
+        </div>
+
+        <SkeletonAdminTable v-if="categoryLoading" />
+
+        <div v-else-if="displayedCategories.length === 0" class="admin__empty" data-testid="categories-empty">
+          <template v-if="activeCategoryTab === null">Нет категорий</template>
+          <template v-else>В этой категории пока нет подкатегорий</template>
+        </div>
 
         <div v-else class="admin__table-wrapper">
-          <table class="admin__table">
+          <table class="admin__table" data-testid="categories-table">
             <thead>
               <tr>
                 <th>ID</th>
                 <th>Название</th>
                 <th>Описание</th>
+                <th>Товаров</th>
                 <th class="admin__table-actions">Действия</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="cat in categories" :key="cat.id">
+              <tr v-for="cat in displayedCategories" :key="cat.id" :data-testid="`category-row-${cat.id}`">
                 <td>{{ cat.id }}</td>
                 <td>{{ cat.name }}</td>
                 <td>{{ cat.description || '—' }}</td>
+                <td>{{ cat.product_count ?? 0 }}</td>
                 <td class="admin__table-actions">
                   <button class="admin__icon-btn admin__icon-btn--edit" @click="openEditModal(cat)">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -176,6 +213,15 @@
               </tr>
             </tbody>
           </table>
+
+          <button
+            v-if="activeCategoryTab === null && displayedCategories.length < categoryTotal"
+            class="admin__load-more"
+            data-testid="categories-load-more"
+            @click="loadMoreCategories"
+          >
+            Показать ещё
+          </button>
         </div>
       </div>
     </div>
@@ -353,6 +399,15 @@
             <label class="field__label">Описание</label>
             <textarea v-model="form.description" class="field__input field__input--textarea" rows="3" placeholder="Описание категории..." data-testid="category-description-input" />
           </div>
+          <div class="field">
+            <label class="field__label">Родительская категория</label>
+            <select v-model="form.parent_id" class="field__input" data-testid="category-parent-select">
+              <option :value="null">Без родителя</option>
+              <option v-for="option in parentSelectOptions" :key="option.id" :value="option.id">
+                {{ option.name }}
+              </option>
+            </select>
+          </div>
           <div v-if="error" class="form-error">{{ error }}</div>
           <button type="submit" class="modal__submit" :disabled="submitting" data-testid="category-submit-btn">
             {{ submitting ? 'Сохранение...' : (isEdit ? 'Сохранить' : 'Создать') }}
@@ -434,9 +489,24 @@
 import { ref, onMounted, computed } from 'vue';
 import api from '@/services/api';
 import { useToast } from '@/composables/useToast';
+import { useCategories } from '@/composables/useCategories';
 import SkeletonAdminTable from '@/components/SkeletonAdminTable.vue';
 
 const { add: toast } = useToast();
+const {
+  allCategories,
+  displayedCategories,
+  rootCategories,
+  activeTab: activeCategoryTab,
+  searchQuery: categorySearchQuery,
+  loading: categoryLoading,
+  total: categoryTotal,
+  fetchAllCategories,
+  fetchDisplayedCategories,
+  setActiveTab: setCategoryActiveTab,
+  setSearchQuery: setCategorySearchQuery,
+  loadMore: loadMoreCategories,
+} = useCategories();
 
 // Responsive
 const isMobile = ref(window.innerWidth < 768);
@@ -470,7 +540,6 @@ const stats = ref({ total_orders: 0, total_revenue: 0, total_users: 0, total_pro
 const ordersByDay = ref([]);
 const topProducts = ref([]);
 const users = ref([]);
-const categories = ref([]);
 const deliveryMethods = ref([]);
 const orders = ref([]);
 const featureFlags = ref([]);
@@ -490,7 +559,7 @@ const isEdit = ref(false);
 const editingId = ref(null);
 const error = ref('');
 const submitting = ref(false);
-const form = ref({ name: '', description: '' });
+const form = ref({ name: '', description: '', parent_id: null });
 const submittingUser = ref(null);
 
 // Delivery Modal
@@ -543,6 +612,10 @@ const maxOrders = computed(() => {
   if (!ordersByDay.value.length) return 1;
   return Math.max(...ordersByDay.value.map((d) => d.orders), 1);
 });
+
+const parentSelectOptions = computed(() =>
+  allCategories.value.filter((category) => category.id !== editingId.value)
+);
 
 function getBarHeight(orders) {
   return `${(orders / maxOrders.value) * 100}%`;
@@ -643,22 +716,19 @@ async function toggleUser(userId) {
   }
 }
 
-const fetchCategories = async () => {
-  loading.value.categories = true;
+const fetchCategoriesSection = async () => {
   try {
-    const { data } = await api.get('/categories/');
-    categories.value = data;
+    await fetchAllCategories();
+    await fetchDisplayedCategories();
   } catch {
     toast('Не удалось загрузить категории', 'error');
-  } finally {
-    loading.value.categories = false;
   }
 };
 
 const openCreateModal = () => {
   isEdit.value = false;
   editingId.value = null;
-  form.value = { name: '', description: '' };
+  form.value = { name: '', description: '', parent_id: null };
   error.value = '';
   showModal.value = true;
 };
@@ -666,7 +736,7 @@ const openCreateModal = () => {
 const openEditModal = (cat) => {
   isEdit.value = true;
   editingId.value = cat.id;
-  form.value = { name: cat.name, description: cat.description || '' };
+  form.value = { name: cat.name, description: cat.description || '', parent_id: cat.parent_id ?? null };
   error.value = '';
   showModal.value = true;
 };
@@ -679,15 +749,21 @@ const handleSubmit = async () => {
   error.value = '';
   submitting.value = true;
   try {
+    const payload = {
+      name: form.value.name,
+      description: form.value.description,
+      parent_id: form.value.parent_id,
+    };
     if (isEdit.value) {
-      await api.put(`/categories/${editingId.value}`, form.value);
+      await api.put(`/categories/${editingId.value}`, payload);
       toast('Категория обновлена', 'success');
     } else {
-      await api.post('/categories/', form.value);
+      await api.post('/categories/', payload);
       toast('Категория создана', 'success');
     }
     closeModal();
-    fetchCategories();
+    await fetchAllCategories();
+    await fetchDisplayedCategories();
   } catch (err) {
     error.value = err.response?.data?.detail || 'Ошибка сохранения';
   } finally {
@@ -700,7 +776,8 @@ const deleteCategory = async (id) => {
   try {
     await api.delete(`/categories/${id}`);
     toast('Категория удалена', 'success');
-    fetchCategories();
+    await fetchAllCategories();
+    await fetchDisplayedCategories();
   } catch (err) {
     toast(err.response?.data?.detail || 'Ошибка удаления', 'error');
   }
@@ -852,7 +929,7 @@ const toggleFeatureFlag = async (flagName, enabled) => {
 onMounted(() => {
   fetchDashboard();
   fetchUsers();
-  fetchCategories();
+  fetchCategoriesSection();
   fetchDeliveryMethodsAdmin();
   fetchOrders();
   fetchFeatureFlags();
@@ -1397,5 +1474,59 @@ onMounted(() => {
 
 .modal__submit:disabled {
   opacity: 0.6;
+}
+
+/* Category tabs */
+.admin__category-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.admin__category-tab {
+  padding: 8px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-white);
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.admin__category-tab--active {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+
+.admin__category-search {
+  margin-bottom: 16px;
+}
+
+.admin__category-search .field__input {
+  max-width: 400px;
+}
+
+.admin__load-more {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--color-bg-white);
+  color: var(--color-primary);
+  font-size: 15px;
+  font-weight: 500;
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.admin__load-more:hover {
+  background: #e8f0fe;
 }
 </style>

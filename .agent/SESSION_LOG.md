@@ -14,6 +14,22 @@ YYYY-MM-DD HH:MM | <role> | <краткое описание>
 
 ## Записи (новые сверху)
 
+### 2026-06-16 19:55 | frontend-dev | Admin categories tabs — frontend
+  Изменено:
+  - `frontend/src/composables/useCategories.js` — новый composable: загрузка всех категорий для вкладок/селектора родителя, загрузка отображаемых категорий по активной вкладке/поиску/пагинации.
+  - `frontend/src/views/Admin.vue` — раздел «Категории» переделан под горизонтальные вкладки корневых категорий + «Все»; добавлен поиск по названию; столбец «Товаров»; пагинация «Показать ещё»; empty-state для пустых вкладок; в модалке добавлен селектор `parent_id` с опцией «Без родителя».
+  - `frontend/src/components/ProductFormModal.vue` — адаптация под `CategoryListOut` (`data.items`).
+  - `frontend/src/components/CategoryChips.vue` — адаптация под `CategoryListOut` (`data.items`).
+  - `frontend/src/__tests__/Admin.spec.js` — моки под пагинированный ответ; новые тесты на вкладки, переключение, поиск, селектор родителя.
+  - `frontend/src/__tests__/Products.spec.js` — мок `/categories/` возвращает `{ items, total }`.
+  - `frontend/e2e/admin.spec.js` — E2E-сценарий создания корневой категории и подкатегории, переключения вкладки, cleanup.
+  Результат:
+  - `cd frontend && npm test -- --run` — 106/106 ✅
+  - `cd frontend && npm run lint` — чисто
+  Риск/Техдолг:
+  - `loading.categories` в `Admin.vue` больше не используется (заменён на `categoryLoading` из composable), можно убрать при cleanup.
+  Блокер: Нет
+
 ### 2026-06-16 19:35 | backend-dev | Admin categories tabs — backend
   Изменено:
   - `backend/src/app/schemas/category.py` — `CategoryOut` дополнен `product_count`; добавлен `CategoryListOut` (`items`, `total`).

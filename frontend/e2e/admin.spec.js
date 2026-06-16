@@ -41,4 +41,70 @@ test.describe('Admin Panel', () => {
     await categoryRow.locator('.admin__icon-btn--delete').click();
     await expect(categoryRow).not.toBeVisible({ timeout: 10000 });
   });
+
+  test('admin can create root category and subcategory, switch tab and verify visibility', async ({ page }) => {
+    const rootName = 'E2E Root Category';
+    const childName = 'E2E Child Category';
+
+    // 1. Login as admin
+    await page.goto('/login');
+    await page.fill('[data-testid="login-email"]', 'seed-admin@example.com');
+    await page.fill('[data-testid="login-password"]', 'seedpassword123');
+    await page.click('[data-testid="login-submit"]');
+    await expect(page).toHaveURL('/');
+
+    // 2. Navigate to admin page
+    await page.goto('/profile');
+    await page.click('[data-testid="profile-admin-link"]');
+    await expect(page).toHaveURL('/admin');
+
+    // 3. Switch to Categories tab on mobile
+    const categoriesTab = page.locator('.admin__tab:has-text("Категории")');
+    if (await categoriesTab.isVisible().catch(() => false)) {
+      await categoriesTab.click();
+    }
+
+    // 4. Create root category
+    await page.click('[data-testid="add-category-btn"]');
+    await page.fill('[data-testid="category-name-input"]', rootName);
+    await page.fill('[data-testid="category-description-input"]', 'Root test description');
+    await page.selectOption('[data-testid="category-parent-select"]', { label: 'Без родителя' });
+    await page.click('[data-testid="category-submit-btn"]');
+    await expect(page.locator('.modal-overlay')).not.toBeVisible({ timeout: 10000 });
+
+    const rootRow = page.locator('.admin__table tr').filter({ hasText: rootName }).first();
+    await expect(rootRow).toBeVisible({ timeout: 10000 });
+
+    // 5. Create subcategory
+    await page.click('[data-testid="add-category-btn"]');
+    await page.fill('[data-testid="category-name-input"]', childName);
+    await page.fill('[data-testid="category-description-input"]', 'Child test description');
+    await page.selectOption('[data-testid="category-parent-select"]', { label: rootName });
+    await page.click('[data-testid="category-submit-btn"]');
+    await expect(page.locator('.modal-overlay')).not.toBeVisible({ timeout: 10000 });
+
+    const childRow = page.locator('.admin__table tr').filter({ hasText: childName }).first();
+    await expect(childRow).toBeVisible({ timeout: 10000 });
+
+    // 6. Switch to root category tab
+    const rootTab = page.locator('.admin__category-tab').filter({ hasText: rootName }).first();
+    await expect(rootTab).toBeVisible({ timeout: 10000 });
+    await rootTab.click();
+
+    // 7. Verify subcategory is visible and root category is not in the table
+    await expect(childRow).toBeVisible({ timeout: 10000 });
+    await expect(rootRow).not.toBeVisible({ timeout: 10000 });
+
+    // 8. Cleanup: delete both categories
+    page.once('dialog', (dialog) => dialog.accept());
+    await childRow.locator('.admin__icon-btn--delete').click();
+    await expect(childRow).not.toBeVisible({ timeout: 10000 });
+
+    // Return to "All" tab to delete root
+    await page.click('[data-testid="category-tab-all"]');
+    await expect(rootRow).toBeVisible({ timeout: 10000 });
+    page.once('dialog', (dialog) => dialog.accept());
+    await rootRow.locator('.admin__icon-btn--delete').click();
+    await expect(rootRow).not.toBeVisible({ timeout: 10000 });
+  });
 });

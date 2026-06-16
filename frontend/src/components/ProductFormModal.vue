@@ -188,7 +188,7 @@ const localImages = ref(props.product?.images || []);
 onMounted(async () => {
   try {
     const { data } = await api.get('/categories/');
-    categories.value = data;
+    categories.value = data.items || [];
   } catch {
     // silently fail
   }

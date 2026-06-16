@@ -65,9 +65,31 @@ const mockUsers = [
 ];
 
 const mockCategories = [
-  { id: 1, name: 'Смартфоны', description: 'Мобильные телефоны' },
-  { id: 2, name: 'Ноутбуки', description: 'Компьютеры' },
+  { id: 1, name: 'Смартфоны', description: 'Мобильные телефоны', parent_id: null, product_count: 5 },
+  { id: 2, name: 'Ноутбуки', description: 'Компьютеры', parent_id: null, product_count: 3 },
+  { id: 3, name: 'iPhone', description: 'Apple iPhone', parent_id: 1, product_count: 2 },
+  { id: 4, name: 'Samsung', description: 'Samsung phones', parent_id: 1, product_count: 3 },
+  { id: 5, name: 'MacBook', description: 'Apple MacBook', parent_id: 2, product_count: 1 },
 ];
+
+const categoryListResponse = (items) => ({ items, total: items.length });
+
+const matchCategoriesRequest = (url, params) => {
+  if (url !== '/categories/') return null;
+  let items = [...mockCategories];
+  if (params?.parent_id !== undefined) {
+    items = items.filter((c) => c.parent_id === Number(params.parent_id));
+  }
+  if (params?.q) {
+    items = items.filter((c) => c.name.toLowerCase().includes(String(params.q).toLowerCase()));
+  }
+  if (params?.skip !== undefined && params?.limit !== undefined) {
+    const skip = Number(params.skip);
+    const limit = Number(params.limit);
+    items = items.slice(skip, skip + limit);
+  }
+  return categoryListResponse(items);
+};
 
 const mockFeatureFlags = [
   { name: 'google_oauth', enabled: true, env_default: true, redis_override: null, source: 'env' },
@@ -77,12 +99,13 @@ describe('Admin.vue', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     toastFn.mockClear();
-    mockGet.mockImplementation((url) => {
+    mockGet.mockImplementation((url, config) => {
+      const params = config?.params;
       if (url === '/admin/dashboard') return Promise.resolve({ data: mockDashboard });
       if (url === '/admin/orders-by-day') return Promise.resolve({ data: mockOrdersByDay });
       if (url === '/admin/top-products') return Promise.resolve({ data: mockTopProducts });
       if (url === '/admin/users') return Promise.resolve({ data: mockUsers });
-      if (url === '/categories/') return Promise.resolve({ data: mockCategories });
+      if (url === '/categories/') return Promise.resolve({ data: matchCategoriesRequest(url, params) });
       if (url === '/admin/feature-flags') return Promise.resolve({ data: mockFeatureFlags });
       return Promise.resolve({ data: {} });
     });
@@ -163,6 +186,66 @@ describe('Admin.vue', () => {
     expect(categoriesSection.text()).toContain('Ноутбуки');
   });
 
+  it('отображает корневые категории как вкладки', async () => {
+    const wrapper = mount(Admin, { global: { plugins: [router] } });
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="category-tab-all"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="category-tab-1"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="category-tab-2"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="category-tab-3"]').exists()).toBe(false);
+  });
+
+  it('переключает вкладку и фильтрует дочерние категории', async () => {
+    const wrapper = mount(Admin, { global: { plugins: [router] } });
+    await flushPromises();
+
+    const tab = wrapper.find('[data-testid="category-tab-1"]');
+    expect(tab.exists()).toBe(true);
+
+    await tab.trigger('click');
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="category-row-3"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="category-row-4"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="category-row-1"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="category-row-2"]').exists()).toBe(false);
+  });
+
+  it('показывает empty-state для вкладки без потомков', async () => {
+    // У ноутбуков есть потомок, поэтому переключаемся на несуществующий корень
+    // Для теста временно убираем потомков у категории 2
+    const original = [...mockCategories];
+    mockCategories.forEach((c) => {
+      if (c.parent_id === 2) c.parent_id = null;
+    });
+
+    const wrapper = mount(Admin, { global: { plugins: [router] } });
+    await flushPromises();
+
+    const tab = wrapper.find('[data-testid="category-tab-2"]');
+    await tab.trigger('click');
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="categories-empty"]').text()).toContain('В этой категории пока нет подкатегорий');
+
+    // Восстанавливаем
+    mockCategories.length = 0;
+    mockCategories.push(...original);
+  });
+
+  it('ищет категории по названию', async () => {
+    const wrapper = mount(Admin, { global: { plugins: [router] } });
+    await flushPromises();
+
+    const searchInput = wrapper.find('[data-testid="category-search-input"]');
+    await searchInput.setValue('iphone');
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="category-row-3"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="category-row-4"]').exists()).toBe(false);
+  });
+
   it('блокирует пользователя по клику', async () => {
     mockPatch.mockResolvedValue({
       data: { id: 2, email: 'user@example.com', full_name: 'Пользователь', role: 'user', is_active: false },
@@ -185,7 +268,7 @@ describe('Admin.vue', () => {
     const wrapper = mount(Admin, { global: { plugins: [router] } });
     await flushPromises();
 
-    const addBtn = wrapper.find('.admin__btn--primary');
+    const addBtn = wrapper.find('[data-testid="add-category-btn"]');
     expect(addBtn.exists()).toBe(true);
     expect(addBtn.text()).toContain('Добавить');
 
@@ -193,6 +276,24 @@ describe('Admin.vue', () => {
     await flushPromises();
 
     expect(wrapper.text()).toContain('Новая категория');
+    expect(wrapper.find('[data-testid="category-parent-select"]').exists()).toBe(true);
+  });
+
+  it('показывает селектор родителя с опциями в модалке редактирования', async () => {
+    const wrapper = mount(Admin, { global: { plugins: [router] } });
+    await flushPromises();
+
+    const editBtn = wrapper.find('[data-testid="category-row-3"] .admin__icon-btn--edit');
+    await editBtn.trigger('click');
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Редактировать категорию');
+    const select = wrapper.find('[data-testid="category-parent-select"]');
+    expect(select.exists()).toBe(true);
+    // Редактируемая категория не должна быть в опциях
+    expect(select.html()).not.toContain('iPhone');
+    expect(select.html()).toContain('Смартфоны');
+    expect(select.html()).toContain('Без родителя');
   });
 
   it('отображает фичатоглы', async () => {
