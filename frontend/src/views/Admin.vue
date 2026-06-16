@@ -487,7 +487,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import api from '@/services/api';
 import { useToast } from '@/composables/useToast';
 import { useCategories } from '@/composables/useCategories';
@@ -517,9 +517,17 @@ const onCategorySearchInput = (value) => {
     clearTimeout(categorySearchTimeout);
   }
   categorySearchTimeout = setTimeout(() => {
+    categorySearchTimeout = null;
     setCategorySearchQuery(value);
   }, CATEGORY_SEARCH_DEBOUNCE_MS);
 };
+
+onUnmounted(() => {
+  if (categorySearchTimeout) {
+    clearTimeout(categorySearchTimeout);
+    categorySearchTimeout = null;
+  }
+});
 
 // Section tabs
 const sectionTabs = [
@@ -538,7 +546,6 @@ const loading = ref({
   ordersByDay: false,
   topProducts: false,
   users: false,
-  categories: false,
   delivery: false,
   orders: false,
   featureFlags: false,

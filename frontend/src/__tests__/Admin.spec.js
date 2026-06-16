@@ -74,9 +74,9 @@ const mockCategories = [
 
 const categoryListResponse = (items) => ({ items, total: items.length });
 
-const matchCategoriesRequest = (url, params) => {
+const matchCategoriesRequest = (url, params, categories = mockCategories) => {
   if (url !== '/categories/') return null;
-  let items = [...mockCategories];
+  let items = [...categories];
   if (params?.parent_id !== undefined) {
     items = items.filter((c) => c.parent_id === Number(params.parent_id));
   }
@@ -89,6 +89,19 @@ const matchCategoriesRequest = (url, params) => {
     items = items.slice(skip, skip + limit);
   }
   return categoryListResponse(items);
+};
+
+const defaultMockGet = (url, config, categories = mockCategories) => {
+  const params = config?.params;
+  if (url === '/admin/dashboard') return Promise.resolve({ data: mockDashboard });
+  if (url === '/admin/orders-by-day') return Promise.resolve({ data: mockOrdersByDay });
+  if (url === '/admin/top-products') return Promise.resolve({ data: mockTopProducts });
+  if (url === '/admin/users') return Promise.resolve({ data: mockUsers });
+  if (url === '/categories/') return Promise.resolve({ data: matchCategoriesRequest(url, params, categories) });
+  if (url === '/delivery-methods/') return Promise.resolve({ data: [] });
+  if (url === '/admin/orders') return Promise.resolve({ data: [] });
+  if (url === '/admin/feature-flags') return Promise.resolve({ data: mockFeatureFlags });
+  return Promise.resolve({ data: {} });
 };
 
 const mockFeatureFlags = [
@@ -106,18 +119,7 @@ describe('Admin.vue', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     toastFn.mockClear();
-    mockGet.mockImplementation((url, config) => {
-      const params = config?.params;
-      if (url === '/admin/dashboard') return Promise.resolve({ data: mockDashboard });
-      if (url === '/admin/orders-by-day') return Promise.resolve({ data: mockOrdersByDay });
-      if (url === '/admin/top-products') return Promise.resolve({ data: mockTopProducts });
-      if (url === '/admin/users') return Promise.resolve({ data: mockUsers });
-      if (url === '/categories/') return Promise.resolve({ data: matchCategoriesRequest(url, params) });
-      if (url === '/delivery-methods/') return Promise.resolve({ data: [] });
-      if (url === '/admin/orders') return Promise.resolve({ data: [] });
-      if (url === '/admin/feature-flags') return Promise.resolve({ data: mockFeatureFlags });
-      return Promise.resolve({ data: {} });
-    });
+    mockGet.mockImplementation(defaultMockGet);
     mockPatch.mockImplementation((url) => {
       if (url === '/admin/feature-flags/google_oauth') {
         return Promise.resolve({ data: { name: 'google_oauth', enabled: false, source: 'redis' } });
@@ -269,12 +271,13 @@ describe('Admin.vue', () => {
   });
 
   it('показывает empty-state для вкладки без потомков', async () => {
-    // У ноутбуков есть потомок, поэтому переключаемся на несуществующий корень
-    // Для теста временно убираем потомков у категории 2
-    const original = [...mockCategories];
-    mockCategories.forEach((c) => {
-      if (c.parent_id === 2) c.parent_id = null;
-    });
+    // У ноутбуков есть потомок, поэтому для теста убираем потомков у категории 2
+    const emptyCategories = mockCategories.map((c) =>
+      c.parent_id === 2 ? { ...c, parent_id: null } : c
+    );
+    mockGet.mockImplementation((url, config) =>
+      defaultMockGet(url, config, emptyCategories)
+    );
 
     const wrapper = mount(Admin, { global: { plugins: [router] } });
     await flushPromises();
@@ -286,10 +289,6 @@ describe('Admin.vue', () => {
     await flushPromises();
 
     expect(wrapper.find('[data-testid="categories-empty"]').text()).toContain('В этой категории пока нет подкатегорий');
-
-    // Восстанавливаем
-    mockCategories.length = 0;
-    mockCategories.push(...original);
   });
 
   it('ищет категории по названию', async () => {
