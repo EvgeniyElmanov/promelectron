@@ -14,6 +14,35 @@ YYYY-MM-DD HH:MM | <role> | <краткое описание>
 
 ## Записи (новые сверху)
 
+### 2026-06-16 23:59 | implement-pipeline | fix-frequent-logout — /implement cycle complete, ready for merge
+  Изменено:
+  - Архитектор: выявлен хардкод 15 минут в `create_access_token`, затронут OAuth-callback.
+  - Backend-dev: исправлен fallback TTL, default TTL 1440, синхронизированы env/helm/docker-compose, добавлены тесты.
+  - Code review: 2 итерации, статус APPROVED.
+  - E2E-tester: `frontend/e2e/auth.spec.js` — 3/3 passed.
+  Результат:
+  - backend tests: 159/159 ✅
+  - e2e auth spec: 3/3 ✅
+  - review: APPROVED, открытых finding'ов нет.
+  Блокер: Нет. Вопрос к пользователю: merge `feature/fix-frequent-logout` into `main`?
+
+### 2026-06-16 23:55 | backend-dev | fix-frequent-logout — rebase onto main and sync TTL env defaults
+  Изменено:
+  - `feature/fix-frequent-logout` rebased onto current `main` (`6ef23a8`) — resolved `.agent/SESSION_LOG.md` and `PROJECT_CONTEXT.md` conflicts, preserved admin-section-tabs work.
+  - `backend/src/app/utils/auth.py` — `create_access_token` fallback TTL now uses `ACCESS_TOKEN_EXPIRE_MINUTES` instead of hardcoded 15 minutes.
+  - `backend/src/app/core/config.py` — default `ACCESS_TOKEN_EXPIRE_MINUTES` changed from 30 to 1440.
+  - `.env.example`, `backend/.env.example`, `backend/docker-compose.yml` (api/worker/beat), `infra/helm/values.yaml` — synchronized `ACCESS_TOKEN_EXPIRE_MINUTES=1440`.
+  - `backend/tests/test_auth.py` — added `test_login_token_expiry_matches_settings` and `test_oauth_token_expiry_matches_settings`.
+  - `.agent/SESSION_LOG.md` — эта запись.
+  Результат:
+  - `make test-backend` — 159/159 ✅
+  - `ruff check src/` — чисто ✅
+  - `ruff format --check` на изменённых Python-файлах — чисто ✅
+  - `git diff main` содержит только изменения auth/JWT.
+  Риск/Техдолг:
+  - Увеличение TTL до 24 часов расширяет окно компрометации токена; митигация — HTTPS в prod, планируется внедрение refresh-токенов (#39).
+  Блокер: Нет
+
 ### 2026-06-16 23:50 | devops | Deploy admin-section-tabs to test
   Изменено:
   - Запущен GitHub Actions workflow `deploy.yml` для окружения `test`.
