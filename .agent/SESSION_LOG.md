@@ -14,6 +14,20 @@ YYYY-MM-DD HH:MM | <role> | <краткое описание>
 
 ## Записи (новые сверху)
 
+### 2026-06-16 22:25 | devops | Deploy admin-categories-tabs to test
+  Изменено:
+  - Запущен GitHub Actions workflow `deploy.yml` для окружения `test`.
+  - Commit: `34bb995` (`feat(admin): category tabs, search, parent selector, product count`).
+  - `.agent/SESSION_LOG.md` — эта запись.
+  Результат:
+  - `build` — ✅
+  - `deploy-test` — ✅
+  - `test-e2e / smoke` — ✅
+  - `test-e2e / e2e` — ✅
+  - Run URL: https://github.com/AutonomaCo/promelectron/actions/runs/27625432733
+  Риск/Техдолг: Нет
+  Блокер: Нет
+
 ### 2026-06-16 10:40 | code-reviewer / e2e-tester | admin-categories-tabs — ревью, правки, E2E
   Изменено:
   - `frontend/src/composables/useCategories.js` — `loadMore()` теперь добавляет новые элементы через `push(...)` вместо замены списка.
