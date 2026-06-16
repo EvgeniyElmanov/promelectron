@@ -31,11 +31,16 @@ vi.mock('@/composables/useCart', () => ({
   }),
 }));
 
-vi.mock('@/components/AddressForm.vue', () => ({
+vi.mock('@/components/CdekDeliveryWidget.vue', () => ({
   default: {
-    name: 'AddressForm',
-    template: '<div data-testid="address-form"><input v-model="modelValue.city" /></div>',
-    props: ['modelValue', 'label', 'testidPrefix'],
+    name: 'CdekDeliveryWidget',
+    template: '<div data-testid="cdek-delivery-widget"><button @click="select">Select delivery</button></div>',
+    props: ['modelValue', 'items'],
+    methods: {
+      select() {
+        this.$emit('update:modelValue', { tariff_code: 136, price: 350, delivery_mode: 'PVZ' });
+      },
+    },
   },
 }));
 
@@ -47,6 +52,8 @@ const router = createRouter({
   ],
 });
 
+const selectedDelivery = { tariff_code: 136, price: 350, delivery_mode: 'PVZ' };
+
 describe('GuestCheckout.vue', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -55,17 +62,7 @@ describe('GuestCheckout.vue', () => {
       { product_id: 1, quantity: 2, name: 'Товар А', price: 1000, stock: 5, images: [] },
       { product_id: 2, quantity: 1, name: 'Товар Б', price: 2000, stock: 3, images: [] },
     ];
-    mockGet.mockImplementation((url) => {
-      if (url === '/delivery-methods/') {
-        return Promise.resolve({
-          data: [
-            { id: 1, name: 'Курьер', base_price: 300, estimated_days: '1-2', is_active: true },
-            { id: 2, name: 'Самовывоз', base_price: 0, estimated_days: '1', is_active: true },
-          ],
-        });
-      }
-      return Promise.resolve({ data: {} });
-    });
+    mockGet.mockResolvedValue({ data: {} });
   });
 
   it('отображает товары из гостевой корзины', async () => {
@@ -77,12 +74,12 @@ describe('GuestCheckout.vue', () => {
     expect(wrapper.text()).toContain('4\u00A0000'); // 2*1000 + 1*2000
   });
 
-  it('отображает способы доставки', async () => {
+  it('отображает виджет доставки СДЭК', async () => {
     const wrapper = mount(GuestCheckout, { global: { plugins: [router] } });
     await flushPromises();
 
-    expect(wrapper.text()).toContain('Курьер');
-    expect(wrapper.text()).toContain('Самовывоз');
+    expect(wrapper.find('[data-testid="cdek-delivery-widget"]').exists()).toBe(true);
+    expect(wrapper.text()).toContain('Способ доставки');
   });
 
   it('показывает форму контактных данных', async () => {
@@ -94,7 +91,7 @@ describe('GuestCheckout.vue', () => {
     expect(wrapper.find('[data-testid="guest-phone"]').exists()).toBe(true);
   });
 
-  it('кнопка оформления disabled без email и адреса', async () => {
+  it('кнопка оформления disabled без email, имени, телефона и доставки', async () => {
     const wrapper = mount(GuestCheckout, { global: { plugins: [router] } });
     await flushPromises();
 
@@ -104,23 +101,20 @@ describe('GuestCheckout.vue', () => {
 
   it('отправляет запрос на создание гостевого заказа', async () => {
     mockPost.mockResolvedValue({
-      data: { id: 42, guest_email: 'test@example.com', total_price: 4300 },
+      data: { id: 42, guest_email: 'test@example.com', total_price: 4350 },
     });
     const push = vi.spyOn(router, 'push');
 
     const wrapper = mount(GuestCheckout, { global: { plugins: [router] } });
     await flushPromises();
 
-    // Fill email
-    const emailInput = wrapper.find('[data-testid="guest-email"]');
-    await emailInput.setValue('test@example.com');
+    // Fill contact fields
+    await wrapper.find('[data-testid="guest-email"]').setValue('test@example.com');
+    await wrapper.find('[data-testid="guest-name"]').setValue('Иван');
+    await wrapper.find('[data-testid="guest-phone"]').setValue('+79990001122');
 
-    // Fill address via component emit (simulate v-model update)
-    await wrapper.findComponent({ name: 'AddressForm' }).vm.$emit('update:modelValue', {
-      city: 'Москва', street: 'Ленина', house: '1', region: '', district: '', apartment: ''
-    });
-    // Directly set the ref since component mock may not emit properly
-    wrapper.vm.shippingAddress = { city: 'Москва', street: 'Ленина', house: '1', region: '', district: '', apartment: '' };
+    // Select delivery
+    wrapper.vm.selectedDelivery = selectedDelivery;
     await flushPromises();
 
     const btn = wrapper.find('[data-testid="guest-checkout-submit"]');
@@ -131,12 +125,13 @@ describe('GuestCheckout.vue', () => {
 
     expect(mockPost).toHaveBeenCalledWith('/orders/create-guest', expect.objectContaining({
       guest_email: 'test@example.com',
+      guest_name: 'Иван',
+      guest_phone: '+79990001122',
       items: [
         { product_id: 1, quantity: 2 },
         { product_id: 2, quantity: 1 },
       ],
-      shipping_address: expect.objectContaining({ city: 'Москва', street: 'Ленина', house: '1' }),
-      delivery_method_id: 1,
+      cdek_delivery: expect.objectContaining({ tariff_code: 136, price: 350 }),
     }));
     expect(mockCleared).toBe(true);
     expect(push).toHaveBeenCalledWith('/guest-order-success/42?email=test%40example.com');
@@ -149,7 +144,9 @@ describe('GuestCheckout.vue', () => {
     await flushPromises();
 
     wrapper.vm.guestEmail = 'test@example.com';
-    wrapper.vm.shippingAddress = { city: 'Москва', street: 'Ленина', house: '1', region: '', district: '', apartment: '' };
+    wrapper.vm.guestName = 'Иван';
+    wrapper.vm.guestPhone = '+79990001122';
+    wrapper.vm.selectedDelivery = selectedDelivery;
     await flushPromises();
 
     const btn = wrapper.find('[data-testid="guest-checkout-submit"]');

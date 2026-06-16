@@ -69,6 +69,19 @@
             <span v-if="errors.email" class="field-error">{{ errors.email }}</span>
           </div>
 
+          <div class="field">
+            <label class="field-label">Телефон <span class="required">*</span></label>
+            <input
+              v-model="form.phone"
+              type="tel"
+              placeholder="+7 (999) 123-45-67"
+              class="field-input"
+              :class="{ 'field-input--error': errors.phone }"
+              data-testid="edit-profile-phone"
+            />
+            <span v-if="errors.phone" class="field-error">{{ errors.phone }}</span>
+          </div>
+
           <AddressForm
             v-model="form.shipping_address"
             label="Адрес доставки"
@@ -205,6 +218,7 @@ const passwordError = ref('');
 const form = ref({
   full_name: '',
   email: '',
+  phone: '',
   shipping_address: { region: '', district: '', city: '', street: '', house: '', apartment: '' },
 });
 const passwordForm = ref({ old_password: '', new_password: '', confirm_password: '' });
@@ -266,6 +280,7 @@ const fetchProfile = async () => {
     const { data } = await api.get('/auth/profile');
     form.value.full_name = data.full_name || '';
     form.value.email = data.email || '';
+    form.value.phone = data.phone || '';
     form.value.shipping_address = data.shipping_address || {
       region: '', district: '', city: '', street: '', house: '', apartment: '',
     };
@@ -284,6 +299,9 @@ function validateProfile() {
   } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.value.email)) {
     e.email = 'Некорректный email';
   }
+  if (!form.value.phone.trim()) {
+    e.phone = 'Введите телефон';
+  }
   errors.value = e;
   return Object.keys(e).length === 0;
 }
@@ -298,6 +316,7 @@ async function handleSaveProfile() {
     const payload = {};
     if (form.value.full_name.trim()) payload.full_name = form.value.full_name.trim();
     if (form.value.email.trim()) payload.email = form.value.email.trim();
+    if (form.value.phone.trim()) payload.phone = form.value.phone.trim();
 
     const addr = form.value.shipping_address;
     const hasAny = addr && (addr.region || addr.district || addr.city || addr.street || addr.house || addr.apartment);

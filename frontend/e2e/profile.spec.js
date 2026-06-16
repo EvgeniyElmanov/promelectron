@@ -36,8 +36,9 @@ test.describe('Profile & Edit Profile', () => {
     await page.click('[data-testid="profile-edit-btn"]');
     await expect(page).toHaveURL('/profile/edit');
 
-    // Edit name
+    // Edit name and phone (phone is required)
     await page.fill('[data-testid="edit-profile-name"]', 'Updated Name');
+    await page.fill('[data-testid="edit-profile-phone"]', '+79990001122');
     await page.click('[data-testid="edit-profile-save"]');
     await page.waitForTimeout(1000);
 
@@ -62,7 +63,8 @@ test.describe('Profile & Edit Profile', () => {
     // Go to edit profile
     await page.goto('/profile/edit');
 
-    // Fill shipping address
+    // Fill phone (required) and shipping address
+    await page.fill('[data-testid="edit-profile-phone"]', '+79990001122');
     await fillAddress(page, 'edit-profile-');
     await page.click('[data-testid="edit-profile-save"]');
     await page.waitForTimeout(1000);

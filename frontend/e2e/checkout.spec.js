@@ -13,6 +13,27 @@ async function fillAddress(page, prefix) {
   await page.fill(`[data-testid="${prefix}apartment"]`, '42');
 }
 
+async function selectCdekDelivery(page) {
+  // Open CDEK widget modal
+  await page.click('[data-testid="cdek-open-selector"]');
+  await page.waitForSelector('[data-testid="cdek-city-input"]');
+
+  // Type city and select suggestion
+  await page.fill('[data-testid="cdek-city-input"]', 'Москва');
+  await page.waitForTimeout(600);
+  await page.locator('.cdek-widget__suggestions li').first().click();
+
+  // Select PVZ
+  await page.waitForSelector('[data-testid="cdek-pvz-select"]');
+  await page.selectOption('[data-testid="cdek-pvz-select"]', 'TEST_PVZ_1');
+
+  // Calculate and confirm
+  await page.click('[data-testid="cdek-calculate"]');
+  await page.waitForSelector('.cdek-widget__tariff-option');
+  await page.locator('.cdek-widget__tariff-option').first().click();
+  await page.click('[data-testid="cdek-confirm"]');
+}
+
 test.describe('Checkout Flow', () => {
   test('user can place an order', async ({ page }) => {
     const email = uniqueEmail();
@@ -27,8 +48,9 @@ test.describe('Checkout Flow', () => {
     await page.click('[data-testid="register-submit"]');
     await expect(page).toHaveURL('/');
 
-    // Set shipping address in profile
+    // Set profile data (phone required for CDEK recipient)
     await page.goto('/profile/edit');
+    await page.fill('[data-testid="edit-profile-phone"]', '+79990001122');
     await fillAddress(page, 'edit-profile-');
     await page.click('[data-testid="edit-profile-save"]');
     await page.waitForTimeout(1000);
@@ -46,9 +68,8 @@ test.describe('Checkout Flow', () => {
     await expect(page).toHaveURL('/cart');
     await page.waitForSelector('[data-testid="cart-item"]', { timeout: 5000 });
 
-    // Verify shipping address auto-filled from profile
-    await expect(page.locator('[data-testid="cart-city"]')).toHaveValue('Москва');
-    await expect(page.locator('[data-testid="cart-street"]')).toHaveValue('Тестовая');
+    // Select CDEK delivery
+    await selectCdekDelivery(page);
 
     // Place order → redirects to checkout page
     const createOrderResponse = page.waitForResponse(
@@ -81,8 +102,9 @@ test.describe('Checkout Flow', () => {
     await page.click('[data-testid="register-submit"]');
     await expect(page).toHaveURL('/');
 
-    // 2. Set shipping address in profile
+    // 2. Set profile data (phone required for CDEK recipient)
     await page.goto('/profile/edit');
+    await page.fill('[data-testid="edit-profile-phone"]', '+79990001122');
     await fillAddress(page, 'edit-profile-');
     await page.click('[data-testid="edit-profile-save"]');
     await page.waitForTimeout(1000);
@@ -99,6 +121,8 @@ test.describe('Checkout Flow', () => {
     await page.click('[data-testid="cart-link"]');
     await expect(page).toHaveURL('/cart');
     await page.waitForSelector('[data-testid="cart-item"]', { timeout: 5000 });
+
+    await selectCdekDelivery(page);
 
     const createOrderResponse = page.waitForResponse(
       response => response.url().includes('/orders/create'),

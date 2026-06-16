@@ -37,6 +37,10 @@ class Settings:
     yookassa_receipt_enabled: bool
     yookassa_capture_auto: bool
     google_oauth_enabled: bool
+    cdek_account: str
+    cdek_secure: str
+    cdek_api_url: str
+    cdek_test_mode: bool
 
 
 settings = Settings(
@@ -75,6 +79,10 @@ settings = Settings(
     yookassa_receipt_enabled=os.getenv("YOOKASSA_RECEIPT_ENABLED", "false").lower() == "true",
     yookassa_capture_auto=os.getenv("YOOKASSA_CAPTURE_AUTO", "true").lower() == "true",
     google_oauth_enabled=os.getenv("GOOGLE_OAUTH_ENABLED", "true").lower() == "true",
+    cdek_account=os.getenv("CDEK_ACCOUNT", ""),
+    cdek_secure=os.getenv("CDEK_SECURE", ""),
+    cdek_api_url=os.getenv("CDEK_API_URL", "https://api.edu.cdek.ru"),
+    cdek_test_mode=os.getenv("CDEK_TEST_MODE", "true").lower() == "true",
 )
 
 SECRET_KEY = settings.secret_key

@@ -57,6 +57,53 @@
           </div>
         </div>
 
+        <div class="field-row">
+          <div class="field">
+            <label class="field__label">Вес (г) <span class="required">*</span></label>
+            <input
+              v-model.number="form.weight_grams"
+              type="number"
+              class="field__input"
+              min="1"
+              required
+              data-testid="product-weight-input"
+            />
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label class="field__label">Длина (см)</label>
+            <input
+              v-model.number="form.length_cm"
+              type="number"
+              class="field__input"
+              min="0"
+              data-testid="product-length-input"
+            />
+          </div>
+          <div class="field">
+            <label class="field__label">Ширина (см)</label>
+            <input
+              v-model.number="form.width_cm"
+              type="number"
+              class="field__input"
+              min="0"
+              data-testid="product-width-input"
+            />
+          </div>
+          <div class="field">
+            <label class="field__label">Высота (см)</label>
+            <input
+              v-model.number="form.height_cm"
+              type="number"
+              class="field__input"
+              min="0"
+              data-testid="product-height-input"
+            />
+          </div>
+        </div>
+
         <div class="field">
           <label class="field__label">Категория <span class="required">*</span></label>
           <select v-model.number="form.category_id" class="field__input" required data-testid="product-category-select">
@@ -123,6 +170,10 @@ const form = ref({
   description: props.product?.description || '',
   price: props.product?.price || 0,
   stock: props.product?.stock || 0,
+  weight_grams: props.product?.weight_grams || 1000,
+  length_cm: props.product?.length_cm || null,
+  width_cm: props.product?.width_cm || null,
+  height_cm: props.product?.height_cm || null,
   category_id: props.product?.category_id || '',
   is_active: props.product?.is_active ?? true,
 });

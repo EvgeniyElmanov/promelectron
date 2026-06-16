@@ -3,10 +3,13 @@ import uuid
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, Request
 from src.app.utils.rate_limiter import conditional_limit
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.app.db.database import get_db
+from src.app.models.supplier import Supplier
 from src.app.models.user import User
+from src.app.schemas.supplier import SupplierOut, SupplierUpdate
 from src.app.schemas.user import PasswordChange, UserCreate, UserOut, UserUpdate
 from src.app.services.user_service import UserService
 from src.app.services.storage_service import storage
@@ -73,6 +76,37 @@ async def read_admin_data(current_user: User = Depends(get_current_active_admin)
 @router.get("/supplier")
 async def read_supplier_data(current_user: User = Depends(get_current_active_supplier)):
     return {"message": f"Hello supplier {current_user.email}"}
+
+
+@router.get("/supplier/profile", response_model=SupplierOut)
+async def get_supplier_profile(
+    current_user: User = Depends(get_current_active_supplier),
+    db: AsyncSession = Depends(get_db),
+):
+    supplier_result = await db.execute(select(Supplier).where(Supplier.user_id == current_user.id))
+    supplier = supplier_result.scalars().first()
+    if not supplier:
+        raise HTTPException(status_code=403, detail="You are not registered as a supplier")
+    return supplier
+
+
+@router.patch("/supplier/profile", response_model=SupplierOut)
+async def update_supplier_profile(
+    data: SupplierUpdate,
+    current_user: User = Depends(get_current_active_supplier),
+    db: AsyncSession = Depends(get_db),
+):
+    supplier_result = await db.execute(select(Supplier).where(Supplier.user_id == current_user.id))
+    supplier = supplier_result.scalars().first()
+    if not supplier:
+        raise HTTPException(status_code=403, detail="You are not registered as a supplier")
+
+    for field, value in data.model_dump(exclude_unset=True).items():
+        setattr(supplier, field, value)
+
+    await db.commit()
+    await db.refresh(supplier)
+    return supplier
 
 
 @router.post("/me/avatar")

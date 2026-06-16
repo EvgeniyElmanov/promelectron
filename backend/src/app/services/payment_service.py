@@ -18,6 +18,8 @@ from src.app.services.email_service import EmailService
 from src.app.services.notification_service import NotificationService
 from src.app.services.yookassa_service import YooKassaService
 
+# Imported lazily inside methods to avoid circular imports with Celery
+
 logger = logging.getLogger(__name__)
 
 
@@ -164,6 +166,15 @@ class PaymentService:
             if cart:
                 await db.execute(delete(CartItem).where(CartItem.cart_id == cart.id))
                 await db.commit()
+
+        # Запускаем создание заказа в CDEK (если выбрана CDEK-доставка)
+        try:
+            if payment.order.cdek_tariff_code and not payment.order.cdek_uuid:
+                from src.app.workers.cdek_tasks import create_cdek_order_task
+                create_cdek_order_task.delay(order_id)
+                logger.info("Queued CDEK order creation for order %s", order_id)
+        except Exception:
+            logger.exception("Failed to queue CDEK order creation for order %s", order_id)
 
         # Отправляем email о подтверждении оплаты (best-effort)
         try:

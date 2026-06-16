@@ -10,7 +10,7 @@ celery_app = Celery(
     "promelectron_workers",
     broker=settings.redis_url,
     backend=settings.redis_url,
-    include=["src.app.workers.tasks"],
+    include=["src.app.workers.tasks", "src.app.workers.cdek_tasks"],
 )
 
 celery_app.conf.update(

@@ -16,6 +16,7 @@ from src.app.api.analytics import router as analytics_router
 from src.app.api.auth import router as auth_router
 from src.app.api.cart import router as cart_router
 from src.app.api.categories import router as categories_router
+from src.app.api.cdek import router as cdek_router
 from src.app.api.delivery_methods import router as delivery_methods_router
 from src.app.api.favorites import router as favorites_router
 from src.app.api.notifications import router as notifications_router
@@ -110,6 +111,7 @@ app.include_router(auth_router, prefix="/api/v1", tags=["auth"])
 app.include_router(reviews_router, prefix="/api/v1", tags=["reviews"])
 app.include_router(favorites_router, prefix="/api/v1", tags=["favorites"])
 app.include_router(seed_router, prefix="/api/v1", tags=["seed"])
+app.include_router(cdek_router, prefix="/api/v1", tags=["cdek"])
 app.include_router(delivery_methods_router, prefix="/api/v1", tags=["delivery-methods"])
 
 

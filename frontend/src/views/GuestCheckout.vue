@@ -31,30 +31,10 @@
     <!-- Delivery -->
     <div v-if="items.length > 0" class="guest-checkout__card">
       <div class="guest-checkout__section-title">Способ доставки</div>
-      <div class="guest-checkout__delivery-list">
-        <label
-          v-for="method in deliveryMethods"
-          :key="method.id"
-          class="guest-checkout__delivery-option"
-          :class="{ 'guest-checkout__delivery-option--active': selectedDeliveryMethodId === method.id }"
-        >
-          <input
-            v-model="selectedDeliveryMethodId"
-            type="radio"
-            :value="method.id"
-            class="guest-checkout__delivery-radio"
-          />
-          <div class="guest-checkout__delivery-info">
-            <span class="guest-checkout__delivery-name">{{ method.name }}</span>
-            <span v-if="method.estimated_days" class="guest-checkout__delivery-days">
-              {{ method.estimated_days }} {{ method.estimated_days === 1 ? 'день' : method.estimated_days < 5 ? 'дня' : 'дней' }}
-            </span>
-          </div>
-          <span class="guest-checkout__delivery-price">
-            {{ Number(method.base_price) > 0 ? formatPrice(method.base_price) + ' ₽' : 'Бесплатно' }}
-          </span>
-        </label>
-      </div>
+      <CdekDeliveryWidget
+        v-model="selectedDelivery"
+        :items="items"
+      />
     </div>
 
     <!-- Contact -->
@@ -71,7 +51,7 @@
         />
       </div>
       <div class="field">
-        <label class="field__label">Имя</label>
+        <label class="field__label">Имя <span class="field__required">*</span></label>
         <input
           v-model="guestName"
           class="field__input"
@@ -80,7 +60,7 @@
         />
       </div>
       <div class="field">
-        <label class="field__label">Телефон</label>
+        <label class="field__label">Телефон <span class="field__required">*</span></label>
         <input
           v-model="guestPhone"
           class="field__input"
@@ -89,15 +69,6 @@
           data-testid="guest-phone"
         />
       </div>
-    </div>
-
-    <!-- Address -->
-    <div v-if="items.length > 0" class="guest-checkout__card">
-      <AddressForm
-        v-model="shippingAddress"
-        label="Адрес доставки"
-        testid-prefix="guest-"
-      />
     </div>
 
     <!-- Total -->
@@ -125,21 +96,17 @@ import { useRouter } from 'vue-router';
 import api from '@/services/api';
 import { useCart } from '@/composables/useCart';
 import { useToast } from '@/composables/useToast';
-import AddressForm from '@/components/AddressForm.vue';
+import CdekDeliveryWidget from '@/components/CdekDeliveryWidget.vue';
 
 const router = useRouter();
 const { add: toast } = useToast();
 const { getGuestCartItems, clearGuestCart } = useCart();
 
 const items = ref([]);
-const deliveryMethods = ref([]);
-const selectedDeliveryMethodId = ref(null);
+const selectedDelivery = ref(null);
 const guestEmail = ref('');
 const guestName = ref('');
 const guestPhone = ref('');
-const shippingAddress = ref({
-  region: '', district: '', city: '', street: '', house: '', apartment: ''
-});
 const submitting = ref(false);
 
 const itemsTotal = computed(() => {
@@ -147,20 +114,20 @@ const itemsTotal = computed(() => {
 });
 
 const deliveryPrice = computed(() => {
-  const method = deliveryMethods.value.find(m => m.id === selectedDeliveryMethodId.value);
-  return method ? Number(method.base_price) : 0;
+  return selectedDelivery.value ? Number(selectedDelivery.value.price) : 0;
 });
 
 const orderTotal = computed(() => itemsTotal.value + deliveryPrice.value);
 
-const isAddressValid = computed(() => {
-  return shippingAddress.value.city?.trim()
-    && shippingAddress.value.street?.trim()
-    && shippingAddress.value.house?.trim();
+const isDeliveryValid = computed(() => {
+  return selectedDelivery.value && selectedDelivery.value.tariff_code;
 });
 
 const canSubmit = computed(() => {
-  return guestEmail.value.trim().length > 0 && isAddressValid.value;
+  return guestEmail.value.trim().length > 0
+    && guestName.value.trim().length > 0
+    && guestPhone.value.trim().length > 0
+    && isDeliveryValid.value;
 });
 
 const formatPrice = (price) => {
@@ -171,26 +138,22 @@ const loadItems = () => {
   items.value = getGuestCartItems();
 };
 
-const fetchDeliveryMethods = async () => {
-  try {
-    const { data } = await api.get('/delivery-methods/');
-    deliveryMethods.value = data;
-    if (data.length > 0 && !selectedDeliveryMethodId.value) {
-      selectedDeliveryMethodId.value = data[0].id;
-    }
-  } catch (err) {
-    console.error('Failed to fetch delivery methods:', err);
-  }
-};
-
 const submitOrder = async () => {
   if (submitting.value) return;
   if (!guestEmail.value.trim()) {
     toast('Укажите email', 'error');
     return;
   }
-  if (!isAddressValid.value) {
-    toast('Заполните город, улицу и дом', 'error');
+  if (!guestName.value.trim()) {
+    toast('Укажите имя', 'error');
+    return;
+  }
+  if (!guestPhone.value.trim()) {
+    toast('Укажите телефон', 'error');
+    return;
+  }
+  if (!isDeliveryValid.value) {
+    toast('Выберите доставку СДЭК', 'error');
     return;
   }
   if (items.value.length === 0) {
@@ -202,11 +165,10 @@ const submitOrder = async () => {
   try {
     const payload = {
       items: items.value.map(i => ({ product_id: i.product_id, quantity: i.quantity })),
-      shipping_address: { ...shippingAddress.value },
-      delivery_method_id: selectedDeliveryMethodId.value,
+      cdek_delivery: { ...selectedDelivery.value },
       guest_email: guestEmail.value.trim(),
-      guest_name: guestName.value.trim() || null,
-      guest_phone: guestPhone.value.trim() || null,
+      guest_name: guestName.value.trim(),
+      guest_phone: guestPhone.value.trim(),
     };
     const { data: order } = await api.post('/orders/create-guest', payload);
     clearGuestCart();
@@ -223,7 +185,6 @@ const submitOrder = async () => {
 
 onMounted(() => {
   loadItems();
-  fetchDeliveryMethods();
 });
 </script>
 

@@ -5,12 +5,12 @@ class TestOrdersAPI:
     """Тесты заказов."""
 
     @pytest.mark.asyncio
-    async def test_cancel_pending_order(self, client, test_user, user_token, test_product):
+    async def test_cancel_pending_order(self, client, test_user, user_token, test_product, cdek_delivery_payload):
         """Отмена заказа в статусе pending."""
         await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
         order_resp = await client.post(
             "/api/v1/orders/create",
-            json={"shipping_address": {"city": "Москва", "street": "Ленина", "house": "1"}},
+            json={"cdek_delivery": cdek_delivery_payload},
             headers={"Authorization": f"Bearer {user_token}"},
         )
         order_id = order_resp.json()["id"]
@@ -25,7 +25,7 @@ class TestOrdersAPI:
         assert prod_resp.json()["stock"] == test_product.stock
 
     @pytest.mark.asyncio
-    async def test_cancel_paid_order_fails(self, client, test_user, user_token, test_product):
+    async def test_cancel_paid_order_fails(self, client, test_user, user_token, test_product, cdek_delivery_payload):
         """Отмена оплаченного заказа — 400."""
         from unittest.mock import AsyncMock, patch
         from decimal import Decimal
@@ -33,7 +33,7 @@ class TestOrdersAPI:
         await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
         order_resp = await client.post(
             "/api/v1/orders/create",
-            json={"shipping_address": {"city": "Москва", "street": "Ленина", "house": "1"}},
+            json={"cdek_delivery": cdek_delivery_payload},
             headers={"Authorization": f"Bearer {user_token}"},
         )
         order_id = order_resp.json()["id"]
@@ -76,12 +76,12 @@ class TestOrdersAPI:
         assert response.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_supplier_can_list_orders(self, client, test_user, user_token, test_supplier, supplier_token, test_product):
+    async def test_supplier_can_list_orders(self, client, test_user, user_token, test_supplier, supplier_token, test_product, cdek_delivery_payload):
         """Поставщик видит заказы, содержащие его товары."""
         await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
         order_resp = await client.post(
             "/api/v1/orders/create",
-            json={"shipping_address": {"city": "Москва", "street": "Ленина", "house": "1"}},
+            json={"cdek_delivery": cdek_delivery_payload},
             headers={"Authorization": f"Bearer {user_token}"},
         )
         assert order_resp.status_code == 200
@@ -98,7 +98,7 @@ class TestOrdersAPI:
         assert data[0]["total_amount"] == str(test_product.price)
 
     @pytest.mark.asyncio
-    async def test_supplier_cannot_see_orders_without_their_products(self, client, test_user, user_token, test_supplier, supplier_token, test_session):
+    async def test_supplier_cannot_see_orders_without_their_products(self, client, test_user, user_token, test_supplier, supplier_token, test_session, cdek_delivery_payload):
         """Поставщик не видит заказы без своих товаров."""
         from src.app.models.product import Product
         from src.app.models.supplier import Supplier
@@ -141,7 +141,7 @@ class TestOrdersAPI:
         await client.post("/api/v1/cart/add", json={"product_id": other_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
         order_resp = await client.post(
             "/api/v1/orders/create",
-            json={"shipping_address": {"city": "Москва", "street": "Ленина", "house": "1"}},
+            json={"cdek_delivery": cdek_delivery_payload},
             headers={"Authorization": f"Bearer {user_token}"},
         )
         assert order_resp.status_code == 200
@@ -152,12 +152,12 @@ class TestOrdersAPI:
         assert len(data) == 0
 
     @pytest.mark.asyncio
-    async def test_supplier_can_ship_order(self, client, test_user, user_token, test_supplier, supplier_token, test_product):
+    async def test_supplier_can_ship_order(self, client, test_user, user_token, test_supplier, supplier_token, test_product, cdek_delivery_payload):
         """Поставщик может отметить заказ как отправленный."""
         await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
         order_resp = await client.post(
             "/api/v1/orders/create",
-            json={"shipping_address": {"city": "Москва", "street": "Ленина", "house": "1"}},
+            json={"cdek_delivery": cdek_delivery_payload},
             headers={"Authorization": f"Bearer {user_token}"},
         )
         order_id = order_resp.json()["id"]
@@ -168,7 +168,7 @@ class TestOrdersAPI:
         assert data["status"] == "shipped"
 
     @pytest.mark.asyncio
-    async def test_supplier_cannot_ship_order_without_their_products(self, client, test_user, user_token, test_supplier, supplier_token, test_session):
+    async def test_supplier_cannot_ship_order_without_their_products(self, client, test_user, user_token, test_supplier, supplier_token, test_session, cdek_delivery_payload):
         """Поставщик не может отправить заказ без своих товаров."""
         from src.app.models.product import Product
         from src.app.models.supplier import Supplier
@@ -211,7 +211,7 @@ class TestOrdersAPI:
         await client.post("/api/v1/cart/add", json={"product_id": other_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
         order_resp = await client.post(
             "/api/v1/orders/create",
-            json={"shipping_address": {"city": "Москва", "street": "Ленина", "house": "1"}},
+            json={"cdek_delivery": cdek_delivery_payload},
             headers={"Authorization": f"Bearer {user_token}"},
         )
         order_id = order_resp.json()["id"]

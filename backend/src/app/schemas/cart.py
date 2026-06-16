@@ -21,6 +21,11 @@ class CartItemProductOut(BaseModel):
     name: str
     price: float
     stock: int
+    supplier_id: int
+    weight_grams: int
+    length_cm: Optional[int] = None
+    width_cm: Optional[int] = None
+    height_cm: Optional[int] = None
     images: List[str] = []
 
     model_config = ConfigDict(from_attributes=True)

@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import List, Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class OrderItemOut(BaseModel):
@@ -23,9 +23,27 @@ class AddressDetails(BaseModel):
     apartment: Optional[str] = None
 
 
+class CdekLocation(BaseModel):
+    code: Optional[int] = None
+    city: Optional[str] = None
+    address: Optional[str] = None
+    postal_code: Optional[str] = None
+
+
+class CdekDeliveryIn(BaseModel):
+    tariff_code: int
+    delivery_mode: str = Field(..., pattern="^(PVZ|DOOR)$")
+    delivery_point: Optional[str] = None
+    to_location: Optional[CdekLocation] = None
+    from_location: Optional[CdekLocation] = None
+    price: Decimal
+    period_min: Optional[int] = None
+    period_max: Optional[int] = None
+    shipping_address: Optional[str] = None
+
+
 class OrderCreate(BaseModel):
-    shipping_address: Optional[AddressDetails] = None
-    delivery_method_id: Optional[int] = None
+    cdek_delivery: CdekDeliveryIn
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -37,11 +55,10 @@ class GuestOrderItemCreate(BaseModel):
 
 class GuestOrderCreate(BaseModel):
     items: List[GuestOrderItemCreate]
-    shipping_address: Optional[AddressDetails] = None
-    delivery_method_id: Optional[int] = None
+    cdek_delivery: CdekDeliveryIn
     guest_email: str
-    guest_name: Optional[str] = None
-    guest_phone: Optional[str] = None
+    guest_name: str
+    guest_phone: str
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -53,17 +70,6 @@ class OrderUpdateStatus(BaseModel):
 class AdminOrderUpdate(BaseModel):
     status: Optional[str] = None
     tracking_number: Optional[str] = None
-
-
-class DeliveryMethodOut(BaseModel):
-    id: int
-    name: str
-    description: Optional[str] = None
-    base_price: float
-    estimated_days: Optional[str] = None
-    is_active: bool = True
-
-    model_config = ConfigDict(from_attributes=True)
 
 
 class SupplierOrderItemOut(BaseModel):
@@ -91,8 +97,6 @@ class OrderOut(BaseModel):
     user_id: Optional[int] = None
     status: str
     total_price: Decimal
-    delivery_method_id: Optional[int] = None
-    delivery_price: Optional[Decimal] = None
     shipping_address: Optional[str] = None
     guest_email: Optional[str] = None
     guest_name: Optional[str] = None
@@ -100,6 +104,18 @@ class OrderOut(BaseModel):
     created_at: datetime
     items: List[OrderItemOut]
     tracking_number: Optional[str] = None
-    delivery_method: Optional[DeliveryMethodOut] = None
+
+    # CDEK fields
+    cdek_tariff_code: int
+    cdek_delivery_mode: str
+    cdek_delivery_point: Optional[str] = None
+    cdek_to_location: Optional[CdekLocation] = None
+    cdek_from_location: Optional[CdekLocation] = None
+    cdek_price: Decimal
+    cdek_period_min: Optional[int] = None
+    cdek_period_max: Optional[int] = None
+    cdek_uuid: Optional[str] = None
+    cdek_number: Optional[str] = None
+    cdek_status: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)

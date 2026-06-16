@@ -20,6 +20,7 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     full_name = Column(String, nullable=True)
     email = Column(String, unique=True, index=True, nullable=False)
+    phone = Column(String, nullable=True)
     hashed_password = Column(String, nullable=True)
     avatar_url = Column(String, nullable=True)
     shipping_address = Column(JSON, nullable=True)

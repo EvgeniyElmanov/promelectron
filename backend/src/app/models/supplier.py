@@ -15,6 +15,9 @@ class Supplier(Base):
     name = Column(String, index=True, nullable=False)
     description = Column(String, nullable=True)
     api_key = Column(String, unique=True, index=True, nullable=False)
+    cdek_shipment_point = Column(String, nullable=False, default="")
+    sender_name = Column(String, nullable=True)
+    sender_phone = Column(String, nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 

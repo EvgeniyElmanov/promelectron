@@ -16,6 +16,10 @@ class Product(Base):
     description = Column(Text, nullable=True)
     price = Column(Float, nullable=False)
     stock = Column(Integer, default=0)
+    weight_grams = Column(Integer, nullable=False, default=1000)
+    length_cm = Column(Integer, nullable=True)
+    width_cm = Column(Integer, nullable=True)
+    height_cm = Column(Integer, nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(

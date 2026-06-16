@@ -12,13 +12,13 @@ class TestSupplierAnalytics:
     """Тесты аналитики поставщика."""
 
     @pytest.mark.asyncio
-    async def test_supplier_analytics_basic(self, client, test_user, user_token, test_supplier, supplier_token, test_product, test_session):
+    async def test_supplier_analytics_basic(self, client, test_user, user_token, test_supplier, supplier_token, test_product, test_session, cdek_delivery_payload):
         """Поставщик получает аналитику по своим товарам."""
         # Создаём заказ с товаром поставщика
         await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 2}, headers={"Authorization": f"Bearer {user_token}"})
         order_resp = await client.post(
             "/api/v1/orders/create",
-            json={"shipping_address": {"city": "Москва", "street": "Ленина", "house": "1"}},
+            json={"cdek_delivery": cdek_delivery_payload},
             headers={"Authorization": f"Bearer {user_token}"},
         )
         assert order_resp.status_code == 200
@@ -56,7 +56,7 @@ class TestSupplierAnalytics:
         assert data["top_products"][0]["revenue"] == pytest.approx(199.98, 0.01)
 
     @pytest.mark.asyncio
-    async def test_supplier_analytics_isolation(self, client, test_user, user_token, test_supplier, supplier_token, test_session):
+    async def test_supplier_analytics_isolation(self, client, test_user, user_token, test_supplier, supplier_token, test_session, cdek_delivery_payload):
         """Аналитика изолирована по поставщикам."""
 
         # Создаём второго поставщика с товаром и заказом
@@ -97,7 +97,7 @@ class TestSupplierAnalytics:
         await client.post("/api/v1/cart/add", json={"product_id": other_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
         order_resp = await client.post(
             "/api/v1/orders/create",
-            json={"shipping_address": {"city": "Москва", "street": "Ленина", "house": "1"}},
+            json={"cdek_delivery": cdek_delivery_payload},
             headers={"Authorization": f"Bearer {user_token}"},
         )
         assert order_resp.status_code == 200
@@ -131,14 +131,14 @@ class TestSupplierAnalytics:
         assert response.status_code == 403
 
     @pytest.mark.asyncio
-    async def test_supplier_analytics_multiple_statuses(self, client, test_user, user_token, test_supplier, supplier_token, test_product, test_session):
+    async def test_supplier_analytics_multiple_statuses(self, client, test_user, user_token, test_supplier, supplier_token, test_product, test_session, cdek_delivery_payload):
         """KPI считает заказы по разным статусам."""
         # Создаём 3 заказа с разными статусами
         for i in range(3):
             await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
             order_resp = await client.post(
                 "/api/v1/orders/create",
-                json={"shipping_address": {"city": "Москва", "street": "Ленина", "house": "1"}},
+                json={"cdek_delivery": cdek_delivery_payload},
                 headers={"Authorization": f"Bearer {user_token}"},
             )
             assert order_resp.status_code == 200

@@ -24,6 +24,7 @@ class UserOut(BaseModel):
     id: int
     email: str
     full_name: Optional[str] = None
+    phone: Optional[str] = None
     avatar_url: Optional[str] = None
     shipping_address: Optional[AddressDetails] = None
     role: str
@@ -35,6 +36,7 @@ class UserOut(BaseModel):
 class UserUpdate(BaseModel):
     full_name: Optional[str] = None
     email: Optional[str] = None
+    phone: Optional[str] = None
     avatar_url: Optional[str] = None
     shipping_address: Optional[AddressDetails] = None
 

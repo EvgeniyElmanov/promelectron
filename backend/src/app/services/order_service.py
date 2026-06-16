@@ -6,32 +6,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.app.models.cart import Cart
-from src.app.models.delivery_method import DeliveryMethod
 from src.app.models.order import Order, OrderItem
 from src.app.models.product import Product
 from src.app.models.user import User
-from src.app.schemas.order import AddressDetails, AdminOrderUpdate, GuestOrderCreate, OrderCreate, OrderUpdateStatus
+from src.app.schemas.order import AdminOrderUpdate, GuestOrderCreate, OrderCreate, OrderUpdateStatus
 from src.app.services.email_service import EmailService
 from src.app.services.notification_service import NotificationService
-
-
-def _format_address(address: AddressDetails | None) -> str | None:
-    if not address:
-        return None
-    parts = []
-    if address.region:
-        parts.append(f"обл. {address.region}")
-    if address.district:
-        parts.append(f"р-н {address.district}")
-    if address.city:
-        parts.append(address.city)
-    if address.street:
-        parts.append(f"ул. {address.street}")
-    if address.house:
-        parts.append(f"д. {address.house}")
-    if address.apartment:
-        parts.append(f"кв. {address.apartment}")
-    return ", ".join(parts) if parts else None
 
 
 class OrderService:
@@ -68,25 +48,23 @@ class OrderService:
             total_price += Decimal(product.price) * cart_item.quantity
             order_items.append(order_item)
 
-        delivery_price = Decimal(0)
-        if order_data.delivery_method_id:
-            dm_result = await db.execute(
-                select(DeliveryMethod).where(
-                    DeliveryMethod.id == order_data.delivery_method_id,
-                    DeliveryMethod.is_active.is_(True),
-                )
-            )
-            dm = dm_result.scalars().first()
-            if dm:
-                delivery_price = Decimal(dm.base_price)
+        delivery = order_data.cdek_delivery
+        delivery_price = delivery.price
+        shipping_address = delivery.shipping_address or OrderService._format_shipping_address(delivery)
 
         new_order = Order(
             user_id=current_user.id,
             total_price=total_price + delivery_price,
             status="pending",
-            delivery_method_id=order_data.delivery_method_id,
-            delivery_price=delivery_price,
-            shipping_address=_format_address(order_data.shipping_address),
+            shipping_address=shipping_address,
+            cdek_tariff_code=delivery.tariff_code,
+            cdek_delivery_mode=delivery.delivery_mode,
+            cdek_delivery_point=delivery.delivery_point,
+            cdek_to_location=delivery.to_location.model_dump() if delivery.to_location else None,
+            cdek_from_location=delivery.from_location.model_dump() if delivery.from_location else None,
+            cdek_price=delivery_price,
+            cdek_period_min=delivery.period_min,
+            cdek_period_max=delivery.period_max,
             items=order_items,
         )
         db.add(new_order)
@@ -96,7 +74,6 @@ class OrderService:
         order_result = await db.execute(
             select(Order).where(Order.id == new_order.id).options(
                 selectinload(Order.items),
-                selectinload(Order.delivery_method),
             )
         )
         full_order = order_result.scalars().first()
@@ -167,25 +144,23 @@ class OrderService:
             total_price += Decimal(product.price) * item.quantity
             order_items.append(order_item)
 
-        delivery_price = Decimal(0)
-        if order_data.delivery_method_id:
-            dm_result = await db.execute(
-                select(DeliveryMethod).where(
-                    DeliveryMethod.id == order_data.delivery_method_id,
-                    DeliveryMethod.is_active.is_(True),
-                )
-            )
-            dm = dm_result.scalars().first()
-            if dm:
-                delivery_price = Decimal(dm.base_price)
+        delivery = order_data.cdek_delivery
+        delivery_price = delivery.price
+        shipping_address = delivery.shipping_address or OrderService._format_shipping_address(delivery)
 
         new_order = Order(
             user_id=None,
             total_price=total_price + delivery_price,
             status="pending",
-            delivery_method_id=order_data.delivery_method_id,
-            delivery_price=delivery_price,
-            shipping_address=_format_address(order_data.shipping_address),
+            shipping_address=shipping_address,
+            cdek_tariff_code=delivery.tariff_code,
+            cdek_delivery_mode=delivery.delivery_mode,
+            cdek_delivery_point=delivery.delivery_point,
+            cdek_to_location=delivery.to_location.model_dump() if delivery.to_location else None,
+            cdek_from_location=delivery.from_location.model_dump() if delivery.from_location else None,
+            cdek_price=delivery_price,
+            cdek_period_min=delivery.period_min,
+            cdek_period_max=delivery.period_max,
             guest_email=order_data.guest_email,
             guest_name=order_data.guest_name,
             guest_phone=order_data.guest_phone,
@@ -198,7 +173,6 @@ class OrderService:
         order_result = await db.execute(
             select(Order).where(Order.id == new_order.id).options(
                 selectinload(Order.items),
-                selectinload(Order.delivery_method),
             )
         )
         full_order = order_result.scalars().first()
@@ -230,11 +204,19 @@ class OrderService:
         return full_order
 
     @staticmethod
+    def _format_shipping_address(delivery) -> str | None:
+        if delivery.delivery_point:
+            return f"ПВЗ {delivery.delivery_point}"
+        if delivery.to_location and delivery.to_location.address:
+            return delivery.to_location.address
+        return None
+
+    @staticmethod
     async def get_guest_order(order_id: int, guest_email: str, db: AsyncSession) -> Order:
         result = await db.execute(
             select(Order)
             .where(Order.id == order_id, Order.guest_email == guest_email)
-            .options(selectinload(Order.items), selectinload(Order.delivery_method))
+            .options(selectinload(Order.items))
         )
         order = result.scalars().first()
         if not order:
@@ -247,7 +229,7 @@ class OrderService:
     ) -> list[Order]:
         from sqlalchemy import select
 
-        query = select(Order).options(selectinload(Order.items), selectinload(Order.delivery_method))
+        query = select(Order).options(selectinload(Order.items))
         if status:
             query = query.where(Order.status == status)
         if user_id:
@@ -334,7 +316,6 @@ class OrderService:
         result = await db.execute(
             select(Order).where(Order.id == order_id).options(
                 selectinload(Order.items),
-                selectinload(Order.delivery_method),
             )
         )
         order = result.scalars().first()
@@ -362,7 +343,6 @@ class OrderService:
         order_result = await db.execute(
             select(Order).where(Order.id == order_id).options(
                 selectinload(Order.items),
-                selectinload(Order.delivery_method),
             )
         )
         full_order = order_result.scalars().first()
@@ -404,7 +384,7 @@ class OrderService:
         result = await db.execute(
             select(Order)
             .where(Order.id == order_id, Order.user_id == current_user.id)
-            .options(selectinload(Order.items), selectinload(Order.delivery_method))
+            .options(selectinload(Order.items))
         )
         order = result.scalars().first()
 
@@ -417,7 +397,7 @@ class OrderService:
         result = await db.execute(
             select(Order)
             .where(Order.user_id == current_user.id)
-            .options(selectinload(Order.items), selectinload(Order.delivery_method))
+            .options(selectinload(Order.items))
         )
         return list(result.scalars().all())
 
@@ -426,7 +406,7 @@ class OrderService:
         result = await db.execute(
             select(Order)
             .where(Order.id == order_id, Order.user_id == current_user.id)
-            .options(selectinload(Order.items), selectinload(Order.delivery_method))
+            .options(selectinload(Order.items))
         )
         order = result.scalars().first()
 
@@ -453,7 +433,7 @@ class OrderService:
         order_result = await db.execute(
             select(Order)
             .where(Order.id == order_id)
-            .options(selectinload(Order.items), selectinload(Order.delivery_method))
+            .options(selectinload(Order.items))
         )
         order = order_result.scalars().first()
 

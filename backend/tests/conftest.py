@@ -173,6 +173,20 @@ def supplier_token():
 
 
 @pytest.fixture
+def cdek_delivery_payload():
+    return {
+        "tariff_code": 136,
+        "delivery_mode": "PVZ",
+        "delivery_point": "MSK123",
+        "to_location": {"code": 44, "city": "Москва", "address": "Москва, ул. Ленина, д. 1"},
+        "price": "350.00",
+        "period_min": 2,
+        "period_max": 4,
+        "shipping_address": "Москва, ул. Ленина, д. 1",
+    }
+
+
+@pytest.fixture
 async def test_user(test_session):
     from src.app.utils.auth import hash_password
 
@@ -279,6 +293,10 @@ async def test_product(test_session, test_supplier, test_category):
         category_id=test_category.id,
         supplier_id=supplier.id,
         is_active=True,
+        weight_grams=500,
+        length_cm=20,
+        width_cm=15,
+        height_cm=10,
     )
     test_session.add(product)
     await test_session.commit()

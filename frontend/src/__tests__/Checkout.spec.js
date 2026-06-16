@@ -48,8 +48,7 @@ describe('Checkout.vue', () => {
       return Promise.resolve({ data: {} });
     });
     mockPost.mockImplementation((url) => {
-      if (url === '/payments/42') return Promise.resolve({ data: { payment_id: 99, status: 'pending', confirmation_url: '/checkout/42/pay', amount: 14990 } });
-      if (url === '/payments/99/confirm') return Promise.resolve({ data: { id: 99, status: 'paid' } });
+      if (url === '/payments/42') return Promise.resolve({ data: { payment_id: 99, status: 'pending', confirmation_url: 'https://yoomoney.ru/checkout/42/pay', amount: 14990 } });
       return Promise.resolve({ data: {} });
     });
   });
@@ -74,57 +73,19 @@ describe('Checkout.vue', () => {
     expect(wrapper.text()).toContain('1 товаров');
   });
 
-  it('кнопка оплаты неактивна при пустой форме', async () => {
+  it('кнопка оплаты активна', async () => {
     const wrapper = await mountComponent();
-    const btn = wrapper.find('[data-testid="pay-button"]');
-    expect(btn.attributes('disabled')).toBeDefined();
-  });
-
-  it('кнопка оплаты активна при заполненной форме', async () => {
-    const wrapper = await mountComponent();
-
-    await wrapper.find('[data-testid="card-number"]').setValue('4242 4242 4242 4242');
-    await wrapper.find('[data-testid="card-expiry"]').setValue('12/30');
-    await wrapper.find('[data-testid="card-cvv"]').setValue('123');
-    await wrapper.find('[data-testid="card-holder"]').setValue('IVAN IVANOV');
-    await flushPromises();
-
     const btn = wrapper.find('[data-testid="pay-button"]');
     expect(btn.attributes('disabled')).toBeUndefined();
   });
 
-  it('форматирует номер карты при вводе', async () => {
+  it('успешно инициирует оплату', async () => {
     const wrapper = await mountComponent();
-    const input = wrapper.find('[data-testid="card-number"]');
-
-    await input.setValue('4242424242424242');
-    await input.trigger('input');
-    await flushPromises();
-
-    expect(input.element.value).toBe('4242 4242 4242 4242');
-  });
-
-  it('успешно обрабатывает оплату', async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
-    const wrapper = await mountComponent();
-
-    await wrapper.find('[data-testid="card-number"]').setValue('4242 4242 4242 4242');
-    await wrapper.find('[data-testid="card-expiry"]').setValue('12/30');
-    await wrapper.find('[data-testid="card-cvv"]').setValue('123');
-    await wrapper.find('[data-testid="card-holder"]').setValue('IVAN IVANOV');
-    await flushPromises();
 
     await wrapper.find('[data-testid="pay-button"]').trigger('click');
     await flushPromises();
 
-    // Advance past the simulated processing delays (1200ms + 600ms)
-    await vi.advanceTimersByTimeAsync(2000);
-    await flushPromises();
-
     expect(mockPost).toHaveBeenCalledWith('/payments/42');
-    expect(mockPost).toHaveBeenCalledWith('/payments/99/confirm');
-    expect(toastFn).toHaveBeenCalledWith('Оплата прошла успешно!', 'success');
-    vi.useRealTimers();
   });
 
   it('редиректит если заказ уже оплачен', async () => {

@@ -127,38 +127,9 @@
         </div>
 
         <div v-if="isAuthenticated" class="cart__summary-section">
-          <h3 class="cart__summary-title">Способ доставки</h3>
-          <div class="cart__delivery-list">
-            <label
-              v-for="method in deliveryMethods"
-              :key="method.id"
-              class="cart__delivery-option"
-              :class="{ 'cart__delivery-option--active': selectedDeliveryMethodId === method.id }"
-            >
-              <input
-                v-model="selectedDeliveryMethodId"
-                type="radio"
-                :value="method.id"
-                class="cart__delivery-radio"
-              />
-              <div class="cart__delivery-info">
-                <span class="cart__delivery-name">{{ method.name }}</span>
-                <span v-if="method.estimated_days" class="cart__delivery-days">
-                  {{ method.estimated_days }} {{ method.estimated_days === 1 ? 'день' : method.estimated_days < 5 ? 'дня' : 'дней' }}
-                </span>
-              </div>
-              <span class="cart__delivery-price">
-                {{ Number(method.base_price) > 0 ? formatPrice(method.base_price) + ' ₽' : 'Бесплатно' }}
-              </span>
-            </label>
-          </div>
-        </div>
-
-        <div v-if="isAuthenticated" class="cart__summary-section">
-          <AddressForm
-            v-model="shippingAddress"
-            label="Адрес доставки"
-            testid-prefix="cart-"
+          <CdekDeliveryWidget
+            v-model="selectedDelivery"
+            :items="cart.items"
           />
         </div>
       </div>
@@ -173,7 +144,7 @@
       <button
         class="cart__checkout-btn"
         data-testid="checkout-button"
-        :disabled="creatingOrder || (isAuthenticated && !isAddressValid)"
+        :disabled="creatingOrder || (isAuthenticated && !isDeliveryValid)"
         @click="createOrder"
       >
         {{ creatingOrder ? 'Оформление...' : 'Оформить заказ' }}
@@ -189,18 +160,14 @@ import api from '@/services/api';
 import { useAuth } from '@/composables/useAuth';
 import { useCart } from '@/composables/useCart';
 import { useToast } from '@/composables/useToast';
-import AddressForm from '@/components/AddressForm.vue';
+import CdekDeliveryWidget from '@/components/CdekDeliveryWidget.vue';
 import SkeletonCartItem from '@/components/SkeletonCartItem.vue';
 
 const cart = ref({ items: [] });
 const loading = ref(true);
 const creatingOrder = ref(false);
 const updatingId = ref(null);
-const shippingAddress = ref({
-  region: '', district: '', city: '', street: '', house: '', apartment: ''
-});
-const deliveryMethods = ref([]);
-const selectedDeliveryMethodId = ref(null);
+const selectedDelivery = ref(null);
 const router = useRouter();
 const { add: toast } = useToast();
 const { isAuthenticated } = useAuth();
@@ -210,10 +177,8 @@ const { getGuestCartItems, updateQuantity: updateGuestQuantity, removeFromCart: 
 const touchStartX = ref(0);
 const swipedItemId = ref(null);
 
-const isAddressValid = computed(() => {
-  return shippingAddress.value.city?.trim()
-    && shippingAddress.value.street?.trim()
-    && shippingAddress.value.house?.trim();
+const isDeliveryValid = computed(() => {
+  return selectedDelivery.value && selectedDelivery.value.tariff_code;
 });
 
 const itemCount = computed(() => {
@@ -227,8 +192,7 @@ const itemsTotal = computed(() => {
 });
 
 const deliveryPrice = computed(() => {
-  const method = deliveryMethods.value.find(m => m.id === selectedDeliveryMethodId.value);
-  return method ? Number(method.base_price) : 0;
+  return selectedDelivery.value ? Number(selectedDelivery.value.price) : 0;
 });
 
 const orderTotal = computed(() => itemsTotal.value + deliveryPrice.value);
@@ -241,14 +205,8 @@ const fetchCart = async () => {
   loading.value = true;
   try {
     if (isAuthenticated.value) {
-      const [cartResponse, profileResponse] = await Promise.all([
-        api.get('/cart/'),
-        api.get('/auth/profile'),
-      ]);
-      cart.value = cartResponse.data;
-      if (profileResponse.data.shipping_address) {
-        shippingAddress.value = { ...profileResponse.data.shipping_address };
-      }
+      const { data } = await api.get('/cart/');
+      cart.value = data;
     } else {
       const items = getGuestCartItems();
       cart.value = {
@@ -274,18 +232,6 @@ const fetchCart = async () => {
   } finally {
     loading.value = false;
     await syncCartCount();
-  }
-};
-
-const fetchDeliveryMethods = async () => {
-  try {
-    const { data } = await api.get('/delivery-methods/');
-    deliveryMethods.value = data;
-    if (data.length > 0 && !selectedDeliveryMethodId.value) {
-      selectedDeliveryMethodId.value = data[0].id;
-    }
-  } catch (err) {
-    console.error('Failed to fetch delivery methods:', err);
   }
 };
 
@@ -335,15 +281,14 @@ const createOrder = async () => {
     router.push('/login?redirect=/cart');
     return;
   }
-  if (!isAddressValid.value) {
-    toast('Заполните город, улицу и дом', 'error');
+  if (!isDeliveryValid.value) {
+    toast('Выберите доставку СДЭК', 'error');
     return;
   }
   creatingOrder.value = true;
   try {
     const { data: order } = await api.post('/orders/create', {
-      shipping_address: { ...shippingAddress.value },
-      delivery_method_id: selectedDeliveryMethodId.value,
+      cdek_delivery: { ...selectedDelivery.value },
     });
     toast('Заказ успешно создан!', 'success');
     await router.push(`/checkout/${order.id}`);
@@ -378,7 +323,6 @@ const handleTouchEnd = () => {
 
 onMounted(() => {
   fetchCart();
-  fetchDeliveryMethods();
 });
 </script>
 

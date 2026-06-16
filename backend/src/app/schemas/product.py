@@ -11,6 +11,10 @@ class ProductBase(BaseModel):
     description: Optional[str] = None
     price: float
     stock: int = 0
+    weight_grams: int = 1000
+    length_cm: Optional[int] = None
+    width_cm: Optional[int] = None
+    height_cm: Optional[int] = None
     is_active: bool = True
     category_id: Optional[int] = None
     images: List[str] = []

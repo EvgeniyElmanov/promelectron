@@ -226,6 +226,10 @@ def _make_oauth_settings(overrides: dict):
         "yookassa_receipt_enabled": original.yookassa_receipt_enabled,
         "yookassa_capture_auto": original.yookassa_capture_auto,
         "google_oauth_enabled": original.google_oauth_enabled,
+        "cdek_account": original.cdek_account,
+        "cdek_secure": original.cdek_secure,
+        "cdek_api_url": original.cdek_api_url,
+        "cdek_test_mode": original.cdek_test_mode,
     }
     kwargs.update(overrides)
     return Settings(**kwargs)

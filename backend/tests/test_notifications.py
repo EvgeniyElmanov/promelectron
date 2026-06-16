@@ -5,12 +5,12 @@ class TestNotificationsAPI:
     """Тесты уведомлений."""
 
     @pytest.mark.asyncio
-    async def test_create_order_generates_notification(self, client, test_user, user_token, test_product):
+    async def test_create_order_generates_notification(self, client, test_user, user_token, test_product, cdek_delivery_payload):
         """Создание заказа генерирует уведомление."""
         await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
         await client.post(
             "/api/v1/orders/create",
-            json={"shipping_address": {"city": "Москва", "street": "Ленина", "house": "1"}},
+            json={"cdek_delivery": cdek_delivery_payload},
             headers={"Authorization": f"Bearer {user_token}"},
         )
 
@@ -23,7 +23,7 @@ class TestNotificationsAPI:
         assert "Заказ оформлен" in data["items"][0]["title"]
 
     @pytest.mark.asyncio
-    async def test_payment_generates_notification(self, client, test_user, user_token, test_product):
+    async def test_payment_generates_notification(self, client, test_user, user_token, test_product, cdek_delivery_payload):
         """Оплата генерирует уведомление."""
         from unittest.mock import AsyncMock, patch
         from decimal import Decimal
@@ -31,7 +31,7 @@ class TestNotificationsAPI:
         await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
         order_resp = await client.post(
             "/api/v1/orders/create",
-            json={"shipping_address": {"city": "Москва", "street": "Ленина", "house": "1"}},
+            json={"cdek_delivery": cdek_delivery_payload},
             headers={"Authorization": f"Bearer {user_token}"},
         )
         order_id = order_resp.json()["id"]
@@ -68,12 +68,12 @@ class TestNotificationsAPI:
         assert "order_paid" in types
 
     @pytest.mark.asyncio
-    async def test_mark_notification_as_read(self, client, test_user, user_token, test_product):
+    async def test_mark_notification_as_read(self, client, test_user, user_token, test_product, cdek_delivery_payload):
         """Отметка уведомления как прочитанного."""
         await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
         await client.post(
             "/api/v1/orders/create",
-            json={"shipping_address": {"city": "Москва", "street": "Ленина", "house": "1"}},
+            json={"cdek_delivery": cdek_delivery_payload},
             headers={"Authorization": f"Bearer {user_token}"},
         )
 
@@ -89,12 +89,12 @@ class TestNotificationsAPI:
         assert count_resp.json()["count"] == 0
 
     @pytest.mark.asyncio
-    async def test_mark_all_as_read(self, client, test_user, user_token, test_product):
+    async def test_mark_all_as_read(self, client, test_user, user_token, test_product, cdek_delivery_payload):
         """Отметка всех уведомлений как прочитанных."""
         await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
         await client.post(
             "/api/v1/orders/create",
-            json={"shipping_address": {"city": "Москва", "street": "Ленина", "house": "1"}},
+            json={"cdek_delivery": cdek_delivery_payload},
             headers={"Authorization": f"Bearer {user_token}"},
         )
 
@@ -103,12 +103,12 @@ class TestNotificationsAPI:
         assert response.json()["marked_as_read"] >= 1
 
     @pytest.mark.asyncio
-    async def test_delete_notification(self, client, test_user, user_token, test_product):
+    async def test_delete_notification(self, client, test_user, user_token, test_product, cdek_delivery_payload):
         """Удаление уведомления."""
         await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
         await client.post(
             "/api/v1/orders/create",
-            json={"shipping_address": {"city": "Москва", "street": "Ленина", "house": "1"}},
+            json={"cdek_delivery": cdek_delivery_payload},
             headers={"Authorization": f"Bearer {user_token}"},
         )
 

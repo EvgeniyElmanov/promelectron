@@ -17,6 +17,10 @@ class OnecProduct:
     price: float
     stock: int
     category_name: str | None
+    weight_grams: int = 1000
+    length_cm: int | None = None
+    width_cm: int | None = None
+    height_cm: int | None = None
     is_active: bool = True
 
 
@@ -83,6 +87,10 @@ class OnecClient:
                         price=float(item.get("price", 0)),
                         stock=int(item.get("stock", 0)),
                         category_name=item.get("category_name"),
+                        weight_grams=int(item.get("weight_grams", 1000)),
+                        length_cm=item.get("length_cm"),
+                        width_cm=item.get("width_cm"),
+                        height_cm=item.get("height_cm"),
                         is_active=bool(item.get("is_active", True)),
                     )
                 )

@@ -8,24 +8,25 @@ class TestPaymentsAPI:
     """Тесты платёжного шлюза (ЮKassa)."""
 
     @pytest.mark.asyncio
-    async def test_create_payment(self, client, test_user, user_token, test_product):
+    async def test_create_payment(self, client, test_user, user_token, test_product, cdek_delivery_payload):
         """Создание платежа для заказа через ЮKassa."""
         # Сначала создаём корзину и заказ
         await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
         order_resp = await client.post(
             "/api/v1/orders/create",
-            json={"shipping_address": {"city": "Москва", "street": "Ленина", "house": "1"}},
+            json={"cdek_delivery": cdek_delivery_payload},
             headers={"Authorization": f"Bearer {user_token}"},
         )
         assert order_resp.status_code == 200
         order_id = order_resp.json()["id"]
 
         # Мокаем YooKassaService.create_payment
+        expected_amount = Decimal(str(test_product.price)) + Decimal(str(cdek_delivery_payload["price"]))
         mock_yookassa = AsyncMock(return_value={
             "yookassa_payment_id": "test-yookassa-id",
             "status": "pending",
             "confirmation_url": "https://yoomoney.ru/checkout/test",
-            "amount": Decimal(str(test_product.price)),
+            "amount": expected_amount,
             "created_at": "2026-06-02T12:00:00.000Z",
         })
 
@@ -41,7 +42,7 @@ class TestPaymentsAPI:
         assert payment_resp.status_code == 200
         data = payment_resp.json()
         assert data["status"] == "pending"
-        assert float(data["amount"]) == float(test_product.price)
+        assert float(data["amount"]) == float(expected_amount)
         assert "payment_id" in data
         assert data["confirmation_url"] == "https://yoomoney.ru/checkout/test"
 
@@ -55,13 +56,13 @@ class TestPaymentsAPI:
         assert response.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_create_payment_duplicate(self, client, test_user, user_token, test_product):
+    async def test_create_payment_duplicate(self, client, test_user, user_token, test_product, cdek_delivery_payload):
         """Повторное создание платежа для того же заказа — возвращаем существующий."""
         # Создаём заказ
         await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
         order_resp = await client.post(
             "/api/v1/orders/create",
-            json={"shipping_address": {"city": "Москва", "street": "Ленина", "house": "1"}},
+            json={"cdek_delivery": cdek_delivery_payload},
             headers={"Authorization": f"Bearer {user_token}"},
         )
         order_id = order_resp.json()["id"]
@@ -91,12 +92,12 @@ class TestPaymentsAPI:
             assert second_data["confirmation_url"] == first_data["confirmation_url"]
 
     @pytest.mark.asyncio
-    async def test_get_payment(self, client, test_user, user_token, test_product):
+    async def test_get_payment(self, client, test_user, user_token, test_product, cdek_delivery_payload):
         """Получение информации о платеже."""
         await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
         order_resp = await client.post(
             "/api/v1/orders/create",
-            json={"shipping_address": {"city": "Москва", "street": "Ленина", "house": "1"}},
+            json={"cdek_delivery": cdek_delivery_payload},
             headers={"Authorization": f"Bearer {user_token}"},
         )
         order_id = order_resp.json()["id"]
@@ -121,12 +122,12 @@ class TestPaymentsAPI:
         assert get_resp.json()["status"] == "pending"
 
     @pytest.mark.asyncio
-    async def test_cancel_payment(self, client, test_user, user_token, test_product):
+    async def test_cancel_payment(self, client, test_user, user_token, test_product, cdek_delivery_payload):
         """Отмена неоплаченного платежа."""
         await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
         order_resp = await client.post(
             "/api/v1/orders/create",
-            json={"shipping_address": {"city": "Москва", "street": "Ленина", "house": "1"}},
+            json={"cdek_delivery": cdek_delivery_payload},
             headers={"Authorization": f"Bearer {user_token}"},
         )
         order_id = order_resp.json()["id"]
@@ -153,12 +154,12 @@ class TestPaymentsAPI:
         assert cancel_resp.json()["status"] == "cancelled"
 
     @pytest.mark.asyncio
-    async def test_webhook_payment_succeeded(self, client, test_user, user_token, test_product, test_session):
+    async def test_webhook_payment_succeeded(self, client, test_user, user_token, test_product, test_session, cdek_delivery_payload):
         """Webhook payment.succeeded обновляет статус заказа."""
         await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
         order_resp = await client.post(
             "/api/v1/orders/create",
-            json={"shipping_address": {"city": "Москва", "street": "Ленина", "house": "1"}},
+            json={"cdek_delivery": cdek_delivery_payload},
             headers={"Authorization": f"Bearer {user_token}"},
         )
         order_id = order_resp.json()["id"]

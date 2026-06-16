@@ -3,7 +3,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.app.db.database import SessionLocal
@@ -44,6 +44,9 @@ TEST_SUPPLIER: dict[str, Any] = {
     "description": "Поставщик для заполнения витрины магазина тестовыми товарами.",
     "api_key": "seed-supplier-api-key",
     "is_active": True,
+    "cdek_shipment_point": "44",
+    "sender_name": "Тестовый поставщик",
+    "sender_phone": "+79990001122",
 }
 
 TEST_CATEGORIES: list[dict[str, str]] = [
@@ -150,6 +153,9 @@ async def get_or_create_supplier(session: AsyncSession, user: User) -> Supplier:
     result = await session.execute(select(Supplier).where(Supplier.user_id == user.id))
     supplier = result.scalar_one_or_none()
     if supplier:
+        # Обновляем CDEK-поля на случай изменений в тестовых данных
+        for field, value in TEST_SUPPLIER.items():
+            setattr(supplier, field, value)
         logger.info(f"Поставщик уже существует: {supplier.name}")
         return supplier
 
@@ -159,6 +165,8 @@ async def get_or_create_supplier(session: AsyncSession, user: User) -> Supplier:
     )
     supplier = result.scalar_one_or_none()
     if supplier:
+        for field, value in TEST_SUPPLIER.items():
+            setattr(supplier, field, value)
         logger.info(f"Поставщик уже существует: {supplier.name}")
         return supplier
 
@@ -219,8 +227,6 @@ async def create_products(
         logger.info(f"Добавлен товар: {product.name}")
 
 
-from sqlalchemy import delete
-
 async def cleanup_e2e_artifacts(session: AsyncSession) -> None:
     """Delete categories and products created by e2e tests (name starts with 'E2E')."""
     e2e_products = (await session.execute(
@@ -266,7 +272,7 @@ async def seed_data() -> None:
         try:
             await cleanup_e2e_artifacts(session)
             await reset_test_state(session)
-            admin_user = await get_or_create_admin_user(session)
+            await get_or_create_admin_user(session)
             supplier_user = await get_or_create_supplier_user(session)
             supplier = await get_or_create_supplier(session, supplier_user)
             categories_map = await get_or_create_categories(session)

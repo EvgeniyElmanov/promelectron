@@ -11,6 +11,46 @@
       </div>
     </div>
 
+    <!-- CDEK Settings -->
+    <div v-if="supplier" class="supplier-dashboard__section supplier-dashboard__settings">
+      <div class="supplier-dashboard__section-header">
+        <h2 class="supplier-dashboard__section-title">Настройки доставки СДЭК</h2>
+      </div>
+      <div class="field">
+        <label class="field__label">Код ПВЗ СДЭК (куда вы несёте заказы) <span class="required">*</span></label>
+        <input
+          v-model="supplier.cdek_shipment_point"
+          class="field__input"
+          placeholder="Например, MSK1"
+          data-testid="supplier-cdek-pvz"
+        />
+      </div>
+      <div class="field">
+        <label class="field__label">Имя / название отправителя</label>
+        <input
+          v-model="supplier.sender_name"
+          class="field__input"
+          placeholder="Иван Иванов или ООО Поставщик"
+        />
+      </div>
+      <div class="field">
+        <label class="field__label">Телефон отправителя</label>
+        <input
+          v-model="supplier.sender_phone"
+          class="field__input"
+          type="tel"
+          placeholder="+7 (999) 000-00-00"
+        />
+      </div>
+      <button
+        class="supplier-dashboard__save-btn"
+        :disabled="savingSupplier"
+        @click="saveSupplier"
+      >
+        {{ savingSupplier ? 'Сохранение...' : 'Сохранить настройки' }}
+      </button>
+    </div>
+
     <!-- Quick Links -->
     <div class="supplier-dashboard__quick-links">
       <router-link to="/my-products" class="supplier-dashboard__quick-link" data-testid="link-my-products">
@@ -130,6 +170,8 @@ import { useToast } from '@/composables/useToast';
 const { add: toast } = useToast();
 
 const loading = ref(true);
+const savingSupplier = ref(false);
+const supplier = ref(null);
 const kpi = ref({
   total_orders: 0,
   pending_orders: 0,
@@ -202,14 +244,36 @@ function formatPrice(value) {
 async function fetchDashboard() {
   loading.value = true;
   try {
-    const { data } = await api.get('/api/v1/analytics/supplier');
-    kpi.value = data.kpi || kpi.value;
-    ordersByDay.value = data.orders_by_day || [];
-    topProducts.value = data.top_products || [];
+    const [analyticsRes, supplierRes] = await Promise.all([
+      api.get('/api/v1/analytics/supplier'),
+      api.get('/api/v1/users/supplier/profile').catch(() => ({ data: null })),
+    ]);
+    kpi.value = analyticsRes.data.kpi || kpi.value;
+    ordersByDay.value = analyticsRes.data.orders_by_day || [];
+    topProducts.value = analyticsRes.data.top_products || [];
+    supplier.value = supplierRes.data;
   } catch {
     toast('Не удалось загрузить аналитику', 'error');
   } finally {
     loading.value = false;
+  }
+}
+
+async function saveSupplier() {
+  if (!supplier.value) return;
+  savingSupplier.value = true;
+  try {
+    const { data } = await api.patch('/api/v1/users/supplier/profile', {
+      cdek_shipment_point: supplier.value.cdek_shipment_point,
+      sender_name: supplier.value.sender_name,
+      sender_phone: supplier.value.sender_phone,
+    });
+    supplier.value = data;
+    toast('Настройки сохранены', 'success');
+  } catch (err) {
+    toast(err.response?.data?.detail || 'Не удалось сохранить настройки', 'error');
+  } finally {
+    savingSupplier.value = false;
   }
 }
 
@@ -308,6 +372,49 @@ onMounted(fetchDashboard);
 .supplier-dashboard__quick-link:hover {
   background: var(--color-primary-light);
   border-color: var(--color-primary);
+}
+
+.supplier-dashboard__settings {
+  margin-bottom: 16px;
+}
+
+.supplier-dashboard__settings .field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.supplier-dashboard__settings .field__label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.supplier-dashboard__settings .field__input {
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-white);
+  font-size: 15px;
+  color: var(--color-text);
+  width: 100%;
+}
+
+.supplier-dashboard__save-btn {
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+}
+
+.supplier-dashboard__save-btn:disabled {
+  opacity: 0.5;
 }
 
 /* Charts row */
