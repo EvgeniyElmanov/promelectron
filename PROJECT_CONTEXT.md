@@ -7,7 +7,7 @@ commit_message: "feat(cdek): replace delivery system with CDEK integration"
 blockers_count: 1
 blockers_p0: 0
 blockers_p1: 1
-backend_tests: "150/150"
+backend_tests: "157/157"
 frontend_tests: "101/101"
 e2e_tests: "96/96"
 ---
@@ -109,7 +109,7 @@ Product.price → Numeric      →  Product variants / Seller payouts
 | Метод | Путь | Статус | Описание |
 |-------|------|--------|----------|
 | GET | `/api/v1/products/` | ✅ | Каталог товаров |
-| GET | `/api/v1/categories/` | ✅ | Категории |
+| GET | `/api/v1/categories/` | ✅ | Категории (пагинация, фильтр по parent_id, поиск по name) |
 | GET | `/api/v1/products/search/` | ✅ | Поиск с подсказками |
 | POST | `/api/v1/guest-cart/` | ✅ | Создать гостевую корзину |
 | GET | `/api/v1/guest-cart/{id}/` | ✅ | Получить гостевую корзину |
@@ -218,6 +218,7 @@ make test-e2e      # Playwright
 
 | Дата | Что изменилось | Кто |
 |------|---------------|-----|
+| 2026-06-16 | **Admin categories tabs (backend)**: `GET /categories/` теперь возвращает пагинированный список с `items`/`total`, поддерживает `skip`, `limit`, `parent_id`, `q`; `CategoryOut` дополнен `parent_id` и `product_count`; `CategoryService.list_categories` считает товары через `func.count`; добавлена защита от циклов в `update_category`. Новые тесты в `backend/tests/test_categories.py`. | backend-dev |
 | 2026-06-16 | **Agent system migration**: migrated agent skills to Kimi Code CLI format in `.kimi-code/skills/` (`/implement`, `/fix`, `/review`, `/deploy`, `/context-sync`, `/plan-maintainer`, `/promelectron`). Added `.kimi-code/mcp.json` for MCP servers and `.kimi-code/config.example.toml` for user-level config. Rewrote `.kimi/agents/*.md` prompts without legacy YAML frontmatter. Created `scripts/implement-pipeline.py` helper for task IDs, git worktrees, and review-loop state. Updated `AGENTS.md`, `ROUTER.md`, `SESSION_START.md`, `.kimi/HOWTO.md`, `.gitignore`, and `.kimi/rules/pre-edit-checklist.md`. Removed legacy `.kimi/settings.json`, `.kimi/CLAUDE.md`, `.kimi/tester.md`, `.kimi/AGENTS.md`, `.kimi/skills/`, `.agent/CURSOR_RULES.md`, `.agent/START_HERE.md`, and root `.mcp.json`. | backend-dev / frontend-dev |
 | 2026-06-15 | **Feature flags + Google OAuth toggle**: добавлен сервис `feature_flags.py` на Redis, endpoint `/auth/providers/`, guard на Google OAuth endpoints (`503` при отключении), frontend скрывает кнопку Google если провайдер недоступен. Админка: вкладка «Фичатоглы» + API `GET/PATCH /admin/feature-flags`. Новые тесты backend/frontend. Управление через `GOOGLE_OAUTH_ENABLED` env, Redis `feature:google_oauth` или UI админки. | backend-dev / frontend-dev |
 | 2026-06-11 | **Исправлена YooKassa в test**: креды были `FILL_ME` → восстановлены тестовые. Исправлен CICD: `ImagePullBackOff` из-за `latest` → деплой по SHA. Восстановлен Secret `promelectron-secrets` (были удалены DATABASE_URL, SECRET_KEY). Полный флоу работает: регистрация → корзина → заказ → платёж. Коммит `9628457`. | devops |

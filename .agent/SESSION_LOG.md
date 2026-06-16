@@ -14,6 +14,21 @@ YYYY-MM-DD HH:MM | <role> | <краткое описание>
 
 ## Записи (новые сверху)
 
+### 2026-06-16 19:35 | backend-dev | Admin categories tabs — backend
+  Изменено:
+  - `backend/src/app/schemas/category.py` — `CategoryOut` дополнен `product_count`; добавлен `CategoryListOut` (`items`, `total`).
+  - `backend/src/app/services/category_service.py` — `list_categories` принимает `skip`, `limit`, `parent_id`, `q` и возвращает `(items, total)`; считает `product_count` через `func.count(Product.id).outerjoin(Product).group_by(Category.id)`; добавлена защита от циклов в `update_category` (нельзя выбрать потомка или саму себя родителем); `get_category`/`create_category`/`update_category` возвращают `product_count`.
+  - `backend/src/app/api/categories.py` — `GET /categories/` возвращает `CategoryListOut` с query-параметрами `skip`, `limit`, `parent_id`, `q`; trailing slash сохранён.
+  - `backend/tests/test_categories.py` — 7 новых тестов: пагинация, фильтр по `parent_id`, поиск `q`, создание подкатегории, защита от циклов, счётчик товаров, несуществующий родитель.
+  - `PROJECT_CONTEXT.md` — обновлён API Inventory и счётчик backend-тестов (`157/157`), добавлена запись в историю.
+  Результат:
+  - `make test-backend` — 157/157 ✅
+  - `ruff check` на изменённых файлах — чисто
+  - `ruff format --check` на изменённых файлах — чисто
+  Риск/Техдолг:
+  - Изменён контракт `GET /categories/` с `list[CategoryOut]` на `CategoryListOut`; frontend-потребители (`Admin.vue`, `ProductFormModal.vue`, `CategoryChips.vue`) и тесты должны быть обновлены отдельным frontend-dev.
+  Блокер: Нет
+
 ### 2026-06-16 13:25 | backend-dev / frontend-dev | Замена системы доставки на CDEK
   Изменено:
   - `backend/src/app/models/product.py` — поля weight_grams, length_cm, width_cm, height_cm.
