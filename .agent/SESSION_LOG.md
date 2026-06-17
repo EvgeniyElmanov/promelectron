@@ -14,6 +14,16 @@ YYYY-MM-DD HH:MM | <role> | <краткое описание>
 
 ## Записи (новые сверху)
 
+### 2026-06-17 22:20 | e2e-tester | fix-mobile-header-cart-badge — E2E responsive tests passed
+  Изменено:
+  - Прогнан `frontend/e2e/responsive.spec.js` (67 тестов) в реальном браузере Chromium против рабочего dev-сервера из worktree.
+  - Добавленные E2E-сценарии подтвердили: мобильная шапка показывает только логотип, десктоп показывает иконки, бейдж корзины в правом верхнем углу иконки.
+  Результат:
+  - `npx playwright test responsive.spec.js --workers=1` — 67/67 ✅
+  - Dev-стек и worktree dev-server остановлены после прогона.
+  Риск/Техдолг: нет.
+  Блокер: Нет
+
 ### 2026-06-17 22:00 | code-reviewer / frontend-dev | fix-mobile-header-cart-badge — review fixes + tests
   Изменено:
   - `frontend/src/components/Header.vue` — `<ToastContainer>` вынесен за пределы `.header__actions`, чтобы тосты оставались видимыми на мобильном после скрытия иконок.
