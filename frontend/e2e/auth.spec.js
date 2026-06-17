@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { goToProfile } from './helpers.js';
 
 function uniqueEmail() {
   return `test_${Date.now()}_w${test.info().workerIndex}@example.com`;
@@ -20,7 +21,7 @@ test.describe('Authentication', () => {
     await expect(page).toHaveURL('/');
 
     // Logout
-    await page.click('[data-testid="profile-link"]');
+    await goToProfile(page);
     await page.click('[data-testid="logout-button"]');
     await expect(page).toHaveURL('/login');
 

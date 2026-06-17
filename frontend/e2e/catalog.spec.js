@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { goToCart } from './helpers.js';
 
 function uniqueEmail() {
   return `test_${Date.now()}_w${test.info().workerIndex}@example.com`;
@@ -34,7 +35,7 @@ test.describe('Catalog & Cart', () => {
     await page.waitForTimeout(300);
 
     // Go to cart
-    await page.click('[data-testid="cart-link"]');
+    await goToCart(page);
     await expect(page).toHaveURL('/cart');
     await page.waitForSelector('[data-testid="cart-item"]', { timeout: 5000 });
   });

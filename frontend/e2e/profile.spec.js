@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { goToProfile } from './helpers.js';
 
 function uniqueEmail() {
   return `test_${Date.now()}_w${test.info().workerIndex}@example.com`;
@@ -28,7 +29,7 @@ test.describe('Profile & Edit Profile', () => {
     await expect(page).toHaveURL('/');
 
     // Go to profile
-    await page.click('[data-testid="profile-link"]');
+    await goToProfile(page);
     await expect(page).toHaveURL('/profile');
     await expect(page.locator('[data-testid="profile-email"]')).toBeVisible();
 
