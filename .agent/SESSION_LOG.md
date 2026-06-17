@@ -14,6 +14,19 @@ YYYY-MM-DD HH:MM | <role> | <краткое описание>
 
 ## Записи (новые сверху)
 
+### 2026-06-17 16:29 | frontend-dev | fix-mobile-header-cart-badge — mobile header cleanup + bottom-nav badge reposition
+  Изменено:
+  - `frontend/src/components/Header.vue` — на мобильных (`< 768px`) скрыт блок `.header__actions`, в шапке остаётся только логотип Promelectron; десктопная версия не изменена.
+  - `frontend/src/components/BottomNav.vue` — бейдж корзины перенесён внутрь `.bottom-nav__icon` и позиционирован в правом верхнем углу иконки (`top: -2px; right: -2px`); правила скрытия на десктопе сохранены.
+  Результат:
+  - `cd frontend && npm test -- --run` — 108/108 ✅
+  - `cd frontend && npm run lint` — чисто ✅
+  - `cd frontend && npm run build` — успешно ✅
+  Риск/Техдолг:
+  - На мобильных убраны прямые точки входа в «Уведомления» и «Заказы» из шапки; доступ остаётся через профиль/заказы (принято пользователем).
+  - E2E-тесты, использующие мобильный viewport и селекторы `data-testid="cart-link"` / `data-testid="profile-link"` в шапке, могут потребовать переключения на `nav-Корзина` / `nav-Профиль`.
+  Блокер: Нет
+
 ### 2026-06-16 23:59 | implement-pipeline | fix-frequent-logout — /implement cycle complete, ready for merge
   Изменено:
   - Архитектор: выявлен хардкод 15 минут в `create_access_token`, затронут OAuth-callback.

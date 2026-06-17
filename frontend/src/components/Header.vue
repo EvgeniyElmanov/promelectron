@@ -277,6 +277,12 @@ const vClickOutside = {
   gap: 12px;
 }
 
+@media (max-width: 767px) {
+  .header__actions {
+    display: none;
+  }
+}
+
 .header__search-desktop {
   display: none;
 }
