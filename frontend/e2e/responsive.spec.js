@@ -1,5 +1,14 @@
 import { test, expect } from '@playwright/test';
 
+const GUEST_CART_ITEM = {
+  product_id: 1,
+  quantity: 2,
+  name: 'Test Product',
+  price: 4999,
+  stock: 10,
+  images: [],
+};
+
 const viewports = [
   { width: 320, height: 568, name: 'mobile-xs' },
   { width: 375, height: 667, name: 'mobile' },
@@ -41,3 +50,59 @@ for (const vp of viewports) {
     }
   });
 }
+
+test.describe('Mobile header cleanup', () => {
+  test.use({ viewport: { width: 375, height: 667 } });
+
+  test('header shows only logo and hides action icons on mobile', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    await expect(page.locator('[data-testid="header-logo"]')).toBeVisible();
+    await expect(page.locator('.header__actions')).toBeHidden();
+    await expect(page.locator('[data-testid="cart-link"]')).toBeHidden();
+    await expect(page.locator('[data-testid="profile-link"]')).toBeHidden();
+    await expect(page.locator('[data-testid="login-link"]')).toBeHidden();
+  });
+
+  test('header still shows all action icons on desktop', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    await expect(page.locator('.header__actions')).toBeVisible();
+    await expect(page.locator('[data-testid="cart-link"]')).toBeVisible();
+    await expect(page.locator('[data-testid="login-link"]')).toBeVisible();
+  });
+});
+
+test.describe('Mobile bottom navigation cart badge', () => {
+  test.use({ viewport: { width: 375, height: 667 } });
+
+  test('cart badge is positioned at the top-right of the cart icon', async ({ page }) => {
+    await page.goto('/');
+    await page.evaluate((item) => {
+      localStorage.setItem('guest_cart', JSON.stringify([item]));
+    }, GUEST_CART_ITEM);
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+
+    const badge = page.locator('[data-testid="nav-Корзина"] .bottom-nav__badge');
+    await expect(badge).toBeVisible();
+    await expect(badge).toHaveText('2');
+
+    const icon = page.locator('[data-testid="nav-Корзина"] .bottom-nav__icon');
+    const badgeBox = await badge.boundingBox();
+    const iconBox = await icon.boundingBox();
+    expect(badgeBox).not.toBeNull();
+    expect(iconBox).not.toBeNull();
+
+    // Badge center should be to the right of the icon center
+    const badgeCenterX = badgeBox.x + badgeBox.width / 2;
+    const iconCenterX = iconBox.x + iconBox.width / 2;
+    expect(badgeCenterX).toBeGreaterThan(iconCenterX);
+
+    // Badge top should be at or above the icon top
+    expect(badgeBox.y).toBeLessThanOrEqual(iconBox.y + 2);
+  });
+});

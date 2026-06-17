@@ -14,6 +14,43 @@ YYYY-MM-DD HH:MM | <role> | <краткое описание>
 
 ## Записи (новые сверху)
 
+### 2026-06-17 22:20 | e2e-tester | fix-mobile-header-cart-badge — E2E responsive tests passed
+  Изменено:
+  - Прогнан `frontend/e2e/responsive.spec.js` (67 тестов) в реальном браузере Chromium против рабочего dev-сервера из worktree.
+  - Добавленные E2E-сценарии подтвердили: мобильная шапка показывает только логотип, десктоп показывает иконки, бейдж корзины в правом верхнем углу иконки.
+  Результат:
+  - `npx playwright test responsive.spec.js --workers=1` — 67/67 ✅
+  - Dev-стек и worktree dev-server остановлены после прогона.
+  Риск/Техдолг: нет.
+  Блокер: Нет
+
+### 2026-06-17 22:00 | code-reviewer / frontend-dev | fix-mobile-header-cart-badge — review fixes + tests
+  Изменено:
+  - `frontend/src/components/Header.vue` — `<ToastContainer>` вынесен за пределы `.header__actions`, чтобы тосты оставались видимыми на мобильном после скрытия иконок.
+  - `frontend/src/__tests__/Header.spec.js` — новый тест: логотип, блок действий, CSS-правило скрытия на мобильном, ToastContainer вне блока.
+  - `frontend/src/__tests__/BottomNav.spec.js` — новый тест: пункты навигации, бейдж корзины рендерится/скрывается, бейдж внутри иконки, проверка исходных стилей позиционирования.
+  - `frontend/e2e/responsive.spec.js` — E2E-сценарии: мобильная шапка показывает только логотип, десктоп показывает иконки, бейдж корзины в правом верхнем углу иконки.
+  - Feature-ветка `feature/fix-mobile-header-cart-badge` rebased onto `main` (2635999) — устранено расхождение `package.json`/`package-lock.json` с main.
+  Результат:
+  - `cd frontend && npm test -- --run` — 116/116 ✅
+  - `cd frontend && npm run lint` — чисто ✅
+  - `cd frontend && npm run build` — успешно ✅
+  Риск/Техдолг: нет новых.
+  Блокер: Нет
+
+### 2026-06-17 16:29 | frontend-dev | fix-mobile-header-cart-badge — mobile header cleanup + bottom-nav badge reposition
+  Изменено:
+  - `frontend/src/components/Header.vue` — на мобильных (`< 768px`) скрыт блок `.header__actions`, в шапке остаётся только логотип Promelectron; десктопная версия не изменена.
+  - `frontend/src/components/BottomNav.vue` — бейдж корзины перенесён внутрь `.bottom-nav__icon` и позиционирован в правом верхнем углу иконки (`top: -2px; right: -2px`); правила скрытия на десктопе сохранены.
+  Результат:
+  - `cd frontend && npm test -- --run` — 108/108 ✅
+  - `cd frontend && npm run lint` — чисто ✅
+  - `cd frontend && npm run build` — успешно ✅
+  Риск/Техдолг:
+  - На мобильных убраны прямые точки входа в «Уведомления» и «Заказы» из шапки; доступ остаётся через профиль/заказы (принято пользователем).
+  - E2E-тесты, использующие мобильный viewport и селекторы `data-testid="cart-link"` / `data-testid="profile-link"` в шапке, могут потребовать переключения на `nav-Корзина` / `nav-Профиль`.
+  Блокер: Нет
+
 ### 2026-06-16 23:59 | implement-pipeline | fix-frequent-logout — /implement cycle complete, ready for merge
   Изменено:
   - Архитектор: выявлен хардкод 15 минут в `create_access_token`, затронут OAuth-callback.

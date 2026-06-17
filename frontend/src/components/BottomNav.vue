@@ -8,8 +8,10 @@
       :class="{ 'bottom-nav__item--active': isActive(item.to) }"
       :data-testid="'nav-' + item.label"
     >
-      <span class="bottom-nav__icon" v-html="item.icon"></span>
-      <span v-if="item.to === '/cart' && cartCount > 0" class="bottom-nav__badge">{{ cartCount > 99 ? '99+' : cartCount }}</span>
+      <span class="bottom-nav__icon">
+        <span v-html="item.icon"></span>
+        <span v-if="item.to === '/cart' && cartCount > 0" class="bottom-nav__badge">{{ cartCount > 99 ? '99+' : cartCount }}</span>
+      </span>
       <span class="bottom-nav__label">{{ item.label }}</span>
     </router-link>
   </nav>
@@ -104,6 +106,7 @@ const isActive = (to) => {
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
 }
 
 .bottom-nav__label {
@@ -113,9 +116,8 @@ const isActive = (to) => {
 
 .bottom-nav__badge {
   position: absolute;
-  top: 2px;
-  left: 50%;
-  margin-left: 6px;
+  top: -2px;
+  right: -2px;
   min-width: 16px;
   height: 16px;
   padding: 0 4px;
