@@ -14,6 +14,20 @@ YYYY-MM-DD HH:MM | <role> | <краткое описание>
 
 ## Записи (новые сверху)
 
+### 2026-06-17 22:00 | code-reviewer / frontend-dev | fix-mobile-header-cart-badge — review fixes + tests
+  Изменено:
+  - `frontend/src/components/Header.vue` — `<ToastContainer>` вынесен за пределы `.header__actions`, чтобы тосты оставались видимыми на мобильном после скрытия иконок.
+  - `frontend/src/__tests__/Header.spec.js` — новый тест: логотип, блок действий, CSS-правило скрытия на мобильном, ToastContainer вне блока.
+  - `frontend/src/__tests__/BottomNav.spec.js` — новый тест: пункты навигации, бейдж корзины рендерится/скрывается, бейдж внутри иконки, проверка исходных стилей позиционирования.
+  - `frontend/e2e/responsive.spec.js` — E2E-сценарии: мобильная шапка показывает только логотип, десктоп показывает иконки, бейдж корзины в правом верхнем углу иконки.
+  - Feature-ветка `feature/fix-mobile-header-cart-badge` rebased onto `main` (2635999) — устранено расхождение `package.json`/`package-lock.json` с main.
+  Результат:
+  - `cd frontend && npm test -- --run` — 116/116 ✅
+  - `cd frontend && npm run lint` — чисто ✅
+  - `cd frontend && npm run build` — успешно ✅
+  Риск/Техдолг: нет новых.
+  Блокер: Нет
+
 ### 2026-06-17 16:29 | frontend-dev | fix-mobile-header-cart-badge — mobile header cleanup + bottom-nav badge reposition
   Изменено:
   - `frontend/src/components/Header.vue` — на мобильных (`< 768px`) скрыт блок `.header__actions`, в шапке остаётся только логотип Promelectron; десктопная версия не изменена.
