@@ -66,7 +66,9 @@ function formatPrice(price) {
 function normalizeDelivery(type, tariff, point) {
   const isDoor = type === 'door';
   const code = point?.code;
-  const location = point?.location || {};
+  const cityCode = point?.city_code;
+  const city = point?.city;
+  const address = point?.address;
 
   return {
     tariff_code: tariff?.tariff_code,
@@ -75,18 +77,16 @@ function normalizeDelivery(type, tariff, point) {
     delivery_point: !isDoor ? code : null,
     to_location: isDoor
       ? {
-          code: location.city_code,
-          city: location.city,
-          address: location.address,
+          code: cityCode,
+          city,
+          address,
         }
       : null,
     from_location: null,
     price: tariff?.delivery_sum,
     period_min: tariff?.period_min,
     period_max: tariff?.period_max,
-    shipping_address: isDoor
-      ? location.address
-      : `ПВЗ ${code}, ${location.address}`,
+    shipping_address: isDoor ? address : `ПВЗ ${code}, ${address}`,
   };
 }
 

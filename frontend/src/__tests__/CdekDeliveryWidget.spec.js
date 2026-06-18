@@ -113,7 +113,9 @@ describe('CdekDeliveryWidget.vue', () => {
           period_max: 3,
         }, {
           code: 'TEST1',
-          location: { city_code: 44, city: 'Москва', address: 'ул. Тестовая, 1' },
+          city_code: 44,
+          city: 'Москва',
+          address: 'ул. Тестовая, 1',
         });
       }, 0);
     });
@@ -156,7 +158,9 @@ describe('CdekDeliveryWidget.vue', () => {
           period_min: 2,
           period_max: 4,
         }, {
-          location: { city_code: 44, city: 'Москва', address: 'ул. Ленина, 1' },
+          city_code: 44,
+          city: 'Москва',
+          address: 'ул. Ленина, 1',
         });
       }, 0);
     });
