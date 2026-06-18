@@ -26,6 +26,12 @@
 
 ### Step 2: Load the skill
 
+For any task when you don't know the role:
+```
+/promelectron
+Task: Add promo codes to cart
+```
+
 For a full feature cycle:
 ```
 /implement "Add promo codes to cart"

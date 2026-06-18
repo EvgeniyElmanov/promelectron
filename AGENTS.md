@@ -2,6 +2,10 @@
 
 This project uses **Kimi Code CLI** skills and agent prompts stored in `.kimi-code/` and `.kimi/agents/`.
 
+## Language
+
+When the user communicates in Russian, perform all reasoning, thinking, and internal monologue in Russian as well. Final replies to the user must also be in Russian. Keep code, commands, identifiers, file paths, and technical terms in their original form.
+
 ## Quick start
 
 ```bash

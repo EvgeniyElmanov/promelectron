@@ -1,7 +1,7 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════════
 # Agent System Audit — Promelectron
-# Проверка целостности системы агентов
+# Проверка целостности системы агентов после миграции в .kimi-code/
 # Запуск: ./scripts/audit-agents.sh
 # ═══════════════════════════════════════════════════════════════════
 
@@ -40,14 +40,36 @@ required_files=(
     "PROJECT_CONTEXT.md"
     "SESSION_START.md"
     "ROUTER.md"
+    "AGENTS.md"
     ".agent/BACKLOG.md"
     ".agent/BLOCKERS.md"
     ".agent/SESSION_LOG.md"
     ".agent/PLANNING_HANDOFF.md"
-    ".kimi/AGENTS.md"
+    ".kimi-code/mcp.json"
+    ".kimi-code/config.example.toml"
+    ".kimi-code/skills/promelectron/SKILL.md"
+    ".kimi-code/skills/implement/SKILL.md"
+    ".kimi-code/skills/fix/SKILL.md"
+    ".kimi-code/skills/review/SKILL.md"
+    ".kimi-code/skills/deploy/SKILL.md"
+    ".kimi-code/skills/context-sync/SKILL.md"
+    ".kimi-code/skills/plan-maintainer/SKILL.md"
     ".kimi/agents/dispatcher.md"
-    ".kimi/agents/orchestrator.md"
-    ".kimi/settings.json"
+    ".kimi/agents/architect.md"
+    ".kimi/agents/backend-dev.md"
+    ".kimi/agents/frontend-dev.md"
+    ".kimi/agents/code-reviewer.md"
+    ".kimi/agents/security-reviewer.md"
+    ".kimi/agents/e2e-tester.md"
+    ".kimi/agents/qa.md"
+    ".kimi/agents/devops.md"
+    ".kimi/agents/project-manager.md"
+    ".kimi/agents/integration-dev.md"
+    ".kimi/rules/pre-edit-checklist.md"
+    ".kimi/rules/golden-path.md"
+    ".kimi/rules/dependency-map.md"
+    ".kimi/rules/security.md"
+    "scripts/implement-pipeline.py"
     "Makefile"
 )
 
@@ -67,8 +89,16 @@ echo "🗑️  Проверка устаревших файлов..."
 obsolete_files=(
     ".agent/AGENTS.md"
     ".agent/CONTEXT.md"
+    ".agent/CURSOR_RULES.md"
+    ".agent/START_HERE.md"
     ".agent/DISPATCHER_PROMPT.md"
     ".agent/ORCHESTRATOR_PROMPT.md"
+    ".kimi/AGENTS.md"
+    ".kimi/CLAUDE.md"
+    ".kimi/tester.md"
+    ".kimi/settings.json"
+    ".kimi/agents/orchestrator.md"
+    ".mcp.json"
 )
 
 for file in "${obsolete_files[@]}"; do
@@ -79,170 +109,105 @@ for file in "${obsolete_files[@]}"; do
     fi
 done
 
-# ─── 3. Broken links в агентах ────────────────────────────────────
-
-echo ""
-echo "🔗 Проверка broken links в агентах..."
-
-for f in .kimi/agents/*.md; do
-    agent=$(basename "$f")
-    # Ищем ссылки на .agent/... .kimi/... review/... без backticks
-    links=$(grep -oP '(?<!`)\.(agent|kimi)/[^ ]+\.md(?!`)' "$f" 2>/dev/null || true)
-    if [ -n "$links" ]; then
-        echo "$links" | while read -r link; do
-            # Пропускаем шаблонные placeholder'ы вида <task-id>
-            if [[ "$link" == *'<'*'>'* ]]; then
-                continue
-            fi
-            if [ ! -f "$link" ]; then
-                echo "  ❌ $agent → $link (НЕ НАЙДЕН)"
-            fi
-        done
-    fi
-done
-
-# Проверяем review/ папку
-if [ -d "review" ]; then
-    warn "review/ — папка существует, но агенты больше не должны на неё ссылаться"
+if [ -d ".kimi/skills" ]; then
+    error ".kimi/skills/ — УСТАРЕЛА, нужно удалить"
 else
-    ok "review/ — не существует (OK)"
+    ok ".kimi/skills/ — удалена"
 fi
 
-# ─── 4. Skills consistency ────────────────────────────────────────
+# ─── 3. Skills consistency ────────────────────────────────────────
 
 echo ""
 echo "🎯 Проверка skills..."
 
-existing_skills=$(ls -d .kimi/skills/*/ 2>/dev/null | sed 's|/$||' | xargs -n1 basename | sort | tr '\n' ' ')
-ok "Skills: $existing_skills"
+if [ -d ".kimi-code/skills" ]; then
+    existing_skills=$(find .kimi-code/skills -maxdepth 1 -mindepth 1 -type d | sort | sed 's|.kimi-code/skills/||' | tr '\n' ' ')
+    ok "Skills: $existing_skills"
+else
+    error ".kimi-code/skills/ — НЕ НАЙДЕНА"
+fi
 
-# ─── 4a. Консистентность агентов в .kimi/AGENTS.md ────────────────
+# ─── 4. Консистентность агентов в AGENTS.md ───────────────────────
 
 echo ""
 echo "🤖 Проверка реестра агентов..."
 
 for f in .kimi/agents/*.md; do
     agent=$(basename "$f" .md)
-    if grep -q "\`$agent\`" .kimi/AGENTS.md; then
-        ok "$agent.md зарегистрирован в .kimi/AGENTS.md"
+    if grep -q "\`$agent\`" AGENTS.md; then
+        ok "$agent.md зарегистрирован в AGENTS.md"
     else
-        error "$agent.md НЕ зарегистрирован в .kimi/AGENTS.md"
+        error "$agent.md НЕ зарегистрирован в AGENTS.md"
     fi
 done
 
-# ─── 5a. Проверка orchestrator ────────────────────────────────────
+# ─── 5. Broken links в агентах и skills ───────────────────────────
 
 echo ""
-echo "🤖 Проверка orchestrator..."
+echo "🔗 Проверка broken links в агентах и skills..."
 
-if [ -f ".kimi/agents/orchestrator.md" ]; then
-    ok "orchestrator.md существует"
-else
-    warn "orchestrator.md не найден"
-fi
-
-if [ -f "scripts/kimi.py" ]; then
-    if [ -x "scripts/kimi.py" ]; then
-        ok "scripts/kimi.py executable"
-    else
-        warn "scripts/kimi.py не executable"
-    fi
-    if python3 -m py_compile scripts/kimi.py 2>/dev/null; then
-        ok "scripts/kimi.py синтаксически корректен"
-    else
-        error "scripts/kimi.py имеет синтаксические ошибки"
-    fi
-else
-    warn "scripts/kimi.py не найден"
-fi
-
-# Проверяем, что старые bash-скрипты удалены
-for old_script in scripts/kimi-task.sh scripts/kimi-ask.sh scripts/kimi-auto.sh scripts/test-router.sh; do
-    if [ -f "$old_script" ]; then
-        warn "$old_script — устаревший bash-скрипт, нужно удалить"
-    else
-        ok "$old_script — удалён"
+broken_found=0
+for f in .kimi/agents/*.md .kimi-code/skills/*/SKILL.md .kimi/rules/*.md; do
+    [ -f "$f" ] || continue
+    base=$(basename "$f")
+    # Ищем markdown-ссылки вида [text](path) и plain-ссылки на .md файлы
+    links=$(grep -oP '(?<!`)(\.\/|\.\./)?(?:\.agent|\.kimi|\.kimi-code|backend|frontend|scripts|infra)/[^ )\`]+\.md(?!`)' "$f" 2>/dev/null || true)
+    if [ -n "$links" ]; then
+        echo "$links" | while read -r link; do
+            # Пропускаем шаблонные placeholder'ы вида <task-id>
+            if [[ "$link" == *'<'*'>'* ]]; then
+                continue
+            fi
+            # Убираем hash-якори
+            clean_link="${link%%#*}"
+            if [ ! -f "$clean_link" ]; then
+                echo "  ❌ $base → $link (НЕ НАЙДЕН)"
+                broken_found=1
+            fi
+        done
     fi
 done
 
-if grep -q "^auto:" Makefile 2>/dev/null; then
-    ok "Makefile target 'auto' существует"
+if [ "$broken_found" -eq 0 ]; then
+    ok "Broken links не найдены"
 else
-    warn "Makefile target 'auto' не найден"
+    error "Найдены broken links (см. выше)"
 fi
 
-# ─── 5. Rules consistency ─────────────────────────────────────────
+# ─── 6. YAML frontmatter в агентах ────────────────────────────────
 
 echo ""
-echo "📋 Проверка rules..."
+echo "📄 Проверка YAML frontmatter в .kimi/agents/*.md..."
 
-existing_rules=$(ls .kimi/rules/*.md 2>/dev/null | xargs -n1 basename | sort | tr '\n' ' ')
-ok "Rules: $existing_rules"
-
-# ─── 6. Консистентность дат ───────────────────────────────────────
-
-echo ""
-echo "📅 Проверка консистентности дат..."
-
-backlog_date=$(head -5 .agent/BACKLOG.md | grep -oP '\d{4}-\d{2}-\d{2}' | head -1)
-blockers_date=$(head -5 .agent/BLOCKERS.md | grep -oP '\d{4}-\d{2}-\d{2}' | head -1)
-log_date=$(grep -oP '\d{4}-\d{2}-\d{2}' .agent/SESSION_LOG.md | head -1)
-today=$(date +%Y-%m-%d)
-
-if [ "$backlog_date" = "$today" ] || [ "$blockers_date" = "$today" ] || [ "$log_date" = "$today" ]; then
-    ok "Даты актуальны (сегодня $today)"
-else
-    warn "BACKLOG.md: $backlog_date, BLOCKERS.md: $blockers_date, SESSION_LOG.md: $log_date — возможно устарели"
-fi
-
-# ─── 7. YAML frontmatter в PROJECT_CONTEXT.md ─────────────────────
-
-echo ""
-echo "📊 Проверка PROJECT_CONTEXT.md..."
-
-if head -1 PROJECT_CONTEXT.md | grep -q '^---$'; then
-    ok "YAML frontmatter присутствует"
-    
-    # Проверяем ключевые поля
-    for key in sprint last_update backend_tests frontend_tests e2e_tests; do
-        if grep -q "^${key}:" PROJECT_CONTEXT.md; then
-            ok "frontmatter.$key"
-        else
-            warn "frontmatter.$key отсутствует"
-        fi
-    done
-else
-    error "YAML frontmatter ОТСУТСТВУЕТ в PROJECT_CONTEXT.md"
-fi
-
-# Проверяем, что нет дублирования дат
-if grep -q "^\*\*Последнее обновление:\*\*" PROJECT_CONTEXT.md; then
-    warn "Дублирование даты в markdown (есть в YAML frontmatter)"
-else
-    ok "Дублирование дат отсутствует"
-fi
-
-# ─── 8. Git hooks ─────────────────────────────────────────────────
-
-echo ""
-echo "🪝 Проверка git hooks..."
-
-if [ -f ".git/hooks/pre-push" ]; then
-    if [ -x ".git/hooks/pre-push" ]; then
-        ok "pre-push hook существует и executable"
+for f in .kimi/agents/*.md; do
+    agent=$(basename "$f")
+    if head -1 "$f" | grep -q '^---$'; then
+        error "$agent — содержит legacy YAML frontmatter"
     else
-        warn "pre-push hook не executable (chmod +x)"
+        ok "$agent — чистый markdown"
     fi
-else
-    warn "pre-push hook ОТСУТСТВУЕТ"
-fi
+done
 
-# ─── 9. Makefile targets ──────────────────────────────────────────
+# ─── 7. Skill frontmatter ─────────────────────────────────────────
+
+echo ""
+echo "📄 Проверка frontmatter в .kimi-code/skills/*/SKILL.md..."
+
+for f in .kimi-code/skills/*/SKILL.md; do
+    skill=$(basename "$(dirname "$f")")
+    if head -5 "$f" | grep -q '^name:' && head -10 "$f" | grep -q '^type: prompt'; then
+        ok "$skill/SKILL.md — корректный frontmatter"
+    else
+        error "$skill/SKILL.md — отсутствует name/type: prompt"
+    fi
+done
+
+# ─── 8. Makefile targets ──────────────────────────────────────────
 
 echo ""
 echo "🔨 Проверка Makefile targets..."
 
-required_targets=("dev" "test" "lint" "task" "task-compact" "ask" "agent-context" "agent-status")
+required_targets=("dev" "test" "lint" "agent-context" "agent-status" "agent-audit")
 for target in "${required_targets[@]}"; do
     if grep -q "^${target}:" Makefile; then
         ok "make $target"
@@ -251,21 +216,105 @@ for target in "${required_targets[@]}"; do
     fi
 done
 
-# ─── 10. SESSION_START.md ─────────────────────────────────────────
+# ─── 9. Legacy Makefile targets и scripts ─────────────────────────
 
 echo ""
-echo "🚀 Проверка SESSION_START.md..."
+echo "🕸️  Проверка legacy Makefile targets и scripts..."
 
-if grep -q "/promelectron" SESSION_START.md; then
-    ok "Master skill /promelectron присутствует в SESSION_START.md"
+legacy_targets=("task" "ask" "auto" "task-compact")
+for target in "${legacy_targets[@]}"; do
+    if grep -q "^${target}:" Makefile; then
+        error "make $target — legacy target всё ещё существует"
+    else
+        ok "make $target — удалён"
+    fi
+done
+
+if [ -f "scripts/kimi.py" ]; then
+    error "scripts/kimi.py — legacy script, нужно удалить"
 else
-    error "Master skill /promelectron ОТСУТСТВУЕТ в SESSION_START.md"
+    ok "scripts/kimi.py — удалён"
 fi
 
-if grep -q "Замени \`<ROLE>\`" SESSION_START.md; then
-    error "Устаревшая инструкция '<ROLE>' всё ещё присутствует"
+if [ -f ".vscode/tasks.json" ] && grep -q "scripts/kimi.py" .vscode/tasks.json; then
+    error ".vscode/tasks.json ссылается на scripts/kimi.py"
 else
-    ok "Устаревшая инструкция '<ROLE>' удалена"
+    ok ".vscode/tasks.json не ссылается на scripts/kimi.py"
+fi
+
+# ─── 10. SESSION_START.md и AGENTS.md ─────────────────────────────
+
+echo ""
+echo "🚀 Проверка документации..."
+
+if grep -q "/implement" SESSION_START.md; then
+    ok "SESSION_START.md содержит /implement"
+else
+    error "SESSION_START.md НЕ содержит /implement"
+fi
+
+if grep -q "/promelectron" SESSION_START.md; then
+    ok "SESSION_START.md содержит /promelectron"
+else
+    error "SESSION_START.md НЕ содержит /promelectron"
+fi
+
+if grep -q "\.kimi-code/skills/" AGENTS.md; then
+    ok "AGENTS.md ссылается на .kimi-code/skills/"
+else
+    error "AGENTS.md НЕ ссылается на .kimi-code/skills/"
+fi
+
+# ─── 11. .gitignore ───────────────────────────────────────────────
+
+echo ""
+echo "🙈 Проверка .gitignore..."
+
+if grep -q '^\.kimi-code/config\.toml$' .gitignore; then
+    ok ".gitignore исключает .kimi-code/config.toml"
+else
+    error ".gitignore НЕ исключает .kimi-code/config.toml"
+fi
+
+if grep -q '^\.worktrees/' .gitignore; then
+    ok ".gitignore исключает .worktrees/"
+else
+    error ".gitignore НЕ исключает .worktrees/"
+fi
+
+# ─── 12. scripts/implement-pipeline.py ────────────────────────────
+
+echo ""
+echo "🐍 Проверка scripts/implement-pipeline.py..."
+
+if python3 -m py_compile scripts/implement-pipeline.py 2>/dev/null; then
+    ok "scripts/implement-pipeline.py синтаксически корректен"
+else
+    error "scripts/implement-pipeline.py имеет синтаксические ошибки"
+fi
+
+if cd backend && ruff check ../scripts/implement-pipeline.py 2>/dev/null; then
+    ok "ruff check scripts/implement-pipeline.py — чисто"
+else
+    error "ruff check scripts/implement-pipeline.py — есть ошибки"
+fi
+cd "$PROJECT_ROOT"
+
+# ─── 13. JSON/TOML валидация ──────────────────────────────────────
+
+echo ""
+echo "📋 Проверка JSON/TOML..."
+
+if python3 -m json.tool .kimi-code/mcp.json > /dev/null 2>&1; then
+    ok ".kimi-code/mcp.json — валидный JSON"
+else
+    error ".kimi-code/mcp.json — НЕ валидный JSON"
+fi
+
+if python3 -c "import tomllib; tomllib.load(open('.kimi-code/config.example.toml','rb'))" 2>/dev/null; then
+    ok ".kimi-code/config.example.toml — валидный TOML"
+else
+    error ".kimi-code/config.example.toml — НЕ валидный TOML"
 fi
 
 # ─── Итог ─────────────────────────────────────────────────────────

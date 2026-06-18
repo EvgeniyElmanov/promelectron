@@ -2,7 +2,7 @@
 name: review
 description: >
   Code review skill for Promelectron. Performs security audit, quality checks, and test coverage analysis on current changes
-  or specified files. Writes findings to .agent/REVIEW_FINDINGS.md or .agent/<task-id>/review/findings.md.
+  or specified files. Writes findings to .agent/<task-id>/review/findings.md.
   Can run in full mode (security + quality + tests), security-only mode, or quick mode.
 type: prompt
 whenToUse: When the user asks for a code review, audit, findings, quality check, or asks "check this code".
@@ -76,7 +76,7 @@ git diff -- <files>
 
 ## Step 5: Write Findings
 
-Write to `.agent/REVIEW_FINDINGS.md` (or `.agent/<task-id>/review/findings.md`):
+Write to `.agent/<task-id>/review/findings.md`:
 
 ```markdown
 # Code Review: <task-id or date>

@@ -7,7 +7,8 @@ COMPOSE          := docker compose -f backend/docker-compose.yml -f frontend/doc
         test test-backend test-frontend test-e2e test-visual test-full \
         migrate migrate-down migrate-generate migrate-history seed \
         lint lint-backend lint-frontend format format-backend format-frontend \
-        build clean status
+        build clean status \
+        agent-context agent-status agent-audit
 
 # ─── Справка ───────────────────────────────────────────────────────────────
 
@@ -180,100 +181,10 @@ agent-context: ## Контекст для агента: спринт, блоке
 	@echo ""
 	@echo "══════════════════════════════════════════════════════════════════"
 
-# ─── Автоматический роутер задач ─────────────────────────────────────────────
+# ─── Агент-аудит ─────────────────────────────────────────────────────────────
 
-task: ## Запустить роутер задач: make task MSG="Описание задачи"
-	@if [ -z "$(MSG)" ]; then \
-		echo "❌ Укажи задачу: make task MSG='Описание задачи'"; \
-		echo ""; \
-		echo "Примеры:"; \
-		echo '  make task MSG="Создай API гостевой корзины"'; \
-		echo '  make task MSG="Исправь Helm шаблон для worker"'; \
-		echo '  make task MSG="Напиши E2E тест на checkout"'; \
-		exit 1; \
-	fi
-	@python3 scripts/kimi.py task "$(MSG)"
-
-ask: ## Диспетчер с гарантированным сбросом роли: make ask MSG="Описание задачи"
-	@if [ -z "$(MSG)" ]; then \
-		echo "❌ Укажи задачу: make ask MSG='Описание задачи'"; \
-		echo ""; \
-		echo "Примеры:"; \
-		echo '  make ask MSG="Создай API гостевой корзины"'; \
-		echo '  make ask MSG="Сделай страницу checkout"'; \
-		echo '  make ask MSG="Напиши E2E тест на checkout"'; \
-		echo ""; \
-		echo "💡 Отличие от 'make task': всегда сбрасывает предыдущую роль"; \
-		exit 1; \
-	fi
-	@python3 scripts/kimi.py ask "$(MSG)"
-
-auto: ## Полный авто-режим: определяет роли сам, запускает orchestrator при необходимости
-	@if [ -z "$(MSG)" ]; then \
-		echo "❌ Укажи задачу: make auto MSG='Описание задачи'"; \
-		echo ""; \
-		echo "Примеры:"; \
-		echo '  make auto MSG="Добавь промокоды в корзину"'; \
-		echo '  make auto MSG="Исправь баг в оформлении заказа"'; \
-		echo '  make auto MSG="Настрой CI/CD для staging"'; \
-		echo '  make auto MSG="Security audit проекта"'; \
-		echo ""; \
-		echo "💡 Система сама определит роли и выберет режим (single/multi-agent)."; \
-		exit 1; \
-	fi
-	@python3 scripts/kimi.py auto "$(MSG)"
-
-task-compact: ## Компактный роутер (только инструкции, без полного контекста)
-	@if [ -z "$(MSG)" ]; then \
-		echo "❌ Укажи задачу: make task-compact MSG='Описание задачи'"; \
-		exit 1; \
-	fi
-	@echo ""
-	@echo "══════════════════════════════════════════════════════════════════"
-	@echo "  Agent Router — Компактный режим"
-	@echo "══════════════════════════════════════════════════════════════════"
-	@echo ""
-	@echo "🤖 Агент определяется по задаче автоматически"
-	@echo ""
-	@echo "💡 Инструкция для агента:"
-	@echo "──────────────────────────────────────────────────────────────────"
-	@echo 'Проект Promelectron. Задача: $(MSG)'
-	@echo ""
-	@echo "Перед работой прочитай PROJECT_CONTEXT.md, BACKLOG.md, BLOCKERS.md, SESSION_LOG.md."
-	@echo "Определи роль сам, прочитай .kimi/agents/<ROLE>.md и .kimi/rules/pre-edit-checklist.md."
-	@echo "После работы обнови SESSION_LOG.md."
-	@echo ""
-	@echo "══════════════════════════════════════════════════════════════════"
-	@echo ""
-	@echo "✅ Скопируй текст выше и вставь в Kimi CLI"
-	@echo "                   AGENT CONTEXT — Promelectron"
-	@echo "══════════════════════════════════════════════════════════════════"
-	@echo ""
-	@echo "📋 PROJECT_CONTEXT.md (последние 30 строк):"
-	@echo "──────────────────────────────────────────────────────────────────"
-	@head -35 PROJECT_CONTEXT.md
-	@echo ""
-	@echo "🎯 Текущий спринт (BACKLOG.md):"
-	@echo "──────────────────────────────────────────────────────────────────"
-	@head -40 .agent/BACKLOG.md
-	@echo ""
-	@echo "⚠️  Активные блокеры (BLOCKERS.md):"
-	@echo "──────────────────────────────────────────────────────────────────"
-	@head -30 .agent/BLOCKERS.md
-	@echo ""
-	@echo "📝 Последние сессии (SESSION_LOG.md):"
-	@echo "──────────────────────────────────────────────────────────────────"
-	@head -20 .agent/SESSION_LOG.md
-	@echo ""
-	@echo "🔨 Последние коммиты:"
-	@echo "──────────────────────────────────────────────────────────────────"
-	@git log --oneline -10
-	@echo ""
-	@echo "📁 Незакоммиченные изменения:"
-	@echo "──────────────────────────────────────────────────────────────────"
-	@git status --short
-	@echo ""
-	@echo "══════════════════════════════════════════════════════════════════"
+agent-audit: ## Проверить целостность системы агентов
+	@bash scripts/audit-agents.sh
 
 agent-status: ## Быстрый health-check проекта
 	@echo "══════════════════════════════════════════════════════════════════"

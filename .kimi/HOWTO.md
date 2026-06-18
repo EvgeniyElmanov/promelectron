@@ -117,8 +117,13 @@ Agents update:
 2. Start a new Kimi CLI session
 3. Explicitly specify the role: `Role: frontend-dev. Task: ...`
 
-### `make task` is missing
-The old `make task`/`make ask` helpers are legacy. Use workflow skills instead.
+### `make task` / `make ask` removed
+The old `make task`, `make ask`, `make auto`, and `make task-compact` helpers were removed. Use workflow skills instead:
+```
+/implement "Add promo codes to cart"
+/fix "Race condition in cart add"
+/promelectron
+```
 
 ### Agent didn't update SESSION_LOG.md
 In workflow skills this is part of the subagent prompt. In fixed-role mode, add it explicitly:
