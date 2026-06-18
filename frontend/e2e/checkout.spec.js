@@ -41,7 +41,7 @@ async function selectCdekDelivery(page) {
   // Open CDEK widget modal (mocked via init script)
   await page.click('[data-testid="cdek-open-selector"]');
   // Wait for the selected delivery summary to appear
-  await page.waitForSelector('.cdek-widget__selected', { timeout: 5000 });
+  await page.waitForSelector('[data-testid="cdek-selected-delivery"]', { timeout: 5000 });
 }
 
 async function fillRecipientName(page, firstName = 'Иван', lastName = 'Иванов') {

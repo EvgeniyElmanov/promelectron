@@ -58,6 +58,7 @@ jobs:
         run: |
           docker build -f frontend/Dockerfile \
             --build-arg VITE_API_URL=https://api.promelectron-test.aidrivencode.ru \
+            --build-arg VITE_YANDEX_MAPS_API_KEY=${{ secrets.YANDEX_MAPS_API_KEY }} \
             -t ${{ env.FRONTEND_IMAGE }}-test:${{ github.sha }} \
             frontend/
           docker push ${{ env.FRONTEND_IMAGE }}-test:${{ github.sha }}
@@ -67,6 +68,7 @@ jobs:
         run: |
           docker build -f frontend/Dockerfile \
             --build-arg VITE_API_URL=https://api.promelectron.aidrivencode.ru \
+            --build-arg VITE_YANDEX_MAPS_API_KEY=${{ secrets.YANDEX_MAPS_API_KEY }} \
             -t ${{ env.FRONTEND_IMAGE }}:${{ github.sha }} \
             frontend/
           docker push ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
