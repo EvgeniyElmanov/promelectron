@@ -15,11 +15,9 @@ Kimi Agent Router — Promelectron
 """
 
 import argparse
-import os
 import re
 import signal
 import subprocess
-import sys
 from pathlib import Path
 
 # Корректная обработка SIGPIPE (например, при pipe в head)

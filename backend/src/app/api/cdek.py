@@ -1,6 +1,7 @@
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -121,3 +122,50 @@ async def resync_cdek_order(
 
     create_cdek_order_task.delay(order_id)
     return {"status": "queued", "order_id": order_id}
+
+
+@router.get("/widget-service/")
+@router.post("/widget-service/")
+@conditional_limit("30/minute")
+async def cdek_widget_service(request: Request):
+    """Public proxy for the official CDEK widget service.
+
+    Supports ``action=offices`` (GET) and ``action=calculate`` (POST),
+    forwarding read-only requests to the CDEK API using configured credentials.
+    """
+    action = request.query_params.get("action")
+    body: dict[str, Any] = {}
+    if request.method == "POST":
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+    if not action:
+        action = body.get("action")
+
+    if action == "offices":
+        params = dict(request.query_params)
+        params.pop("action", None)
+        client = CdekClient()
+        try:
+            result = await client.get_delivery_points(params)
+        except CdekAPIError as exc:
+            raise HTTPException(status_code=502, detail=f"CDEK API error: {exc}") from exc
+        finally:
+            await client.close()
+        return JSONResponse(content=result, headers={"X-Service-Version": "3.x"})
+
+    if action == "calculate":
+        if request.method != "POST":
+            raise HTTPException(status_code=405, detail="calculate requires POST")
+        payload = body
+        client = CdekClient()
+        try:
+            result = await client.calculate_tariffs(payload)
+        except CdekAPIError as exc:
+            raise HTTPException(status_code=502, detail=f"CDEK API error: {exc}") from exc
+        finally:
+            await client.close()
+        return JSONResponse(content=result, headers={"X-Service-Version": "3.x"})
+
+    raise HTTPException(status_code=400, detail="Unknown or missing action")

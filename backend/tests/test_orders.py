@@ -10,7 +10,11 @@ class TestOrdersAPI:
         await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
         order_resp = await client.post(
             "/api/v1/orders/create",
-            json={"cdek_delivery": cdek_delivery_payload},
+            json={
+                "cdek_delivery": cdek_delivery_payload,
+                "recipient_first_name": "Тест",
+                "recipient_last_name": "Пользователь",
+            },
             headers={"Authorization": f"Bearer {user_token}"},
         )
         order_id = order_resp.json()["id"]
@@ -33,7 +37,11 @@ class TestOrdersAPI:
         await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
         order_resp = await client.post(
             "/api/v1/orders/create",
-            json={"cdek_delivery": cdek_delivery_payload},
+            json={
+                "cdek_delivery": cdek_delivery_payload,
+                "recipient_first_name": "Тест",
+                "recipient_last_name": "Пользователь",
+            },
             headers={"Authorization": f"Bearer {user_token}"},
         )
         order_id = order_resp.json()["id"]
@@ -81,11 +89,18 @@ class TestOrdersAPI:
         await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
         order_resp = await client.post(
             "/api/v1/orders/create",
-            json={"cdek_delivery": cdek_delivery_payload},
+            json={
+                "cdek_delivery": cdek_delivery_payload,
+                "recipient_first_name": "Тест",
+                "recipient_last_name": "Пользователь",
+            },
             headers={"Authorization": f"Bearer {user_token}"},
         )
         assert order_resp.status_code == 200
-        order_id = order_resp.json()["id"]
+        order_data = order_resp.json()
+        order_id = order_data["id"]
+        assert order_data["recipient_first_name"] == "Тест"
+        assert order_data["recipient_last_name"] == "Пользователь"
 
         response = await client.get("/api/v1/orders/supplier/", headers={"Authorization": f"Bearer {supplier_token}"})
         assert response.status_code == 200
@@ -141,7 +156,11 @@ class TestOrdersAPI:
         await client.post("/api/v1/cart/add", json={"product_id": other_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
         order_resp = await client.post(
             "/api/v1/orders/create",
-            json={"cdek_delivery": cdek_delivery_payload},
+            json={
+                "cdek_delivery": cdek_delivery_payload,
+                "recipient_first_name": "Тест",
+                "recipient_last_name": "Пользователь",
+            },
             headers={"Authorization": f"Bearer {user_token}"},
         )
         assert order_resp.status_code == 200
@@ -157,7 +176,11 @@ class TestOrdersAPI:
         await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
         order_resp = await client.post(
             "/api/v1/orders/create",
-            json={"cdek_delivery": cdek_delivery_payload},
+            json={
+                "cdek_delivery": cdek_delivery_payload,
+                "recipient_first_name": "Тест",
+                "recipient_last_name": "Пользователь",
+            },
             headers={"Authorization": f"Bearer {user_token}"},
         )
         order_id = order_resp.json()["id"]
@@ -211,7 +234,11 @@ class TestOrdersAPI:
         await client.post("/api/v1/cart/add", json={"product_id": other_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
         order_resp = await client.post(
             "/api/v1/orders/create",
-            json={"cdek_delivery": cdek_delivery_payload},
+            json={
+                "cdek_delivery": cdek_delivery_payload,
+                "recipient_first_name": "Тест",
+                "recipient_last_name": "Пользователь",
+            },
             headers={"Authorization": f"Bearer {user_token}"},
         )
         order_id = order_resp.json()["id"]

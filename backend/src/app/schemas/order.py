@@ -44,6 +44,8 @@ class CdekDeliveryIn(BaseModel):
 
 class OrderCreate(BaseModel):
     cdek_delivery: CdekDeliveryIn
+    recipient_first_name: Optional[str] = None
+    recipient_last_name: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -59,6 +61,8 @@ class GuestOrderCreate(BaseModel):
     guest_email: str
     guest_name: str
     guest_phone: str
+    recipient_first_name: str
+    recipient_last_name: str
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -100,6 +104,8 @@ class OrderOut(BaseModel):
     shipping_address: Optional[str] = None
     guest_email: Optional[str] = None
     guest_name: Optional[str] = None
+    recipient_first_name: Optional[str] = None
+    recipient_last_name: Optional[str] = None
     guest_phone: Optional[str] = None
     created_at: datetime
     items: List[OrderItemOut]

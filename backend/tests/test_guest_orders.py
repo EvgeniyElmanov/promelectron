@@ -15,6 +15,8 @@ class TestGuestOrdersAPI:
                 "guest_email": "guest@example.com",
                 "guest_name": "Иван Гость",
                 "guest_phone": "+79990001122",
+                "recipient_first_name": "Иван",
+                "recipient_last_name": "Гость",
             },
         )
         assert response.status_code == 200
@@ -22,6 +24,8 @@ class TestGuestOrdersAPI:
         assert data["user_id"] is None
         assert data["guest_email"] == "guest@example.com"
         assert data["guest_name"] == "Иван Гость"
+        assert data["recipient_first_name"] == "Иван"
+        assert data["recipient_last_name"] == "Гость"
         assert data["guest_phone"] == "+79990001122"
         assert data["status"] == "pending"
         assert len(data["items"]) == 1
@@ -39,6 +43,8 @@ class TestGuestOrdersAPI:
                 "guest_email": "guest@example.com",
                 "guest_name": "Иван Гость",
                 "guest_phone": "+79990001122",
+                "recipient_first_name": "Иван",
+                "recipient_last_name": "Гость",
             },
         )
         assert response.status_code == 400
@@ -55,6 +61,8 @@ class TestGuestOrdersAPI:
                 "guest_email": "guest@example.com",
                 "guest_name": "Иван Гость",
                 "guest_phone": "+79990001122",
+                "recipient_first_name": "Иван",
+                "recipient_last_name": "Гость",
             },
         )
         assert response.status_code == 404
@@ -70,6 +78,8 @@ class TestGuestOrdersAPI:
                 "guest_email": "guest@example.com",
                 "guest_name": "Иван Гость",
                 "guest_phone": "+79990001122",
+                "recipient_first_name": "Иван",
+                "recipient_last_name": "Гость",
             },
         )
         assert response.status_code == 400
@@ -87,6 +97,8 @@ class TestGuestOrdersAPI:
                 "guest_email": "guest@example.com",
                 "guest_name": "Иван Гость",
                 "guest_phone": "+79990001122",
+                "recipient_first_name": "Иван",
+                "recipient_last_name": "Гость",
             },
         )
         assert response.status_code == 200
@@ -105,6 +117,8 @@ class TestGuestOrdersAPI:
                 "guest_email": "guest@example.com",
                 "guest_name": "Иван Гость",
                 "guest_phone": "+79990001122",
+                "recipient_first_name": "Иван",
+                "recipient_last_name": "Гость",
             },
         )
         order_id = create_resp.json()["id"]
@@ -129,6 +143,8 @@ class TestGuestOrdersAPI:
                 "guest_email": "guest@example.com",
                 "guest_name": "Иван Гость",
                 "guest_phone": "+79990001122",
+                "recipient_first_name": "Иван",
+                "recipient_last_name": "Гость",
             },
         )
         order_id = create_resp.json()["id"]

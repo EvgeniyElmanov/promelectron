@@ -14,6 +14,22 @@ YYYY-MM-DD HH:MM | <role> | <краткое описание>
 
 ## Записи (новые сверху)
 
+### 2026-06-18 04:45 | backend-dev | cdek-widget-recipient-name — backend implementation complete
+  Изменено:
+  - `backend/src/app/models/order.py` — колонки `recipient_first_name`, `recipient_last_name`.
+  - `backend/src/app/schemas/order.py` — поля в `OrderCreate`, `GuestOrderCreate`, `OrderOut`.
+  - `backend/src/app/services/order_service.py` — заполнение новых полей при создании заказа.
+  - `backend/src/app/services/cdek_service.py` — `_build_recipient` использует раздельные имена, fallback на `user.full_name`/`guest_name`.
+  - `backend/src/app/api/cdek.py` — публичный endpoint `/api/v1/cdek/widget-service/` для `action=offices` и `action=calculate`.
+  - `backend/alembic/versions/becdb9cce9b1_add_order_recipient_names.py` — миграция новых колонок.
+  - `backend/tests/test_cdek.py`, `test_orders.py`, `test_guest_orders.py` — обновлены/добавлены тесты.
+  - `PROJECT_CONTEXT.md` — обновлён API inventory и история изменений.
+  Результат:
+  - `make test-backend` — 166/166 ✅
+  - `ruff check .` — чисто ✅
+  Риск/Техдолг: нет.
+  Блокер: Нет
+
 ### 2026-06-17 22:20 | e2e-tester | fix-mobile-header-cart-badge — E2E responsive tests passed
   Изменено:
   - Прогнан `frontend/e2e/responsive.spec.js` (67 тестов) в реальном браузере Chromium против рабочего dev-сервера из worktree.

@@ -65,6 +65,8 @@ class OrderService:
             cdek_price=delivery_price,
             cdek_period_min=delivery.period_min,
             cdek_period_max=delivery.period_max,
+            recipient_first_name=order_data.recipient_first_name,
+            recipient_last_name=order_data.recipient_last_name,
             items=order_items,
         )
         db.add(new_order)
@@ -164,6 +166,8 @@ class OrderService:
             guest_email=order_data.guest_email,
             guest_name=order_data.guest_name,
             guest_phone=order_data.guest_phone,
+            recipient_first_name=order_data.recipient_first_name,
+            recipient_last_name=order_data.recipient_last_name,
             items=order_items,
         )
         db.add(new_order)

@@ -7,7 +7,7 @@ commit_message: "feat(admin): unified section tabs for admin panel"
 blockers_count: 1
 blockers_p0: 0
 blockers_p1: 1
-backend_tests: "157/157"
+backend_tests: "166/166"
 frontend_tests: "108/108"
 e2e_tests: "98/98"
 ---
@@ -155,6 +155,7 @@ Product.price → Numeric      →  Product variants / Seller payouts
 | GET | `/api/v1/cdek/suggest-cities/` | ✅ | Подсказка городов |
 | POST | `/api/v1/cdek/webhooks/cdek/` | ✅ | Webhook статусов CDEK |
 | POST | `/api/v1/cdek/orders/{order_id}/resync/` | ✅ | Повторная отправка заказа в CDEK |
+| GET/POST | `/api/v1/cdek/widget-service/` | ✅ | Публичный прокси официального виджета CDEK (offices/calculate) |
 | GET | `/api/v1/supplier/profile/` | ✅ | Профиль поставщика (CDEK настройки) |
 | PATCH | `/api/v1/supplier/profile/` | ✅ | Обновление CDEK настроек поставщика |
 
@@ -220,6 +221,7 @@ make test-e2e      # Playwright
 
 | Дата | Что изменилось | Кто |
 |------|---------------|-----|
+| 2026-06-18 | **cdek-widget-recipient-name (backend)**: добавлены `recipient_first_name` / `recipient_last_name` в модель `Order`, схемы `OrderCreate`/`GuestOrderCreate`/`OrderOut` и `OrderService`; `CdekService._build_recipient` формирует имя из раздельных полей с fallback на `user.full_name`/`guest_name`; новый публичный endpoint `/api/v1/cdek/widget-service/` проксирует `action=offices` и `action=calculate` через `CdekClient`; добавлена Alembic-миграция `becdb9cce9b1`; обновлены backend-тесты (`test_cdek.py`, `test_orders.py`, `test_guest_orders.py`). Backend-тесты: 166/166 ✅. | backend-dev |
 | 2026-06-16 | **admin-section-tabs (frontend)**: в `Admin.vue` добавлена единая горизонтальная таб-навигация по разделам админки (Дашборд, Пользователи, Категории, Способы доставки, Заказы, Фичатоглы) для десктопа и мобильных; по умолчанию активен Дашборд; добавлены `data-testid` для табов и панелей разделов. Обновлены unit-тесты `Admin.spec.js` и E2E `admin.spec.js`. Frontend-тесты: 108/108 ✅. | frontend-dev |
 | 2026-06-16 | **admin-categories-tabs — final review + E2E**: исправлены замечания ревью (append в пагинации, debounce поиска, backend lint). Code review: APPROVED. E2E admin.spec.js: 2/2 ✅. Обновлены `PROJECT_CONTEXT.md` и `SESSION_LOG.md`. | code-reviewer / e2e-tester |
 | 2026-06-16 | **Admin categories tabs (frontend)**: раздел «Категории» в `Admin.vue` переделан под горизонтальные вкладки корневых категорий + «Все» с фильтрацией дочерних; добавлен поиск, столбец «Товаров», пагинация «Показать ещё», empty-state; в модалке создания/редактирования добавлен селектор `parent_id`. Все потребители `GET /categories/` (`Admin.vue`, `ProductFormModal.vue`, `CategoryChips.vue`) адаптированы под `CategoryListOut`. Новые unit-тесты в `Admin.spec.js` и E2E-тест в `admin.spec.js`. | frontend-dev |

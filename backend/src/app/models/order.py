@@ -13,6 +13,8 @@ class Order(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     guest_email = Column(String, nullable=True)
     guest_name = Column(String, nullable=True)
+    recipient_first_name = Column(String, nullable=True)
+    recipient_last_name = Column(String, nullable=True)
     guest_phone = Column(String, nullable=True)
     status = Column(String, default="pending", nullable=False)
     total_price = Column(Numeric(precision=10, scale=2), nullable=False)
