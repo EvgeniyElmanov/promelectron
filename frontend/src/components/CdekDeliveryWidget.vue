@@ -50,12 +50,14 @@ const emit = defineEmits(['update:modelValue']);
 
 const WIDGET_SCRIPT_URL = 'https://cdn.jsdelivr.net/npm/@cdek-it/widget@3';
 const WIDGET_CONTAINER_ID = 'cdek-widget-container';
+const DEFAULT_LOCATION = 'Москва';
 
 const selectedDelivery = computed(() => props.modelValue);
 const widgetInstance = ref(null);
 const scriptLoaded = ref(false);
 const loadError = ref(false);
 const isLoading = ref(false);
+const detectedLocation = ref(null);
 
 function formatPrice(price) {
   return Number(price).toLocaleString('ru-RU');
@@ -117,10 +119,30 @@ function buildWidgetOptions() {
     servicePath: '/api/v1/cdek/widget-service/',
     popup: true,
     lang: 'rus',
-    defaultLocation: 'Москва',
+    defaultLocation: detectedLocation.value || DEFAULT_LOCATION,
     goods: buildGoods(),
     onChoose,
   };
+}
+
+function detectUserLocation() {
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) {
+      resolve(DEFAULT_LOCATION);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { longitude, latitude } = position.coords;
+        resolve([longitude, latitude]);
+      },
+      () => {
+        resolve(DEFAULT_LOCATION);
+      },
+      { enableHighAccuracy: false, timeout: 5000, maximumAge: 600000 }
+    );
+  });
 }
 
 async function loadScript() {
@@ -153,23 +175,33 @@ async function openWidget() {
     widgetInstance.value = null;
   }
 
+  isLoading.value = true;
+  loadError.value = false;
+
+  if (!detectedLocation.value) {
+    detectedLocation.value = await detectUserLocation();
+  }
+
   await loadScript();
 
   if (!window.CDEKWidget) {
     loadError.value = true;
+    isLoading.value = false;
     return;
   }
 
   if (!getApiKey()) {
     loadError.value = true;
+    isLoading.value = false;
     return;
   }
 
-  loadError.value = false;
   try {
     widgetInstance.value = new window.CDEKWidget(buildWidgetOptions());
   } catch {
     loadError.value = true;
+  } finally {
+    isLoading.value = false;
   }
 }
 
