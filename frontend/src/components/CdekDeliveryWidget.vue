@@ -120,6 +120,7 @@ function buildWidgetOptions() {
     popup: true,
     lang: 'rus',
     defaultLocation: detectedLocation.value || DEFAULT_LOCATION,
+    from: 'Москва',
     goods: buildGoods(),
     onChoose,
   };
