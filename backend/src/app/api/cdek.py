@@ -153,7 +153,7 @@ async def resync_cdek_order(
 
 @router.get("/widget-service/")
 @router.post("/widget-service/")
-@conditional_limit("30/minute")
+@conditional_limit("1000/minute")
 async def cdek_widget_service(request: Request):
     """Public proxy for the official CDEK widget service.
 
