@@ -106,10 +106,14 @@ function buildGoods() {
   });
 }
 
+function getApiKey() {
+  return import.meta.env.VITE_YANDEX_MAPS_API_KEY || '';
+}
+
 function buildWidgetOptions() {
   return {
     root: WIDGET_CONTAINER_ID,
-    apiKey: import.meta.env.VITE_YANDEX_MAPS_API_KEY || '',
+    apiKey: getApiKey(),
     servicePath: '/api/v1/cdek/widget-service/',
     popup: true,
     lang: 'rus',
@@ -156,8 +160,17 @@ async function openWidget() {
     return;
   }
 
+  if (!getApiKey()) {
+    loadError.value = true;
+    return;
+  }
+
   loadError.value = false;
-  widgetInstance.value = new window.CDEKWidget(buildWidgetOptions());
+  try {
+    widgetInstance.value = new window.CDEKWidget(buildWidgetOptions());
+  } catch {
+    loadError.value = true;
+  }
 }
 
 onUnmounted(() => {

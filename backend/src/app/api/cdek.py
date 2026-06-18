@@ -1,8 +1,9 @@
+from enum import Enum
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.app.core.config import settings
@@ -24,6 +25,32 @@ class CalculateDeliveryRequest(BaseModel):
 
 class CalculateDeliveryResponse(BaseModel):
     tariffs: list[dict[str, Any]]
+
+
+class WidgetAction(str, Enum):
+    offices = "offices"
+    calculate = "calculate"
+
+
+class WidgetOfficesParams(BaseModel):
+    action: WidgetAction
+    city_code: int | None = None
+    postal_code: str | None = None
+    country_code: str | None = None
+    type: str | None = None
+
+
+class WidgetCalculateRequest(BaseModel):
+    action: WidgetAction
+    type: int | None = None
+    date: str | None = None
+    currency: str | None = None
+    lang: str | None = None
+    from_location: dict[str, Any] | None = None
+    to_location: dict[str, Any] | None = None
+    services: list[dict[str, Any]] | None = None
+    packages: list[dict[str, Any]] = Field(default_factory=list)
+    delivery_point: str | None = None
 
 
 @router.post("/calculate/", response_model=CalculateDeliveryResponse)
@@ -143,9 +170,22 @@ async def cdek_widget_service(request: Request):
     if not action:
         action = body.get("action")
 
-    if action == "offices":
-        params = dict(request.query_params)
-        params.pop("action", None)
+    try:
+        validated_action = WidgetAction(action)
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(status_code=400, detail="Unknown or missing action") from exc
+
+    if validated_action == WidgetAction.offices:
+        params = {
+            k: v
+            for k, v in request.query_params.items()
+            if k in WidgetOfficesParams.model_fields and k != "action"
+        }
+        try:
+            WidgetOfficesParams(action=validated_action, **params)
+        except Exception as exc:
+            raise HTTPException(status_code=422, detail=f"Invalid offices parameters: {exc}") from exc
+
         client = CdekClient()
         try:
             result = await client.get_delivery_points(params)
@@ -155,10 +195,17 @@ async def cdek_widget_service(request: Request):
             await client.close()
         return JSONResponse(content=result, headers={"X-Service-Version": "3.x"})
 
-    if action == "calculate":
+    if validated_action == WidgetAction.calculate:
         if request.method != "POST":
             raise HTTPException(status_code=405, detail="calculate requires POST")
-        payload = body
+
+        allowed_fields = set(WidgetCalculateRequest.model_fields) - {"action"}
+        payload = {k: v for k, v in body.items() if k in allowed_fields}
+        try:
+            WidgetCalculateRequest(action=validated_action, **payload)
+        except Exception as exc:
+            raise HTTPException(status_code=422, detail=f"Invalid calculate body: {exc}") from exc
+
         client = CdekClient()
         try:
             result = await client.calculate_tariffs(payload)

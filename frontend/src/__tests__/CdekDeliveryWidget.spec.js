@@ -4,6 +4,7 @@ import CdekDeliveryWidget from '../components/CdekDeliveryWidget.vue';
 
 describe('CdekDeliveryWidget.vue', () => {
   beforeEach(() => {
+    import.meta.env.VITE_YANDEX_MAPS_API_KEY = 'test-api-key';
     window.CDEKWidget = class MockCDEKWidget {
       constructor() {
         this.destroy = vi.fn();
@@ -13,11 +14,44 @@ describe('CdekDeliveryWidget.vue', () => {
 
   afterEach(() => {
     delete window.CDEKWidget;
+    delete import.meta.env.VITE_YANDEX_MAPS_API_KEY;
     document.querySelectorAll('script').forEach((script) => {
       if (script.src.includes('@cdek-it/widget')) {
         script.remove();
       }
     });
+  });
+
+  it('показывает ошибку при отсутствии API ключа Яндекс Карт', async () => {
+    delete import.meta.env.VITE_YANDEX_MAPS_API_KEY;
+    const wrapper = mount(CdekDeliveryWidget, {
+      props: { items: [], modelValue: null },
+    });
+
+    await wrapper.find('[data-testid="cdek-open-selector"]').trigger('click');
+    await flushPromises();
+
+    expect(wrapper.find('.cdek-widget__error').exists()).toBe(true);
+    expect(wrapper.find('.cdek-widget__error').text()).toContain('Не удалось загрузить виджет');
+  });
+
+  it('показывает ошибку при ошибке загрузки скрипта', async () => {
+    delete window.CDEKWidget;
+    const wrapper = mount(CdekDeliveryWidget, {
+      props: { items: [], modelValue: null },
+    });
+
+    wrapper.find('[data-testid="cdek-open-selector"]').trigger('click');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const script = document.querySelector('script[src*="@cdek-it/widget"]');
+    expect(script).not.toBeNull();
+    script.onerror(new Error('Network error'));
+
+    await flushPromises();
+
+    expect(wrapper.find('.cdek-widget__error').exists()).toBe(true);
+    expect(wrapper.find('.cdek-widget__error').text()).toContain('Не удалось загрузить виджет');
   });
 
   it('рендерит кнопку выбора доставки', () => {

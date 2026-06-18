@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import List, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class OrderItemOut(BaseModel):
@@ -32,6 +32,7 @@ class CdekLocation(BaseModel):
 
 class CdekDeliveryIn(BaseModel):
     tariff_code: int
+    tariff_name: Optional[str] = None
     delivery_mode: str = Field(..., pattern="^(PVZ|DOOR)$")
     delivery_point: Optional[str] = None
     to_location: Optional[CdekLocation] = None
@@ -42,12 +43,36 @@ class CdekDeliveryIn(BaseModel):
     shipping_address: Optional[str] = None
 
 
+def _normalize_recipient_name(value: str | None) -> str | None:
+    if value is None:
+        return None
+    value = value.strip()
+    if not value:
+        return None
+    return value
+
+
 class OrderCreate(BaseModel):
     cdek_delivery: CdekDeliveryIn
-    recipient_first_name: Optional[str] = None
-    recipient_last_name: Optional[str] = None
+    recipient_first_name: Optional[str] = Field(
+        default=None,
+        min_length=1,
+        max_length=100,
+        pattern=r'^[A-Za-zА-Яа-яЁё\- ]+$',
+    )
+    recipient_last_name: Optional[str] = Field(
+        default=None,
+        min_length=1,
+        max_length=100,
+        pattern=r'^[A-Za-zА-Яа-яЁё\- ]+$',
+    )
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, str_strip_whitespace=True)
+
+    @field_validator("recipient_first_name", "recipient_last_name", mode="before")
+    @classmethod
+    def normalize_recipient_name(cls, value):
+        return _normalize_recipient_name(value)
 
 
 class GuestOrderItemCreate(BaseModel):
@@ -59,12 +84,27 @@ class GuestOrderCreate(BaseModel):
     items: List[GuestOrderItemCreate]
     cdek_delivery: CdekDeliveryIn
     guest_email: str
-    guest_name: str
+    guest_name: Optional[str] = None
     guest_phone: str
-    recipient_first_name: str
-    recipient_last_name: str
+    recipient_first_name: str = Field(
+        ...,
+        min_length=1,
+        max_length=100,
+        pattern=r'^[A-Za-zА-Яа-яЁё\- ]+$',
+    )
+    recipient_last_name: str = Field(
+        ...,
+        min_length=1,
+        max_length=100,
+        pattern=r'^[A-Za-zА-Яа-яЁё\- ]+$',
+    )
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, str_strip_whitespace=True)
+
+    @field_validator("recipient_first_name", "recipient_last_name", mode="before")
+    @classmethod
+    def normalize_recipient_name(cls, value):
+        return _normalize_recipient_name(value)
 
 
 class OrderUpdateStatus(BaseModel):

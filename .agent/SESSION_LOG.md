@@ -14,6 +14,28 @@ YYYY-MM-DD HH:MM | <role> | <краткое описание>
 
 ## Записи (новые сверху)
 
+### 2026-06-18 14:10 | backend-dev / frontend-dev | cdek-widget-recipient-name — review iteration 1 fixes
+  Изменено:
+  - `backend/src/app/schemas/order.py` — `guest_name` optional в `GuestOrderCreate`; добавлена валидация `recipient_first_name`/`recipient_last_name` (min/max length, pattern, strip whitespace); добавлен `tariff_name` в `CdekDeliveryIn`.
+  - `backend/src/app/api/cdek.py` — добавлены Pydantic-схемы `WidgetAction`, `WidgetOfficesParams`, `WidgetCalculateRequest`; валидация action и whitelist полей; `action` исключается из тела `calculate` перед проксированием.
+  - `backend/src/app/services/order_service.py` — `create_guest_order` больше не заполняет `guest_name`.
+  - `backend/tests/test_cdek.py` — добавлены тесты fallback на `user.full_name` и `guest_name`.
+  - `backend/tests/test_guest_orders.py` — убран `guest_name` из payload, проверка `guest_name is None`.
+  - `frontend/src/components/CdekDeliveryWidget.vue` — `new window.CDEKWidget(...)` в try/catch; обработка отсутствия `VITE_YANDEX_MAPS_API_KEY` как ошибка загрузки.
+  - `frontend/src/views/Cart.vue`, `frontend/src/views/GuestCheckout.vue` — убраны `console.error`; `GuestCheckout.vue` больше не отправляет `guest_name`.
+  - `frontend/e2e/checkout.spec.js` — убраны `console.log`.
+  - `frontend/src/__tests__/CdekDeliveryWidget.spec.js` — тест на отсутствие API ключа и на ошибку загрузки скрипта.
+  - `frontend/src/__tests__/GuestCheckout.spec.js` — обновлено ожидание payload без `guest_name`.
+  - `.agent/cdek-widget-recipient-name/review/findings.md` — все findings отмечены FIXED, статус APPROVED.
+  Результат:
+  - `cd backend && pytest -x` — 167/167 ✅
+  - `ruff check .` — чисто ✅
+  - `cd frontend && npm test -- --run` — 127/127 ✅
+  - `cd frontend && npm run lint` — чисто ✅
+  - Коммит `d5204f0` в ветку `feature/cdek-widget-recipient-name` в worktree.
+  Риск/Техдолг: нет.
+  Блокер: Нет
+
 ### 2026-06-18 13:35 | frontend-dev | cdek-widget-recipient-name — frontend implementation complete
   Изменено:
   - `frontend/src/components/CdekDeliveryWidget.vue` — полностью переписан под официальный виджет `@cdek-it/widget@3` с CDN: динамическая загрузка скрипта, `destroy()` при unmount, `servicePath: /api/v1/cdek/widget-service/`, нормализация `onChoose(type, tariff, point)` в формат `CdekDeliveryIn`, обработка ошибок загрузки, сохранены `data-testid="cdek-delivery-widget"` и `data-testid="cdek-open-selector"`.

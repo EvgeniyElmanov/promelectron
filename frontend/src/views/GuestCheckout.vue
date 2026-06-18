@@ -184,7 +184,6 @@ const submitOrder = async () => {
       items: items.value.map(i => ({ product_id: i.product_id, quantity: i.quantity })),
       cdek_delivery: { ...selectedDelivery.value },
       guest_email: guestEmail.value.trim(),
-      guest_name: `${firstName} ${lastName}`,
       guest_phone: guestPhone.value.trim(),
       recipient_first_name: firstName,
       recipient_last_name: lastName,
@@ -194,7 +193,6 @@ const submitOrder = async () => {
     toast('Заказ успешно создан!', 'success');
     await router.push(`/guest-order-success/${order.id}?email=${encodeURIComponent(order.guest_email)}`);
   } catch (err) {
-    console.error('Failed to create guest order:', err);
     const detail = err.response?.data?.detail;
     toast(detail || 'Не удалось создать заказ', 'error');
   } finally {

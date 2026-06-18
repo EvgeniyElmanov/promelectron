@@ -161,7 +161,6 @@ test.describe('Checkout Flow', () => {
     );
     await page.click('[data-testid="pay-button"]');
     const payResponse = await payResponsePromise;
-    console.log(`Payment API status: ${payResponse.status()}`);
 
     // Wait for redirect to YooKassa payment page
     // In CI/CD test environments YooKassa credentials may be missing — handle gracefully
@@ -169,7 +168,6 @@ test.describe('Checkout Flow', () => {
       await page.waitForURL(/yoomoney\.ru|yookassa\.ru/, { timeout: 30000 });
     } catch {
       // YooKassa not configured or redirect blocked — skip card flow
-      console.log(`YooKassa redirect did not occur (status ${payResponse.status()}), skipping card flow`);
       // Skip rest of test — environment limitation, not a product bug
       return;
     }

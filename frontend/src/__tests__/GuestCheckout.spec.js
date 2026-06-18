@@ -127,7 +127,6 @@ describe('GuestCheckout.vue', () => {
 
     expect(mockPost).toHaveBeenCalledWith('/orders/create-guest', expect.objectContaining({
       guest_email: 'test@example.com',
-      guest_name: 'Иван Иванов',
       guest_phone: '+79990001122',
       recipient_first_name: 'Иван',
       recipient_last_name: 'Иванов',

@@ -13,7 +13,6 @@ class TestGuestOrdersAPI:
                 "items": [{"product_id": test_product.id, "quantity": 2}],
                 "cdek_delivery": cdek_delivery_payload,
                 "guest_email": "guest@example.com",
-                "guest_name": "Иван Гость",
                 "guest_phone": "+79990001122",
                 "recipient_first_name": "Иван",
                 "recipient_last_name": "Гость",
@@ -23,7 +22,7 @@ class TestGuestOrdersAPI:
         data = response.json()
         assert data["user_id"] is None
         assert data["guest_email"] == "guest@example.com"
-        assert data["guest_name"] == "Иван Гость"
+        assert data["guest_name"] is None
         assert data["recipient_first_name"] == "Иван"
         assert data["recipient_last_name"] == "Гость"
         assert data["guest_phone"] == "+79990001122"
@@ -41,7 +40,6 @@ class TestGuestOrdersAPI:
                 "items": [],
                 "cdek_delivery": cdek_delivery_payload,
                 "guest_email": "guest@example.com",
-                "guest_name": "Иван Гость",
                 "guest_phone": "+79990001122",
                 "recipient_first_name": "Иван",
                 "recipient_last_name": "Гость",
@@ -59,7 +57,6 @@ class TestGuestOrdersAPI:
                 "items": [{"product_id": 99999, "quantity": 1}],
                 "cdek_delivery": cdek_delivery_payload,
                 "guest_email": "guest@example.com",
-                "guest_name": "Иван Гость",
                 "guest_phone": "+79990001122",
                 "recipient_first_name": "Иван",
                 "recipient_last_name": "Гость",
@@ -76,7 +73,6 @@ class TestGuestOrdersAPI:
                 "items": [{"product_id": test_product.id, "quantity": test_product.stock + 1}],
                 "cdek_delivery": cdek_delivery_payload,
                 "guest_email": "guest@example.com",
-                "guest_name": "Иван Гость",
                 "guest_phone": "+79990001122",
                 "recipient_first_name": "Иван",
                 "recipient_last_name": "Гость",
@@ -95,7 +91,6 @@ class TestGuestOrdersAPI:
                 "items": [{"product_id": test_product.id, "quantity": 2}],
                 "cdek_delivery": cdek_delivery_payload,
                 "guest_email": "guest@example.com",
-                "guest_name": "Иван Гость",
                 "guest_phone": "+79990001122",
                 "recipient_first_name": "Иван",
                 "recipient_last_name": "Гость",
@@ -115,7 +110,6 @@ class TestGuestOrdersAPI:
                 "items": [{"product_id": test_product.id, "quantity": 1}],
                 "cdek_delivery": cdek_delivery_payload,
                 "guest_email": "guest@example.com",
-                "guest_name": "Иван Гость",
                 "guest_phone": "+79990001122",
                 "recipient_first_name": "Иван",
                 "recipient_last_name": "Гость",
@@ -141,7 +135,6 @@ class TestGuestOrdersAPI:
                 "items": [{"product_id": test_product.id, "quantity": 1}],
                 "cdek_delivery": cdek_delivery_payload,
                 "guest_email": "guest@example.com",
-                "guest_name": "Иван Гость",
                 "guest_phone": "+79990001122",
                 "recipient_first_name": "Иван",
                 "recipient_last_name": "Гость",

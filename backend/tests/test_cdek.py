@@ -157,8 +157,18 @@ class TestCdekService:
         assert recipient["name"] == "Иван Гость"
         assert recipient["phones"][0]["number"] == "+79990001122"
 
+    def test_build_recipient_fallback_to_user_full_name(self):
+        """При отсутствии раздельных имён используется user.full_name."""
+        from src.app.models.user import User
+
+        user = User(full_name="Анна Авторизованная", phone="+79990001122")
+        order = Order(user=user)
+        recipient = CdekService._build_recipient(order)
+        assert recipient["name"] == "Анна Авторизованная"
+        assert recipient["phones"][0]["number"] == "+79990001122"
+
     def test_build_recipient_fallback_to_guest_name(self):
-        """При отсутствии раздельных имён используется guest_name."""
+        """При отсутствии раздельных имён и пользователя используется guest_name."""
         order = Order(guest_name="Петр Получатель", guest_phone="+79990001122")
         recipient = CdekService._build_recipient(order)
         assert recipient["name"] == "Петр Получатель"

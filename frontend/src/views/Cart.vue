@@ -258,8 +258,7 @@ const fetchCart = async () => {
         })),
       };
     }
-  } catch (err) {
-    console.error('Failed to fetch cart:', err);
+  } catch {
     toast('Не удалось загрузить корзину', 'error');
   } finally {
     loading.value = false;
@@ -282,8 +281,7 @@ const updateQuantity = async (itemId, newQuantity) => {
       await updateGuestQuantity(productId, newQuantity);
     }
     await fetchCart();
-  } catch (err) {
-    console.error('Failed to update quantity:', err);
+  } catch {
     toast('Не удалось обновить количество', 'error');
   } finally {
     updatingId.value = null;
@@ -301,8 +299,7 @@ const removeItem = async (itemId) => {
     }
     await fetchCart();
     toast('Товар удалён из корзины', 'info');
-  } catch (err) {
-    console.error('Failed to remove item:', err);
+  } catch {
     toast('Не удалось удалить товар', 'error');
   }
 };
@@ -331,7 +328,6 @@ const createOrder = async () => {
     toast('Заказ успешно создан!', 'success');
     await router.push(`/checkout/${order.id}`);
   } catch (err) {
-    console.error('Failed to create order:', err);
     const detail = err.response?.data?.detail;
     toast(detail || 'Не удалось создать заказ', 'error');
   } finally {
