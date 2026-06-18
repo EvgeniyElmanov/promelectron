@@ -56,7 +56,24 @@ class CdekClient:
                 {
                     "code": "TEST_PVZ_1",
                     "name": "Тестовый ПВЗ",
-                    "location": {"address": "г. Москва, ул. Тестовая, д. 1"},
+                    "city_code": 44,
+                    "city": "Москва",
+                    "region": "Москва",
+                    "type": "PVZ",
+                    "country_code": "RU",
+                    "postal_code": "101000",
+                    "have_cashless": True,
+                    "have_cash": True,
+                    "allowed_cod": True,
+                    "is_dressing_room": True,
+                    "address": "г. Москва, ул. Тестовая, д. 1",
+                    "work_time": "Пн-Пт: 10:00-20:00",
+                    "location": [37.617698, 55.755864],
+                    "dimensions": [
+                        {"depth": 50, "width": 50, "height": 50},
+                    ],
+                    "weight_min": 0,
+                    "weight_max": 30000,
                 },
             ]
 
