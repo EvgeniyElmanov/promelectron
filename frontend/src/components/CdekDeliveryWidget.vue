@@ -198,6 +198,7 @@ async function openWidget() {
 
   try {
     widgetInstance.value = new window.CDEKWidget(buildWidgetOptions());
+    widgetInstance.value.open?.();
   } catch {
     loadError.value = true;
   } finally {
