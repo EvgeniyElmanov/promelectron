@@ -44,10 +44,10 @@ class WidgetCalculateRequest(BaseModel):
     action: WidgetAction
     type: int | None = None
     date: str | None = None
-    currency: str | None = None
+    currency: int | str | None = None
     lang: str | None = None
     from_location: dict[str, Any] | None = None
-    to_location: dict[str, Any] | None = None
+    to_location: dict[str, Any] | int | None = None
     services: list[dict[str, Any]] | None = None
     packages: list[dict[str, Any]] = Field(default_factory=list)
     delivery_point: str | None = None
