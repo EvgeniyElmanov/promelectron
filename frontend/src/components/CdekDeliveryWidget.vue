@@ -318,7 +318,11 @@ onUnmounted(() => {
 .cdek-widget__container {
   position: fixed;
   inset: 0;
+  z-index: 1000;
+  pointer-events: auto;
+}
+
+.cdek-widget__container:empty {
   pointer-events: none;
-  z-index: -1;
 }
 </style>
