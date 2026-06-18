@@ -320,10 +320,10 @@ onUnmounted(() => {
   position: fixed;
   inset: 0;
   z-index: 1000;
-  pointer-events: auto;
+  pointer-events: none;
 }
 
-.cdek-widget__container:empty {
-  pointer-events: none;
+.cdek-widget__container > * {
+  pointer-events: auto;
 }
 </style>
