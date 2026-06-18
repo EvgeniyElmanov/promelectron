@@ -14,7 +14,7 @@
       </button>
     </div>
 
-    <div v-else class="cdek-widget__selected">
+    <div v-else class="cdek-widget__selected" data-testid="cdek-selected-delivery">
       <div class="cdek-widget__info">
         <span class="cdek-widget__mode">
           {{ selectedDelivery.delivery_mode === 'PVZ' ? 'Пункт выдачи' : 'Курьерская доставка' }}
@@ -26,15 +26,15 @@
         </p>
       </div>
       <div class="cdek-widget__price">{{ formatPrice(selectedDelivery.price) }} ₽</div>
-      <button class="cdek-widget__change" @click="openWidget">Изменить</button>
+      <button class="cdek-widget__change" data-testid="cdek-change-delivery" @click="openWidget">Изменить</button>
     </div>
 
-    <div v-if="loadError" class="cdek-widget__error">
+    <div v-if="loadError" class="cdek-widget__error" data-testid="cdek-widget-error">
       Не удалось загрузить виджет СДЭК. Проверьте подключение к интернету и повторите попытку.
     </div>
 
     <!-- Hidden container required by the official widget -->
-    <div id="cdek-widget-container" class="cdek-widget__container"></div>
+    <div id="cdek-widget-container" class="cdek-widget__container" data-testid="cdek-widget-container"></div>
   </div>
 </template>
 

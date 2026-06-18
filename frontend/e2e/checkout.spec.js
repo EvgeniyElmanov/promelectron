@@ -44,13 +44,29 @@ async function selectCdekDelivery(page) {
   await page.waitForSelector('.cdek-widget__selected', { timeout: 5000 });
 }
 
-async function fillRecipientName(page) {
-  await page.fill('[data-testid="recipient-first-name"]', 'Иван');
-  await page.fill('[data-testid="recipient-last-name"]', 'Иванов');
+async function fillRecipientName(page, firstName = 'Иван', lastName = 'Иванов') {
+  await page.fill('[data-testid="recipient-first-name"]', firstName);
+  await page.fill('[data-testid="recipient-last-name"]', lastName);
+}
+
+async function fillGuestContactInfo(page, email, firstName = 'Иван', lastName = 'Иванов', phone = '+79990001122') {
+  await page.fill('[data-testid="guest-email"]', email);
+  await page.fill('[data-testid="guest-first-name"]', firstName);
+  await page.fill('[data-testid="guest-last-name"]', lastName);
+  await page.fill('[data-testid="guest-phone"]', phone);
+}
+
+async function addFirstProductToCart(page) {
+  await page.goto('/');
+  const firstProduct = page.locator('[data-testid="product-card"]').first();
+  await expect(firstProduct).toBeVisible();
+  await firstProduct.locator('[data-testid="add-to-cart-button"]').click();
+  await expect(page.locator('.toast--success')).toBeVisible({ timeout: 5000 });
+  await page.waitForTimeout(300);
 }
 
 test.describe('Checkout Flow', () => {
-  test('user can place an order', async ({ page }) => {
+  test('authenticated user can place an order with CDEK delivery and recipient name', async ({ page }) => {
     const email = uniqueEmail();
     const password = 'TestPassword123!';
 
@@ -73,12 +89,7 @@ test.describe('Checkout Flow', () => {
     await page.waitForTimeout(1000);
 
     // Add product to cart
-    await page.goto('/');
-    const firstProduct = page.locator('[data-testid="product-card"]').first();
-    await expect(firstProduct).toBeVisible();
-    await firstProduct.locator('[data-testid="add-to-cart-button"]').click();
-    await expect(page.locator('.toast--success')).toBeVisible({ timeout: 5000 });
-    await page.waitForTimeout(300);
+    await addFirstProductToCart(page);
 
     // Go to cart
     await goToCart(page);
@@ -87,7 +98,7 @@ test.describe('Checkout Flow', () => {
 
     // Select CDEK delivery and fill recipient name
     await selectCdekDelivery(page);
-    await fillRecipientName(page);
+    await fillRecipientName(page, 'Иван', 'Иванов');
 
     // Place order → redirects to checkout page
     const createOrderResponse = page.waitForResponse(
@@ -97,12 +108,78 @@ test.describe('Checkout Flow', () => {
     await page.locator('[data-testid="checkout-button"]').click();
     const response = await createOrderResponse;
     expect(response.status()).toBe(200);
+
+    // Verify order creation payload includes recipient names
+    const request = await response.request();
+    const requestBody = await request.postDataJSON();
+    expect(requestBody).toHaveProperty('recipient_first_name', 'Иван');
+    expect(requestBody).toHaveProperty('recipient_last_name', 'Иванов');
+    expect(requestBody.cdek_delivery).toHaveProperty('tariff_code', 136);
+
+    // Verify order response includes recipient names
+    const order = await response.json();
+    expect(order).toHaveProperty('recipient_first_name', 'Иван');
+    expect(order).toHaveProperty('recipient_last_name', 'Иванов');
+
     await expect(page).toHaveURL(/\/checkout\/\d+/, { timeout: 30000 });
 
-    // Verify checkout page shows pay button that redirects to YooKassa
+    // Verify checkout page shows recipient name and pay button
+    const recipientBlock = page.locator('[data-testid="checkout-recipient"]');
+    await expect(recipientBlock).toBeVisible();
+    await expect(recipientBlock).toContainText('Иван Иванов');
+
     const payButton = page.locator('[data-testid="pay-button"]');
     await expect(payButton).toBeVisible();
     await expect(payButton).toContainText('Оплатить');
+  });
+
+  test('guest user can place an order with CDEK delivery and recipient name', async ({ page }) => {
+    const email = uniqueEmail();
+
+    await mockCdekWidget(page);
+
+    // Add product to cart as guest
+    await addFirstProductToCart(page);
+
+    // Navigate directly to guest checkout
+    await page.goto('/guest-checkout');
+    await expect(page).toHaveURL('/guest-checkout');
+    await expect(page.locator('[data-testid="guest-checkout-page"]')).toBeVisible();
+
+    // Select CDEK delivery
+    await selectCdekDelivery(page);
+
+    // Fill contact info and recipient name
+    await fillGuestContactInfo(page, email, 'Пётр', 'Петров', '+79990002233');
+
+    // Submit order
+    const createOrderResponse = page.waitForResponse(
+      response => response.url().includes('/orders/create-guest'),
+      { timeout: 30000 }
+    );
+    await page.locator('[data-testid="guest-checkout-submit"]').click();
+    const response = await createOrderResponse;
+    expect(response.status()).toBe(200);
+
+    // Verify order creation payload includes recipient names
+    const request = await response.request();
+    const requestBody = await request.postDataJSON();
+    expect(requestBody).toHaveProperty('guest_email', email);
+    expect(requestBody).toHaveProperty('guest_phone', '+79990002233');
+    expect(requestBody).toHaveProperty('recipient_first_name', 'Пётр');
+    expect(requestBody).toHaveProperty('recipient_last_name', 'Петров');
+    expect(requestBody.cdek_delivery).toHaveProperty('tariff_code', 136);
+
+    // Verify order response includes recipient names
+    const order = await response.json();
+    expect(order).toHaveProperty('recipient_first_name', 'Пётр');
+    expect(order).toHaveProperty('recipient_last_name', 'Петров');
+    expect(order).toHaveProperty('guest_email', email);
+
+    // Verify redirect to guest order success page
+    await expect(page).toHaveURL(/\/guest-order-success\/\d+/, { timeout: 30000 });
+    await expect(page.locator('[data-testid="guest-order-success-page"]')).toBeVisible();
+    await expect(page.locator('[data-testid="success-email"]')).toHaveText(email);
   });
 
   test('user can pay with YooKassa test card', async ({ page }) => {
@@ -130,12 +207,7 @@ test.describe('Checkout Flow', () => {
     await page.waitForTimeout(1000);
 
     // 3. Add product to cart
-    await page.goto('/');
-    const firstProduct = page.locator('[data-testid="product-card"]').first();
-    await expect(firstProduct).toBeVisible();
-    await firstProduct.locator('[data-testid="add-to-cart-button"]').click();
-    await expect(page.locator('.toast--success')).toBeVisible({ timeout: 5000 });
-    await page.waitForTimeout(300);
+    await addFirstProductToCart(page);
 
     // 4. Go to cart and place order
     await goToCart(page);
@@ -143,7 +215,7 @@ test.describe('Checkout Flow', () => {
     await page.waitForSelector('[data-testid="cart-item"]', { timeout: 5000 });
 
     await selectCdekDelivery(page);
-    await fillRecipientName(page);
+    await fillRecipientName(page, 'Иван', 'Иванов');
 
     const createOrderResponse = page.waitForResponse(
       response => response.url().includes('/orders/create'),
