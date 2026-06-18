@@ -53,10 +53,19 @@
       <div class="field">
         <label class="field__label">Имя <span class="field__required">*</span></label>
         <input
-          v-model="guestName"
+          v-model="guestFirstName"
           class="field__input"
-          placeholder="Иван Иванов"
-          data-testid="guest-name"
+          placeholder="Иван"
+          data-testid="guest-first-name"
+        />
+      </div>
+      <div class="field">
+        <label class="field__label">Фамилия <span class="field__required">*</span></label>
+        <input
+          v-model="guestLastName"
+          class="field__input"
+          placeholder="Иванов"
+          data-testid="guest-last-name"
         />
       </div>
       <div class="field">
@@ -105,7 +114,8 @@ const { getGuestCartItems, clearGuestCart } = useCart();
 const items = ref([]);
 const selectedDelivery = ref(null);
 const guestEmail = ref('');
-const guestName = ref('');
+const guestFirstName = ref('');
+const guestLastName = ref('');
 const guestPhone = ref('');
 const submitting = ref(false);
 
@@ -125,7 +135,8 @@ const isDeliveryValid = computed(() => {
 
 const canSubmit = computed(() => {
   return guestEmail.value.trim().length > 0
-    && guestName.value.trim().length > 0
+    && guestFirstName.value.trim().length > 0
+    && guestLastName.value.trim().length > 0
     && guestPhone.value.trim().length > 0
     && isDeliveryValid.value;
 });
@@ -144,8 +155,12 @@ const submitOrder = async () => {
     toast('Укажите email', 'error');
     return;
   }
-  if (!guestName.value.trim()) {
+  if (!guestFirstName.value.trim()) {
     toast('Укажите имя', 'error');
+    return;
+  }
+  if (!guestLastName.value.trim()) {
+    toast('Укажите фамилию', 'error');
     return;
   }
   if (!guestPhone.value.trim()) {
@@ -163,12 +178,16 @@ const submitOrder = async () => {
 
   submitting.value = true;
   try {
+    const firstName = guestFirstName.value.trim();
+    const lastName = guestLastName.value.trim();
     const payload = {
       items: items.value.map(i => ({ product_id: i.product_id, quantity: i.quantity })),
       cdek_delivery: { ...selectedDelivery.value },
       guest_email: guestEmail.value.trim(),
-      guest_name: guestName.value.trim(),
+      guest_name: `${firstName} ${lastName}`,
       guest_phone: guestPhone.value.trim(),
+      recipient_first_name: firstName,
+      recipient_last_name: lastName,
     };
     const { data: order } = await api.post('/orders/create-guest', payload);
     clearGuestCart();

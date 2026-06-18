@@ -14,31 +14,47 @@ async function fillAddress(page, prefix) {
   await page.fill(`[data-testid="${prefix}apartment"]`, '42');
 }
 
+async function mockCdekWidget(page) {
+  await page.addInitScript(() => {
+    window.CDEKWidget = class MockCDEKWidget {
+      constructor(options) {
+        this.options = options;
+        setTimeout(() => {
+          options.onChoose('PVZ', {
+            tariff_code: 136,
+            tariff_name: 'Экспресс-экспедиция',
+            delivery_sum: 350,
+            period_min: 1,
+            period_max: 3,
+          }, {
+            code: 'TEST_PVZ_1',
+            location: { city_code: 44, city: 'Москва', address: 'ул. Тестовая, 1' },
+          });
+        }, 50);
+      }
+      destroy() {}
+    };
+  });
+}
+
 async function selectCdekDelivery(page) {
-  // Open CDEK widget modal
+  // Open CDEK widget modal (mocked via init script)
   await page.click('[data-testid="cdek-open-selector"]');
-  await page.waitForSelector('[data-testid="cdek-city-input"]');
+  // Wait for the selected delivery summary to appear
+  await page.waitForSelector('.cdek-widget__selected', { timeout: 5000 });
+}
 
-  // Type city and select suggestion
-  await page.fill('[data-testid="cdek-city-input"]', 'Москва');
-  await page.waitForTimeout(600);
-  await page.locator('.cdek-widget__suggestions li').first().click();
-
-  // Select PVZ
-  await page.waitForSelector('[data-testid="cdek-pvz-select"]');
-  await page.selectOption('[data-testid="cdek-pvz-select"]', 'TEST_PVZ_1');
-
-  // Calculate and confirm
-  await page.click('[data-testid="cdek-calculate"]');
-  await page.waitForSelector('.cdek-widget__tariff-option');
-  await page.locator('.cdek-widget__tariff-option').first().click();
-  await page.click('[data-testid="cdek-confirm"]');
+async function fillRecipientName(page) {
+  await page.fill('[data-testid="recipient-first-name"]', 'Иван');
+  await page.fill('[data-testid="recipient-last-name"]', 'Иванов');
 }
 
 test.describe('Checkout Flow', () => {
   test('user can place an order', async ({ page }) => {
     const email = uniqueEmail();
     const password = 'TestPassword123!';
+
+    await mockCdekWidget(page);
 
     // Register
     await page.goto('/register');
@@ -69,8 +85,9 @@ test.describe('Checkout Flow', () => {
     await expect(page).toHaveURL('/cart');
     await page.waitForSelector('[data-testid="cart-item"]', { timeout: 5000 });
 
-    // Select CDEK delivery
+    // Select CDEK delivery and fill recipient name
     await selectCdekDelivery(page);
+    await fillRecipientName(page);
 
     // Place order → redirects to checkout page
     const createOrderResponse = page.waitForResponse(
@@ -93,6 +110,8 @@ test.describe('Checkout Flow', () => {
 
     const email = uniqueEmail();
     const password = 'TestPassword123!';
+
+    await mockCdekWidget(page);
 
     // 1. Register
     await page.goto('/register');
@@ -124,6 +143,7 @@ test.describe('Checkout Flow', () => {
     await page.waitForSelector('[data-testid="cart-item"]', { timeout: 5000 });
 
     await selectCdekDelivery(page);
+    await fillRecipientName(page);
 
     const createOrderResponse = page.waitForResponse(
       response => response.url().includes('/orders/create'),

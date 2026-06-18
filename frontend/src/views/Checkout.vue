@@ -31,6 +31,11 @@
             Срок: {{ order.delivery_method.estimated_days }} {{ order.delivery_method.estimated_days === 1 ? 'день' : order.delivery_method.estimated_days < 5 ? 'дня' : 'дней' }}
           </div>
         </div>
+
+        <div v-if="order.recipient_first_name || order.recipient_last_name" class="checkout__recipient" data-testid="checkout-recipient">
+          <div class="checkout__recipient-label">Получатель</div>
+          <div class="checkout__recipient-name">{{ order.recipient_first_name }} {{ order.recipient_last_name }}</div>
+        </div>
       </div>
 
       <!-- Payment Info -->
@@ -315,5 +320,23 @@ onMounted(fetchOrder);
   font-size: 13px;
   color: var(--color-text-secondary);
   margin-top: 4px;
+}
+
+.checkout__recipient {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+}
+
+.checkout__recipient-label {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin-bottom: 2px;
+}
+
+.checkout__recipient-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text);
 }
 </style>

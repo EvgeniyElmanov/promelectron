@@ -14,6 +14,25 @@ YYYY-MM-DD HH:MM | <role> | <краткое описание>
 
 ## Записи (новые сверху)
 
+### 2026-06-18 13:35 | frontend-dev | cdek-widget-recipient-name — frontend implementation complete
+  Изменено:
+  - `frontend/src/components/CdekDeliveryWidget.vue` — полностью переписан под официальный виджет `@cdek-it/widget@3` с CDN: динамическая загрузка скрипта, `destroy()` при unmount, `servicePath: /api/v1/cdek/widget-service/`, нормализация `onChoose(type, tariff, point)` в формат `CdekDeliveryIn`, обработка ошибок загрузки, сохранены `data-testid="cdek-delivery-widget"` и `data-testid="cdek-open-selector"`.
+  - `frontend/src/views/Cart.vue` — добавлены поля `recipient_first_name` / `recipient_last_name` для авторизованных пользователей, валидация, передача в `POST /orders/create`.
+  - `frontend/src/views/GuestCheckout.vue` — заменено единое поле `guestName` на раздельные `guest_first_name` / `guest_last_name`, валидация, передача `recipient_first_name` / `recipient_last_name` в `POST /orders/create-guest` (с сохранением `guest_name` как конкатенации для backward compatibility).
+  - `frontend/src/views/Checkout.vue` — отображение блока получателя (`data-testid="checkout-recipient"`) по данным заказа.
+  - `.env.example` — добавлен `VITE_YANDEX_MAPS_API_KEY=`.
+  - `frontend/src/__tests__/GuestCheckout.spec.js`, `Checkout.spec.js`, `Cart.spec.js` — обновлены под новые поля и payload; добавлен `frontend/src/__tests__/CdekDeliveryWidget.spec.js`.
+  - `frontend/e2e/checkout.spec.js` — добавлен мок `window.CDEKWidget` через `page.addInitScript`, helper'ы `selectCdekDelivery` и `fillRecipientName`.
+  - `PROJECT_CONTEXT.md` — обновлены метрики frontend-тестов и история изменений.
+  Результат:
+  - `cd frontend && npm test -- --run` — 125/125 ✅
+  - `cd frontend && npm run lint` — чисто ✅
+  - `npx playwright test --list` — 101 E2E-тест распознан ✅
+  Риск/Техдолг:
+  - `profile.spec.js` не требовал изменений: не затрагивает CDEK-виджет и раздельные имена получателя.
+  - В реальном браузере виджет зависит от CDN и Yandex Maps API key; в E2E используется мок.
+  Блокер: Нет
+
 ### 2026-06-18 04:45 | backend-dev | cdek-widget-recipient-name — backend implementation complete
   Изменено:
   - `backend/src/app/models/order.py` — колонки `recipient_first_name`, `recipient_last_name`.

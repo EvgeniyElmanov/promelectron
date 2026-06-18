@@ -1,15 +1,15 @@
 ---
 sprint: "Sprint 1"
 sprint_dates: "2026-06-01 — 2026-06-14"
-last_update: "2026-06-16"
+last_update: "2026-06-18"
 last_commit: "f469859"
 commit_message: "feat(admin): unified section tabs for admin panel"
 blockers_count: 1
 blockers_p0: 0
 blockers_p1: 1
 backend_tests: "166/166"
-frontend_tests: "108/108"
-e2e_tests: "98/98"
+frontend_tests: "125/125"
+e2e_tests: "101/101"
 ---
 
 # PROJECT_CONTEXT — Promelectron
@@ -221,6 +221,7 @@ make test-e2e      # Playwright
 
 | Дата | Что изменилось | Кто |
 |------|---------------|-----|
+| 2026-06-18 | **cdek-widget-recipient-name (frontend)**: `CdekDeliveryWidget.vue` переписан под официальный виджет `@cdek-it/widget@3` (загрузка с CDN, уничтожение при unmount, нормализация `onChoose` в `CdekDeliveryIn`, `servicePath: /api/v1/cdek/widget-service/`); в `Cart.vue` добавлены поля имени/фамилии получателя и валидация перед созданием заказа; `GuestCheckout.vue` заменил единое поле `guestName` на раздельные `guest_first_name`/`guest_last_name` и передаёт `recipient_first_name`/`recipient_last_name`; `Checkout.vue` отображает получателя; добавлен `VITE_YANDEX_MAPS_API_KEY` в `.env.example`; обновлены unit-тесты (`GuestCheckout.spec.js`, `Checkout.spec.js`, `Cart.spec.js`) и добавлен `CdekDeliveryWidget.spec.js`; E2E `checkout.spec.js` адаптирован под мок официального виджета. Frontend-тесты: 125/125 ✅, линтер чисто ✅. | frontend-dev |
 | 2026-06-18 | **cdek-widget-recipient-name (backend)**: добавлены `recipient_first_name` / `recipient_last_name` в модель `Order`, схемы `OrderCreate`/`GuestOrderCreate`/`OrderOut` и `OrderService`; `CdekService._build_recipient` формирует имя из раздельных полей с fallback на `user.full_name`/`guest_name`; новый публичный endpoint `/api/v1/cdek/widget-service/` проксирует `action=offices` и `action=calculate` через `CdekClient`; добавлена Alembic-миграция `becdb9cce9b1`; обновлены backend-тесты (`test_cdek.py`, `test_orders.py`, `test_guest_orders.py`). Backend-тесты: 166/166 ✅. | backend-dev |
 | 2026-06-16 | **admin-section-tabs (frontend)**: в `Admin.vue` добавлена единая горизонтальная таб-навигация по разделам админки (Дашборд, Пользователи, Категории, Способы доставки, Заказы, Фичатоглы) для десктопа и мобильных; по умолчанию активен Дашборд; добавлены `data-testid` для табов и панелей разделов. Обновлены unit-тесты `Admin.spec.js` и E2E `admin.spec.js`. Frontend-тесты: 108/108 ✅. | frontend-dev |
 | 2026-06-16 | **admin-categories-tabs — final review + E2E**: исправлены замечания ревью (append в пагинации, debounce поиска, backend lint). Code review: APPROVED. E2E admin.spec.js: 2/2 ✅. Обновлены `PROJECT_CONTEXT.md` и `SESSION_LOG.md`. | code-reviewer / e2e-tester |

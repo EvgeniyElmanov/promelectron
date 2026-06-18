@@ -87,7 +87,8 @@ describe('GuestCheckout.vue', () => {
     await flushPromises();
 
     expect(wrapper.find('[data-testid="guest-email"]').exists()).toBe(true);
-    expect(wrapper.find('[data-testid="guest-name"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="guest-first-name"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="guest-last-name"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="guest-phone"]').exists()).toBe(true);
   });
 
@@ -110,7 +111,8 @@ describe('GuestCheckout.vue', () => {
 
     // Fill contact fields
     await wrapper.find('[data-testid="guest-email"]').setValue('test@example.com');
-    await wrapper.find('[data-testid="guest-name"]').setValue('Иван');
+    await wrapper.find('[data-testid="guest-first-name"]').setValue('Иван');
+    await wrapper.find('[data-testid="guest-last-name"]').setValue('Иванов');
     await wrapper.find('[data-testid="guest-phone"]').setValue('+79990001122');
 
     // Select delivery
@@ -125,8 +127,10 @@ describe('GuestCheckout.vue', () => {
 
     expect(mockPost).toHaveBeenCalledWith('/orders/create-guest', expect.objectContaining({
       guest_email: 'test@example.com',
-      guest_name: 'Иван',
+      guest_name: 'Иван Иванов',
       guest_phone: '+79990001122',
+      recipient_first_name: 'Иван',
+      recipient_last_name: 'Иванов',
       items: [
         { product_id: 1, quantity: 2 },
         { product_id: 2, quantity: 1 },
@@ -144,7 +148,8 @@ describe('GuestCheckout.vue', () => {
     await flushPromises();
 
     wrapper.vm.guestEmail = 'test@example.com';
-    wrapper.vm.guestName = 'Иван';
+    wrapper.vm.guestFirstName = 'Иван';
+    wrapper.vm.guestLastName = 'Иванов';
     wrapper.vm.guestPhone = '+79990001122';
     wrapper.vm.selectedDelivery = selectedDelivery;
     await flushPromises();

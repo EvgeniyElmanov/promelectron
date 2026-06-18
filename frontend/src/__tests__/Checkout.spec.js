@@ -33,6 +33,8 @@ const mockOrder = {
   status: 'pending',
   total_price: 14990,
   shipping_address: 'Москва, ул. Ленина, д. 1',
+  recipient_first_name: 'Иван',
+  recipient_last_name: 'Иванов',
   created_at: '2026-05-13T10:00:00Z',
   items: [
     { id: 1, product_id: 1, quantity: 1, price_at_time: 14990 },
@@ -71,6 +73,14 @@ describe('Checkout.vue', () => {
     const wrapper = await mountComponent();
     expect(wrapper.text()).toContain('14\u00A0990');
     expect(wrapper.text()).toContain('1 товаров');
+  });
+
+  it('показывает имя получателя', async () => {
+    const wrapper = await mountComponent();
+    const recipient = wrapper.find('[data-testid="checkout-recipient"]');
+    expect(recipient.exists()).toBe(true);
+    expect(recipient.text()).toContain('Иван');
+    expect(recipient.text()).toContain('Иванов');
   });
 
   it('кнопка оплаты активна', async () => {

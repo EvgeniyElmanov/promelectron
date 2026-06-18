@@ -131,6 +131,32 @@
             v-model="selectedDelivery"
             :items="cart.items"
           />
+
+          <div class="cart__recipient">
+            <h4 class="cart__recipient-title">Получатель</h4>
+            <div class="cart__recipient-fields">
+              <div class="cart__recipient-field">
+                <label for="recipient-first-name">Имя</label>
+                <input
+                  id="recipient-first-name"
+                  v-model="recipientFirstName"
+                  type="text"
+                  placeholder="Иван"
+                  data-testid="recipient-first-name"
+                />
+              </div>
+              <div class="cart__recipient-field">
+                <label for="recipient-last-name">Фамилия</label>
+                <input
+                  id="recipient-last-name"
+                  v-model="recipientLastName"
+                  type="text"
+                  placeholder="Иванов"
+                  data-testid="recipient-last-name"
+                />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -144,7 +170,7 @@
       <button
         class="cart__checkout-btn"
         data-testid="checkout-button"
-        :disabled="creatingOrder || (isAuthenticated && !isDeliveryValid)"
+        :disabled="creatingOrder || (isAuthenticated && (!isDeliveryValid || !isRecipientValid))"
         @click="createOrder"
       >
         {{ creatingOrder ? 'Оформление...' : 'Оформить заказ' }}
@@ -168,6 +194,8 @@ const loading = ref(true);
 const creatingOrder = ref(false);
 const updatingId = ref(null);
 const selectedDelivery = ref(null);
+const recipientFirstName = ref('');
+const recipientLastName = ref('');
 const router = useRouter();
 const { add: toast } = useToast();
 const { isAuthenticated } = useAuth();
@@ -179,6 +207,10 @@ const swipedItemId = ref(null);
 
 const isDeliveryValid = computed(() => {
   return selectedDelivery.value && selectedDelivery.value.tariff_code;
+});
+
+const isRecipientValid = computed(() => {
+  return recipientFirstName.value.trim().length > 0 && recipientLastName.value.trim().length > 0;
 });
 
 const itemCount = computed(() => {
@@ -285,10 +317,16 @@ const createOrder = async () => {
     toast('Выберите доставку СДЭК', 'error');
     return;
   }
+  if (!isRecipientValid.value) {
+    toast('Укажите имя и фамилию получателя', 'error');
+    return;
+  }
   creatingOrder.value = true;
   try {
     const { data: order } = await api.post('/orders/create', {
       cdek_delivery: { ...selectedDelivery.value },
+      recipient_first_name: recipientFirstName.value.trim(),
+      recipient_last_name: recipientLastName.value.trim(),
     });
     toast('Заказ успешно создан!', 'success');
     await router.push(`/checkout/${order.id}`);
@@ -700,6 +738,52 @@ onMounted(() => {
   font-size: 18px;
   font-weight: 700;
   color: var(--color-text);
+}
+
+/* Recipient */
+.cart__recipient {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
+}
+
+.cart__recipient-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0 0 10px;
+}
+
+.cart__recipient-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.cart__recipient-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cart__recipient-field label {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.cart__recipient-field input {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-white);
+  font-size: 15px;
+  color: var(--color-text);
+  width: 100%;
+}
+
+.cart__recipient-field input:focus {
+  outline: none;
+  border-color: var(--color-primary);
 }
 
 /* Sticky Checkout Bar */

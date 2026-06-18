@@ -54,6 +54,19 @@ vi.mock('@/components/AddressForm.vue', () => ({
   },
 }));
 
+vi.mock('@/components/CdekDeliveryWidget.vue', () => ({
+  default: {
+    name: 'CdekDeliveryWidget',
+    template: '<div data-testid="cdek-delivery-widget"><button @click="select">Select delivery</button></div>',
+    props: ['modelValue', 'items'],
+    methods: {
+      select() {
+        this.$emit('update:modelValue', { tariff_code: 136, price: 350, delivery_mode: 'PVZ' });
+      },
+    },
+  },
+}));
+
 const router = createRouter({
   history: createWebHistory(),
   routes: [{ path: '/', component: { template: '<div>Home</div>' } }],
@@ -171,6 +184,47 @@ describe('Cart.vue', () => {
     await flushPromises();
 
     expect(mockDelete).toHaveBeenCalledWith('/cart/remove/101');
+  });
+
+  it('показывает поля имени и фамилии получателя для авторизованного пользователя', async () => {
+    const wrapper = mount(Cart, { global: { plugins: [router] } });
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="recipient-first-name"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="recipient-last-name"]').exists()).toBe(true);
+  });
+
+  it('отправляет имя и фамилию получателя при создании заказа', async () => {
+    mockPost.mockResolvedValue({ data: { id: 42 } });
+
+    const wrapper = mount(Cart, { global: { plugins: [router] } });
+    await flushPromises();
+
+    wrapper.vm.selectedDelivery = { tariff_code: 136, price: 350, delivery_mode: 'PVZ' };
+    wrapper.vm.recipientFirstName = 'Иван';
+    wrapper.vm.recipientLastName = 'Иванов';
+    await flushPromises();
+
+    const btn = wrapper.find('[data-testid="checkout-button"]');
+    await btn.trigger('click');
+    await flushPromises();
+
+    expect(mockPost).toHaveBeenCalledWith('/orders/create', expect.objectContaining({
+      cdek_delivery: expect.objectContaining({ tariff_code: 136 }),
+      recipient_first_name: 'Иван',
+      recipient_last_name: 'Иванов',
+    }));
+  });
+
+  it('не создаёт заказ без имени получателя', async () => {
+    const wrapper = mount(Cart, { global: { plugins: [router] } });
+    await flushPromises();
+
+    wrapper.vm.selectedDelivery = { tariff_code: 136, price: 350, delivery_mode: 'PVZ' };
+    await flushPromises();
+
+    const btn = wrapper.find('[data-testid="checkout-button"]');
+    expect(btn.attributes('disabled')).toBeDefined();
   });
 });
 
