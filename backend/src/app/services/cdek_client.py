@@ -129,9 +129,9 @@ class CdekClient:
                 "tariff_codes": [
                     {
                         "tariff_code": 136,
-                        "tariff_name": "Экспресс-_light_test",
+                        "tariff_name": "Экспресс-лайт тест",
                         "tariff_description": "Тестовый тариф",
-                        "delivery_mode": "PVZ",
+                        "delivery_mode": 4,
                         "delivery_sum": 350.0,
                         "period_min": 2,
                         "period_max": 4,
