@@ -14,6 +14,21 @@ YYYY-MM-DD HH:MM | <role> | <краткое описание>
 
 ## Записи (новые сверху)
 
+### 2026-06-19 12:30 | backend-dev | replace-yandex-with-cdek-test-key — implementation complete
+  Изменено:
+  - `backend/src/app/services/cdek_client.py` — добавлены `logger.warning` при использовании тестового fallback (CDEK_TEST_MODE=true, но нет CDEK_ACCOUNT/CDEK_SECURE) и при отсутствии кредов в прод-режиме (CDEK_TEST_MODE=false); функциональность не изменена.
+  - `backend/docker-compose.yml` — добавлены `CDEK_ACCOUNT`, `CDEK_SECURE`, `CDEK_API_URL`, `CDEK_TEST_MODE` в сервисы `api`, `worker`, `beat` с публичными тестовыми кредами CDEK по умолчанию.
+  - `.env.example` — обновлена секция CDEK публичными тестовыми кредами; добавлена секция CDEK Widget с пояснением, что `VITE_YANDEX_MAPS_API_KEY` — это ключ Yandex Maps JS API (нужен виджету v3 для карты), а не ключ CDEK.
+  - `frontend/Dockerfile` — обновлён комментарий у `VITE_YANDEX_MAPS_API_KEY`: теперь явно указано, что это Yandex Maps JS API key для CDEK widget v3.
+  Результат:
+  - `make test-backend` — 167/167 ✅
+  - `ruff check src/` — чисто ✅
+  - `cd frontend && npm test -- --run` — 127/127 ✅
+  Риск/Техдолг:
+  - Helm secrets (`infra/helm/stage/test/secrets.yaml`, `infra/helm/stage/prod/secrets.yaml`) не изменены — будут обработаны devops.
+  - Frontend-виджет (`frontend/src/components/CdekDeliveryWidget.vue`) не изменён.
+  Блокер: Нет
+
 ### 2026-06-18 14:10 | backend-dev / frontend-dev | cdek-widget-recipient-name — review iteration 1 fixes
   Изменено:
   - `backend/src/app/schemas/order.py` — `guest_name` optional в `GuestOrderCreate`; добавлена валидация `recipient_first_name`/`recipient_last_name` (min/max length, pattern, strip whitespace); добавлен `tariff_name` в `CdekDeliveryIn`.

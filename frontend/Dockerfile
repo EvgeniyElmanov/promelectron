@@ -10,7 +10,7 @@ ARG VITE_API_URL=/api/v1
 ENV VITE_API_URL=$VITE_API_URL
 ARG VITE_YANDEX_MAPS_API_KEY
 ENV VITE_YANDEX_MAPS_API_KEY=$VITE_YANDEX_MAPS_API_KEY
-# Yandex Maps JS API key is required by the official CDEK widget
+# Yandex Maps JS API key — required by the official CDEK widget v3 to render the map.
 RUN npm run build
 
 FROM nginx:alpine
