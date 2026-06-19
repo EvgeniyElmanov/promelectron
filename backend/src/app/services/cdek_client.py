@@ -42,6 +42,11 @@ class CdekClient:
         if not settings.cdek_test_mode or (self.account and self.secure):
             return None
 
+        logger.warning(
+            "CDEK_TEST_MODE=true but CDEK_ACCOUNT/CDEK_SECURE are not set; "
+            "using deterministic mock responses"
+        )
+
         if path == "/v2/oauth/token":
             return {"access_token": "test-token", "expires_in": 3600}
 
@@ -162,6 +167,10 @@ class CdekClient:
             return token
 
         if not self.account or not self.secure:
+            logger.warning(
+                "CDEK_TEST_MODE=false but CDEK_ACCOUNT/CDEK_SECURE are not set; "
+                "real CDEK requests will fail"
+            )
             raise CdekAPIError("CDEK credentials are not configured")
 
         response = await self._http.post(

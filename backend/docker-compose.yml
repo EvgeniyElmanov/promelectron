@@ -69,6 +69,10 @@ services:
       YOOKASSA_RECEIPT_ENABLED: ${YOOKASSA_RECEIPT_ENABLED:-false}
       YANDEX_CLIENT_ID: ${YANDEX_CLIENT_ID:-}
       YANDEX_CLIENT_SECRET: ${YANDEX_CLIENT_SECRET:-}
+      CDEK_ACCOUNT: ${CDEK_ACCOUNT:-wqGwiQx0gg8mLtiEKsUinjVSICCjtTEP}
+      CDEK_SECURE: ${CDEK_SECURE:-RmAmgvSgSl1yirlz9QupbzOJVqhCxcP5}
+      CDEK_API_URL: ${CDEK_API_URL:-https://api.edu.cdek.ru}
+      CDEK_TEST_MODE: ${CDEK_TEST_MODE:-true}
     volumes:
       - .:/app
     depends_on:
@@ -105,6 +109,10 @@ services:
       YOOKASSA_VAT_CODE: ${YOOKASSA_VAT_CODE:-1}
       YOOKASSA_TAX_SYSTEM_CODE: ${YOOKASSA_TAX_SYSTEM_CODE:-1}
       YOOKASSA_RECEIPT_ENABLED: ${YOOKASSA_RECEIPT_ENABLED:-false}
+      CDEK_ACCOUNT: ${CDEK_ACCOUNT:-wqGwiQx0gg8mLtiEKsUinjVSICCjtTEP}
+      CDEK_SECURE: ${CDEK_SECURE:-RmAmgvSgSl1yirlz9QupbzOJVqhCxcP5}
+      CDEK_API_URL: ${CDEK_API_URL:-https://api.edu.cdek.ru}
+      CDEK_TEST_MODE: ${CDEK_TEST_MODE:-true}
     volumes:
       - .:/app
     depends_on:
@@ -140,6 +148,10 @@ services:
       YOOKASSA_RECEIPT_ENABLED: ${YOOKASSA_RECEIPT_ENABLED:-false}
       YANDEX_CLIENT_ID: ${YANDEX_CLIENT_ID:-}
       YANDEX_CLIENT_SECRET: ${YANDEX_CLIENT_SECRET:-}
+      CDEK_ACCOUNT: ${CDEK_ACCOUNT:-wqGwiQx0gg8mLtiEKsUinjVSICCjtTEP}
+      CDEK_SECURE: ${CDEK_SECURE:-RmAmgvSgSl1yirlz9QupbzOJVqhCxcP5}
+      CDEK_API_URL: ${CDEK_API_URL:-https://api.edu.cdek.ru}
+      CDEK_TEST_MODE: ${CDEK_TEST_MODE:-true}
     volumes:
       - .:/app
     depends_on:
