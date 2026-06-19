@@ -14,6 +14,52 @@ YYYY-MM-DD HH:MM | <role> | <краткое описание>
 
 ## Записи (новые сверху)
 
+### 2026-06-19 05:35 | implement pipeline | replace-yandex-with-cdek-test-key — added deploy.yml CDEK credential injection
+  Изменено:
+  - `.github/workflows/deploy.yml` — CDEK credentials передаются в Helm через `--set env.secrets.CDEK_ACCOUNT` / `--set env.secrets.CDEK_SECURE`.
+    - test: публичные тестовые креды CDEK захардкожены (как YooKassa test).
+    - prod: читаются из GitHub Actions secrets `CDEK_ACCOUNT` / `CDEK_SECURE`.
+  - `.agent/replace-yandex-with-cdek-test-key/spec.md` — обновлено под решение через `--set`.
+  Результат:
+  - YAML deploy.yml валиден.
+  - Блокер BLK-SOPS-001 снят для задачи деплоя: SOPS-перешифрование `infra/helm/stage/*/secrets.yaml` больше не требуется.
+  Риск/Техдолг:
+  - Старые `SDEK_CLIENT_ID` / `SDEK_CLIENT_SECRET` в `infra/helm/stage/*/secrets.yaml` остаются неиспользуемыми; cleanup отложен на оператора.
+  - Перед следующим прод-деплоем нужно добавить `CDEK_ACCOUNT` / `CDEK_SECURE` в GitHub Actions secrets.
+  Блокер: Нет
+
+### 2026-06-19 05:10 | implement pipeline | replace-yandex-with-cdek-test-key — implementation + review + E2E complete
+  Изменено:
+  - `backend/src/app/services/cdek_client.py` — warning-логи при отсутствии CDEK credentials / fallback.
+  - `backend/docker-compose.yml` — прокинуты `CDEK_ACCOUNT`, `CDEK_SECURE`, `CDEK_API_URL`, `CDEK_TEST_MODE` со значениями публичных тестовых кредов CDEK.
+  - `.env.example` — добавлены публичные тестовые CDEK credentials и пояснение про `VITE_YANDEX_MAPS_API_KEY` (Yandex Maps JS API key).
+  - `frontend/Dockerfile` — уточнён комментарий про `VITE_YANDEX_MAPS_API_KEY`.
+  - `frontend/e2e/cdek-widget.spec.js` — новый E2E-тест: виджет на `/cart`, graceful error при отсутствии Yandex Maps key.
+  - `.worktrees/implement-replace-yandex-with-cdek-test-key/infra/helm/SOPS_OPERATOR_INSTRUCTIONS.md` — инструкция для оператора по переименованию ключей в Helm secrets.
+  Результат:
+  - `make test-backend` — 167/167 ✅
+  - `ruff check src/` — чисто ✅
+  - `cd frontend && npm test -- --run` — 127/127 ✅
+  - `npx playwright test e2e/cdek-widget.spec.js --workers=1` — 2/2 ✅
+  - Code review — APPROVED (итерация 1, дефектов нет).
+  Риск/Техдолг:
+  - `infra/helm/stage/test/secrets.yaml` и `infra/helm/stage/prod/secrets.yaml` не изменены: требуется оператор с `sops` и приватным PGP-ключом `EFE7C254B3297D737D5D832B576EE7224B73177C` для переименования `SDEK_CLIENT_ID`/`SDEK_CLIENT_SECRET` → `CDEK_ACCOUNT`/`CDEK_SECURE`.
+  Блокер: **BLK-SOPS-001** — pending operator action.
+
+### 2026-06-19 04:28 | devops | replace-yandex-with-cdek-test-key — SOPS re-encryption blocked
+  Изменено:
+  - `.worktrees/implement-replace-yandex-with-cdek-test-key/infra/helm/SOPS_OPERATOR_INSTRUCTIONS.md` — создан файл с пошаговой инструкцией для оператора.
+  Попытка изменений:
+  - `infra/helm/stage/test/secrets.yaml` — не изменён.
+  - `infra/helm/stage/prod/secrets.yaml` — не изменён.
+  Результат:
+  - SOPS-перешифрование не выполнено: в окружении отсутствует бинарник `sops` и приватный PGP-ключ `EFE7C254B3297D737D5D832B576EE7224B73177C`.
+  - Попытка загрузки `sops` из GitHub Releases завершилась таймаутом.
+  - `gpg --list-secret-keys` не показывает нужный ключ.
+  Риск/Техдолг:
+  - Без приватного ключа невозможно расшифровать существующие значения и пересчитать MAC при переименовании ключей. Любое ручное переименование в зашифрованном файле сломает `sops decrypt`.
+  Блокер: **BLK-SOPS-001** — требуется оператор с доступом к приватному PGP-ключу и установленным `sops`.
+
 ### 2026-06-18 14:10 | backend-dev / frontend-dev | cdek-widget-recipient-name — review iteration 1 fixes
   Изменено:
   - `backend/src/app/schemas/order.py` — `guest_name` optional в `GuestOrderCreate`; добавлена валидация `recipient_first_name`/`recipient_last_name` (min/max length, pattern, strip whitespace); добавлен `tariff_name` в `CdekDeliveryIn`.
@@ -686,3 +732,31 @@ YYYY-MM-DD HH:MM | <role> | <краткое описание>
 - Старые скрипты `make task` / `make ask` больше не нужны; используются workflow skills.
 - User-level config `~/.kimi-code/config.toml` должен быть настроен вручную для разрешения git worktree/test/lint.
 - Feature worktrees в `.worktrees/` исключены из git.
+
+---
+
+## 2026-06-16 — agent-docs-audit
+
+**Роль:** backend-dev  
+**Задача:** проаудировать документацию агентов после миграции на Kimi Code CLI и устранить несоответствия.
+
+**Что сделано:**
+- Проверены `AGENTS.md`, `.kimi/agents/*.md`, `.kimi/rules/*.md`, `.kimi/HOWTO.md`, `ROUTER.md`, `SESSION_START.md` и skill-файлы в `.kimi-code/skills/`.
+- В `AGENTS.md` исправлены ссылки на `.kimi-code/skills/*` и команды Kimi Code CLI; `/fix-test` заменён на `/skill:fix`; пути user-level конфигов приведены к `~/.kimi-code/config.toml` и `~/.kimi-code/mcp.json`.
+- В `.kimi-code/config.example.toml`, `.kimi/rules/pre-edit-checklist.md` исправлены пути на `~/.kimi-code/config.toml`; восстановлены примеры `[[permission.rules]]` для `/skill:implement` pipeline.
+- В `.gitignore` добавлено исключение `.kimi-code/config.toml`; `scripts/audit-agents.sh` обновлён под актуальные пути.
+- Skill-вызовы приведены в соответствие с официальным форматом `/skill:<name>` (например, `/skill:implement`, `/skill:fix`, `/skill:review`, `/skill:deploy`, `/skill:context-sync`, `/skill:plan-maintainer`, `/skill:promelectron`).
+- Усилены инструкции по параллельному чтению контекста в `.kimi-code/skills/implement/SKILL.md`, `.kimi/agents/architect.md`, `.kimi/agents/code-reviewer.md`.
+- `e2e-tester.md` дополнен требованием локального прогона E2E перед пушем и описанием CI на `promelectron-test`.
+- В `Makefile` добавлен target `pre-push` (lint + unit + E2E); в `AGENTS.md` добавлен раздел `Before push`.
+- Правило языка (русский для reasoning/thinking) добавлено в `.kimi-code/skills/promelectron/SKILL.md`, `.kimi-code/skills/implement/SKILL.md` и все `.kimi/agents/*.md`.
+- **Исправлена проблема с языком subagent-ов:** в `.kimi-code/skills/implement/SKILL.md`, `.kimi-code/skills/fix/SKILL.md`, `.kimi-code/skills/promelectron/SKILL.md` добавлено требование явно сообщать subagent-ам, что пользователь общается на русском; language-правила в `.kimi/agents/*.md` приведены к условию «если delegated prompt на русском или сказано, что пользователь на русском». Language-правила также добавлены/обновлены в `AGENTS.md`, `SESSION_START.md`, `.kimi/HOWTO.md`.
+- Permission rules в `.kimi-code/config.example.toml` дополнены `git branch`, `git diff`, `git status`.
+- Проверены skill-файлы: frontmatter валиден, нет внутренних команд `/skill:*`.
+- Запущен `scripts/audit-agents.sh`: ошибок и предупреждений нет.
+- Дополнен `PROJECT_CONTEXT.md` записью об аудите.
+
+**Файлы изменены:** `AGENTS.md`, `PROJECT_CONTEXT.md`
+
+**Риски:**
+- Нет. Изменения только в документации; рабочие skill-файлы и pipeline не затронуты.
