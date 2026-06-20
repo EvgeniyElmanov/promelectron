@@ -3,6 +3,7 @@ import { mount, flushPromises } from '@vue/test-utils';
 import { createRouter, createWebHistory } from 'vue-router';
 import { ref } from 'vue';
 import GuestCheckout from '../views/GuestCheckout.vue';
+import { getSupplierCityCode } from '@/api/cdek';
 
 const mockGet = vi.fn();
 const mockPost = vi.fn();
@@ -19,10 +20,14 @@ vi.mock('@/composables/useToast', () => ({
 }));
 
 const mockGuestItems = ref([
-  { product_id: 1, quantity: 2, name: 'Товар А', price: 1000, stock: 5, images: [] },
-  { product_id: 2, quantity: 1, name: 'Товар Б', price: 2000, stock: 3, images: [] },
+  { product_id: 1, quantity: 2, name: 'Товар А', price: 1000, stock: 5, images: [], supplier_id: 1 },
+  { product_id: 2, quantity: 1, name: 'Товар Б', price: 2000, stock: 3, images: [], supplier_id: 1 },
 ]);
 let mockCleared = false;
+
+vi.mock('@/api/cdek', () => ({
+  getSupplierCityCode: vi.fn(() => Promise.resolve(44)),
+}));
 
 vi.mock('@/composables/useCart', () => ({
   useCart: () => ({
@@ -34,8 +39,8 @@ vi.mock('@/composables/useCart', () => ({
 vi.mock('@/components/CdekDeliveryWidget.vue', () => ({
   default: {
     name: 'CdekDeliveryWidget',
-    template: '<div data-testid="cdek-delivery-widget"><button @click="select">Select delivery</button></div>',
-    props: ['modelValue', 'items'],
+    template: '<div data-testid="cdek-delivery-widget"><span v-if="isFallback" data-testid="cdek-fallback-hint">fallback</span><button @click="select">Select delivery</button></div>',
+    props: ['modelValue', 'items', 'isFallback'],
     methods: {
       select() {
         this.$emit('update:modelValue', { tariff_code: 136, price: 350, delivery_mode: 'PVZ' });
@@ -62,6 +67,7 @@ describe('GuestCheckout.vue', () => {
       { product_id: 1, quantity: 2, name: 'Товар А', price: 1000, stock: 5, images: [] },
       { product_id: 2, quantity: 1, name: 'Товар Б', price: 2000, stock: 3, images: [] },
     ];
+    getSupplierCityCode.mockResolvedValue(44);
     mockGet.mockResolvedValue({ data: {} });
   });
 
@@ -159,5 +165,16 @@ describe('GuestCheckout.vue', () => {
 
     expect(mockPost).toHaveBeenCalled();
     expect(mockCleared).toBe(false);
+  });
+
+  it('передаёт isFallback=true, когда город поставщика не определён', async () => {
+    getSupplierCityCode.mockResolvedValueOnce(null);
+    const wrapper = mount(GuestCheckout, { global: { plugins: [router] } });
+    await flushPromises();
+
+    const widget = wrapper.findComponent({ name: 'CdekDeliveryWidget' });
+    expect(widget.exists()).toBe(true);
+    expect(widget.props('isFallback')).toBe(true);
+    expect(wrapper.find('[data-testid="cdek-fallback-hint"]').exists()).toBe(true);
   });
 });

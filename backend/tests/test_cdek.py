@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 from fastapi import HTTPException
+from sqlalchemy import select
 
 from src.app.models.order import Order
 from src.app.services.cdek_client import CdekAPIError, CdekClient
@@ -10,6 +11,8 @@ from src.app.services.cdek_service import CdekService
 
 
 import json as _json
+
+from src.app.core.redis_client import RedisClient
 
 
 class FakeResponse:
@@ -189,8 +192,10 @@ class TestCdekService:
         assert result["entity"]["uuid"] == "existing-uuid"
 
     @pytest.mark.asyncio
-    async def test_create_cdek_order_success(self, test_order, test_session, monkeypatch):
+    async def test_create_cdek_order_success(self, test_order, test_supplier, test_session, monkeypatch):
         """Успешное создание заказа в CDEK."""
+        from src.app.models.supplier import Supplier
+
         test_order.cdek_tariff_code = 136
         test_order.cdek_delivery_mode = "PVZ"
         test_order.cdek_delivery_point = "MSK123"
@@ -200,19 +205,29 @@ class TestCdekService:
         test_order.guest_phone = "+79990001122"
         await test_session.commit()
 
+        result = await test_session.execute(select(Supplier).where(Supplier.user_id == test_supplier.id))
+        supplier = result.scalars().first()
+        supplier.cdek_shipment_point = "MSK123"
+        await test_session.commit()
+
         captured_payload = {}
+
+        async def fake_get_delivery_point(*args):
+            return {"code": "MSK123", "location": {"city_code": 44}}
 
         async def fake_create_order(payload):
             captured_payload.update(payload)
             return {"entity": {"uuid": "new-uuid"}, "requests": [{"state": "ACCEPTED"}]}
 
         fake_client = AsyncMock()
+        fake_client.get_delivery_point = fake_get_delivery_point
         fake_client.create_order = fake_create_order
         monkeypatch.setattr("src.app.services.cdek_service.CdekClient", lambda: fake_client)
 
         result = await CdekService.create_cdek_order(test_order, test_session)
         assert result["entity"]["uuid"] == "new-uuid"
         assert captured_payload["recipient"]["name"] == "Иван Гость"
+        assert captured_payload["from_location"]["code"] == 44
 
     @pytest.mark.asyncio
     async def test_handle_order_status_webhook_updates_status(self, test_order, test_session):
@@ -232,6 +247,197 @@ class TestCdekService:
         result = await test_session.get(Order, test_order.id)
         assert result.status == "delivered"
         assert result.cdek_status == "DELIVERED"
+
+    @pytest.mark.asyncio
+    async def test_resolve_shipment_city_code_cache_miss(self, test_supplier, test_session, monkeypatch):
+        """resolve_shipment_city_code запрашивает ПВЗ и кеширует city_code."""
+        from src.app.models.supplier import Supplier
+
+        result = await test_session.execute(select(Supplier).where(Supplier.user_id == test_supplier.id))
+        supplier = result.scalars().first()
+        supplier.cdek_shipment_point = "MSK123"
+        await test_session.commit()
+
+        fake_point = {"code": "MSK123", "location": {"city_code": 44}}
+
+        async def fake_get_delivery_point(*args):
+            code = args[-1]
+            assert code == "MSK123"
+            return fake_point
+
+        monkeypatch.setattr("src.app.services.cdek_service.CdekClient.get_delivery_point", fake_get_delivery_point)
+
+        city_code = await CdekService.resolve_shipment_city_code(supplier.id, test_session)
+        assert city_code == 44
+
+        cached = await RedisClient.get("cdek:pvz:city:MSK123")
+        assert cached == "44"
+
+    @pytest.mark.asyncio
+    async def test_resolve_shipment_city_code_cache_hit(self, test_supplier, test_session, monkeypatch):
+        """resolve_shipment_city_code возвращает city_code из кэша без запроса к CDEK."""
+        from src.app.models.supplier import Supplier
+
+        result = await test_session.execute(select(Supplier).where(Supplier.user_id == test_supplier.id))
+        supplier = result.scalars().first()
+        supplier.cdek_shipment_point = "MSK123"
+        await test_session.commit()
+
+        await RedisClient.set("cdek:pvz:city:MSK123", "55", ttl=3600)
+
+        called = []
+
+        async def fake_get_delivery_point(*args):
+            called.append(args[-1])
+            return None
+
+        monkeypatch.setattr("src.app.services.cdek_service.CdekClient.get_delivery_point", fake_get_delivery_point)
+
+        city_code = await CdekService.resolve_shipment_city_code(supplier.id, test_session)
+        assert city_code == 55
+        assert not called
+
+    @pytest.mark.asyncio
+    async def test_resolve_shipment_city_code_without_pvz(self, test_supplier, test_session):
+        """resolve_shipment_city_code возвращает None если ПВЗ не настроен."""
+        from src.app.models.supplier import Supplier
+
+        result = await test_session.execute(select(Supplier).where(Supplier.user_id == test_supplier.id))
+        supplier = result.scalars().first()
+        supplier.cdek_shipment_point = ""
+        await test_session.commit()
+
+        city_code = await CdekService.resolve_shipment_city_code(supplier.id, test_session)
+        assert city_code is None
+
+    @pytest.mark.asyncio
+    async def test_get_cached_pvz_cache_miss(self, monkeypatch):
+        """get_cached_pvz запрашивает CDEK и кеширует результат."""
+        fake_points = [{"code": "PVZ1", "location": {"city_code": 44}}]
+
+        async def fake_get_delivery_points(self, params):
+            assert params == {"city_code": 44, "type": "PVZ"}
+            return fake_points
+
+        monkeypatch.setattr("src.app.services.cdek_service.CdekClient.get_delivery_points", fake_get_delivery_points)
+
+        points = await CdekService.get_cached_pvz(44, "PVZ")
+        assert points == fake_points
+
+        cached = await RedisClient.get("cdek:pvz:city:44:PVZ")
+        assert _json.loads(cached) == fake_points
+
+    @pytest.mark.asyncio
+    async def test_get_cached_pvz_cache_hit(self, monkeypatch):
+        """get_cached_pvz возвращает данные из кэша без запроса к CDEK."""
+        fake_points = [{"code": "PVZ1", "location": {"city_code": 44}}]
+        await RedisClient.set("cdek:pvz:city:44:PVZ", _json.dumps(fake_points), ttl=3600)
+
+        called = []
+
+        async def fake_get_delivery_points(self, params):
+            called.append(params)
+            return []
+
+        monkeypatch.setattr("src.app.services.cdek_service.CdekClient.get_delivery_points", fake_get_delivery_points)
+
+        points = await CdekService.get_cached_pvz(44, "PVZ")
+        assert points == fake_points
+        assert not called
+
+    @pytest.mark.asyncio
+    async def test_get_cached_pvz_invalid_type_defaults_to_pvz(self, monkeypatch):
+        """get_cached_pvz заменяет недопустимый type на PVZ."""
+        fake_points = [{"code": "PVZ1", "location": {"city_code": 44}}]
+
+        async def fake_get_delivery_points(self, params):
+            assert params["type"] == "PVZ"
+            return fake_points
+
+        monkeypatch.setattr("src.app.services.cdek_service.CdekClient.get_delivery_points", fake_get_delivery_points)
+
+        points = await CdekService.get_cached_pvz(44, "INVALID")
+        assert points == fake_points
+
+    @pytest.mark.asyncio
+    async def test_calculate_delivery_uses_city_code_for_pvz_shipment_point(
+        self, test_supplier, test_session, monkeypatch
+    ):
+        """calculate_delivery использует city_code как город отправления, не код ПВЗ."""
+        from src.app.models.supplier import Supplier
+
+        result = await test_session.execute(select(Supplier).where(Supplier.user_id == test_supplier.id))
+        supplier = result.scalars().first()
+        supplier.cdek_shipment_point = "MSK123"
+        await test_session.commit()
+
+        async def fake_get_delivery_point(*args):
+            return {"code": "MSK123", "location": {"city_code": 44}}
+
+        monkeypatch.setattr("src.app.services.cdek_service.CdekClient.get_delivery_point", fake_get_delivery_point)
+
+        called_payloads = []
+
+        async def fake_calculate_tariffs(self, payload):
+            called_payloads.append(payload)
+            assert payload["from_location"]["code"] == 44
+            return {"tariff_codes": [{"tariff_code": 136, "delivery_sum": 350.0}]}
+
+        monkeypatch.setattr("src.app.services.cdek_service.CdekClient.calculate_tariffs", fake_calculate_tariffs)
+
+        tariffs = await CdekService.calculate_delivery(
+            db=test_session,
+            items=[{"product_id": 1, "quantity": 1, "weight_grams": 500}],
+            supplier_id=supplier.id,
+            to_location={"code": 44},
+            delivery_point=None,
+        )
+        assert len(tariffs) == 1
+        assert tariffs[0]["tariff_code"] == 136
+        assert len(called_payloads) == 1
+
+    @pytest.mark.asyncio
+    async def test_calculate_delivery_retries_with_city_code_on_api_error(
+        self, test_supplier, test_session, monkeypatch
+    ):
+        """calculate_delivery делает fallback retry с city_code при persistent ошибке CDEK."""
+        from src.app.models.supplier import Supplier
+
+        result = await test_session.execute(select(Supplier).where(Supplier.user_id == test_supplier.id))
+        supplier = result.scalars().first()
+        supplier.cdek_shipment_point = "MSK123"
+        await test_session.commit()
+
+        async def fake_get_delivery_point(*args):
+            return {"code": "MSK123", "location": {"city_code": 44}}
+
+        monkeypatch.setattr("src.app.services.cdek_service.CdekClient.get_delivery_point", fake_get_delivery_point)
+
+        calls = []
+
+        async def fake_calculate_tariffs(self, payload):
+            calls.append(payload)
+            if len(calls) == 1:
+                raise CdekAPIError(
+                    "sender location not recognized",
+                    status_code=400,
+                    response_body={"errors": [{"code": "v2_sender_location_not_recognized"}]},
+                )
+            return {"tariff_codes": [{"tariff_code": 136, "delivery_sum": 350.0}]}
+
+        monkeypatch.setattr("src.app.services.cdek_service.CdekClient.calculate_tariffs", fake_calculate_tariffs)
+
+        tariffs = await CdekService.calculate_delivery(
+            db=test_session,
+            items=[{"product_id": 1, "quantity": 1, "weight_grams": 500}],
+            supplier_id=supplier.id,
+            to_location={"code": 44},
+            delivery_point=None,
+        )
+        assert len(tariffs) == 1
+        assert len(calls) == 2
+        assert calls[0]["from_location"]["code"] == 44
+        assert calls[1]["from_location"]["code"] == 44
 
 
 class TestCdekAPI:
@@ -260,19 +466,66 @@ class TestCdekAPI:
         assert response.json()["tariffs"][0]["tariff_code"] == 136
 
     @pytest.mark.asyncio
-    async def test_get_delivery_points_endpoint(self, client, monkeypatch):
-        """GET /cdek/pvz возвращает список ПВЗ."""
-        async def fake_get_points(params):
+    async def test_get_delivery_points_endpoint_cache_miss(self, client, monkeypatch):
+        """GET /cdek/pvz возвращает список ПВЗ и кеширует его."""
+        async def fake_get_points(self, params):
+            assert params == {"city_code": 44, "type": "PVZ"}
             return [{"code": "PVZ1"}]
 
-        fake_client = AsyncMock()
-        fake_client.get_delivery_points = fake_get_points
-        fake_client.close = AsyncMock()
-        monkeypatch.setattr("src.app.api.cdek.CdekClient", lambda: fake_client)
+        monkeypatch.setattr("src.app.services.cdek_service.CdekClient.get_delivery_points", fake_get_points)
 
         response = await client.get("/api/v1/cdek/pvz/?city_code=44")
         assert response.status_code == 200
         assert response.json()[0]["code"] == "PVZ1"
+
+        cached = await RedisClient.get("cdek:pvz:city:44:PVZ")
+        assert _json.loads(cached) == [{"code": "PVZ1"}]
+
+    @pytest.mark.asyncio
+    async def test_get_delivery_points_endpoint_cache_hit(self, client, monkeypatch):
+        """GET /cdek/pvz возвращает ПВЗ из кэша."""
+        await RedisClient.set("cdek:pvz:city:44:PVZ", _json.dumps([{"code": "PVZ2"}]), ttl=3600)
+
+        called = []
+
+        async def fake_get_points(self, params):
+            called.append(params)
+            return []
+
+        monkeypatch.setattr("src.app.services.cdek_service.CdekClient.get_delivery_points", fake_get_points)
+
+        response = await client.get("/api/v1/cdek/pvz/?city_code=44")
+        assert response.status_code == 200
+        assert response.json()[0]["code"] == "PVZ2"
+        assert not called
+
+    @pytest.mark.asyncio
+    async def test_get_delivery_points_endpoint_invalid_type(self, client):
+        """GET /cdek/pvz с недопустимым type возвращает 422."""
+        response = await client.get("/api/v1/cdek/pvz/?city_code=44&type=INVALID")
+        assert response.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_get_supplier_city_code_endpoint(self, client, test_supplier, test_session, supplier_token, monkeypatch):
+        """GET /cdek/supplier-city-code/{supplier_id}/ возвращает city_code."""
+        from src.app.models.supplier import Supplier
+
+        result = await client.get("/api/v1/supplier/profile", headers={"Authorization": f"Bearer {supplier_token}"})
+        supplier_id = result.json()["id"]
+
+        result = await test_session.execute(select(Supplier).where(Supplier.id == supplier_id))
+        supplier = result.scalars().first()
+        supplier.cdek_shipment_point = "MSK123"
+        await test_session.commit()
+
+        async def fake_get_delivery_point(*args):
+            return {"code": "MSK123", "location": {"city_code": 44}}
+
+        monkeypatch.setattr("src.app.services.cdek_service.CdekClient.get_delivery_point", fake_get_delivery_point)
+
+        response = await client.get(f"/api/v1/cdek/supplier-city-code/{supplier_id}/")
+        assert response.status_code == 200
+        assert response.json()["city_code"] == 44
 
     @pytest.mark.asyncio
     async def test_suggest_cities_endpoint(self, client, monkeypatch):

@@ -54,6 +54,7 @@ export const useCart = () => {
           price: product?.price || 0,
           stock: product?.stock || 0,
           images: product?.images || [],
+          supplier_id: product?.supplier_id ?? null,
         });
       }
       saveGuestCart(items);

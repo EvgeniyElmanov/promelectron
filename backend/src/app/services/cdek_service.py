@@ -1,3 +1,4 @@
+import json
 import logging
 from decimal import Decimal
 from typing import Any
@@ -7,12 +8,17 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from src.app.core.constants import PVZ_TYPE_WHITELIST
+from src.app.core.redis_client import RedisClient
 from src.app.models.order import Order, OrderItem
 from src.app.models.product import Product
 from src.app.models.supplier import Supplier
-from src.app.services.cdek_client import CdekClient
+from src.app.services.cdek_client import CdekAPIError, CdekClient
 
 logger = logging.getLogger(__name__)
+
+PVZ_CITY_CACHE_TTL = 86400
+PVZ_LIST_CACHE_TTL = 21600
 
 
 class CdekService:
@@ -110,7 +116,15 @@ class CdekService:
 
         from_location = None
         if supplier.cdek_shipment_point:
-            from_location = {"code": supplier.cdek_shipment_point}
+            shipment_point = supplier.cdek_shipment_point
+            if shipment_point.isdigit():
+                from_location = {"code": int(shipment_point)}
+            else:
+                city_code = await CdekService.resolve_shipment_city_code(supplier.id, db)
+                if city_code is not None:
+                    from_location = {"code": city_code}
+                else:
+                    from_location = {"code": shipment_point}
         elif order.cdek_from_location:
             from_location = order.cdek_from_location
 
@@ -165,6 +179,71 @@ class CdekService:
         return payload
 
     @staticmethod
+    async def resolve_shipment_city_code(supplier_id: int, db: AsyncSession) -> int | None:
+        """Resolve supplier's CDEK shipment city code from PVZ code, with Redis cache."""
+        supplier_result = await db.execute(select(Supplier).where(Supplier.id == supplier_id))
+        supplier = supplier_result.scalars().first()
+        if not supplier or not supplier.cdek_shipment_point:
+            return None
+
+        pvz_code = supplier.cdek_shipment_point
+        cache_key = f"cdek:pvz:city:{pvz_code}"
+        cached = await RedisClient.get(cache_key)
+        if cached is not None:
+            try:
+                return int(cached)
+            except (TypeError, ValueError):
+                pass
+
+        client = CdekClient()
+        try:
+            point = await client.get_delivery_point(pvz_code)
+        finally:
+            await client.close()
+
+        if not point:
+            return None
+
+        city_code = point.get("location", {}).get("city_code")
+        if city_code is not None:
+            await RedisClient.set(cache_key, str(city_code), ttl=PVZ_CITY_CACHE_TTL)
+            return int(city_code)
+        return None
+
+    @staticmethod
+    async def get_cached_pvz(city_code: int, type: str = "PVZ") -> list[dict[str, Any]]:
+        """Get delivery points for a city from cache or CDEK API."""
+        type = type if type in PVZ_TYPE_WHITELIST else "PVZ"
+        cache_key = f"cdek:pvz:city:{city_code}:{type}"
+        cached = await RedisClient.get(cache_key)
+        if cached is not None:
+            try:
+                return json.loads(cached)
+            except json.JSONDecodeError:
+                pass
+
+        client = CdekClient()
+        try:
+            points = await client.get_delivery_points(params={"city_code": city_code, "type": type})
+        finally:
+            await client.close()
+
+        await RedisClient.set(cache_key, json.dumps(points), ttl=PVZ_LIST_CACHE_TTL)
+        return points
+
+    @staticmethod
+    def _is_sender_location_error(exc: CdekAPIError) -> bool:
+        """Detect CDEK calculator rejection of sender PVZ code."""
+        body = exc.response_body or {}
+        errors = body.get("errors") if isinstance(body, dict) else None
+        if not isinstance(errors, list):
+            return False
+        return any(
+            isinstance(err, dict) and err.get("code") == "v2_sender_location_not_recognized"
+            for err in errors
+        )
+
+    @staticmethod
     async def calculate_delivery(
         db: AsyncSession,
         items: list[dict[str, Any]],
@@ -178,15 +257,38 @@ class CdekService:
         if not supplier:
             raise HTTPException(status_code=404, detail="Supplier not found")
 
-        from_location: dict[str, Any] = {"code": supplier.cdek_shipment_point} if supplier.cdek_shipment_point else {}
-        if not from_location:
+        shipment_point = supplier.cdek_shipment_point
+        if not shipment_point:
             raise HTTPException(status_code=400, detail="Supplier shipment point is not configured")
+
+        city_code = await CdekService.resolve_shipment_city_code(supplier_id, db)
+        from_location: dict[str, Any]
+        if city_code is not None:
+            from_location = {"code": city_code}
+        elif shipment_point.isdigit():
+            from_location = {"code": int(shipment_point)}
+        else:
+            from_location = {"code": shipment_point}
 
         payload = CdekService.build_calculate_payload(items, from_location, to_location, delivery_point)
 
         client = CdekClient()
         try:
             result = await client.calculate_tariffs(payload)
+        except CdekAPIError as exc:
+            # Defensive fallback: if CDEK still rejects the location, retry once
+            # with the resolved city_code (in case the initial resolve failed or
+            # the numeric shipment_point was treated as a city code).
+            if CdekService._is_sender_location_error(exc) and city_code is not None:
+                logger.info(
+                    "CDEK rejected sender location, retrying with city_code %s",
+                    city_code,
+                )
+                from_location = {"code": city_code}
+                payload = CdekService.build_calculate_payload(items, from_location, to_location, delivery_point)
+                result = await client.calculate_tariffs(payload)
+            else:
+                raise
         finally:
             await client.close()
 

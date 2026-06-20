@@ -29,6 +29,10 @@
       <button class="cdek-widget__change" data-testid="cdek-change-delivery" @click="openWidget">Изменить</button>
     </div>
 
+    <div v-if="isFallback" class="cdek-widget__fallback-hint" data-testid="cdek-widget-fallback-hint">
+      Город отправления поставщика не настроён; используется Москва.
+    </div>
+
     <div v-if="loadError" class="cdek-widget__error" data-testid="cdek-widget-error">
       Не удалось загрузить виджет СДЭК. Проверьте подключение к интернету и повторите попытку.
     </div>
@@ -44,6 +48,8 @@ import { ref, computed, onUnmounted } from 'vue';
 const props = defineProps({
   items: { type: Array, required: true },
   modelValue: { type: Object, default: null },
+  supplierCityCode: { type: Number, default: 44 },
+  isFallback: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(['update:modelValue']);
@@ -51,6 +57,7 @@ const emit = defineEmits(['update:modelValue']);
 const WIDGET_SCRIPT_URL = 'https://cdn.jsdelivr.net/npm/@cdek-it/widget@3';
 const WIDGET_CONTAINER_ID = 'cdek-widget-container';
 const DEFAULT_LOCATION = 'Москва';
+const FALLBACK_CITY_CODE = 44;
 
 const selectedDelivery = computed(() => props.modelValue);
 const widgetInstance = ref(null);
@@ -112,6 +119,8 @@ function getApiKey() {
   return import.meta.env.VITE_YANDEX_MAPS_API_KEY || '';
 }
 
+const effectiveCityCode = computed(() => props.supplierCityCode ?? FALLBACK_CITY_CODE);
+
 function buildWidgetOptions() {
   return {
     root: WIDGET_CONTAINER_ID,
@@ -120,7 +129,7 @@ function buildWidgetOptions() {
     popup: true,
     lang: 'rus',
     defaultLocation: detectedLocation.value || DEFAULT_LOCATION,
-    from: 'Москва',
+    from: { code: effectiveCityCode.value },
     goods: buildGoods(),
     onChoose,
   };
@@ -307,6 +316,15 @@ onUnmounted(() => {
   border: 1px solid var(--color-primary);
   font-size: 13px;
   cursor: pointer;
+}
+
+.cdek-widget__fallback-hint {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fff8e6;
+  color: #8a6d0b;
+  font-size: 13px;
+  border: 1px solid #f0e0b2;
 }
 
 .cdek-widget__error {

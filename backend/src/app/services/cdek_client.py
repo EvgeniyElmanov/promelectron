@@ -249,9 +249,21 @@ class CdekClient:
         """GET /v2/orders/{uuid}"""
         return await self._request("GET", f"/v2/orders/{cdek_uuid}")
 
-    async def get_delivery_points(self, params: dict[str, Any] | None = None) -> dict[str, Any]:
+    async def get_delivery_points(self, params: dict[str, Any] | None = None) -> list[dict[str, Any]]:
         """GET /v2/deliverypoints"""
-        return await self._request("GET", "/v2/deliverypoints", params=params or {})
+        result = await self._request("GET", "/v2/deliverypoints", params=params or {})
+        if isinstance(result, list):
+            return result
+        return []
+
+    async def get_delivery_point(self, code: str) -> dict[str, Any] | None:
+        """GET /v2/deliverypoints?code=<code> and return the first point with location.city_code."""
+        points = await self.get_delivery_points(params={"code": code})
+        for point in points:
+            location = point.get("location") or {}
+            if location.get("city_code") is not None:
+                return point
+        return None
 
     async def suggest_cities(self, name: str, country_code: str = "RU") -> list[dict[str, Any]]:
         """GET /v2/location/suggest/cities"""

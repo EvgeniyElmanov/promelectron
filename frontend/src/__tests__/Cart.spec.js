@@ -3,6 +3,7 @@ import { mount, flushPromises } from '@vue/test-utils';
 import { createRouter, createWebHistory } from 'vue-router';
 import { computed, ref } from 'vue';
 import Cart from '../views/Cart.vue';
+import { getSupplierCityCode } from '@/api/cdek';
 
 const mockGet = vi.fn();
 const mockPost = vi.fn();
@@ -33,6 +34,10 @@ vi.mock('@/composables/useAuth', () => ({
 const mockGuestItems = ref([]);
 const mockCartCount = ref(0);
 
+vi.mock('@/api/cdek', () => ({
+  getSupplierCityCode: vi.fn(() => Promise.resolve(44)),
+}));
+
 vi.mock('@/composables/useCart', () => ({
   useCart: () => ({
     cartCount: computed(() => mockCartCount.value),
@@ -57,8 +62,8 @@ vi.mock('@/components/AddressForm.vue', () => ({
 vi.mock('@/components/CdekDeliveryWidget.vue', () => ({
   default: {
     name: 'CdekDeliveryWidget',
-    template: '<div data-testid="cdek-delivery-widget"><button @click="select">Select delivery</button></div>',
-    props: ['modelValue', 'items'],
+    template: '<div data-testid="cdek-delivery-widget"><span v-if="isFallback" data-testid="cdek-fallback-hint">fallback</span><button @click="select">Select delivery</button></div>',
+    props: ['modelValue', 'items', 'isFallback'],
     methods: {
       select() {
         this.$emit('update:modelValue', { tariff_code: 136, price: 350, delivery_mode: 'PVZ' });
@@ -86,6 +91,7 @@ const mockCartWithItems = {
         price: 29990,
         stock: 5,
         images: [],
+        supplier_id: 1,
       },
     },
     {
@@ -114,6 +120,7 @@ describe('Cart.vue', () => {
     mockIsAuthenticated.value = true;
     mockGuestItems.value = [];
     mockCartCount.value = 0;
+    getSupplierCityCode.mockResolvedValue(44);
     mockGet.mockImplementation((url) => {
       if (url === '/cart/') return Promise.resolve({ data: mockCartWithItems });
       if (url === '/auth/profile') return Promise.resolve({ data: mockProfile });
@@ -225,6 +232,17 @@ describe('Cart.vue', () => {
 
     const btn = wrapper.find('[data-testid="checkout-button"]');
     expect(btn.attributes('disabled')).toBeDefined();
+  });
+
+  it('передаёт isFallback=true, когда город поставщика не определён', async () => {
+    getSupplierCityCode.mockResolvedValueOnce(null);
+    const wrapper = mount(Cart, { global: { plugins: [router] } });
+    await flushPromises();
+
+    const widget = wrapper.findComponent({ name: 'CdekDeliveryWidget' });
+    expect(widget.exists()).toBe(true);
+    expect(widget.props('isFallback')).toBe(true);
+    expect(wrapper.find('[data-testid="cdek-fallback-hint"]').exists()).toBe(true);
   });
 });
 

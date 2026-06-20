@@ -130,6 +130,8 @@
           <CdekDeliveryWidget
             v-model="selectedDelivery"
             :items="cart.items"
+            :supplier-city-code="supplierCityCode"
+            :is-fallback="isFallback"
           />
 
           <div class="cart__recipient">
@@ -180,12 +182,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '@/services/api';
 import { useAuth } from '@/composables/useAuth';
 import { useCart } from '@/composables/useCart';
 import { useToast } from '@/composables/useToast';
+import { getSupplierCityCode } from '@/api/cdek';
 import CdekDeliveryWidget from '@/components/CdekDeliveryWidget.vue';
 import SkeletonCartItem from '@/components/SkeletonCartItem.vue';
 
@@ -196,6 +199,8 @@ const updatingId = ref(null);
 const selectedDelivery = ref(null);
 const recipientFirstName = ref('');
 const recipientLastName = ref('');
+const supplierCityCode = ref(44);
+const isFallback = ref(false);
 const router = useRouter();
 const { add: toast } = useToast();
 const { isAuthenticated } = useAuth();
@@ -212,6 +217,32 @@ const isDeliveryValid = computed(() => {
 const isRecipientValid = computed(() => {
   return recipientFirstName.value.trim().length > 0 && recipientLastName.value.trim().length > 0;
 });
+
+const supplierId = computed(() => {
+  const firstItem = cart.value.items?.[0];
+  return firstItem?.product?.supplier_id ?? null;
+});
+
+const loadSupplierCityCode = async () => {
+  if (!supplierId.value) {
+    isFallback.value = true;
+    supplierCityCode.value = 44;
+    return;
+  }
+  try {
+    const code = await getSupplierCityCode(supplierId.value);
+    if (code == null) {
+      isFallback.value = true;
+      supplierCityCode.value = 44;
+    } else {
+      isFallback.value = false;
+      supplierCityCode.value = code;
+    }
+  } catch {
+    isFallback.value = true;
+    supplierCityCode.value = 44;
+  }
+};
 
 const itemCount = computed(() => {
   return cart.value.items.reduce((sum, item) => sum + (item.quantity || 0), 0);
@@ -358,6 +389,10 @@ const handleTouchEnd = () => {
 onMounted(() => {
   fetchCart();
 });
+
+watch(supplierId, () => {
+  loadSupplierCityCode();
+}, { immediate: true });
 </script>
 
 <style scoped>
