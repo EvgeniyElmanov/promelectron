@@ -609,3 +609,73 @@ class TestCdekAPI:
         """Неизвестный action возвращает 400."""
         response = await client.get("/api/v1/cdek/widget-service/?action=unknown")
         assert response.status_code == 400
+
+
+class TestCdekStatusSync:
+    """Тесты периодической синхронизации статусов СДЭК."""
+
+    @pytest.mark.asyncio
+    async def test_sync_order_statuses_updates_order(self, test_order, test_session, monkeypatch):
+        """sync_order_statuses обновляет статус и трек-номер заказа."""
+        test_order.cdek_uuid = "uuid-295"
+        test_order.cdek_status = None
+        await test_session.commit()
+
+        async def fake_get_order(self, uuid):
+            assert uuid == "uuid-295"
+            return {
+                "entity": {
+                    "cdek_number": "1101234567",
+                    "statuses": [
+                        {"code": "ACCEPTED_AT_SHIPMENT_WAREHOUSE"},
+                    ],
+                }
+            }
+
+        monkeypatch.setattr("src.app.services.cdek_service.CdekClient.get_order", fake_get_order)
+
+        result = await CdekService.sync_order_statuses(test_session)
+        assert result == {"checked": 1, "updated": 1}
+
+        await test_session.refresh(test_order)
+        assert test_order.cdek_number == "1101234567"
+        assert test_order.tracking_number == "1101234567"
+        assert test_order.cdek_status == "ACCEPTED_AT_SHIPMENT_WAREHOUSE"
+        assert test_order.status == "shipped"
+
+    @pytest.mark.asyncio
+    async def test_sync_order_statuses_skips_final_status(self, test_order, test_session, monkeypatch):
+        """sync_order_statuses пропускает заказы с финальным статусом."""
+        test_order.cdek_uuid = "uuid-delivered"
+        test_order.cdek_status = "DELIVERED"
+        test_order.status = "delivered"
+        await test_session.commit()
+
+        called = []
+
+        async def fake_get_order(self, uuid):
+            called.append(uuid)
+            return {"entity": {}}
+
+        monkeypatch.setattr("src.app.services.cdek_service.CdekClient.get_order", fake_get_order)
+
+        result = await CdekService.sync_order_statuses(test_session)
+        assert result == {"checked": 0, "updated": 0}
+        assert not called
+
+    @pytest.mark.asyncio
+    async def test_sync_order_statuses_handles_api_error(self, test_order, test_session, monkeypatch):
+        """sync_order_statuses продолжает работу при ошибке API для одного заказа."""
+        from src.app.services.cdek_client import CdekAPIError
+
+        test_order.cdek_uuid = "uuid-error"
+        test_order.cdek_status = None
+        await test_session.commit()
+
+        async def fake_get_order(self, uuid):
+            raise CdekAPIError("CDEK unavailable")
+
+        monkeypatch.setattr("src.app.services.cdek_service.CdekClient.get_order", fake_get_order)
+
+        result = await CdekService.sync_order_statuses(test_session)
+        assert result == {"checked": 1, "updated": 0}

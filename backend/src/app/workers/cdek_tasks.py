@@ -73,3 +73,19 @@ def create_cdek_order_task(self, order_id: int) -> dict:
         raise self.retry(countdown=countdown, exc=Exception(result.get("error", "Unknown error")))
 
     return result
+
+
+async def _sync_cdek_order_statuses() -> dict:
+    """Poll CDEK for order statuses as a webhook fallback."""
+    session: AsyncSession = SessionLocal()
+    try:
+        return await CdekService.sync_order_statuses(session)
+    finally:
+        await session.close()
+
+
+@shared_task(name="src.app.workers.cdek_tasks.sync_cdek_order_statuses")
+def sync_cdek_order_statuses() -> dict:
+    """Celery periodic task: sync CDEK order statuses."""
+    logger.info("Starting CDEK order status sync")
+    return asyncio.run(_sync_cdek_order_statuses())

@@ -30,4 +30,8 @@ celery_app.conf.beat_schedule = {
         "task": "src.app.workers.tasks.sync_products_from_onec",
         "schedule": 300.0,  # every 5 minutes (override via env)
     },
+    "sync-cdek-order-statuses": {
+        "task": "src.app.workers.cdek_tasks.sync_cdek_order_statuses",
+        "schedule": 900.0,  # every 15 minutes
+    },
 }
