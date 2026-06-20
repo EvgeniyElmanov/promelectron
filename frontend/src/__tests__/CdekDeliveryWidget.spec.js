@@ -61,6 +61,22 @@ describe('CdekDeliveryWidget.vue', () => {
     expect(wrapper.find('[data-testid="cdek-open-selector"]').exists()).toBe(true);
   });
 
+  it('показывает подсказку fallback при isFallback=true', () => {
+    const wrapper = mount(CdekDeliveryWidget, {
+      props: { items: [], modelValue: null, isFallback: true },
+    });
+    const hint = wrapper.find('[data-testid="cdek-widget-fallback-hint"]');
+    expect(hint.exists()).toBe(true);
+    expect(hint.text()).toContain('Город отправления поставщика не настроён');
+  });
+
+  it('не показывает fallback-подсказку по умолчанию', () => {
+    const wrapper = mount(CdekDeliveryWidget, {
+      props: { items: [], modelValue: null },
+    });
+    expect(wrapper.find('[data-testid="cdek-widget-fallback-hint"]').exists()).toBe(false);
+  });
+
   it('показывает выбранную доставку', () => {
     const wrapper = mount(CdekDeliveryWidget, {
       props: {
@@ -97,6 +113,23 @@ describe('CdekDeliveryWidget.vue', () => {
     expect(options.popup).toBe(true);
     expect(options.lang).toBe('rus');
     expect(options.defaultLocation).toBe('Москва');
+    expect(options.from).toEqual({ code: 44 });
+
+    constructorSpy.mockRestore();
+  });
+
+  it('использует supplierCityCode для города отправления', async () => {
+    const constructorSpy = vi.spyOn(window, 'CDEKWidget');
+
+    const wrapper = mount(CdekDeliveryWidget, {
+      props: { items: [], modelValue: null, supplierCityCode: 280 },
+    });
+    await wrapper.find('[data-testid="cdek-open-selector"]').trigger('click');
+    await flushPromises();
+
+    expect(constructorSpy).toHaveBeenCalledTimes(1);
+    const options = constructorSpy.mock.calls[0][0];
+    expect(options.from).toEqual({ code: 280 });
 
     constructorSpy.mockRestore();
   });

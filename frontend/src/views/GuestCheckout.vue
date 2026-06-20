@@ -34,6 +34,8 @@
       <CdekDeliveryWidget
         v-model="selectedDelivery"
         :items="items"
+        :supplier-city-code="supplierCityCode"
+        :is-fallback="isFallback"
       />
     </div>
 
@@ -100,11 +102,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '@/services/api';
 import { useCart } from '@/composables/useCart';
 import { useToast } from '@/composables/useToast';
+import { getSupplierCityCode } from '@/api/cdek';
 import CdekDeliveryWidget from '@/components/CdekDeliveryWidget.vue';
 
 const router = useRouter();
@@ -113,11 +116,36 @@ const { getGuestCartItems, clearGuestCart } = useCart();
 
 const items = ref([]);
 const selectedDelivery = ref(null);
+const supplierCityCode = ref(44);
+const isFallback = ref(false);
 const guestEmail = ref('');
 const guestFirstName = ref('');
 const guestLastName = ref('');
 const guestPhone = ref('');
 const submitting = ref(false);
+
+const supplierId = computed(() => items.value[0]?.supplier_id ?? null);
+
+const loadSupplierCityCode = async () => {
+  if (!supplierId.value) {
+    isFallback.value = true;
+    supplierCityCode.value = 44;
+    return;
+  }
+  try {
+    const code = await getSupplierCityCode(supplierId.value);
+    if (code == null) {
+      isFallback.value = true;
+      supplierCityCode.value = 44;
+    } else {
+      isFallback.value = false;
+      supplierCityCode.value = code;
+    }
+  } catch {
+    isFallback.value = true;
+    supplierCityCode.value = 44;
+  }
+};
 
 const itemsTotal = computed(() => {
   return items.value.reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 0), 0);
@@ -148,6 +176,10 @@ const formatPrice = (price) => {
 const loadItems = () => {
   items.value = getGuestCartItems();
 };
+
+watch(supplierId, () => {
+  loadSupplierCityCode();
+}, { immediate: true });
 
 const submitOrder = async () => {
   if (submitting.value) return;

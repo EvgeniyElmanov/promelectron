@@ -14,6 +14,58 @@ YYYY-MM-DD HH:MM | <role> | <краткое описание>
 
 ## Записи (новые сверху)
 
+### 2026-06-20 16:15 | e2e-tester / implement-pipeline | fix-cdek-widget-calculation — review + E2E complete, ready for merge
+  Изменено:
+  - `.agent/fix-cdek-widget-calculation/review/findings.md` — статус APPROVED (3 итерации, F001–F007 закрыты).
+  - `frontend/e2e/cdek-widget.spec.js` — прогнан в реальном браузере, 6/6 passed.
+  - `.agent/SESSION_LOG.md` — эта запись.
+  Результат:
+  - Code review — APPROVED.
+  - `make test-backend` — 178/178 ✅
+  - `ruff check src/` — чисто ✅
+  - `npm test -- --run` (frontend) — 132/132 ✅
+  - `npm run lint` (frontend) — чисто ✅
+  - `npx playwright test cdek-widget.spec.js --workers=1` — 6/6 ✅
+  Риск/Техдолг:
+  - E2E использует мок виджета; реальный флоу зависит от CDN CDEK и Yandex Maps API key.
+  - Гостевые корзины без `supplier_id` используют fallback Москва.
+  Блокер: Нет. Вопрос к пользователю: merge `feature/fix-cdek-widget-calculation` into `main`?
+
+### 2026-06-20 06:45 | frontend-dev | fix-cdek-widget-calculation — frontend Option B implemented
+  Изменено:
+  - `frontend/src/api/cdek.js` — новый API-модуль, `getSupplierCityCode(supplierId)` → `GET /cdek/supplier-city-code/{supplier_id}/`.
+  - `frontend/src/components/CdekDeliveryWidget.vue` — добавлен пропс `supplierCityCode` (Number, default 44); параметр виджета `from` теперь передаётся как `{ code: supplierCityCode }` вместо строки 'Москва'; в dev-режиме выводится warning при отсутствии `supplierCityCode` (fallback 44).
+  - `frontend/src/views/Cart.vue` — определяется `supplierId` из первого товара корзины (`item.product.supplier_id`), асинхронно загружается `supplierCityCode` через `getSupplierCityCode`, fallback 44 при ошибке; значение передаётся в `CdekDeliveryWidget`.
+  - `frontend/src/views/GuestCheckout.vue` — аналогичная логика определения `supplierId` из первого гостевого товара (`item.supplier_id`) и загрузки `supplierCityCode`.
+  - `frontend/src/composables/useCart.js` — в гостевую корзину сохраняется `supplier_id` товара (для определения города отправления поставщика).
+  - `frontend/src/__tests__/CdekDeliveryWidget.spec.js` — добавлены проверки `from: { code: 44 }` по умолчанию и `from: { code: 280 }` при кастомном `supplierCityCode`.
+  - `frontend/src/__tests__/Cart.spec.js`, `GuestCheckout.spec.js` — добавлены моки `@/api/cdek` и `supplier_id` в тестовых данных.
+  - `frontend/e2e/cdek-widget.spec.js` — добавлен E2E-сценарий выбора ПВЗ с моком `window.CDEKWidget` и проверкой отображения тарифа/цены/срока.
+  Результат:
+  - `cd frontend && npm test -- --run` — 128/128 ✅
+  - `cd frontend && npm run lint` — чисто ✅
+  Риск/Техдолг:
+  - В E2E используется мок виджета, а не реальный CDEK widget; реальный флоу зависит от CDN и Yandex Maps API key.
+  - Гостевая корзина получает `supplier_id` только для новых товаров; ранее сохранённые гостевые корзины без `supplier_id` будут использовать fallback Москва (44).
+  Блокер: Нет
+
+### 2026-06-20 06:30 | backend-dev | fix-cdek-widget-calculation — backend Option B implemented
+  Изменено:
+  - `backend/src/app/services/cdek_client.py` — добавлен метод `get_delivery_point(code: str)`, возвращающий ПВЗ с `location.city_code`; `get_delivery_points` теперь гарантированно возвращает `list`.
+  - `backend/src/app/services/cdek_service.py` — добавлены:
+    - `resolve_shipment_city_code(supplier_id, db)` с кэшированием в Redis (`cdek:pvz:city:<pvz_code>`, TTL 24ч).
+    - `get_cached_pvz(city_code, type='PVZ')` с кэшированием списка ПВЗ (`cdek:pvz:city:<city_code>:<type>`, TTL 6ч).
+    - `_is_sender_location_error()` и retry-логика в `calculate_delivery`: при ошибке `v2_sender_location_not_recognized` код ПВЗ заменяется на `city_code`.
+  - `backend/src/app/api/cdek.py` — добавлен endpoint `GET /api/v1/cdek/supplier-city-code/{supplier_id}/` и схема `SupplierCityCodeResponse`; endpoint `GET /api/v1/cdek/pvz/` теперь использует `CdekService.get_cached_pvz` при наличии `city_code`; прокси `/api/v1/cdek/widget-service/` не изменён.
+  - `backend/tests/test_cdek.py` — добавлены тесты на resolve_city_code (cache hit/miss, отсутствие ПВЗ), get_cached_pvz (cache hit/miss), calculate_delivery retry с city_code, pvz endpoint cache hit/miss, supplier-city-code endpoint.
+  Результат:
+  - `make test-backend` — 175/175 ✅
+  - `ruff check src/` — чисто ✅
+  Риск/Техдолг:
+  - Frontend должен начать использовать `supplierCityCode` и передавать `from: { code: supplierCityCode }` в виджет; это в рамках задачи fix-cdek-widget-calculation, но выходит за scope backend-изменений.
+  - Кэш ПВЗ не инвалидируется автоматически при смене окружения CDEK; при необходимости — ручная очистка Redis по паттерну `cdek:pvz:city:*`.
+  Блокер: Нет
+
 ### 2026-06-19 05:35 | implement pipeline | replace-yandex-with-cdek-test-key — added deploy.yml CDEK credential injection
   Изменено:
   - `.github/workflows/deploy.yml` — CDEK credentials передаются в Helm через `--set env.secrets.CDEK_ACCOUNT` / `--set env.secrets.CDEK_SECURE`.
@@ -745,3 +797,27 @@ YYYY-MM-DD HH:MM | <role> | <краткое описание>
 
 **Риски:**
 - Нет. Изменения только в документации; рабочие skill-файлы и pipeline не затронуты.
+
+---
+
+## 2026-06-20 15:15
+
+**Роль:** backend-dev / frontend-dev
+
+**Задача:** fix-cdek-widget-calculation — исправление review findings F005-F007
+
+**Что сделано:**
+- Добавлены в индекс git `frontend/src/api/cdek.js` и новый `backend/src/app/core/constants.py`.
+- Удалён мёртвый код `if (import.meta.env.DEV && props.supplierCityCode == null)` и `console.warn` в `frontend/src/components/CdekDeliveryWidget.vue`.
+- Вынесен `PVZ_TYPE_WHITELIST` в `backend/src/app/core/constants.py`, импортирован в `backend/src/app/api/cdek.py` и `backend/src/app/services/cdek_service.py`.
+- Обновлён `.agent/fix-cdek-widget-calculation/review/findings.md`: F005-F007 отмечены как FIXED.
+- Проверки:
+  - `ruff check src/` — 0 ошибок.
+  - `make test-backend` — 178 passed.
+  - `npm run test -- --run` — 132 passed.
+  - `npm run lint` — 0 ошибок.
+
+**Файлы изменены:** `frontend/src/api/cdek.js`, `frontend/src/components/CdekDeliveryWidget.vue`, `backend/src/app/core/constants.py`, `backend/src/app/api/cdek.py`, `backend/src/app/services/cdek_service.py`, `.agent/fix-cdek-widget-calculation/review/findings.md`, `.agent/SESSION_LOG.md`.
+
+**Риски:**
+- Нет.

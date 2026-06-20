@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.app.core.config import settings
+from src.app.core.constants import PVZ_TYPE_WHITELIST
 from src.app.db.database import get_db
 from src.app.services.cdek_client import CdekAPIError, CdekClient
 from src.app.services.cdek_service import CdekService
@@ -25,6 +26,10 @@ class CalculateDeliveryRequest(BaseModel):
 
 class CalculateDeliveryResponse(BaseModel):
     tariffs: list[dict[str, Any]]
+
+
+class SupplierCityCodeResponse(BaseModel):
+    city_code: int | None
 
 
 class WidgetAction(str, Enum):
@@ -80,11 +85,23 @@ async def get_delivery_points(
     request: Request,
     city_code: int | None = None,
     postal_code: str | None = None,
+    type: str = "PVZ",
 ):
     """Get CDEK delivery points (PVZ / postamats)."""
+    if type not in PVZ_TYPE_WHITELIST:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid type parameter. Allowed values: {', '.join(sorted(PVZ_TYPE_WHITELIST))}",
+        )
+
+    if city_code is not None:
+        try:
+            result = await CdekService.get_cached_pvz(city_code=city_code, type=type)
+        except CdekAPIError as exc:
+            raise HTTPException(status_code=502, detail=f"CDEK API error: {exc}") from exc
+        return result
+
     params: dict[str, Any] = {}
-    if city_code:
-        params["city_code"] = city_code
     if postal_code:
         params["postal_code"] = postal_code
 
@@ -96,6 +113,18 @@ async def get_delivery_points(
     finally:
         await client.close()
     return result
+
+
+@router.get("/supplier-city-code/{supplier_id}/", response_model=SupplierCityCodeResponse)
+@conditional_limit("30/minute")
+async def get_supplier_city_code(
+    request: Request,
+    supplier_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """Resolve CDEK city code for supplier's shipment PVZ."""
+    city_code = await CdekService.resolve_shipment_city_code(supplier_id, db)
+    return SupplierCityCodeResponse(city_code=city_code)
 
 
 @router.get("/suggest-cities/")

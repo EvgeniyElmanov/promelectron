@@ -32,24 +32,58 @@ async function registerAndGoToCart(page) {
   await expect(page.locator('[data-testid="cart-item"]')).toBeVisible({ timeout: 5000 });
 }
 
+async function mockSupplierCityCode(page, cityCode = 44) {
+  await page.route('/api/v1/cdek/supplier-city-code/**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ city_code: cityCode }),
+    });
+  });
+}
+
+async function mockCdekWidget(page) {
+  await page.addInitScript(() => {
+    window.CDEKWidget = class MockCDEKWidget {
+      constructor(options) {
+        this.options = options;
+        window.__lastCdekWidgetOptions = options;
+        setTimeout(() => {
+          options.onChoose('PVZ', {
+            tariff_code: 136,
+            tariff_name: 'Экспресс-экспедиция',
+            delivery_sum: 350,
+            period_min: 1,
+            period_max: 3,
+          }, {
+            code: 'TEST_PVZ_1',
+            city_code: 44,
+            city: 'Москва',
+            address: 'ул. Тестовая, 1',
+          });
+        }, 50);
+      }
+
+      destroy() {}
+
+      open() {}
+    };
+  });
+}
+
 test.describe('CDEK Widget on Cart Page', () => {
   test('authenticated user can open CDEK widget from cart without page crash', async ({ page }) => {
     await registerAndGoToCart(page);
 
-    // Verify CDEK widget section is rendered on the cart page
     const widget = page.locator('[data-testid="cdek-delivery-widget"]');
     await expect(widget).toBeVisible();
 
-    // Verify the selector button is present and clickable
     const openButton = page.locator('[data-testid="cdek-open-selector"]');
     await expect(openButton).toBeVisible();
     await expect(openButton).toContainText('Выбрать доставку СДЭК');
 
-    // Clicking the button should either open the widget (if Yandex Maps key is configured)
-    // or show a graceful load error (if it is missing). The page must not crash either way.
     await openButton.click();
 
-    // Wait for the loading spinner to finish (button returns from "Загрузка...")
     await expect(openButton).not.toContainText('Загрузка', { timeout: 10000 });
 
     const error = page.locator('[data-testid="cdek-widget-error"]');
@@ -58,7 +92,6 @@ test.describe('CDEK Widget on Cart Page', () => {
     if (hasError) {
       await expect(error).toContainText('Не удалось загрузить виджет СДЭК');
     } else {
-      // Widget opened successfully; the hidden mount point must exist and the page must stay healthy.
       await expect(page.locator('[data-testid="cdek-widget-container"]')).toBeAttached();
     }
   });
@@ -66,8 +99,75 @@ test.describe('CDEK Widget on Cart Page', () => {
   test('CDEK widget container is present in the document for widget initialization', async ({ page }) => {
     await registerAndGoToCart(page);
 
-    // The hidden container must exist for the official widget to mount
     const container = page.locator('[data-testid="cdek-widget-container"]');
     await expect(container).toBeAttached();
+  });
+
+  test('selecting a PVZ displays tariff price and delivery period', async ({ page }) => {
+    await mockCdekWidget(page);
+    await mockSupplierCityCode(page, 44);
+    await registerAndGoToCart(page);
+
+    const widget = page.locator('[data-testid="cdek-delivery-widget"]');
+    await expect(widget).toBeVisible();
+
+    await page.locator('[data-testid="cdek-open-selector"]').click();
+    const selected = page.locator('[data-testid="cdek-selected-delivery"]');
+    await expect(selected).toBeVisible({ timeout: 5000 });
+
+    await expect(selected).toContainText('Пункт выдачи');
+    await expect(selected).toContainText('Экспресс-экспедиция');
+    await expect(selected).toContainText('350 ₽');
+    await expect(selected).toContainText('Срок: 1-3 дн.');
+  });
+
+  test('uses supplier city code as sender location', async ({ page }) => {
+    await mockCdekWidget(page);
+    await mockSupplierCityCode(page, 280);
+    await registerAndGoToCart(page);
+
+    await page.locator('[data-testid="cdek-open-selector"]').click();
+    await page.waitForTimeout(200);
+
+    const options = await page.evaluate(() => window.__lastCdekWidgetOptions);
+    expect(options).toBeDefined();
+    expect(options.from).toEqual({ code: 280 });
+  });
+
+  test('shows fallback hint when supplier city code is not resolved', async ({ page }) => {
+    await mockCdekWidget(page);
+    await mockSupplierCityCode(page, null);
+    await registerAndGoToCart(page);
+
+    const hint = page.locator('[data-testid="cdek-widget-fallback-hint"]');
+    await expect(hint).toBeVisible();
+    await expect(hint).toContainText('Город отправления поставщика не настроён');
+
+    await page.locator('[data-testid="cdek-open-selector"]').click();
+    const selected = page.locator('[data-testid="cdek-selected-delivery"]');
+    await expect(selected).toBeVisible({ timeout: 5000 });
+  });
+});
+
+test.describe('CDEK Widget on Guest Checkout Page', () => {
+  test('guest user can select PVZ and see delivery price on checkout', async ({ page }) => {
+    await mockCdekWidget(page);
+    await mockSupplierCityCode(page, 44);
+
+    await addFirstProductToCart(page);
+    await page.goto('/guest-checkout');
+    await expect(page).toHaveURL('/guest-checkout');
+
+    const widget = page.locator('[data-testid="cdek-delivery-widget"]');
+    await expect(widget).toBeVisible();
+
+    await page.locator('[data-testid="cdek-open-selector"]').click();
+    const selected = page.locator('[data-testid="cdek-selected-delivery"]');
+    await expect(selected).toBeVisible({ timeout: 5000 });
+
+    await expect(selected).toContainText('Пункт выдачи');
+    await expect(selected).toContainText('Экспресс-экспедиция');
+    await expect(selected).toContainText('350 ₽');
+    await expect(selected).toContainText('Срок: 1-3 дн.');
   });
 });
