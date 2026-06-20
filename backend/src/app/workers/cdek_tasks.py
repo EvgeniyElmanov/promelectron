@@ -22,7 +22,7 @@ async def _create_cdek_order_task(order_id: int) -> dict:
         result = await session.execute(
             select(Order)
             .where(Order.id == order_id)
-            .options(selectinload(Order.items))
+            .options(selectinload(Order.items), selectinload(Order.user))
         )
         order = result.scalars().first()
         if not order:
