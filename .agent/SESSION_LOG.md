@@ -14,6 +14,24 @@ YYYY-MM-DD HH:MM | <role> | <краткое описание>
 
 ## Записи (новые сверху)
 
+### 2026-06-20 16:45 | backend-dev / devops | CDEK webhook fallback + polling sync
+  Изменено:
+  - `backend/src/app/services/cdek_service.py` — добавлен `sync_order_statuses()` и `_apply_cdek_status_to_order()`, рефакторинг `handle_order_status_webhook`.
+  - `backend/src/app/workers/cdek_tasks.py` — добавлена Celery-задача `sync_cdek_order_statuses`.
+  - `backend/src/app/workers/celery_app.py` — beat schedule каждые 15 минут.
+  - `backend/tests/test_cdek.py` — 3 теста на polling sync.
+  - `infra/helm/templates/cronjob-sync-cdek-statuses.yaml` — новый CronJob.
+  - `infra/helm/values.yaml`, `infra/helm/stage/test/values.yaml`, `infra/helm/stage/prod/values.yaml` — schedule и enable для CronJob.
+  - `.agent/SESSION_LOG.md` — эта запись.
+  Результат:
+  - `pytest tests/test_cdek.py` — 38/38 ✅
+  - `ruff check` — чисто ✅
+  - В `promelectron-test` создан CronJob `promelectron-cj-sync-cdek-statuses` с расписанием `*/15 * * * *`.
+  - Запущена manual job — задача отработала, `{'checked': 0, 'updated': 0}` (в тестовой БД на момент запуска не было заказов с `cdek_uuid`).
+  Риск/Техдолг:
+  - Заказ #295 исчез из тестовой БД (было 1 заказ, стало 3, но 295 среди них нет). Возможен сброс/миграция БД.
+  Блокер: Нет.
+
 ### 2026-06-20 16:15 | e2e-tester / implement-pipeline | fix-cdek-widget-calculation — review + E2E complete, ready for merge
   Изменено:
   - `.agent/fix-cdek-widget-calculation/review/findings.md` — статус APPROVED (3 итерации, F001–F007 закрыты).
