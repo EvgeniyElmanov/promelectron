@@ -2,6 +2,10 @@
 
 > Everything runs through **Kimi Code CLI skills** in `.kimi-code/skills/`.
 
+## Language
+
+When the user communicates in Russian, the main agent and all subagents must perform reasoning, thinking, and internal monologue in Russian. The parent agent must explicitly tell subagents that the original user communicates in Russian. Final replies to the user must be in Russian. Keep code, commands, identifiers, file paths, and technical terms in their original form.
+
 ## Contents
 
 1. [Quick start (first time)](#quick-start-first-time)
@@ -19,8 +23,8 @@
 
 | If you... | Use |
 |-----------|-----|
-| Don't know the role | [Workflow `/implement`](#mode-a-full-feature-cycle-implement) |
-| Need a bug fixed | [Workflow `/fix`](#mode-b-bug-fix-fix) |
+| Don't know the role | [Workflow `/skill:implement`](#mode-a-full-feature-cycle-implement) |
+| Need a bug fixed | [Workflow `/skill:fix`](#mode-b-bug-fix-fix) |
 | Know the exact role | [Fixed role](#mode-c-fixed-role) |
 | Need planning/roadmap | [Project manager](#mode-d-project-manager) |
 
@@ -28,18 +32,18 @@
 
 For any task when you don't know the role:
 ```
-/promelectron
+/skill:promelectron
 Task: Add promo codes to cart
 ```
 
 For a full feature cycle:
 ```
-/implement "Add promo codes to cart"
+/skill:implement "Add promo codes to cart"
 ```
 
 For a bug:
 ```
-/fix "Race condition when adding to cart"
+/skill:fix "Race condition when adding to cart"
 ```
 
 ### Step 3: Follow the subagent
@@ -51,27 +55,27 @@ The skill spawns subagents (architect → developer → reviewer → QA). Approv
 After loading a workflow skill, just describe tasks:
 
 ```
-/implement "Add a discount field to orders"
+/skill:implement "Add a discount field to orders"
 ```
 
 ```
-/fix "Checkout button is disabled on mobile"
+/skill:fix "Checkout button is disabled on mobile"
 ```
 
 ```
-/review
+/skill:review
 ```
 
 The skill routes to the correct subagent automatically.
 
 ## Workflow modes
 
-### Mode A: Full feature cycle `/implement`
+### Mode A: Full feature cycle `/skill:implement`
 
 > For tasks that need design, development, review, and QA.
 
 ```
-/implement "Add promo codes to cart"
+/skill:implement "Add promo codes to cart"
 ```
 
 How it works:
@@ -88,12 +92,12 @@ Flags:
 - `--backend-only` — backend only
 - `--frontend-only` — frontend only
 
-### Mode B: Bug fix `/fix`
+### Mode B: Bug fix `/skill:fix`
 
 > For bugs: analyze → reproduce → fix → test.
 
 ```
-/fix "Race condition in cart add"
+/skill:fix "Race condition in cart add"
 ```
 
 How it works:
@@ -117,7 +121,7 @@ Flags:
 Role: backend-dev. Task: add email validation to registration.
 
 Read PROJECT_CONTEXT.md, BACKLOG.md, BLOCKERS.md, SESSION_LOG.md.
-Read .kimi/agents/backend-dev.md and .kimi/rules/pre-edit-checklist.md.
+Load `/skill:backend-dev` or read `.kimi-code/skills/backend-dev/SKILL.md` and `.kimi-code/rules/pre-edit-checklist.md`.
 After work update SESSION_LOG.md.
 ```
 
@@ -175,7 +179,7 @@ Do not break: existing total calculation, mobile layout
 Verify: npm run test:unit Cart && check responsiveness (375px)
 ```
 
-More details in `.kimi/rules/prompt-format.md`.
+More details in `.kimi-code/rules/prompt-format.md`.
 
 ## Roles and example tasks
 
@@ -203,13 +207,13 @@ Agents update:
 Before reporting:
 - [ ] Tests pass (`make test`)
 - [ ] Lint is clean (`make lint`)
-- [ ] Critical paths from `.kimi/rules/golden-path.md` are not broken
+- [ ] Critical paths from `.kimi-code/rules/golden-path.md` are not broken
 
 ## If something goes wrong
 
 ### The agent is not following the expected role
 
-1. Reload the workflow skill: `/implement ...` or `/fix ...`
+1. Reload the workflow skill: `/skill:implement ...` or `/skill:fix ...`
 2. Start a new Kimi CLI session
 3. Explicitly specify the role: `Role: frontend-dev. Task: ...`
 
@@ -229,13 +233,13 @@ Task: fix Helm template for Y
 
 | File | When to read |
 |------|--------------|
-| `.kimi/rules/prompt-format.md` | Before formulating a task |
-| `.kimi/rules/pre-edit-checklist.md` | Before editing code |
-| `.kimi/rules/dependency-map.md` | Before changing a file |
-| `.kimi/rules/golden-path.md` | Before finishing |
-| `.kimi/rules/task-template.md` | When creating a new backlog item |
-| `.kimi/agents/<ROLE>.md` | When working in a fixed role |
-| `AGENTS.md` | Index of agents, skills, and rules |
+| `.kimi-code/rules/prompt-format.md` | Before formulating a task |
+| `.kimi-code/rules/pre-edit-checklist.md` | Before editing code |
+| `.kimi-code/rules/dependency-map.md` | Before changing a file |
+| `.kimi-code/rules/golden-path.md` | Before finishing |
+| `.kimi-code/rules/task-template.md` | When creating a new backlog item |
+| `.kimi-code/skills/<role>/SKILL.md` | When working in a fixed role |
+| `.kimi-code/AGENTS.md` | Legacy master index and agent system overview |
 | `ROUTER.md` | Routing documentation |
 | `PROJECT_CONTEXT.md` | At session start — stack, status, blockers |
 | `.agent/BACKLOG.md` | At session start — current sprint |

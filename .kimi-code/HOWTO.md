@@ -2,9 +2,13 @@
 
 > Practical guide: how to route tasks, keep context clean, and pick the right workflow.
 
+## Language note
+
+When the user communicates in Russian, the main agent and all subagents must reason and think in Russian. The parent agent must explicitly tell subagents that the original user communicates in Russian so they also reason in Russian.
+
 ## 1. Problem we solved
 
-Kimi Code CLI discovers project skills from `.kimi-code/skills/`. We moved all workflow skills there so `/implement`, `/fix`, `/review`, and `/deploy` work out of the box.
+Kimi Code CLI discovers project skills from `.kimi-code/skills/`. We moved all workflow skills there so `/skill:implement`, `/skill:fix`, `/skill:review`, and `/skill:deploy` work out of the box.
 
 ## 2. Three ways to work
 
@@ -13,10 +17,10 @@ Kimi Code CLI discovers project skills from `.kimi-code/skills/`. We moved all w
 Use for full feature cycles, bug fixes, reviews, and deploys.
 
 ```
-/implement "Add promo codes to cart"
-/fix "Race condition in cart add"
-/review
-/deploy test
+/skill:implement "Add promo codes to cart"
+/skill:fix "Race condition in cart add"
+/skill:review
+/skill:deploy test
 ```
 
 The skill spawns subagents and manages the pipeline for you.
@@ -29,7 +33,7 @@ Use if you work in one role all day.
 Role: backend-dev. Task: add email validation to registration.
 
 Read PROJECT_CONTEXT.md, BACKLOG.md, BLOCKERS.md, SESSION_LOG.md.
-Read .kimi/agents/backend-dev.md and .kimi/rules/pre-edit-checklist.md.
+Load `/skill:backend-dev` or read `.kimi-code/skills/backend-dev/SKILL.md` and [Rule: Pre-edit Checklist](.kimi-code/rules/pre-edit-checklist.md).
 After work update SESSION_LOG.md.
 ```
 
@@ -38,11 +42,11 @@ After work update SESSION_LOG.md.
 Use when you don't know the role and don't need a full workflow.
 
 ```
-Read .kimi/agents/dispatcher.md and follow its instructions strictly.
+Load `/skill:dispatcher` or read `.kimi-code/skills/dispatcher/SKILL.md` and follow its instructions strictly.
 Task: Create an API for promo codes.
 ```
 
-## 3. How `/implement` works
+## 3. How `/skill:implement` works
 
 1. Creates `.agent/<task-id>/`
 2. Spawns architect subagent in plan mode → writes `spec.md` → waits for approval
@@ -97,8 +101,8 @@ Agents read:
 - `.agent/BACKLOG.md`
 - `.agent/BLOCKERS.md`
 - `.agent/SESSION_LOG.md`
-- `.kimi/agents/<ROLE>.md`
-- `.kimi/rules/pre-edit-checklist.md`
+- `.kimi-code/skills/<role>/SKILL.md` — role instructions (flat Kimi skill)
+- [Rule: Pre-edit Checklist](.kimi-code/rules/pre-edit-checklist.md)
 
 Agents update:
 - `.agent/SESSION_LOG.md`
@@ -113,16 +117,16 @@ Agents update:
 - Kimi Code CLI loads skills automatically from `.kimi-code/skills/`.
 
 ### Agent doesn't switch role
-1. Reload the workflow skill: `/implement ...`
+1. Reload the workflow skill: `/skill:implement ...`
 2. Start a new Kimi CLI session
 3. Explicitly specify the role: `Role: frontend-dev. Task: ...`
 
 ### `make task` / `make ask` removed
 The old `make task`, `make ask`, `make auto`, and `make task-compact` helpers were removed. Use workflow skills instead:
 ```
-/implement "Add promo codes to cart"
-/fix "Race condition in cart add"
-/promelectron
+/skill:implement "Add promo codes to cart"
+/skill:fix "Race condition in cart add"
+/skill:promelectron
 ```
 
 ### Agent didn't update SESSION_LOG.md
@@ -141,12 +145,12 @@ Do not break: [boundaries]
 Verify: [how to confirm it works]
 ```
 
-See `.kimi/rules/prompt-format.md` for details.
+See [Rule: Prompt Format](.kimi-code/rules/prompt-format.md) for details.
 
 ## 10. Quick-start checklist
 
 - [ ] Open Kimi CLI in the project root
-- [ ] Run `/implement "<feature description>"`
+- [ ] Run `/skill:implement "<feature description>"`
 - [ ] Approve the architect's spec
 - [ ] Let the pipeline run
 - [ ] After completion check `.agent/SESSION_LOG.md`
@@ -154,6 +158,8 @@ See `.kimi/rules/prompt-format.md` for details.
 ## 11. Where to read more
 
 - [SESSION_START.md](/SESSION_START.md) — session entry templates
-- [AGENTS.md](/AGENTS.md) — agent index, skills, rules, permissions
+- [AGENTS.md](/AGENTS.md) — agent index and high-level workflow
+- [.kimi-code/AGENTS.md](/.kimi-code/AGENTS.md) — legacy master index
+- [.kimi-code/skills/promelectron/SKILL.md](/.kimi-code/skills/promelectron/SKILL.md) — master skill / role index
 - [ROUTER.md](/ROUTER.md) — routing documentation
-- `.kimi/rules/pre-edit-checklist.md` — checks before editing code
+- [Rule: Pre-edit Checklist](.kimi-code/rules/pre-edit-checklist.md) — checks before editing code

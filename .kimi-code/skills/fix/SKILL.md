@@ -10,9 +10,13 @@ arguments: "<bug description> [--backend] [--frontend] [--infra] [--e2e]"
 disableModelInvocation: false
 ---
 
-# /fix — Bug Fix Workflow
+# /skill:fix — Bug Fix Workflow
 
 Fix a bug systematically: analyze → reproduce → fix → test → verify.
+
+## Language
+
+Follow [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule. All Russian-language requirements and subagent prompt preambles live there.
 
 ---
 
@@ -41,6 +45,18 @@ Announce:
 
 ---
 
+## Step 1b: Context Size Check (Kimi K2.7)
+
+If the bug fix involves a task directory in `.agent/<task-id>/`, follow [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Context Size Check.
+
+---
+
+## Step 1c: Retry Policy
+
+Follow [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Retry Policy when launching subagents.
+
+---
+
 ## Step 2: Read Context
 
 Read:
@@ -48,9 +64,9 @@ Read:
 2. `.agent/BACKLOG.md`
 3. `.agent/BLOCKERS.md`
 4. `.agent/SESSION_LOG.md`
-5. `.kimi/agents/<ROLE>.md`
-6. `.kimi/rules/pre-edit-checklist.md`
-7. `.kimi/rules/golden-path.md` if the bug touches cart, checkout, auth, payment, orders
+5. `.kimi-code/skills/<ROLE>/SKILL.md`
+6. [Rule: Pre-edit Checklist](.kimi-code/rules/pre-edit-checklist.md)
+7. [Rule: Golden Path](.kimi-code/rules/golden-path.md) if the bug touches cart, checkout, auth, payment, orders
 
 ---
 
@@ -112,6 +128,7 @@ Update `.agent/SESSION_LOG.md`:
 - **Tests:** ...
 - **Golden path checked:** yes/no
 - **Regression risk:** low/medium/high
+- **Estimated tokens:** <N> (if task dir exists)
 ```
 
 Update `.agent/BACKLOG.md` if the bug was from the sprint.

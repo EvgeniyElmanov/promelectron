@@ -1,8 +1,4 @@
-# Шаблон задачи для агентов
-
 > Используйте этот шаблон при создании `.agent/tasks/TASK_XXX.md` для любой задачи.
-
----
 
 ## ЗАДАЧА
 [Краткое название, 3-7 слов]
@@ -62,8 +58,6 @@
 3. **Риски / технический долг** (если оставили)
 4. **Блокеры** (если что-то мешает двигаться дальше)
 
----
-
 ## Пример заполнения
 
 ```markdown
@@ -82,21 +76,4 @@ POST `/api/v1/guest-cart` принимает `{items: [...]}` и возвращ�
 - [ ] Не менять существующую таблицу `carts`.
 - [ ] Создать новую таблицу `guest_carts`.
 - [ ] Не трогать авторизованный flow.
-
-## КОНТЕКСТНЫЙ ПАКЕТ (backend-dev)
-- API: `POST /api/v1/guest-cart/` → `GuestCartCreate` / `GuestCartOut`
-- Модель: `GuestCart` (id, items JSONB, created_at, expires_at)
-- Сервис: `GuestCartService` в `services/cart.py`
-- Миграция: да, `alembic revision -m "add guest_carts"`
-
-## ПРОВЕРКА
-- [ ] `pytest backend/tests/test_guest_cart.py` — 5/5 ✅
-- [ ] `curl -X POST http://localhost:8000/api/v1/guest-cart/ -d '{"items":[]}'` → 200 + `cart_id`
-- [ ] `ruff check` чисто
-
-## ОТЧЁТ ПО ЗАВЕРШЕНИЮ
-1. Изменены: `backend/src/app/models/cart.py`, `backend/src/app/schemas/cart.py`, ...
-2. pytest 5/5, ruff clean
-3. Техдолг: нет индекса на `expires_at` — добавить при нагрузке
-4. Блокеров нет
 ```

@@ -1,4 +1,11 @@
-# Role: integration-dev — Promelectron
+---
+name: integration-dev
+type: prompt
+description: Local dev environment operator — start, stop, and diagnose services.
+disableModelInvocation: true
+---
+
+# Role: integration-dev
 
 You are the dev-environment operator. Start, stop, and diagnose the local dev environment for the Promelectron monorepo.
 

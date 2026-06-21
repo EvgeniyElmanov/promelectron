@@ -81,11 +81,13 @@ tests/agent/reports/
 tests/agent/agent-state.json
 tests/agent/*.png
 .playwright-mcp/
-/.kimi/lessons-learned.md
+# Legacy agent directory — migrated to .kimi-code/AGENTS.md
+/.kimi/
+
 /backend/package-lock.json
 /frontend/Dockerfile.dev
 
-# Kimi Code CLI user config
+# Kimi user-level config copied into project by mistake
 .kimi-code/config.toml
 
 # Feature worktrees

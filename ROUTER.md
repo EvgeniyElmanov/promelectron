@@ -2,16 +2,20 @@
 
 > Describe the task — the system picks the right agent, gathers context, and starts working.
 
+## Language note
+
+When the user communicates in Russian, the main agent and all subagents must reason and think in Russian. The parent agent must explicitly tell subagents that the original user communicates in Russian so they also reason in Russian. Final replies to the user must be in Russian, while code, commands, identifiers, file paths, and technical terms stay in their original form.
+
 ## Quick start
 
 ### Option 1: Workflow skills (recommended)
 
 ```
-/implement "Add promo codes to cart"     # full feature cycle
-/fix "Race condition in cart add"        # bug-fix workflow
-/deploy test                             # deploy via GitHub Actions
-/review                                  # code review current changes
-/context-sync                            # update project context files
+/skill:implement "Add promo codes to cart"     # full feature cycle
+/skill:fix "Race condition in cart add"        # bug-fix workflow
+/skill:deploy test                             # deploy via GitHub Actions
+/skill:review                                  # code review current changes
+/skill:context-sync                            # update project context files
 ```
 
 ### Option 2: Fixed role (when you know who you need)
@@ -23,7 +27,7 @@ Role: backend-dev. Task: add email validation to registration.
 ### Option 3: Dispatcher (ad-hoc tasks)
 
 ```
-Read .kimi/agents/dispatcher.md and follow its instructions strictly.
+Load `/skill:dispatcher` or read `.kimi-code/skills/dispatcher/SKILL.md` and follow its instructions strictly.
 Task: Create an API for promo codes.
 ```
 
@@ -45,7 +49,7 @@ Task: Create an API for promo codes.
 | `integration-dev` | dev environment, services won't start, ports, health check | Local environment ops |
 
 **Mixed tasks** (e.g. "API and frontend for promos"):
-1. `/implement` picks the primary role and may run backend + frontend sequentially.
+1. `/skill:implement` picks the primary role and may run backend + frontend sequentially.
 2. For ad-hoc mixed work, use the dispatcher.
 
 ## Architecture
@@ -55,7 +59,7 @@ User describes task
        │
        ▼
 ┌─────────────────────────────┐
-│  /implement or /fix skill   │
+│  /skill:implement or /skill:fix skill   │
 │  (in .kimi-code/skills/)    │
 └─────────────┬───────────────┘
               │
@@ -91,8 +95,8 @@ User describes task
 | `.kimi-code/skills/deploy/SKILL.md` | Deployment workflow |
 | `.kimi-code/skills/context-sync/SKILL.md` | Context synchronization |
 | `.kimi-code/skills/plan-maintainer/SKILL.md` | Backlog/planning maintenance |
-| `.kimi/agents/<ROLE>.md` | Role prompts |
-| `.kimi/rules/*.md` | Shared conventions |
+| `.kimi-code/skills/<role>/SKILL.md` | Role instructions (flat Kimi skills) |
+| `.kimi-code/rules/*.md` | Shared conventions (reference markdown) |
 | `PROJECT_CONTEXT.md` | Single source of truth |
 | `.agent/BACKLOG.md` | Current sprint |
 | `.agent/BLOCKERS.md` | Active blockers |
@@ -100,7 +104,8 @@ User describes task
 
 ## Adding a new role
 
-1. Create `.kimi/agents/<new-role>.md` — role prompt
-2. Add keywords to `.kimi/agents/dispatcher.md`
-3. Update `ROUTER.md` and `SESSION_START.md`
-4. If the role is part of `/implement`, update `.kimi-code/skills/implement/SKILL.md`
+1. Create a new flat skill under `.kimi-code/skills/<role>/SKILL.md`
+2. Add the role to `.kimi-code/skills/promelectron/SKILL.md` (master index)
+3. Add keywords to `.kimi-code/skills/dispatcher/SKILL.md`
+4. Update `ROUTER.md` and `SESSION_START.md`
+5. If the role is part of `/skill:implement`, update `.kimi-code/skills/implement/SKILL.md`

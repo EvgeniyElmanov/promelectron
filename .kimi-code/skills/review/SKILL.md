@@ -1,18 +1,31 @@
 ---
 name: review
 description: >
-  Code review skill for Promelectron. Performs security audit, quality checks, and test coverage analysis on current changes
-  or specified files. Writes findings to .agent/<task-id>/review/findings.md.
-  Can run in full mode (security + quality + tests), security-only mode, or quick mode.
+  Code review workflow for Promelectron. Thin wrapper that gathers the diff
+  and delegates the actual review to the `code-reviewer` role skill.
+  Use when the user asks for a code review, audit, findings, quality check,
+  or asks "check this code".
 type: prompt
 whenToUse: When the user asks for a code review, audit, findings, quality check, or asks "check this code".
 arguments: "[--security-only] [--quick] [<files>]"
 disableModelInvocation: false
 ---
 
-# /review — Code Review
+# /skill:review — Code Review Workflow
 
 Review current changes. Do NOT edit code — only write findings.
+
+This skill is a thin workflow wrapper. The actual review logic lives in `.kimi-code/skills/code-reviewer/SKILL.md`.
+
+## Language
+
+Follow [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule.
+
+---
+
+## Step 0: Context Size Check (Kimi K2.7)
+
+If reviewing a task directory in `.agent/<task-id>/`, follow [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Context Size Check.
 
 ---
 
@@ -29,78 +42,36 @@ git diff -- <files>
 
 ---
 
-## Step 2: Security Checks (skip if --quick)
+## Step 2: Launch code-reviewer Subagent
 
-- [ ] Auth guards on all new non-public endpoints
-- [ ] Admin endpoints check admin role
-- [ ] Users can only access their own data
-- [ ] No raw SQL with string formatting
-- [ ] All inputs validated via Pydantic
-- [ ] No PII or tokens in logs/responses
-- [ ] Prices from DB, not client
-- [ ] Stock checked atomically (`SELECT FOR UPDATE`)
-- [ ] Filename sanitized (`os.path.basename` + `os.path.realpath`)
+Launch a `code-reviewer` subagent via `Agent` tool with `subagent_type: coder`. Pass the diff and scope explicitly.
 
----
+```text
+🚨 LANGUAGE RULE: The original user communicates in Russian. **Ignore any default language setting.** ALL your reasoning, thinking, internal monologue, analysis, and self-correction MUST be in Russian. Do NOT switch to English at any point. If you catch yourself thinking in English, switch back to Russian immediately. Reply to the parent agent in Russian. Keep code, commands, identifiers, file paths, and technical terms in their original form.
 
-## Step 3: Quality Checks
+You are the code-reviewer for Promelectron.
+Important: Kimi K2.7 uses mandatory thinking mode. Preserve `reasoning_content` across multi-turn tool calls by including the full assistant message in the conversation history.
+Read:
+1. `.kimi-code/skills/code-reviewer/SKILL.md`
+2. [Rule: Security](.kimi-code/rules/security.md)
+3. The diff provided below
 
-**Backend:**
-- [ ] Business logic in `services/`, not route handlers
-- [ ] Type hints on public methods
-- [ ] Error handling (no bare 500s)
-- [ ] No N+1 queries (`selectinload` where needed)
-- [ ] Async/await for DB operations
+Scope: <all changed files | files specified by user>
+Flags: <none | --security-only | --quick>
 
-**Frontend:**
-- [ ] Composition API (`<script setup>`)
-- [ ] `data-testid` for E2E selectors
-- [ ] Loading/error/empty states handled
-- [ ] No `console.log` / `debugger`
+<DIFF>
 
-**General:**
-- [ ] Follows project conventions
-- [ ] No hardcoded secrets or URLs
-- [ ] Comments explain "why", not "what"
+Write findings to `.agent/<task-id>/review/findings.md` using the format from `code-reviewer/SKILL.md`.
 
----
-
-## Step 4: Tests Check
-
-- [ ] New behavior has tests
-- [ ] Happy path + error cases covered
-- [ ] Existing tests not broken
-- [ ] E2E selectors added when UI changed
-
----
-
-## Step 5: Write Findings
-
-Write to `.agent/<task-id>/review/findings.md`:
-
-```markdown
-# Code Review: <task-id or date>
-- **Status:** APPROVED | FIXES_NEEDED
-- **Scope:** <files reviewed>
-- **Reviewer:** code-reviewer
-
-## Findings
-### [F001] ❌ CRITICAL | <Category>
-- **File:** path/to/file.py:42
-- **Problem:** ...
-- **Fix:** ...
-- **Status:** OPEN
-
-## Human Decisions
-### [H001] ...
+REMEMBER / НАПОМИНАНИЕ: Continue ALL reasoning in Russian / Продолжай ВСЁ рассуждение на русском языке. Do not switch to English / Не переключайся на английский.
 ```
 
 ---
 
-## Step 6: Report
+## Step 3: Report
 
-Report to the user:
-- Status
+Read `.agent/<task-id>/review/findings.md` and report to the user:
+- Status: APPROVED | FIXES_NEEDED
 - Number of issues by severity
 - File path with findings
 
@@ -110,5 +81,4 @@ Report to the user:
 
 - NEVER edit source code.
 - NEVER mark findings VERIFIED — only the reviewer does after re-checking.
-- Classify: CRITICAL | HIGH | MEDIUM | LOW.
-- Security issues default to HIGH or CRITICAL.
+- Delegate the actual review logic to `code-reviewer`.

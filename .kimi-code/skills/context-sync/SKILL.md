@@ -12,9 +12,13 @@ arguments: "[--full] [--backlog-only] [--blockers-only] [--quick]"
 disableModelInvocation: false
 ---
 
-# /context-sync — Update Project Context
+# /skill:context-sync — Update Project Context
 
 Synchronize `PROJECT_CONTEXT.md`, `BACKLOG.md`, `BLOCKERS.md` with reality.
+
+## Language
+
+Follow [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule. All Russian-language requirements and subagent prompt preambles live there.
 
 ---
 
@@ -31,7 +35,13 @@ Record `last_update` from PROJECT_CONTEXT.md frontmatter.
 
 ---
 
-## Step 2: Analyze Git History
+## Step 2: Check Active Task Context Size (Kimi K2.7)
+
+For each active task directory in `.agent/`, follow [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Context Size Check.
+
+---
+
+## Step 3: Analyze Git History
 
 ```bash
 git log --since="<last_update>" --oneline --no-merges
@@ -47,7 +57,7 @@ Look for:
 
 ---
 
-## Step 3: Check Test Status
+## Step 4: Check Test Status
 
 ```bash
 cd backend && pytest --tb=no -q 2>/dev/null || echo "Backend tests not runnable"
@@ -56,7 +66,7 @@ cd frontend && npm test -- --run 2>/dev/null || echo "Frontend tests not runnabl
 
 ---
 
-## Step 4: Scan Blockers
+## Step 5: Scan Blockers
 
 For each blocker in `BLOCKERS.md`:
 - grep the code — maybe already fixed?
@@ -64,7 +74,7 @@ For each blocker in `BLOCKERS.md`:
 
 ---
 
-## Step 5: Check for New Blockers
+## Step 6: Check for New Blockers
 
 ```bash
 cd backend && alembic current 2>/dev/null || echo "Alembic issue"
@@ -79,7 +89,7 @@ New blockers:
 
 ---
 
-## Step 6: Update PROJECT_CONTEXT.md
+## Step 7: Update PROJECT_CONTEXT.md
 
 Update frontmatter:
 ```yaml
@@ -107,7 +117,7 @@ Append a brief changelog at the bottom.
 
 ---
 
-## Step 7: Update BACKLOG.md
+## Step 8: Update BACKLOG.md
 
 For each sprint task:
 - Code exists? grep
@@ -120,16 +130,16 @@ Mark `[x]` only with evidence (commit or file). Add `(commit: abc1234)` when mar
 
 ---
 
-## Step 8: Update BLOCKERS.md
+## Step 9: Update BLOCKERS.md
 
 - Move resolved blockers to "Resolved"
 - Update deadlines
 - Mark escalated (>2 days)
-- Add new blockers from Step 5
+- Add new blockers from Step 6
 
 ---
 
-## Step 9: Report
+## Step 10: Report
 
 Report:
 - What was updated

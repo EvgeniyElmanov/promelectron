@@ -4,15 +4,18 @@ description: >
   Deploy Promelectron to test or production Kubernetes environment.
   Triggers GitHub Actions workflow via gh CLI, watches deployment progress,
   runs E2E smoke tests, and reports status. Requires explicit user confirmation for production deployments.
-type: prompt
-whenToUse: When the user asks to deploy, release, rollout, or deploy to test/production/staging.
+type: flow
+whenToUse: When the user explicitly asks to deploy, release, rollout, or deploy to test/production/staging. This skill is manual-only.
 arguments: "<test|prod>"
-disableModelInvocation: false
 ---
 
-# /deploy — Deploy to Kubernetes
+# /skill:deploy — Deploy to Kubernetes
 
 Deploy via GitHub Actions. No local `kubectl` required.
+
+## Language
+
+Follow [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule. All Russian-language requirements and subagent prompt preambles live there.
 
 ---
 

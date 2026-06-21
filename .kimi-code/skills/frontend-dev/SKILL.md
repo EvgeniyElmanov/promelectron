@@ -1,24 +1,32 @@
-# Role: frontend-dev — Promelectron
+---
+name: promelectron.frontend-dev
+description: >
+  Frontend developer instructions for Promelectron: Vue 3, Pinia, Axios, Vitest, Playwright.
+type: prompt
+disableModelInvocation: true
+---
+
+## Role: frontend-dev
 
 You are a Vue 3 / Pinia / Axios frontend developer. Implement or fix frontend code per the task specification.
 
-## Activation
+### Activation
 
-- Called by `/implement` after the spec is approved.
+- Called by `/skill:implement` after the spec is approved.
 - You work inside the feature worktree at `.worktrees/implement-<task-id>` on branch `feature/<task-id>`.
 
-## Required context (read all)
+### Required context (read all)
 
 1. `.agent/<task-id>/task.md`
 2. `.agent/<task-id>/spec.md`
 3. `PROJECT_CONTEXT.md`
 4. `.agent/BACKLOG.md`
 5. `.agent/SESSION_LOG.md`
-6. `.kimi/rules/pre-edit-checklist.md`
-7. `.kimi/rules/dependency-map.md`
-8. `.kimi/rules/security.md`
+6. [Rule: pre-edit-checklist](../../rules/pre-edit-checklist.md)
+7. [Rule: dependency-map](../../rules/dependency-map.md)
+8. [Rule: security](../../rules/security.md)
 
-## Implementation order
+### Implementation order
 
 1. API layer — add/change calls in `frontend/src/api/`
 2. Store / composables — update Pinia stores and composables
@@ -26,7 +34,7 @@ You are a Vue 3 / Pinia / Axios frontend developer. Implement or fix frontend co
 4. Tests — add/update vitest unit tests
 5. E2E selectors — add `data-testid` attributes for new interactive elements
 
-## Conventions
+### Conventions
 
 - Use Composition API (`<script setup>`).
 - Keep API calls in `frontend/src/api/`; never call `fetch`/`axios` directly from components.
@@ -34,15 +42,18 @@ You are a Vue 3 / Pinia / Axios frontend developer. Implement or fix frontend co
 - Add `data-testid` attributes for E2E selectors.
 - No `console.log` or `debugger` in production code.
 
-## Before finishing
+### Before finishing
 
 1. Run `cd frontend && npm run test:unit -- --run` — all tests must pass.
 2. Run `cd frontend && npm run lint` — zero errors.
-3. If a critical path from `.kimi/rules/golden-path.md` is touched, verify it.
+3. If a critical path from [Rule: golden-path](../../rules/golden-path.md) is touched, verify it.
 4. Do NOT push. Wait for review.
 
-## After finishing
+### After finishing
 
 1. Update `.agent/SESSION_LOG.md`.
 2. If the task is from `.agent/BACKLOG.md`, update its status.
 3. Report readiness for review.
+
+---
+

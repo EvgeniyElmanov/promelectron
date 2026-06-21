@@ -2,20 +2,46 @@
 # Copy relevant sections into ~/.kimi-code/config.toml
 # Project-level config.toml is NOT supported by Kimi Code CLI.
 
-# default_model = "kimi-code/kimi-for-coding"
-# default_thinking = true
-# default_permission_mode = "manual"
-# default_plan_mode = false
-# merge_all_available_skills = true
-# telemetry = true
+default_model = "kimi-for-coding"
+default_thinking = true
+default_permission_mode = "manual"
+# default_permission_mode = "auto"   # разрешить read-only автоматически; править/запускать — всё ещё с approval
+# default_permission_mode = "yolo"   # только для локальных экспериментов; пропускает approval почти всех инструментов
+default_plan_mode = false
+merge_all_available_skills = true
+telemetry = true
 
-# ─── Permission Rules for /implement pipeline ───
+# NOTE: There is no "default_yolo" field in Kimi Code CLI.
+# Use default_permission_mode = "manual" | "auto" | "yolo" instead.
+
+# Kimi K2.7 specifics:
+# - Context window: 256K tokens (262,144).
+# - Thinking mode is mandatory and cannot be disabled.
+# - For multi-turn tool calls, preserve reasoning_content from assistant messages.
+# - Project retry policy: transient errors (502/504/timeout) are retried up to 3
+#   times with exponential backoff via scripts/agent_retry.py.
+
+# ─── Provider & Model ───
+# Alias for Kimi Code managed provider. Uncomment and fill api_key if you use API key login.
+
+[providers."managed:kimi-code"]
+type = "kimi"
+base_url = "https://api.kimi.com/coding/v1"
+api_key = ""
+
+[models."kimi-for-coding"]
+provider = "managed:kimi-code"
+model = "kimi-for-coding"
+max_context_size = 262144
+
+# ─── Permission Rules for /skill:implement pipeline ───
 # These rules reduce approval friction for git worktrees, tests, and lint.
+# You can also use interactive slash commands: /yolo (auto-approve) or /afk.
 
 [[permission.rules]]
 decision = "allow"
 pattern = "Bash(git worktree *)"
-reason = "Allow /implement to create isolated worktrees"
+reason = "Allow /skill:implement to create isolated worktrees"
 
 [[permission.rules]]
 decision = "allow"
@@ -26,6 +52,41 @@ reason = "Allow developer subagent to commit to feature branches"
 decision = "allow"
 pattern = "Bash(git merge *)"
 reason = "Allow merging feature branches after user approval"
+
+[[permission.rules]]
+decision = "allow"
+pattern = "Bash(git branch *)"
+reason = "Allow branch cleanup and inspection during worktree lifecycle"
+
+[[permission.rules]]
+decision = "allow"
+pattern = "Bash(git diff *)"
+reason = "Allow reviewer to inspect changes"
+
+[[permission.rules]]
+decision = "allow"
+pattern = "Bash(git status *)"
+reason = "Allow agents to check git status"
+
+[[permission.rules]]
+decision = "allow"
+pattern = "Bash(git push origin feature/*)"
+reason = "Push feature branches to origin"
+
+[[permission.rules]]
+decision = "allow"
+pattern = "Bash(git push origin bugfix/*)"
+reason = "Push bugfix branches to origin"
+
+[[permission.rules]]
+decision = "ask"
+pattern = "Bash(git push origin main)"
+reason = "Push main only after explicit user approval"
+
+[[permission.rules]]
+decision = "allow"
+pattern = "Bash(gh pr create *)"
+reason = "Create GitHub Pull Requests from feature branches"
 
 [[permission.rules]]
 decision = "allow"
@@ -62,12 +123,26 @@ decision = "allow"
 pattern = "Bash(alembic *)"
 reason = "Run Alembic migrations"
 
-# ─── Hook: auto-lint Python after Edit/Write ───
-# Note: Kimi Code CLI hook variable for the touched file may differ from Claude's.
-# This hook lints the whole backend quietly; it is safe but slightly slower.
+# ─── Hooks ───
+# NOTE: ~/.kimi-code/config.toml is user-level, so hooks run for EVERY project.
+# Avoid project-specific commands (like "cd backend && ruff check") here.
+# Use project-level lint scripts (e.g. make lint / pre-push hook) instead.
+#
+# Hooks receive event JSON via stdin and decide whether to allow/block a tool call
+# based on exit code: 0 = allow, 2 = block, anything else = allow (fail-open).
 
+# Block dangerous shell commands before execution.
+# The hook script lives in the repo at scripts/hooks/block-dangerous-bash.py.
+# Copy it to ~/.kimi-code/hooks/block-dangerous-bash.py when copying this config.
 [[hooks]]
-event = "PostToolUse"
-matcher = "Edit|Write"
-command = "cd backend && ruff check --fix --quiet 2>/dev/null; true"
-timeout = 30
+event = "PreToolUse"
+matcher = "Bash"
+command = "python3 ~/.kimi-code/hooks/block-dangerous-bash.py"
+timeout = 5
+
+# Notify when a background task completes (safe for any project).
+# Requires terminal-notifier on macOS or equivalent on Linux.
+# [[hooks]]
+# event = "Notification"
+# matcher = "task\\.completed"
+# command = "terminal-notifier -title Kimi -message 'Task done'"
