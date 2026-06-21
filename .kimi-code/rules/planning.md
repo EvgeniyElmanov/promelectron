@@ -1,18 +1,18 @@
-# Planning Rules
+# Rule: planning
 
-Rules for maintaining project plans, roadmaps, and task prioritization.
+Rules for maintaining project plans, roadmaps, task prioritization, and the Definition of Done.
 
-## 1. Single Source of Truth
+## Single Source of Truth
 
-.agent/PLANNING_HANDOFF.md is the only authoritative plan. `ROADMAP.md` is historical reference only.
+`.agent/PLANNING_HANDOFF.md` is the only authoritative plan. `ROADMAP.md` is historical reference only.
 
-- When updating plans, always edit `.agent/PLANNING_HANDOFF.md` first
-- If `ROADMAP.md` contradicts `.agent/PLANNING_HANDOFF.md`, `.agent/PLANNING_HANDOFF.md` wins
-- After updating `.agent/PLANNING_HANDOFF.md`, update `ROADMAP.md` only if explicitly requested
+- When updating plans, always edit `.agent/PLANNING_HANDOFF.md` first.
+- If `ROADMAP.md` contradicts `.agent/PLANNING_HANDOFF.md`, `.agent/PLANNING_HANDOFF.md` wins.
+- After updating `.agent/PLANNING_HANDOFF.md`, update `ROADMAP.md` only if explicitly requested.
 
-## 2. Task Format
+## Task Format
 
-Every task in `.agent/PLANNING_HANDOFF.md` and `.agent/BACKLOG.md` must follow the format defined in those files.
+Every task in `.agent/PLANNING_HANDOFF.md` and `.agent/BACKLOG.md` should follow this format:
 
 ```markdown
 - [ ] **ID-XXX** Task title (S|M|L) — risk: low|medium|high
@@ -23,7 +23,7 @@ Every task in `.agent/PLANNING_HANDOFF.md` and `.agent/BACKLOG.md` must follow t
   - **Acceptance:** How to verify completion
 ```
 
-## 3. Status Definitions
+## Status Definitions
 
 | Status | Symbol | Meaning |
 |--------|--------|---------|
@@ -34,9 +34,10 @@ Every task in `.agent/PLANNING_HANDOFF.md` and `.agent/BACKLOG.md` must follow t
 | Blocked | `[!]` | External dependency or blocker |
 | Deferred | `[-]` | Intentionally postponed |
 
-## 4. Prioritization Matrix
+## Prioritization Matrix
 
 Rank tasks by:
+
 1. **Production blocker** — breaks live environment (P0)
 2. **Security risk** — vulnerability or data exposure (P0)
 3. **Regression** — breaks existing functionality (P1)
@@ -44,24 +45,24 @@ Rank tasks by:
 5. **Business value** — directly impacts users/revenue (P2)
 6. **Tech debt** — slows future development (P3)
 
-## 5. Sprint Boundaries
+## Sprint Boundaries
 
-- A sprint is 1 week max
-- Each sprint has at most 1 P0 and 2 P1 tasks
-- Everything else is P2/P3 and can spill over
+- A sprint is 1 week max.
+- Each sprint has at most 1 P0 and 2 P1 tasks.
+- Everything else is P2/P3 and can spill over.
 - At sprint end, update `.agent/PLANNING_HANDOFF.md` and `.agent/BACKLOG.md` with:
   - What was completed
   - What was not and why
   - New blockers discovered
   - Next sprint proposal
 
-## 6. Dependency Rules
+## Dependency Rules
 
-- Never start a task whose dependencies are not Done
-- If a dependency is Blocked, escalate immediately
-- Document cross-team dependencies (infra, design, 3rd party APIs)
+- Never start a task whose dependencies are not Done.
+- If a dependency is Blocked, escalate immediately.
+- Document cross-team dependencies (infra, design, 3rd party APIs).
 
-## 7. Assumption Tracking
+## Assumption Tracking
 
 Every estimate carries assumptions. Document them:
 
@@ -69,14 +70,15 @@ Every estimate carries assumptions. Document them:
 **Assumptions:**
 - MinIO is already deployed in K8s cluster (confirmed: yes)
 - `API_BASE_URL` env var will be added by DevOps (owner: @devops)
-- No schema changes needed for this feature
+- No schema changes needed for this task
 ```
 
 When an assumption turns out false, re-estimate immediately.
 
-## 8. Definition of Done
+## Definition of Done
 
 A task is Done only when:
+
 - [ ] Code is written and committed
 - [ ] Tests pass (backend + frontend + E2E if UI)
 - [ ] No new lint/security errors

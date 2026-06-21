@@ -68,6 +68,8 @@ test-visual: ## Визуальный smoke (скриншоты)
 
 test-full: test-backend test-frontend test-e2e ## Полный цикл: unit + e2e
 
+pre-push: lint test-full ## Запустить перед git push: lint + unit + e2e
+
 # ─── Миграции ───────────────────────────────────────────────────────────────
 
 migrate: ## Применить миграции (alembic upgrade head)

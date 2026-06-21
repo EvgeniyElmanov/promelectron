@@ -9,7 +9,7 @@ description: >
 type: prompt
 whenToUse: Whenever the user works on the Promelectron project, regardless of role or task type. Load first to get the full agent registry and project conventions.
 arguments: "<task description> or just start working"
-disableModelInvocation: false
+disableModelInvocation: true
 ---
 
 # Promelectron — Master Skill
@@ -20,6 +20,10 @@ This skill is your single source of truth. Follow it strictly.
 > **🚨 GOLDEN RULE:**
 > **Every user request = NEW TASK = NEW ROLE ANALYSIS.**
 > The previous role is **completely reset**. Even if 50 messages ago you were backend-dev, a new task about Vue → you are frontend-dev. No exceptions.
+
+## Language
+
+Follow [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule. All Russian-language requirements and subagent prompt preambles live there.
 
 ---
 
@@ -36,10 +40,12 @@ This skill is your single source of truth. Follow it strictly.
 | `project-manager` | roadmap, plan, sprint, backlog, estimate | Planning | read plans → analyze → update → report |
 | `architect` | design, architecture, spec, technical design, trade-off | Design | context → questions → trade-offs → spec |
 | `qa` | test all, acceptance criteria, full check | Whole project | pytest + vitest + playwright → report |
+| `integration-dev` | dev environment, services won't start, ports, health check | Local env | start → diagnose → stop |
+| `dispatcher` | ad-hoc, unknown role, mixed quick task | Any | analyze → route → execute |
 
 **Mixed tasks:**
-- "API + UI" → use `/implement` workflow skill (full cycle).
-- "Deploy + backend" → `/deploy` then backend-dev.
+- "API + UI" → use `/skill:implement` workflow skill (full cycle).
+- "Deploy + backend" → `/skill:deploy` then backend-dev.
 - "Security audit" → security-reviewer → fixes → code-reviewer.
 
 ---
@@ -52,7 +58,31 @@ At the start of **every** response output:
 🔄 Role reset. Previous context forgotten. Analyzing new task...
 ```
 
-Then determine the role from the table above, read the corresponding `.kimi/agents/<role>.md`, and follow its workflow.
+Then determine the role from the table above, invoke the corresponding Kimi skill (`/skill:<role>`) or read `.kimi-code/skills/<role>/SKILL.md`, and follow its workflow.
+
+| Role | Skill | File |
+|------|-------|------|
+| `backend-dev` | `/skill:backend-dev` | `.kimi-code/skills/backend-dev/SKILL.md` |
+| `frontend-dev` | `/skill:frontend-dev` | `.kimi-code/skills/frontend-dev/SKILL.md` |
+| `devops` | `/skill:devops` | `.kimi-code/skills/devops/SKILL.md` |
+| `e2e-tester` | `/skill:e2e-tester` | `.kimi-code/skills/e2e-tester/SKILL.md` |
+| `code-reviewer` | `/skill:code-reviewer` | `.kimi-code/skills/code-reviewer/SKILL.md` |
+| `security-reviewer` | `/skill:security-reviewer` | `.kimi-code/skills/security-reviewer/SKILL.md` |
+| `qa` | `/skill:qa` | `.kimi-code/skills/qa/SKILL.md` |
+| `project-manager` | `/skill:project-manager` | `.kimi-code/skills/project-manager/SKILL.md` |
+| `integration-dev` | `/skill:integration-dev` | `.kimi-code/skills/integration-dev/SKILL.md` |
+| `dispatcher` | `/skill:dispatcher` | `.kimi-code/skills/dispatcher/SKILL.md` |
+| `architect` | `/skill:architect` | `.kimi-code/skills/architect/SKILL.md` |
+
+Shared rules (reference markdown, not skills):
+- Pre-edit checklist: [Rule: Pre-edit Checklist](.kimi-code/rules/pre-edit-checklist.md)
+- Golden path: [Rule: Golden Path](.kimi-code/rules/golden-path.md)
+- Dependency map: [Rule: Dependency Map](.kimi-code/rules/dependency-map.md)
+- Security: [Rule: Security](.kimi-code/rules/security.md)
+- Prompt format: [Rule: Prompt Format](.kimi-code/rules/prompt-format.md)
+- Task template: [Rule: Task Template](.kimi-code/rules/task-template.md)
+
+Legacy `.kimi-code/AGENTS.md` is kept for reference but new skills use flat skills under `.kimi-code/skills/`.
 
 ---
 
@@ -63,12 +93,37 @@ Before any code change, read:
 2. `.agent/BACKLOG.md` — current sprint
 3. `.agent/BLOCKERS.md` — active blockers
 4. `.agent/SESSION_LOG.md` — recent sessions
-5. `.kimi/agents/<role>.md` — role instructions
-6. `.kimi/rules/pre-edit-checklist.md` — pre-edit checks
+5. The `<role>` skill in `.kimi-code/skills/<role>/SKILL.md` — role instructions
+6. [Rule: Pre-edit Checklist](.kimi-code/rules/pre-edit-checklist.md) — pre-edit checks
 
 ---
 
-## 4. Post-Work Updates
+## 4. Context Size Check (Kimi K2.7)
+
+Before launching subagents, estimate task context size:
+
+```bash
+python scripts/implement-pipeline.py check-context <task-id>
+```
+
+- If `ESTIMATED_TOKENS` >= 180000, read `.agent/<task-id>/CONTEXT_SUMMARY.md` instead of full history.
+- Log the estimated token count in `.agent/SESSION_LOG.md`.
+
+Kimi K2.7 has a 256K context window with mandatory thinking mode. Staying below 180K leaves room for `reasoning_content`, tool outputs, and system instructions.
+
+---
+
+## 5. Retry Policy
+
+When using `Agent` or `AgentSwarm`:
+- Retry up to 3 times on transient errors (502, 504, timeout).
+- Use exponential backoff: 2s, 4s, 8s.
+- Preserve `reasoning_content` across multi-turn tool calls.
+- Stop and report if all attempts fail.
+
+---
+
+## 6. Post-Work Updates
 
 After finishing:
 1. Update `.agent/SESSION_LOG.md`
@@ -77,21 +132,21 @@ After finishing:
 
 ---
 
-## 5. Workflow Skills
+## 7. Workflow Skills
 
 For complex multi-step processes use the dedicated skill:
 
 | Command | Use for |
 |---------|---------|
-| `/implement` | New feature: architect → dev → review → QA → e2e |
-| `/fix` | Bug: analyze → reproduce → fix → test |
-| `/deploy` | Deploy to test/prod via GitHub Actions |
-| `/review` | Code review current changes |
-| `/context-sync` | Update PROJECT_CONTEXT.md, BACKLOG.md, BLOCKERS.md |
+| `/skill:implement` | New feature: architect → dev → review → QA → e2e |
+| `/skill:fix` | Bug: analyze → reproduce → fix → test |
+| `/skill:deploy` | Deploy to test/prod via GitHub Actions |
+| `/skill:review` | Code review current changes |
+| `/skill:context-sync` | Update PROJECT_CONTEXT.md, BACKLOG.md, BLOCKERS.md |
 
 ---
 
-## 6. Hard Rules
+## 8. Hard Rules
 
 - **NEVER** continue the previous role.
 - **NEVER** mix roles in one task.

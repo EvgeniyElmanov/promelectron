@@ -45,6 +45,8 @@ required_files=(
     ".agent/BLOCKERS.md"
     ".agent/SESSION_LOG.md"
     ".agent/PLANNING_HANDOFF.md"
+    ".kimi-code/AGENTS.md"
+    ".kimi-code/BUNDLE.md"
     ".kimi-code/mcp.json"
     ".kimi-code/config.example.toml"
     ".kimi-code/skills/promelectron/SKILL.md"
@@ -54,21 +56,6 @@ required_files=(
     ".kimi-code/skills/deploy/SKILL.md"
     ".kimi-code/skills/context-sync/SKILL.md"
     ".kimi-code/skills/plan-maintainer/SKILL.md"
-    ".kimi/agents/dispatcher.md"
-    ".kimi/agents/architect.md"
-    ".kimi/agents/backend-dev.md"
-    ".kimi/agents/frontend-dev.md"
-    ".kimi/agents/code-reviewer.md"
-    ".kimi/agents/security-reviewer.md"
-    ".kimi/agents/e2e-tester.md"
-    ".kimi/agents/qa.md"
-    ".kimi/agents/devops.md"
-    ".kimi/agents/project-manager.md"
-    ".kimi/agents/integration-dev.md"
-    ".kimi/rules/pre-edit-checklist.md"
-    ".kimi/rules/golden-path.md"
-    ".kimi/rules/dependency-map.md"
-    ".kimi/rules/security.md"
     "scripts/implement-pipeline.py"
     "Makefile"
 )
@@ -93,6 +80,7 @@ obsolete_files=(
     ".agent/START_HERE.md"
     ".agent/DISPATCHER_PROMPT.md"
     ".agent/ORCHESTRATOR_PROMPT.md"
+    ".kimi/"
     ".kimi/AGENTS.md"
     ".kimi/CLAUDE.md"
     ".kimi/tester.md"
@@ -109,10 +97,10 @@ for file in "${obsolete_files[@]}"; do
     fi
 done
 
-if [ -d ".kimi/skills" ]; then
-    error ".kimi/skills/ — УСТАРЕЛА, нужно удалить"
+if [ -d ".kimi" ]; then
+    error ".kimi/ — УСТАРЕЛА, нужно удалить (содержимое перенесено в .kimi-code/AGENTS.md)"
 else
-    ok ".kimi/skills/ — удалена"
+    ok ".kimi/ — удалена"
 fi
 
 # ─── 3. Skills consistency ────────────────────────────────────────
@@ -127,46 +115,133 @@ else
     error ".kimi-code/skills/ — НЕ НАЙДЕНА"
 fi
 
-# ─── 4. Консистентность агентов в AGENTS.md ───────────────────────
+# ─── 4. Консистентность агентов в .kimi-code/AGENTS.md ───────────────────────
 
 echo ""
 echo "🤖 Проверка реестра агентов..."
 
-for f in .kimi/agents/*.md; do
-    agent=$(basename "$f" .md)
-    if grep -q "\`$agent\`" AGENTS.md; then
-        ok "$agent.md зарегистрирован в AGENTS.md"
+required_agents=(
+    "architect"
+    "backend-dev"
+    "frontend-dev"
+    "code-reviewer"
+    "security-reviewer"
+    "e2e-tester"
+    "qa"
+    "devops"
+    "project-manager"
+    "integration-dev"
+    "dispatcher"
+)
+
+for agent in "${required_agents[@]}"; do
+    if grep -qF '| `'$agent'` |' .kimi-code/BUNDLE.md; then
+        ok "Role '$agent' найден в .kimi-code/BUNDLE.md"
     else
-        error "$agent.md НЕ зарегистрирован в AGENTS.md"
+        error "Role '$agent' НЕ найден в .kimi-code/BUNDLE.md"
     fi
 done
 
-# ─── 5. Broken links в агентах и skills ───────────────────────────
+# ─── 5. Flat role skills consistency ──────────────────────────────
+
+echo ""
+echo "🧩 Проверка flat role skills..."
+
+required_role_skills=(
+    "architect"
+    "backend-dev"
+    "frontend-dev"
+    "code-reviewer"
+    "security-reviewer"
+    "e2e-tester"
+    "devops"
+    "qa"
+    "project-manager"
+    "integration-dev"
+    "dispatcher"
+)
+
+for skill in "${required_role_skills[@]}"; do
+    f=".kimi-code/skills/$skill/SKILL.md"
+    if [ -f "$f" ]; then
+        ok "role skill $skill/SKILL.md"
+    else
+        error "role skill $skill/SKILL.md — НЕ НАЙДЕН"
+    fi
+done
+
+required_rules=(
+    "agent-commons"
+    "pre-edit-checklist"
+    "golden-path"
+    "dependency-map"
+    "security"
+    "prompt-format"
+    "task-template"
+    "planning"
+    "known-pitfalls"
+)
+
+for rule in "${required_rules[@]}"; do
+    f=".kimi-code/rules/$rule.md"
+    if [ -f "$f" ]; then
+        ok "rule $rule.md"
+    else
+        error "rule $rule.md — НЕ НАЙДЕН"
+    fi
+done
+
+# Убедимся, что внутри .kimi-code/skills/promelectron/ нет вложенных skill-директорий
+if [ -d ".kimi-code/skills/promelectron" ]; then
+    nested_skills=$(find .kimi-code/skills/promelectron -mindepth 2 -name 'SKILL.md' -type f 2>/dev/null || true)
+    if [ -n "$nested_skills" ]; then
+        error "Найдены вложенные SKILL.md в .kimi-code/skills/promelectron/ — Kimi CLI не загружает их: $nested_skills"
+    else
+        ok ".kimi-code/skills/promelectron/ — нет вложенных SKILL.md"
+    fi
+fi
+
+# ─── 6. Broken links в агентах и skills ───────────────────────────
 
 echo ""
 echo "🔗 Проверка broken links в агентах и skills..."
 
 broken_found=0
-for f in .kimi/agents/*.md .kimi-code/skills/*/SKILL.md .kimi/rules/*.md; do
-    [ -f "$f" ] || continue
+while IFS= read -r -d '' f; do
     base=$(basename "$f")
-    # Ищем markdown-ссылки вида [text](path) и plain-ссылки на .md файлы
-    links=$(grep -oP '(?<!`)(\.\/|\.\./)?(?:\.agent|\.kimi|\.kimi-code|backend|frontend|scripts|infra)/[^ )\`]+\.md(?!`)' "$f" 2>/dev/null || true)
+    dir=$(dirname "$f")
+    # Markdown links: [text](path/to/file.md)
+    md_links=$(grep -oP '\[.*?\]\(\K[^) ]+\.md(?=\))' "$f" 2>/dev/null || true)
+    # Plain links: paths ending in .md inside known roots, parent-relative paths, or root-level .md files.
+    # Start-boundary (whitespace, quote, or backtick) prevents matching a suffix of a Markdown link.
+    plain_links=$(grep -oP "(?:(?<=^)|(?<=[\\s'\"\\x60]))(?:(?:\\.agent|\\.kimi-code|backend|frontend|scripts|infra)/|/|\\.\\./)[^ )\\x60]+?\\.md" "$f" 2>/dev/null || true)
+    links=$(printf '%s\n%s\n' "$md_links" "$plain_links" | sort -u)
     if [ -n "$links" ]; then
         echo "$links" | while read -r link; do
-            # Пропускаем шаблонные placeholder'ы вида <task-id>
-            if [[ "$link" == *'<'*'>'* ]]; then
+            # Пропускаем пустые строки и шаблонные placeholder'ы
+            if [ -z "$link" ] || [[ "$link" == *'<'*'>'* ]] || [[ "$link" == *'XXX'* ]]; then
                 continue
             fi
             # Убираем hash-якори
             clean_link="${link%%#*}"
-            if [ ! -f "$clean_link" ]; then
-                echo "  ❌ $base → $link (НЕ НАЙДЕН)"
+            # Разрешаем относительно директории файла или проектного корня
+            if [[ "$clean_link" == /* ]]; then
+                resolved="$PROJECT_ROOT$clean_link"
+            elif [[ "$clean_link" == ./* ]] || [[ "$clean_link" == ../* ]]; then
+                resolved=$(cd "$dir" && realpath -m "$clean_link" 2>/dev/null || echo "$PROJECT_ROOT/$clean_link")
+            elif [[ "$clean_link" == *"/"* ]]; then
+                resolved="$PROJECT_ROOT/$clean_link"
+            else
+                # Bare filename — resolve relative to the file's directory
+                resolved=$(cd "$dir" && realpath -m "$clean_link" 2>/dev/null || echo "$PROJECT_ROOT/$clean_link")
+            fi
+            if [ ! -f "$resolved" ]; then
+                echo "  ❌ $f → $link (НЕ НАЙДЕН)"
                 broken_found=1
             fi
         done
     fi
-done
+done < <(find AGENTS.md .kimi-code/AGENTS.md .kimi-code/BUNDLE.md .kimi-code/rules .kimi-code/skills -type f -name '*.md' -print0)
 
 if [ "$broken_found" -eq 0 ]; then
     ok "Broken links не найдены"
@@ -174,33 +249,21 @@ else
     error "Найдены broken links (см. выше)"
 fi
 
-# ─── 6. YAML frontmatter в агентах ────────────────────────────────
-
-echo ""
-echo "📄 Проверка YAML frontmatter в .kimi/agents/*.md..."
-
-for f in .kimi/agents/*.md; do
-    agent=$(basename "$f")
-    if head -1 "$f" | grep -q '^---$'; then
-        error "$agent — содержит legacy YAML frontmatter"
-    else
-        ok "$agent — чистый markdown"
-    fi
-done
-
 # ─── 7. Skill frontmatter ─────────────────────────────────────────
 
 echo ""
-echo "📄 Проверка frontmatter в .kimi-code/skills/*/SKILL.md..."
+echo "📄 Проверка frontmatter в SKILL.md..."
 
-for f in .kimi-code/skills/*/SKILL.md; do
+while IFS= read -r -d '' f; do
     skill=$(basename "$(dirname "$f")")
-    if head -5 "$f" | grep -q '^name:' && head -10 "$f" | grep -q '^type: prompt'; then
-        ok "$skill/SKILL.md — корректный frontmatter"
+    parent=$(basename "$(dirname "$(dirname "$f")")")
+    label="$parent/$skill/SKILL.md"
+    if head -5 "$f" | grep -q '^name:' && head -10 "$f" | grep -Eq '^type: (prompt|flow)'; then
+        ok "$label — корректный frontmatter"
     else
-        error "$skill/SKILL.md — отсутствует name/type: prompt"
+        error "$label — отсутствует name/type: prompt|flow"
     fi
-done
+done < <(find .kimi-code/skills -name 'SKILL.md' -type f -print0)
 
 # ─── 8. Makefile targets ──────────────────────────────────────────
 
@@ -247,16 +310,16 @@ fi
 echo ""
 echo "🚀 Проверка документации..."
 
-if grep -q "/implement" SESSION_START.md; then
-    ok "SESSION_START.md содержит /implement"
+if grep -q "/skill:implement" SESSION_START.md; then
+    ok "SESSION_START.md содержит /skill:implement"
 else
-    error "SESSION_START.md НЕ содержит /implement"
+    error "SESSION_START.md НЕ содержит /skill:implement"
 fi
 
-if grep -q "/promelectron" SESSION_START.md; then
-    ok "SESSION_START.md содержит /promelectron"
+if grep -q "/skill:promelectron" SESSION_START.md; then
+    ok "SESSION_START.md содержит /skill:promelectron"
 else
-    error "SESSION_START.md НЕ содержит /promelectron"
+    error "SESSION_START.md НЕ содержит /skill:promelectron"
 fi
 
 if grep -q "\.kimi-code/skills/" AGENTS.md; then
@@ -265,15 +328,21 @@ else
     error "AGENTS.md НЕ ссылается на .kimi-code/skills/"
 fi
 
+if grep -q "\.kimi-code/AGENTS.md" AGENTS.md; then
+    ok "AGENTS.md ссылается на .kimi-code/AGENTS.md"
+else
+    error "AGENTS.md НЕ ссылается на .kimi-code/AGENTS.md"
+fi
+
 # ─── 11. .gitignore ───────────────────────────────────────────────
 
 echo ""
 echo "🙈 Проверка .gitignore..."
 
 if grep -q '^\.kimi-code/config\.toml$' .gitignore; then
-    ok ".gitignore исключает .kimi-code/config.toml"
+    ok ".gitignore исключает .kimi-code/config.toml (user config lives in ~/.kimi-code/config.toml)"
 else
-    error ".gitignore НЕ исключает .kimi-code/config.toml"
+    error ".gitignore НЕ исключает .kimi-code/config.toml (user config lives in ~/.kimi-code/config.toml)"
 fi
 
 if grep -q '^\.worktrees/' .gitignore; then

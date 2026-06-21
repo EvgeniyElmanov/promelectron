@@ -1,17 +1,24 @@
 ---
 name: plan-maintainer
 description: >
-  Maintain and evolve the project plan (.agent/PLANNING_HANDOFF.md and .agent/BACKLOG.md).
-  Read codebase, assess task status, update priorities, and detect blockers.
+  Operational plan maintainer for Promelectron. Runs analyze/update/propose/sprint-review
+  commands against `.agent/PLANNING_HANDOFF.md` and `.agent/BACKLOG.md`.
+  Use for concrete backlog operations, not strategic roadmap decisions.
 type: prompt
-whenToUse: When the user asks about project status, priorities, roadmap, sprint planning, or what to do next.
+whenToUse: When the user asks about project status, priorities, roadmap, sprint planning, or what to do next, and detailed backlog operations are needed.
 arguments: "<action: analyze|update|propose|sprint-review>"
 disableModelInvocation: false
 ---
 
 # Plan Maintainer
 
-Maintain `.agent/PLANNING_HANDOFF.md` and `.agent/BACKLOG.md` as the single source of truth.
+Maintain `.agent/PLANNING_HANDOFF.md` and `.agent/BACKLOG.md` as the single source of truth for day-to-day execution.
+
+> For strategic roadmap decisions, use `/skill:project-manager`.
+
+## Language
+
+Follow [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule.
 
 ---
 
@@ -40,7 +47,7 @@ For each task, verify:
 - [ ] **Frontend linked** — check views, router, API calls
 - [ ] **Env vars set** — check `config.py`, `.env.example`, K8s manifests
 - [ ] **CI covers it** — check `.github/workflows/`
-- [ ] **Docs updated** — check `README.md`, `AGENTS.md`
+- [ ] **Docs updated** — check `README.md`, `.kimi-code/skills/<role>/SKILL.md` and `.kimi-code/rules/` if agent rules changed
 
 Never rely on `ROADMAP.md` alone — it becomes stale.
 

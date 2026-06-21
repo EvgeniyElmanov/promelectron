@@ -1,6 +1,13 @@
-# Role: dispatcher — Promelectron
+---
+name: dispatcher
+type: prompt
+description: Dispatcher-only role. Analyzes each user request, resets previous role context, selects the correct Promelectron role, and delegates execution. Does not implement code.
+disableModelInvocation: true
+---
 
-You are the universal dispatcher. At every user request, analyze the task, determine the correct role, read the corresponding agent file, and execute strictly following that role's rules.
+# Role: dispatcher
+
+You are the universal dispatcher. At every user request, analyze the task, determine the correct role, read the corresponding sub-skill in `.kimi-code/skills/promelectron/`, and execute strictly following that role's rules.
 
 ## Golden rule
 
@@ -30,15 +37,13 @@ State explicitly: "**Previous role reset. Analyzing new task...**"
 
 If the task is mixed (e.g. "API and frontend for promos"), pick the primary role and treat the second part as a separate task later.
 
-If the user explicitly says the task is end-to-end (e.g. "YooKassa E2E → CI/CD → backend → Helm"), work flexibly: read the relevant agent file before each block without resetting context between blocks.
+If the user explicitly says the task is end-to-end (e.g. "YooKassa E2E → CI/CD → backend → Helm"), work flexibly: read the relevant role sub-skill before each block without resetting context between blocks.
 
 If unsure, ask the user: "Which role is needed: backend-dev, frontend-dev, or devops?"
 
-### Step 2: Read agent instructions
+### Step 2: Read role instructions
 
-Run: `Read .kimi/agents/<ROLE>.md`
-
-Now follow that file's rules strictly.
+Read the corresponding role sub-skill in `.kimi-code/skills/promelectron/<role>/SKILL.md` and follow it strictly.
 
 ### Step 3: Read project context
 
@@ -47,11 +52,11 @@ Required:
 2. `.agent/BACKLOG.md`
 3. `.agent/BLOCKERS.md`
 4. `.agent/SESSION_LOG.md`
-5. `.kimi/rules/pre-edit-checklist.md` (before code changes)
+5. [Rule: Pre-edit Checklist](.kimi-code/rules/pre-edit-checklist.md) (before code changes)
 
 ### Step 4: Execute
 
-Follow the chosen agent's workflow exactly.
+Follow the chosen role's workflow exactly.
 
 ### Step 5: Report and reset
 

@@ -14,6 +14,94 @@ YYYY-MM-DD HH:MM | <role> | <краткое описание>
 
 ## Записи (новые сверху)
 
+### 2026-06-21 17:25 | architect / backend-dev | Рефакторинг агентской документации: flat skills, BUNDLE, unified rule links
+  Изменено:
+  - Исправлены broken links на rule-файлы в `.kimi-code/skills/*` и `.kimi-code/AGENTS.md`.
+  - Вынесены дублирующиеся блоки в `.kimi-code/rules/agent-commons.md`, `.kimi-code/rules/planning.md`, `.kimi-code/rules/known-pitfalls.md`.
+  - `/skill:qa` интегрирован в `/skill:implement` как обязательный шаг пирамиды тестов.
+  - Унифицированы `/skill:review` и роль `code-reviewer` (workflow vs role skill).
+  - Разделены `project-manager` (стратегия) и `plan-maintainer` (операционный бэклог).
+  - `.kimi-code/AGENTS.md` сокращён до index-файла; корневой `AGENTS.md` — только ссылки.
+  - Создан `.kimi-code/BUNDLE.md` — единый реестр skills/rules.
+  - Добавлен `disableModelInvocation: true` в ролевые skills.
+  - Уточнён description `dispatcher`.
+  - Унифицирован стиль ссылок на rules: `[Rule: Name](path)`.
+  - В `/skill:implement` добавлен перезапуск тестов перед повторным review.
+  - Обновлён `scripts/audit-agents.sh`: проверка реестра через `.kimi-code/BUNDLE.md`, улучшен regex для Markdown-ссылок, поддержка `../` и root-level `.md`, новые обязательные rules (`agent-commons`, `planning`, `known-pitfalls`).
+  Результат:
+  - `bash scripts/audit-agents.sh` — 🎉 Система агентов в порядке!
+  - Все ссылки на rule-файлы валидны.
+  Риск/Техдолг:
+  - Нужен новый Kimi session, чтобы подхватить обновлённые skills.
+  Блокер: Нет.
+
+### 2026-06-22 01:05 | backend-dev / architect | Приведение агентской архитектуры к Kimi docs: flat skills + rules вне skills/
+  Изменено:
+  - Перенёс ролевые sub-skills из `.kimi-code/skills/promeutron/*/` в flat Kimi skills `.kimi-code/skills/<role>/SKILL.md` для всех 11 ролей.
+  - Перенёс shared conventions из `.kimi-code/skills/promeutron/rules/` в `.kimi-code/rules/*.md` (reference markdown, не skills).
+  - Удалена пустая `.kimi-code/skills/promeutron/` (остался только `promeutron/SKILL.md` как master skill).
+  - Обновлены ссылки во всех workflow skills: `implement`, `fix`, `dispatcher`, `qa`, `project-manager`.
+  - Обновлена документация: `.kimi-code/AGENTS.md`, `ROUTER.md`, `SESSION_START.md`, `.kimi-code/HOWTO.md`.
+  - Обновлен `scripts/audit-agents.sh`: проверяет flat role skills, `.kimi-code/rules/`, отсутствие вложенных SKILL.md в `promeutron/`.
+  - Обновлен `.agent/implement-kimi-2-7-high-priority-0622/spec.md` под актуальную структуру.
+  Результат:
+  - `bash scripts/audit-agents.sh` — 🎉 Система агентов в порядке!
+  - Kimi CLI теперь обнаруживает 18 flat skills (включая 11 ролей + 6 workflow + 1 master).
+  - Вложенных skill-директорий (неподдерживаемых Kimi) больше нет.
+  Риск/Техдолг:
+  - `.kimi-code/AGENTS.md` всё ещё дублирует ролевые инструкции (~1800 строк). Это legacy reference; можно постепенно сократить до чистого index, но это не блокирует Kimi skill discovery.
+  - Нужен новый Kimi session, чтобы он подхватил новые flat skills.
+  Блокер: Нет.
+
+### 2026-06-22 00:35 | backend-dev / architect | Внедрение High-приоритетных рекомендаций аудита под Kimi K2.7
+  Изменено:
+  - `scripts/implement-pipeline.py` — добавлена команда `check-context <task-id>` с оценкой токенов и генерацией `CONTEXT_SUMMARY.md`; retry-логика для git worktree операций.
+  - `scripts/agent_retry.py` — новый декоратор `@retry_on_kimi_errors` для transient-ошибок Kimi (502/504/timeout).
+  - `.kimi-code/skills/implement/SKILL.md` — context check перед subagent, retry policy, K2.7 `reasoning_content`.
+  - `.kimi-code/skills/fix/SKILL.md` — context check, retry policy, K2.7 notes.
+  - `.kimi-code/config.example.toml` — комментарии про Kimi K2.7 (256K context, mandatory thinking).
+  - `.kimi-code/skills/promelectron/SKILL.md` — master index с K2.7 context-size check и retry policy.
+  - `.kimi-code/skills/promelectron/*/` — созданы sub-skills для всех ролей: architect, backend-dev, frontend-dev, code-reviewer, security-reviewer, e2e-tester, devops, qa, project-manager, integration-dev, dispatcher.
+  - `.kimi-code/skills/promelectron/rules/` — созданы sub-skills для правил: pre-edit-checklist, golden-path, dependency-map, security, prompt-format, task-template.
+  - `.kimi-code/AGENTS.md` — обновлён как legacy master index с таблицей sub-skills.
+  - `ROUTER.md`, `SESSION_START.md`, `.kimi-code/HOWTO.md` — ссылки на sub-skills вместо `.kimi-code/AGENTS.md`.
+  - `scripts/audit-agents.sh` — добавлена проверка promelectron sub-skills, rules, broken links во всех `.md`, frontmatter для всех `SKILL.md`.
+  - `.kimi-code/skills/context-sync/SKILL.md` — добавлен Step 2 "Check Active Task Context Size (Kimi K2.7)".
+  - `.kimi-code/skills/plan-maintainer/SKILL.md` — checklist docs updated теперь ссылается на sub-skills.
+  Результат:
+  - `bash scripts/audit-agents.sh` — 🎉 Система агентов в порядке!
+  - `python scripts/implement-pipeline.py check-context implement-kimi-2-7-high-priority-0622` — оценка токенов рабочая.
+  Риск/Техдолг:
+  - `.kimi-code/AGENTS.md` всё ещё содержит полные ролевые инструкции (~1800 строк). Возможно постепенное сокращение до чистого index.
+  - Нужно убедиться, что все workflow skills (`/skill:implement`, `/skill:fix`) действительно используют sub-skills в subagent prompts.
+  Блокер: Нет.
+
+### 2026-06-21 14:20 | audit-kimi-pipeline | Миграция `.kimi/` → `.kimi-code/AGENTS.md`
+  Изменено:
+  - `.kimi-code/AGENTS.md` — создан project-level instructions с агентами и rules.
+  - `.kimi-code/HOWTO.md` — сохранено практическое руководство.
+  - `.kimi-code/LESSONS_LEARNED.md` — сохранены E2E CI lessons learned.
+  - `AGENTS.md` — переписан как краткий index.
+  - `SESSION_START.md` — обновлены ссылки на `.kimi-code/AGENTS.md`.
+  - `ROUTER.md` — обновлены ссылки на `.kimi-code/AGENTS.md`.
+  - `.kimi-code/skills/implement/SKILL.md` — обновлены ссылки на `.kimi-code/AGENTS.md`.
+  - `.kimi-code/skills/fix/SKILL.md` — обновлены ссылки на `.kimi-code/AGENTS.md`.
+  - `.kimi-code/skills/promelectron/SKILL.md` — обновлены ссылки на `.kimi-code/AGENTS.md`.
+  - `.kimi-code/config.example.toml` — push main → `ask`, удалено `default_yolo`, удалён project-specific hook.
+  - `.gitignore` — добавлена `/.kimi/` как legacy.
+  - `scripts/audit-agents.sh` — обновлён под новую структуру.
+  - `.claude/rules/agent-context.md` — обновлена ссылка на `.kimi-code/AGENTS.md`.
+  - `.kimi/` — удалена.
+  - `.agent/audit-kimi-pipeline/review/findings.md` — findings F001–F005, F009 отмечены FIXED.
+  Результат:
+  - `bash scripts/audit-agents.sh` — 🎉 Система агентов в порядке!
+  - `.kimi-code/config.example.toml` — валидный TOML.
+  - `.kimi-code/mcp.json` — валидный JSON.
+  Риск/Техдолг:
+  - `.kimi-code/AGENTS.md` стал большим (~1800 строк). При росте проекта имеет смысл разбить роли на отдельные project-level skills.
+  - F006, F007, F008 исправлены в рамках этого же аудита.
+  Блокер: Нет.
+
 ### 2026-06-20 16:45 | backend-dev / devops | CDEK webhook fallback + polling sync
   Изменено:
   - `backend/src/app/services/cdek_service.py` — добавлен `sync_order_statuses()` и `_apply_cdek_status_to_order()`, рефакторинг `handle_order_status_webhook`.
@@ -839,3 +927,111 @@ YYYY-MM-DD HH:MM | <role> | <краткое описание>
 
 **Риски:**
 - Нет.
+
+---
+
+## 2026-06-21 13:52
+
+**Роль:** audit-kimi-pipeline
+
+**Задача:** Проверка русскоязычного reasoning агентов и субагентов
+
+**Что сделано:**
+- Проверена цепочка распространения языкового правила: `.kimi-code/AGENTS.md` → workflow skills → примеры промптов субагентов.
+- Унифицированы языковые секции во всех workflow skills: `implement`, `fix`, `review`, `deploy`, `context-sync`, `plan-maintainer`, `promelectron`.
+- В каждую секцию добавлено **критическое** требование: при запуске субагента в начало промпта вставляется инструкция о русском языке.
+- В примерах промптов субагентов в `implement/SKILL.md` (architect, developer, code-reviewer, e2e-tester) добавлена явная языковая преамбула.
+- Добавлена языковая заметка в `ROUTER.md`.
+- `bash scripts/audit-agents.sh` проходит без ошибок.
+
+**Файлы изменены:** `.kimi-code/skills/implement/SKILL.md`, `.kimi-code/skills/fix/SKILL.md`, `.kimi-code/skills/review/SKILL.md`, `.kimi-code/skills/deploy/SKILL.md`, `.kimi-code/skills/context-sync/SKILL.md`, `.kimi-code/skills/plan-maintainer/SKILL.md`, `ROUTER.md`, `PROJECT_CONTEXT.md`, `.agent/SESSION_LOG.md`.
+
+**Риски:**
+- Нет. Изменения только в инструкциях и документации.
+
+---
+
+## 2026-06-21 14:50
+
+**Роль:** audit-kimi-pipeline
+
+**Задача:** Изучение документации Kimi и аудит пайплайна на соответствие новым возможностям
+
+**Что сделано:**
+- Изучены официальные документы Kimi Code CLI (subagents, skills, slash commands, hooks, goals, plugins, MCP), Agent Skills Specification, MCP, ACP.
+- Сравнены возможности Kimi с текущим пайплайном Promelectron.
+- **Критическая находка:** в `.kimi-code/AGENTS.md` раздел `architect` предлагал использовать `explore` subagent, а `code-reviewer` — формулировку, которая могла быть истолкована как спавн субагентов. В документации Kimi чётко сказано: *"Sub-agents cannot schedule further nested sub-agents"*.
+- Исправлено:
+  - Добавлен раздел **Subagent boundary** в `.kimi-code/AGENTS.md`.
+  - Убрана инструкция использовать `explore` subagent из раздела `architect`.
+  - В разделе `code-reviewer` уточнено, что параллельный review backend/frontend выполняет родительский агент через `AgentSwarm`.
+- Создан файл `.agent/audit-kimi-pipeline/review/kimi-docs-recommendations.md` с развёрнутыми рекомендациями и roadmap.
+- Обновлены `PROJECT_CONTEXT.md` и `.agent/SESSION_LOG.md`.
+- `bash scripts/audit-agents.sh` проходит без ошибок.
+
+**Файлы изменены:** `.kimi-code/AGENTS.md`, `.agent/audit-kimi-pipeline/review/kimi-docs-recommendations.md`, `PROJECT_CONTEXT.md`, `.agent/SESSION_LOG.md`.
+
+**Риски:**
+- Нет. Изменения в инструкциях и документации; логика skills не затронута.
+
+---
+
+## 2026-06-21 15:45
+
+**Роль:** audit-kimi-pipeline
+
+**Задача:** Реализация рекомендаций по агентскому пайплайну (пункты 1–3 + AgentSwarm)
+
+**Что сделано:**
+1. **`deploy` → `type: flow`**: в `.kimi-code/skills/deploy/SKILL.md` изменён `type: prompt` на `type: flow`, убран `disableModelInvocation`. Skill теперь доступен только через явный `/skill:deploy test|prod`.
+2. **Safety hooks + config**: `.kimi-code/config.example.toml` дополнен `default_model`, `default_thinking`, `default_permission_mode`, `merge_all_available_skills`, provider/model aliases. Добавлен hook `PreToolUse` → `Bash` → `scripts/hooks/block-dangerous-bash.py`. Создан и протестирован `scripts/hooks/block-dangerous-bash.py` (блокирует `rm -rf /`, `DROP`, `TRUNCATE`, force push, `git push origin main`).
+3. **`AgentSwarm` для review**: в `.kimi-code/skills/implement/SKILL.md` шаг 4 переделан. Для mixed backend/frontend задач используется `AgentSwarm` с `items: ["backend", "frontend"]`. Каждый субагент пишет `findings-{item}.md`, родительский агент мёржит их в `findings.md`. Для single-component review оставлен один `Agent`.
+4. **Audit script**: `scripts/audit-agents.sh` обновлён, чтобы frontmatter `type: flow` считался корректным.
+5. **Документация**: обновлены `PROJECT_CONTEXT.md` и `.agent/SESSION_LOG.md`.
+
+**Проверки:**
+- `bash scripts/audit-agents.sh` — 🎉 Система агентов в порядке!
+- `python3 -m py_compile scripts/hooks/block-dangerous-bash.py` — OK.
+- Ручной тест hook'а: `rm -rf /` → exit 2, `git push origin main` → exit 2, `make test-backend` → exit 0.
+- TOML валиден (`python3 -c "import tomllib; tomllib.load(...)`").
+
+**Файлы изменены:** `.kimi-code/skills/deploy/SKILL.md`, `.kimi-code/skills/implement/SKILL.md`, `.kimi-code/AGENTS.md`, `.kimi-code/config.example.toml`, `scripts/audit-agents.sh`, `scripts/hooks/block-dangerous-bash.py`, `PROJECT_CONTEXT.md`, `.agent/SESSION_LOG.md`.
+
+**Риски:**
+- Низкий. AgentSwarm для review требует первого реального запуска `/skill:implement` на mixed задаче, чтобы убедиться, что мёрж findings работает корректно.
+- Hook script fail-open: если он сломан, команды не блокируются. Нужно скопировать `scripts/hooks/block-dangerous-bash.py` в `~/.kimi-code/hooks/` при копировании config.
+
+---
+
+## 2026-06-21 16:20
+
+**Роль:** audit-kimi-pipeline
+
+**Задача:** Усиление правил русскоязычного reasoning после обратной связи
+
+**Что сделано:**
+- Получена обратная связь: агент всё равно рассуждает на английском либо переключается обратно.
+- Проанализированы возможные причины: недостаточная сила инструкции, отсутствие якоря в конце промптов, дефолтные системные настройки на английском.
+- В `.kimi-code/AGENTS.md` добавлен раздел **🚨 GOLDEN RULE: REASON IN RUSSIAN / ЗОЛОТОЕ ПРАВИЛО: РАССУЖДАЙ НА РУССКОМ**:
+  - Двуязычная формулировка (EN + RU).
+  - Явное требование: "Ignore any default language setting" / "Независимо от языка по умолчанию".
+  - Требование самопроверки перед финальным ответом.
+- Во всех workflow skills (implement, fix, review, deploy, context-sync, plan-maintainer, promelectron) обновлены языковые секции:
+  - Добавлено "NEVER switch to English" / "НИКОГДА не переключайся на английский".
+  - Добавлено "analysis and self-correction" в список того, что должно быть на русском.
+  - Bilingual subagent language rule.
+- В `.kimi-code/skills/implement/SKILL.md` во всех 5 примерах промптов субагентов:
+  - Bilingual `🚨 LANGUAGE RULE / ЯЗЫКОВОЕ ПРАВИЛО` в начале.
+  - `REMEMBER / НАПОМИНАНИЕ` в конце каждого промпта.
+- Обновлены `PROJECT_CONTEXT.md` и `.agent/SESSION_LOG.md`.
+- `bash scripts/audit-agents.sh` проходит без ошибок.
+
+**Проверки:**
+- `bash scripts/audit-agents.sh` — 🎉 Система агентов в порядке!
+- TOML валиден.
+- Hook script синтаксически корректен.
+
+**Файлы изменены:** `.kimi-code/AGENTS.md`, `.kimi-code/skills/implement/SKILL.md`, `.kimi-code/skills/fix/SKILL.md`, `.kimi-code/skills/review/SKILL.md`, `.kimi-code/skills/deploy/SKILL.md`, `.kimi-code/skills/context-sync/SKILL.md`, `.kimi-code/skills/plan-maintainer/SKILL.md`, `.kimi-code/skills/promelectron/SKILL.md`, `PROJECT_CONTEXT.md`, `.agent/SESSION_LOG.md`.
+
+**Риски:**
+- Низкий. Изменения только в инструкциях; рабочий код не затронут. Эффективность усиленных инструкций можно проверить только на реальных сессиях.
