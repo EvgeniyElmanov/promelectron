@@ -189,6 +189,7 @@ import { useAuth } from '@/composables/useAuth';
 import { useCart } from '@/composables/useCart';
 import { useToast } from '@/composables/useToast';
 import { getSupplierCityCode } from '@/api/cdek';
+import { formatPrice } from '@/utils/price';
 import CdekDeliveryWidget from '@/components/CdekDeliveryWidget.vue';
 import SkeletonCartItem from '@/components/SkeletonCartItem.vue';
 
@@ -259,10 +260,6 @@ const deliveryPrice = computed(() => {
 });
 
 const orderTotal = computed(() => itemsTotal.value + deliveryPrice.value);
-
-const formatPrice = (price) => {
-  return Number(price).toLocaleString('ru-RU');
-};
 
 const fetchCart = async () => {
   loading.value = true;
@@ -351,7 +348,7 @@ const createOrder = async () => {
   }
   creatingOrder.value = true;
   try {
-    const { data: order } = await api.post('/orders/create', {
+    const { data: order } = await api.post('/orders/create/', {
       cdek_delivery: { ...selectedDelivery.value },
       recipient_first_name: recipientFirstName.value.trim(),
       recipient_last_name: recipientLastName.value.trim(),

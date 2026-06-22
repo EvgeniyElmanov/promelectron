@@ -58,11 +58,11 @@ describe('Checkout.vue — авторизованный пользователь
     toastFn.mockClear();
     mockIsAuthenticated.value = true;
     mockGet.mockImplementation((url) => {
-      if (url === '/orders/42') return Promise.resolve({ data: mockOrder });
+      if (url === '/orders/42/') return Promise.resolve({ data: mockOrder });
       return Promise.resolve({ data: {} });
     });
     mockPost.mockImplementation((url) => {
-      if (url === '/payments/42') return Promise.resolve({ data: { payment_id: 99, status: 'pending', confirmation_url: 'https://yoomoney.ru/checkout/42/pay', amount: 14990 } });
+      if (url === '/payments/42/') return Promise.resolve({ data: { payment_id: 99, status: 'pending', confirmation_url: 'https://yoomoney.ru/checkout/42/pay', amount: 14990 } });
       return Promise.resolve({ data: {} });
     });
     delete window.location;
@@ -109,13 +109,13 @@ describe('Checkout.vue — авторизованный пользователь
     await wrapper.find('[data-testid="pay-button"]').trigger('click');
     await flushPromises();
 
-    expect(mockPost).toHaveBeenCalledWith('/payments/42');
+    expect(mockPost).toHaveBeenCalledWith('/payments/42/');
     expect(window.location.href).toBe('https://yoomoney.ru/checkout/42/pay');
   });
 
   it('редиректит если заказ уже оплачен', async () => {
     mockGet.mockImplementation((url) => {
-      if (url === '/orders/42') return Promise.resolve({ data: { ...mockOrder, status: 'paid' } });
+      if (url === '/orders/42/') return Promise.resolve({ data: { ...mockOrder, status: 'paid' } });
       return Promise.resolve({ data: {} });
     });
 
@@ -132,7 +132,7 @@ describe('Checkout.vue — гостевой режим', () => {
     toastFn.mockClear();
     mockIsAuthenticated.value = false;
     mockGet.mockImplementation((url) => {
-      if (url === '/orders/guest/42?guest_email=guest%40example.com') {
+      if (url === '/orders/guest/42/?guest_email=guest%40example.com') {
         return Promise.resolve({ data: { ...mockOrder, user_id: null, guest_email: 'guest@example.com' } });
       }
       return Promise.resolve({ data: {} });
@@ -163,7 +163,7 @@ describe('Checkout.vue — гостевой режим', () => {
   it('загружает гостевой заказ по email', async () => {
     await mountGuestComponent();
 
-    expect(mockGet).toHaveBeenCalledWith('/orders/guest/42?guest_email=guest%40example.com');
+    expect(mockGet).toHaveBeenCalledWith('/orders/guest/42/?guest_email=guest%40example.com');
   });
 
   it('инициирует гостевой платёж', async () => {
@@ -178,7 +178,7 @@ describe('Checkout.vue — гостевой режим', () => {
 
   it('редиректит на success если гостевой заказ уже оплачен', async () => {
     mockGet.mockImplementation((url) => {
-      if (url === '/orders/guest/42?guest_email=guest%40example.com') {
+      if (url === '/orders/guest/42/?guest_email=guest%40example.com') {
         return Promise.resolve({ data: { ...mockOrder, user_id: null, guest_email: 'guest@example.com', status: 'paid' } });
       }
       return Promise.resolve({ data: {} });

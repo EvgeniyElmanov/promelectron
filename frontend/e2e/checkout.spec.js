@@ -133,7 +133,7 @@ test.describe('Checkout Flow', () => {
     await expect(payButton).toContainText('Оплатить');
   });
 
-  test('guest user can place an order with CDEK delivery and recipient name', async ({ page }) => {
+  test('guest user can place an order and complete mock payment', async ({ page }) => {
     const email = uniqueEmail();
 
     await mockCdekWidget(page);
@@ -154,7 +154,7 @@ test.describe('Checkout Flow', () => {
 
     // Submit order
     const createOrderResponse = page.waitForResponse(
-      response => response.url().includes('/orders/create-guest'),
+      response => response.url().includes('/orders/create-guest') && response.request().method() === 'POST',
       { timeout: 30000 }
     );
     await page.locator('[data-testid="guest-checkout-submit"]').click();
@@ -176,10 +176,26 @@ test.describe('Checkout Flow', () => {
     expect(order).toHaveProperty('recipient_last_name', 'Петров');
     expect(order).toHaveProperty('guest_email', email);
 
-    // Verify redirect to guest order success page
-    await expect(page).toHaveURL(/\/guest-order-success\/\d+/, { timeout: 30000 });
-    await expect(page.locator('[data-testid="guest-order-success-page"]')).toBeVisible();
-    await expect(page.locator('[data-testid="success-email"]')).toHaveText(email);
+    // Verify redirect to checkout page with guest email
+    await expect(page).toHaveURL(new RegExp(`/checkout/${order.id}\\?guest_email=`), { timeout: 30000 });
+    await expect(page.locator('[data-testid="checkout-page"]')).toBeVisible();
+
+    // Click pay button to create guest payment
+    const payResponsePromise = page.waitForResponse(
+      response => response.url().includes(`/payments/guest/${order.id}`) && response.request().method() === 'POST',
+      { timeout: 30000 }
+    );
+    await page.click('[data-testid="pay-button"]');
+    const payResponse = await payResponsePromise;
+    expect(payResponse.status()).toBe(200);
+
+    // In dev/test environment YooKassa is not configured, so mock flow redirects to local success page
+    await expect(page).toHaveURL(new RegExp(`/payment/success\\?order_id=${order.id}&mock=1$`), { timeout: 30000 });
+    await expect(page.locator('[data-testid="payment-success-page"]')).toBeVisible();
+
+    // Verify success status is shown
+    await expect(page.locator('.payment-result__badge')).toContainText('Оплачен');
+    await expect(page.locator('.payment-result__title')).toHaveText('Оплата прошла успешно!');
   });
 
   test('user can pay with YooKassa test card', async ({ page }) => {

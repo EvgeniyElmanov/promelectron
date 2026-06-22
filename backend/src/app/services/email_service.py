@@ -35,7 +35,7 @@ class EmailService:
                 timeout=5.0,
             )
         except (SMTPException, asyncio.TimeoutError, OSError) as exc:
-            logger.warning("Failed to send email to %s: %s", to, exc)
+            logger.warning("Failed to send email to <redacted>: %s", exc)
 
     @staticmethod
     def _format_price(price: float) -> str:

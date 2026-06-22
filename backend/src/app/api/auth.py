@@ -223,8 +223,6 @@ async def password_reset_request(
 
     Всегда возвращает успешный ответ, чтобы не раскрывать существование email.
     """
-    from sqlalchemy import select
-
     result = await db.execute(select(User).where(User.email == data.email))
     user = result.scalars().first()
     if user:

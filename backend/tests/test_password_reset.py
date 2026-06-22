@@ -110,3 +110,26 @@ class TestPasswordResetAPI:
         )
         assert response.status_code == 400
         assert "expired" in response.json()["detail"].lower()
+
+    @pytest.mark.asyncio
+    async def test_password_reset_invalidates_other_tokens(self, client, test_user, test_session):
+        """После успешного сброса другие неиспользованные токены пользователя помечаются used_at."""
+        from src.app.services.user_service import UserService
+
+        first_token = await UserService.create_password_reset_token(user_id=test_user.id, db=test_session)
+        second_token = await UserService.create_password_reset_token(user_id=test_user.id, db=test_session)
+
+        response = await client.post(
+            "/api/v1/auth/password-reset/",
+            json={"token": first_token, "new_password": "newpass123"},
+        )
+        assert response.status_code == 200
+
+        tokens_result = await test_session.execute(
+            select(PasswordResetToken).where(PasswordResetToken.user_id == test_user.id)
+        )
+        tokens = list(tokens_result.scalars().all())
+        assert len(tokens) == 2
+        assert all(t.used_at is not None for t in tokens)
+        assert any(verify_password(first_token, t.token_hash) for t in tokens)
+        assert any(verify_password(second_token, t.token_hash) for t in tokens)

@@ -1,19 +1,34 @@
 import { ref, computed } from 'vue';
 import { createGuestOrder } from '@/api/orders';
-import { createGuestPayment } from '@/api/payments';
 
 const PHONE_REGEX = /^\+7\d{10}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const NAME_REGEX = /^[A-Za-zА-Яа-яЁё\- ]+$/;
+
+export const normalizePhone = (phone) => {
+  if (!phone) return '';
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length === 11 && digits.startsWith('7')) {
+    return `+${digits}`;
+  }
+  if (digits.length === 11 && digits.startsWith('8')) {
+    return `+7${digits.slice(1)}`;
+  }
+  if (digits.length === 10) {
+    return `+7${digits}`;
+  }
+  return phone.trim();
+};
 
 export const useGuestCheckout = () => {
   const submitting = ref(false);
 
   const validateGuestForm = ({ email, firstName, lastName, phone }) => {
     const errors = {};
-    if (!email.trim()) {
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) {
       errors.email = 'Укажите email';
-    } else if (!EMAIL_REGEX.test(email.trim())) {
+    } else if (!EMAIL_REGEX.test(normalizedEmail)) {
       errors.email = 'Некорректный email';
     }
     if (!firstName.trim()) {
@@ -26,9 +41,10 @@ export const useGuestCheckout = () => {
     } else if (!NAME_REGEX.test(lastName.trim())) {
       errors.lastName = 'Фамилия содержит недопустимые символы';
     }
+    const normalizedPhone = normalizePhone(phone);
     if (!phone.trim()) {
       errors.phone = 'Укажите телефон';
-    } else if (!PHONE_REGEX.test(phone.trim())) {
+    } else if (!PHONE_REGEX.test(normalizedPhone)) {
       errors.phone = 'Телефон должен быть в формате +7XXXXXXXXXX';
     }
     return errors;
@@ -45,8 +61,8 @@ export const useGuestCheckout = () => {
   }) => ({
     items: items.map((i) => ({ product_id: i.product_id, quantity: i.quantity })),
     cdek_delivery: { ...selectedDelivery },
-    guest_email: email.trim(),
-    guest_phone: phone.trim(),
+    guest_email: email.trim().toLowerCase(),
+    guest_phone: normalizePhone(phone),
     recipient_first_name: firstName.trim(),
     recipient_last_name: lastName.trim(),
     save_address: saveAddress,
@@ -89,9 +105,7 @@ export const useGuestCheckout = () => {
       });
       const { data: order } = await createGuestOrder(orderPayload);
 
-      const { data: payment } = await createGuestPayment(order.id, order.guest_email || email.trim());
-
-      return { order, payment };
+      return { order };
     } finally {
       submitting.value = false;
     }

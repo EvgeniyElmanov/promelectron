@@ -1,7 +1,7 @@
 from decimal import Decimal
 
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -163,7 +163,7 @@ class OrderService:
             cdek_price=delivery_price,
             cdek_period_min=delivery.period_min,
             cdek_period_max=delivery.period_max,
-            guest_email=order_data.guest_email,
+            guest_email=order_data.guest_email.lower(),
             guest_phone=order_data.guest_phone,
             recipient_first_name=order_data.recipient_first_name,
             recipient_last_name=order_data.recipient_last_name,
@@ -219,7 +219,10 @@ class OrderService:
     async def get_guest_order(order_id: int, guest_email: str, db: AsyncSession) -> Order:
         result = await db.execute(
             select(Order)
-            .where(Order.id == order_id, Order.guest_email == guest_email)
+            .where(
+                Order.id == order_id,
+                func.lower(Order.guest_email) == guest_email.lower(),
+            )
             .options(selectinload(Order.items))
         )
         order = result.scalars().first()

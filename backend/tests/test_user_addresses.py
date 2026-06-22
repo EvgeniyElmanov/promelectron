@@ -10,7 +10,7 @@ class TestUserAddressesAPI:
     async def test_create_address(self, client, test_user, user_token, test_session):
         """Авторизованный пользователь может создать адрес."""
         response = await client.post(
-            "/api/v1/users/me/addresses/",
+            "/api/v1/me/addresses/",
             json={
                 "label": "Дом",
                 "city": "Москва",
@@ -35,7 +35,7 @@ class TestUserAddressesAPI:
     async def test_create_address_unauthorized(self, client):
         """Без токена создание адреса запрещено."""
         response = await client.post(
-            "/api/v1/users/me/addresses/",
+            "/api/v1/me/addresses/",
             json={"city": "Москва", "is_default": False},
         )
         assert response.status_code in (401, 403)
@@ -54,7 +54,7 @@ class TestUserAddressesAPI:
         await test_session.commit()
 
         response = await client.get(
-            "/api/v1/users/me/addresses/",
+            "/api/v1/me/addresses/",
             headers={"Authorization": f"Bearer {user_token}"},
         )
         assert response.status_code == 200
@@ -78,7 +78,7 @@ class TestUserAddressesAPI:
         await test_session.commit()
 
         response = await client.post(
-            "/api/v1/users/me/addresses/",
+            "/api/v1/me/addresses/",
             json={
                 "label": "Новый",
                 "city": "Казань",

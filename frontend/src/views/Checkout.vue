@@ -88,6 +88,7 @@ import { useAuth } from '@/composables/useAuth';
 import { useToast } from '@/composables/useToast';
 import { getOrder, getGuestOrder } from '@/api/orders';
 import { createPayment, createGuestPayment } from '@/api/payments';
+import { formatPrice } from '@/utils/price';
 
 const route = useRoute();
 const router = useRouter();
@@ -102,10 +103,6 @@ const order = ref(null);
 const loading = ref(true);
 const error = ref(null);
 const processing = ref(false);
-
-function formatPrice(value) {
-  return Number(value).toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-}
 
 const fetchOrder = async () => {
   loading.value = true;

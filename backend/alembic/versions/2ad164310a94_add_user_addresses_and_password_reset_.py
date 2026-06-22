@@ -53,7 +53,10 @@ def upgrade() -> None:
     )
     op.create_index(op.f('ix_user_addresses_id'), 'user_addresses', ['id'], unique=False)
     op.create_index(op.f('ix_user_addresses_user_id'), 'user_addresses', ['user_id'], unique=False)
-    op.add_column('orders', sa.Column('save_address', sa.Boolean(), nullable=False))
+    op.add_column(
+        'orders',
+        sa.Column('save_address', sa.Boolean(), nullable=False, server_default=sa.false()),
+    )
     # ### end Alembic commands ###
 
 

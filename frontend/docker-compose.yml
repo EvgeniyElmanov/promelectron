@@ -1,6 +1,6 @@
 services:
   frontend:
-    image: mcr.microsoft.com/playwright:v1.60.0-jammy
+    image: mcr.microsoft.com/playwright:v1.61.0-jammy
     working_dir: /app
     ports:
       - "5173:5173"

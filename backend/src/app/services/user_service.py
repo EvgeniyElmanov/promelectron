@@ -2,7 +2,8 @@ from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.app.core.config import ACCESS_TOKEN_EXPIRE_MINUTES
@@ -137,7 +138,10 @@ class UserService:
 
         Возвращает (user, created, temp_password).
         """
-        result = await db.execute(select(User).where(User.email == email).with_for_update())
+        email = email.lower()
+        result = await db.execute(
+            select(User).where(func.lower(User.email) == email).with_for_update()
+        )
         user = result.scalars().first()
 
         if user:
@@ -166,9 +170,27 @@ class UserService:
             is_active=True,
         )
         db.add(new_user)
-        await db.commit()
-        await db.refresh(new_user)
-        return new_user, True, temp_password
+        try:
+            await db.commit()
+            await db.refresh(new_user)
+            return new_user, True, temp_password
+        except IntegrityError:
+            await db.rollback()
+            result = await db.execute(select(User).where(func.lower(User.email) == email))
+            existing_user = result.scalars().first()
+            if existing_user:
+                updated = False
+                if full_name and not existing_user.full_name:
+                    existing_user.full_name = full_name
+                    updated = True
+                if phone and not existing_user.phone:
+                    existing_user.phone = phone
+                    updated = True
+                if updated:
+                    await db.commit()
+                    await db.refresh(existing_user)
+                return existing_user, False, ""
+            raise
 
     @staticmethod
     async def save_address(user_id: int, address_data: UserAddressCreate, db: AsyncSession) -> UserAddress:
@@ -178,10 +200,6 @@ class UserService:
             raise HTTPException(status_code=404, detail="User not found")
 
         if address_data.is_default:
-            await db.execute(
-                select(UserAddress)
-                .where(UserAddress.user_id == user_id, UserAddress.is_default.is_(True))
-            )
             # Снимаем флаг is_default с остальных адресов
             existing_defaults = await db.execute(
                 select(UserAddress).where(
@@ -238,9 +256,13 @@ class UserService:
     @staticmethod
     async def reset_password(token: str, new_password: str, db: AsyncSession) -> dict:
         """Сбросить пароль по одноразовому токену."""
+        now = datetime.now(timezone.utc)
         result = await db.execute(
             select(PasswordResetToken)
-            .where(PasswordResetToken.used_at.is_(None))
+            .where(
+                PasswordResetToken.used_at.is_(None),
+                PasswordResetToken.expires_at > now,
+            )
             .order_by(PasswordResetToken.created_at.desc())
         )
         tokens = result.scalars().all()
@@ -256,7 +278,18 @@ class UserService:
                     raise HTTPException(status_code=404, detail="User not found")
 
                 user.hashed_password = hash_password(new_password)
-                reset_token.used_at = datetime.now(timezone.utc)
+                now = datetime.now(timezone.utc)
+                reset_token.used_at = now
+                # Invalidate all other unused tokens for the same user
+                await db.execute(
+                    update(PasswordResetToken)
+                    .where(
+                        PasswordResetToken.user_id == user.id,
+                        PasswordResetToken.used_at.is_(None),
+                        PasswordResetToken.id != reset_token.id,
+                    )
+                    .values(used_at=now)
+                )
                 await db.commit()
                 return {"message": "Password reset successfully"}
 

@@ -77,7 +77,8 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuth } from '@/composables/useAuth';
 import { getOrder, getGuestOrder } from '@/api/orders';
-import { syncPaymentStatusByOrder, confirmMockPayment as confirmMockPaymentApi } from '@/api/payments';
+import { syncPaymentStatusByOrder, confirmMockPayment as confirmMockPaymentApi, confirmGuestMockPayment } from '@/api/payments';
+import { formatPrice } from '@/utils/price';
 
 const route = useRoute();
 const router = useRouter();
@@ -93,11 +94,9 @@ const syncing = ref(false);
 const pollCount = ref(0);
 const maxPolls = 30;
 const pollInterval = 2000; // 2 seconds
+const consecutiveErrorCount = ref(0);
+const maxConsecutiveErrors = 3;
 let pollTimer = null;
-
-function formatPrice(value) {
-  return Number(value).toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-}
 
 const displayStatus = computed(() => {
   if (!order.value) return '';
@@ -150,6 +149,7 @@ const fetchOrder = async () => {
     return;
   }
   error.value = null;
+  consecutiveErrorCount.value = 0;
   loading.value = true;
   try {
     const { data } = isGuest.value
@@ -171,6 +171,7 @@ const startPolling = () => {
   if (pollTimer) return;
   polling.value = true;
   pollCount.value = 0;
+  consecutiveErrorCount.value = 0;
 
   pollTimer = setInterval(async () => {
     pollCount.value += 1;
@@ -180,12 +181,17 @@ const startPolling = () => {
         await syncPaymentStatusByOrder(orderId.value);
       }
       await fetchOrder();
+      consecutiveErrorCount.value = 0;
 
       if (order.value && (order.value.status === 'paid' || order.value.status === 'cancelled' || order.value.status === 'canceled')) {
         stopPolling();
       }
     } catch {
-      // Silent polling errors
+      consecutiveErrorCount.value += 1;
+      if (consecutiveErrorCount.value >= maxConsecutiveErrors) {
+        error.value = 'Не удалось проверить статус заказа. Пожалуйста, обновите страницу или свяжитесь с поддержкой.';
+        stopPolling();
+      }
     }
 
     if (pollCount.value >= maxPolls) {
@@ -236,12 +242,18 @@ const checkPaymentStatus = async () => {
 };
 
 const confirmMockPayment = async () => {
-  if (!orderId.value || isGuest.value) return;
+  if (!orderId.value) return;
   syncing.value = true;
   try {
-    await confirmMockPaymentApi(orderId.value);
-  } catch {
-    // Silent mock confirm errors
+    if (isGuest.value) {
+      await confirmGuestMockPayment(orderId.value, guestEmail.value);
+    } else {
+      await confirmMockPaymentApi(orderId.value);
+    }
+  } catch (err) {
+    if (import.meta.env.DEV) {
+      console.error('Mock payment confirmation failed:', err);
+    }
   } finally {
     syncing.value = false;
   }

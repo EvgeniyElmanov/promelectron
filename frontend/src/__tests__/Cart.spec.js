@@ -216,7 +216,7 @@ describe('Cart.vue', () => {
     await btn.trigger('click');
     await flushPromises();
 
-    expect(mockPost).toHaveBeenCalledWith('/orders/create', expect.objectContaining({
+    expect(mockPost).toHaveBeenCalledWith('/orders/create/', expect.objectContaining({
       cdek_delivery: expect.objectContaining({ tariff_code: 136 }),
       recipient_first_name: 'Иван',
       recipient_last_name: 'Иванов',

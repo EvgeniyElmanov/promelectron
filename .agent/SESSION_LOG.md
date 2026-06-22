@@ -14,6 +14,42 @@ YYYY-MM-DD HH:MM | <role> | <краткое описание>
 
 ## Записи (новые сверху)
 
+### 2026-06-22 10:41 | backend-dev | guest-checkout-auto-account — исправления backend review findings F026–F028
+  Изменено:
+  - `backend/src/app/services/email_service.py` — F026: убран email из лога ошибки отправки (`<redacted>`).
+  - `backend/src/app/services/order_service.py` — F027: `guest_email` сохраняется в lowercase; `get_guest_order` сравнивает через `func.lower`.
+  - `backend/src/app/services/payment_service.py` — F027: `create_guest_payment` и `confirm_guest_mock_payment_by_order` сравнивают email без учёта регистра.
+  - `backend/src/app/services/user_service.py` — F027: `get_or_create_from_guest` нормализует email и ищет через `func.lower`; F028: `reset_password` инвалидирует остальные неиспользованные токены пользователя.
+  - `backend/tests/test_guest_orders.py` — F027: тесты на сохранение lowercase и case-insensitive получение заказа.
+  - `backend/tests/test_guest_payments.py` — F027: тесты на case-insensitive guest payment, mock confirm и привязку к существующему пользователю.
+  - `backend/tests/test_password_reset.py` — F028: тест на инвалидацию остальных токенов.
+  Результат:
+  - `make test-backend` — 213/213 ✅
+  - `ruff check backend/src backend/tests` — чисто ✅
+  Риск/Техдолг:
+  - Нет.
+  Блокер: Нет.
+
+### 2026-06-22 07:35 | frontend-dev | guest-checkout-auto-account — исправления frontend review findings F013–F021
+  Изменено:
+  - `frontend/src/api/orders.js` — F013: trailing slash во всех путях (`/orders/create-guest/`, `/orders/${orderId}/`, `/orders/guest/${orderId}/`).
+  - `frontend/src/api/payments.js` — F013: trailing slash (`/payments/${orderId}/`, `/payments/sync-by-order/${orderId}/`, `/payments/${orderId}/mock-confirm/`); F014: добавлен `confirmGuestMockPayment` → `POST /payments/guest/${orderId}/mock-confirm/`.
+  - `frontend/src/views/PaymentSuccess.vue` — F014: гостевой mock-платёж использует `/payments/guest/${orderId}/mock-confirm/`; F018: повторные ошибки polling surfac'ятся после 3-х неудач подряд; F019: `formatPrice` взят из `src/utils/price.js`.
+  - `frontend/src/views/GuestCheckout.vue` — F016: `canSubmit` теперь переиспользует `validateGuestForm`; F019: импорт `formatPrice` из `src/utils/price.js`.
+  - `frontend/src/composables/useGuestCheckout.js` — F015: добавлен `normalizePhone`, который убирает форматирование и приводит к `+7XXXXXXXXXX`; F021: email нормализуется в lowercase; валидация phone работает с отформатированным вводом.
+  - `frontend/src/utils/price.js` — F019: новый shared helper `formatPrice`.
+  - `frontend/src/views/Cart.vue`, `frontend/src/views/Checkout.vue` — F019: используется shared `formatPrice`.
+  - `frontend/src/composables/useUserAddresses.js` — F017: удалён как dead code.
+  - `frontend/src/__tests__/GuestCheckout.spec.js` — F013: ожидания с trailing slash; F020: добавлены тесты на невалидные имя/фамилию; добавлены тесты на disabled submit при невалидном телефоне и нормализацию форматированного телефона.
+  - `frontend/src/__tests__/Checkout.spec.js` — F013: ожидания с trailing slash.
+  - `frontend/src/__tests__/PaymentSuccess.spec.js` — F013: ожидания с trailing slash; F014: тест guest mock-confirm.
+  Результат:
+  - `cd frontend && npm run test -- --run` — 149/149 ✅
+  - `cd frontend && npm run lint` — чисто ✅
+  Риск/Техдолг:
+  - Frontend-вызовы адресов уже используют `/me/addresses/` (F004).
+  Блокер: Нет.
+
 ### 2026-06-22 06:50 | frontend-dev | Гостевой чекаут с автосозданием ЛК (guest-checkout-auto-account) — frontend
   Изменено:
   - `frontend/src/views/Cart.vue` — гость при оформлении редиректится на `/guest-checkout` вместо `/login`.
@@ -36,32 +72,23 @@ YYYY-MM-DD HH:MM | <role> | <краткое описание>
   - Гостевой `mock=1` на `/payment/success` не подтверждает платёж автоматически (endpoint требует авторизации); для E2E гостевого флоу потребуется отдельный сценарий или backend webhook mock.
   Блокер: Нет.
 
-### 2026-06-22 06:40 | backend-dev | Гостевой чекаут с автосозданием ЛК (guest-checkout-auto-account) — backend
+### 2026-06-22 07:15 | backend-dev | guest-checkout-auto-account — исправления backend review findings F001–F012 + guest mock-confirm
   Изменено:
-  - `backend/src/app/models/user.py` — добавлены модели `UserAddress` и `PasswordResetToken`; `User` дополнен relationships.
-  - `backend/src/app/models/__init__.py` — экспорт новых моделей.
-  - `backend/src/app/models/order.py` — добавлено поле `save_address`.
-  - `backend/src/app/schemas/order.py` — валидация email/phone в `GuestOrderCreate`, флаг `save_address`.
-  - `backend/src/app/schemas/user.py` — добавлены `UserAddressCreate`, `UserAddressOut`, `PasswordResetRequest`, `PasswordResetConfirm`.
-  - `backend/src/app/services/user_service.py` — `get_or_create_from_guest`, `save_address`, `list_addresses`, `create_password_reset_token`, `reset_password`.
-  - `backend/src/app/services/email_service.py` — `send_welcome_email`.
-  - `backend/src/app/services/payment_service.py` — `create_guest_payment`, авто-создание/привязка пользователя и сохранение адреса в `_process_successful_payment`.
-  - `backend/src/app/services/order_service.py` — `create_guest_order` сохраняет `save_address`.
-  - `backend/src/app/api/payments.py` — endpoint `POST /api/v1/payments/guest/{order_id}/`.
-  - `backend/src/app/api/auth.py` — endpoints `POST /api/v1/auth/password-reset-request/` и `POST /api/v1/auth/password-reset/`.
-  - `backend/src/app/api/users.py` — endpoints `GET/POST /api/v1/users/me/addresses/`.
-  - `backend/alembic/versions/2ad164310a94_add_user_addresses_and_password_reset_.py` — Alembic-миграция для `user_addresses`, `password_reset_tokens` и `orders.save_address`.
-  - `backend/tests/test_guest_orders.py` — тесты на `save_address`, валидацию email/phone.
-  - `backend/tests/test_guest_payments.py` — новые тесты гостевой оплаты и webhook с автосозданием пользователя.
-  - `backend/tests/test_password_reset.py` — новые тесты сброса пароля.
-  - `backend/tests/test_user_addresses.py` — новые тесты CRUD адресов пользователя.
-  - `backend/tests/conftest.py` — заменён `Base.metadata.drop_all` на `DROP/CREATE SCHEMA public CASCADE` для корректной очистки БД с внешними CDEK-таблицами.
+  - `backend/alembic/versions/2ad164310a94_add_user_addresses_and_password_reset_.py` — F001: добавлен `server_default=sa.false()` для `orders.save_address`.
+  - `backend/src/app/services/payment_service.py` — F002: исправлен парсинг адреса доставки (`_parse_address_string`, исключение города из улицы/дома); F003: убран email из лога автосоздания пользователя; F012: общая логика `create_payment`/`create_guest_payment` вынесена в `_create_or_update_payment`; добавлен `confirm_guest_mock_payment_by_order` и endpoint `POST /api/v1/payments/guest/{order_id}/mock-confirm/`.
+  - `backend/src/app/api/users.py` — F004: пути адресов изменены с `/users/me/addresses/` на `/me/addresses/`.
+  - `backend/src/app/services/user_service.py` — F007: обработка `IntegrityError` при одновременном создании пользователя с одним email; F009: удалён лишний SELECT в `save_address`; F011: фильтр `expires_at > now` в `reset_password`.
+  - `backend/src/app/api/auth.py` — F008: удалён дублирующий `from sqlalchemy import select` внутри `password_reset_request`.
+  - `backend/tests/test_guest_orders.py` — F005: добавлены параметризованные тесты на невалидные имена/фамилии.
+  - `backend/tests/test_guest_payments.py` — F006: assert на вызов `EmailService.send_welcome_email` с `temp_password` и `reset_token`; F010: переименован тест в `test_webhook_does_not_save_address_without_flag`; добавлены тесты `test_guest_mock_confirm_creates_user`, `test_guest_mock_confirm_wrong_email`, `test_guest_mock_confirm_query_email`.
+  - `backend/tests/test_user_addresses.py` — обновлены пути с `/api/v1/users/me/addresses/` на `/api/v1/me/addresses/`.
+  - `frontend/src/api/users.js` — F004: обновлены пути `/users/me/addresses/` → `/me/addresses/`.
   Результат:
-  - `make test-backend` — 201/201 ✅
+  - `make test-backend` — 207/207 ✅
   - `ruff check src/ tests/` — чисто ✅
-  - `alembic upgrade head` — применена новая миграция ✅
+  - `make migrate-down && make migrate` — downgrade/upgrade head проходит ✅
   Риск/Техдолг:
-  - Изменение `conftest.py` затрагивает все backend-тесты; используется `DROP SCHEMA public CASCADE`, что агрессивно, но необходимо из-за CDEK-таблиц вне `Base.metadata`.
+  - F004 изменяет URL адресов с `/api/v1/users/me/addresses/` на `/api/v1/me/addresses/`, что отличается от исходного spec; frontend-вызовы обновлены, spec желательно синхронизировать.
   - Email-уведомления остаются в fallback (SMTP не настроен, BLK-005).
   Блокер: Нет.
 

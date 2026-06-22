@@ -153,7 +153,7 @@ async def upload_avatar(
     return response_data
 
 
-@router.get("/users/me/addresses/", response_model=list[UserAddressOut])
+@router.get("/me/addresses/", response_model=list[UserAddressOut])
 async def get_my_addresses(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -162,7 +162,7 @@ async def get_my_addresses(
     return await UserService.list_addresses(user_id=current_user.id, db=db)
 
 
-@router.post("/users/me/addresses/", response_model=UserAddressOut)
+@router.post("/me/addresses/", response_model=UserAddressOut)
 async def create_my_address(
     address_data: UserAddressCreate,
     current_user: User = Depends(get_current_user),

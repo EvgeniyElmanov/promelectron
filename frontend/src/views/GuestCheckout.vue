@@ -138,6 +138,7 @@ import { useCart } from '@/composables/useCart';
 import { useToast } from '@/composables/useToast';
 import { useGuestCheckout } from '@/composables/useGuestCheckout';
 import { getSupplierCityCode } from '@/api/cdek';
+import { formatPrice } from '@/utils/price';
 import CdekDeliveryWidget from '@/components/CdekDeliveryWidget.vue';
 
 const GUEST_EMAIL_KEY = 'guest_checkout_email';
@@ -145,7 +146,7 @@ const GUEST_EMAIL_KEY = 'guest_checkout_email';
 const router = useRouter();
 const { add: toast } = useToast();
 const { getGuestCartItems, clearGuestCart } = useCart();
-const { submitting, submitGuestCheckout } = useGuestCheckout();
+const { submitting, submitGuestCheckout, validateGuestForm } = useGuestCheckout();
 
 const items = ref([]);
 const selectedDelivery = ref(null);
@@ -175,7 +176,10 @@ const loadSupplierCityCode = async () => {
       isFallback.value = false;
       supplierCityCode.value = code;
     }
-  } catch {
+  } catch (err) {
+    if (import.meta.env.DEV) {
+      console.error('Failed to load supplier city code:', err);
+    }
     isFallback.value = true;
     supplierCityCode.value = 44;
   }
@@ -196,16 +200,14 @@ const isDeliveryValid = computed(() => {
 });
 
 const canSubmit = computed(() => {
-  return guestEmail.value.trim().length > 0
-    && guestFirstName.value.trim().length > 0
-    && guestLastName.value.trim().length > 0
-    && guestPhone.value.trim().length > 0
-    && isDeliveryValid.value;
+  const errors = validateGuestForm({
+    email: guestEmail.value,
+    firstName: guestFirstName.value,
+    lastName: guestLastName.value,
+    phone: guestPhone.value,
+  });
+  return Object.keys(errors).length === 0 && isDeliveryValid.value;
 });
-
-const formatPrice = (price) => {
-  return Number(price).toLocaleString('ru-RU');
-};
 
 const loadItems = () => {
   items.value = getGuestCartItems();
@@ -225,7 +227,7 @@ const submitOrder = async () => {
   }
 
   try {
-    const { order, payment } = await submitGuestCheckout({
+    const { order } = await submitGuestCheckout({
       items: items.value,
       selectedDelivery: selectedDelivery.value,
       email: guestEmail.value,
@@ -240,11 +242,7 @@ const submitOrder = async () => {
     clearGuestCart();
     toast('Заказ создан. Переходим к оплате...', 'success');
 
-    if (payment.confirmation_url) {
-      window.location.href = payment.confirmation_url;
-    } else {
-      await router.push(`/checkout/${order.id}?guest_email=${encodeURIComponent(email)}`);
-    }
+    await router.push(`/checkout/${order.id}?guest_email=${encodeURIComponent(email)}`);
   } catch (err) {
     if (err.field && err.message) {
       validationErrors.value = { [err.field]: err.message };

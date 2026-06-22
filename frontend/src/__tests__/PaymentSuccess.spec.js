@@ -47,7 +47,7 @@ describe('PaymentSuccess.vue — авторизованный пользоват
     vi.clearAllMocks();
     mockIsAuthenticated.value = true;
     mockGet.mockImplementation((url) => {
-      if (url === '/orders/42') return Promise.resolve({ data: mockOrder });
+      if (url === '/orders/42/') return Promise.resolve({ data: mockOrder });
       return Promise.resolve({ data: {} });
     });
     mockPost.mockResolvedValue({ data: {} });
@@ -65,7 +65,7 @@ describe('PaymentSuccess.vue — авторизованный пользоват
   it('загружает заказ по order_id', async () => {
     await mountComponent();
 
-    expect(mockGet).toHaveBeenCalledWith('/orders/42');
+    expect(mockGet).toHaveBeenCalledWith('/orders/42/');
   });
 
   it('показывает кнопку "Мои заказы" для авторизованного пользователя', async () => {
@@ -80,7 +80,7 @@ describe('PaymentSuccess.vue — гостевой режим', () => {
     vi.clearAllMocks();
     mockIsAuthenticated.value = false;
     mockGet.mockImplementation((url) => {
-      if (url === '/orders/guest/42?guest_email=guest%40example.com') {
+      if (url === '/orders/guest/42/?guest_email=guest%40example.com') {
         return Promise.resolve({ data: { ...mockOrder, user_id: null, guest_email: 'guest@example.com' } });
       }
       return Promise.resolve({ data: {} });
@@ -105,7 +105,7 @@ describe('PaymentSuccess.vue — гостевой режим', () => {
   it('загружает гостевой заказ по email', async () => {
     await mountGuestComponent();
 
-    expect(mockGet).toHaveBeenCalledWith('/orders/guest/42?guest_email=guest%40example.com');
+    expect(mockGet).toHaveBeenCalledWith('/orders/guest/42/?guest_email=guest%40example.com');
   });
 
   it('не вызывает sync-by-order для гостя', async () => {
@@ -120,5 +120,12 @@ describe('PaymentSuccess.vue — гостевой режим', () => {
 
     expect(wrapper.text()).not.toContain('Мои заказы');
     expect(wrapper.text()).toContain('В каталог');
+  });
+
+  it('вызывает guest mock-confirm при mock=1', async () => {
+    await mountGuestComponent({ order_id: '42', guest_email: 'guest@example.com', mock: '1' });
+    await flushPromises();
+
+    expect(mockPost).toHaveBeenCalledWith('/payments/guest/42/mock-confirm/', { guest_email: 'guest@example.com' });
   });
 });
