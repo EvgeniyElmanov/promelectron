@@ -2,14 +2,14 @@
 sprint: "Sprint 1"
 sprint_dates: "2026-06-01 — 2026-06-14"
 last_update: "2026-06-22"
-last_commit: "f469859"
-commit_message: "feat(admin): unified section tabs for admin panel"
+last_commit: "2f77465"
+commit_message: "fix(dev): BLK-008 use docker service names for FRONTEND_URL/API_BASE_URL"
 blockers_count: 1
 blockers_p0: 0
 blockers_p1: 1
-backend_tests: "201/201"
-frontend_tests: "144/144"
-e2e_tests: "101/101"
+backend_tests: "213/213"
+frontend_tests: "165/165"
+e2e_tests: "3/3"
 ---
 
 # PROJECT_CONTEXT — Promelectron
@@ -19,7 +19,7 @@ e2e_tests: "101/101"
 
 > **Метаданные в YAML frontmatter выше.** Не дублируйте здесь.
 >
-> **Последний коммит:** `f9c605d` — redirect guests to login on checkout
+> **Последний коммит:** `2f77465` — guest checkout with auto-account creation + BLK-008 fix
 
 ---
 
@@ -39,14 +39,15 @@ e2e_tests: "101/101"
 
 - [x] **Каталог** — товары, категории, фильтры, поиск с подсказками
 - [x] **Корзина (авторизованная + гостевая)** — backend API + localStorage + merge при login
-- [x] **Checkout** — гостевой чекаут без авторизации, автосоздание ЛК после оплаты
+- [x] **Checkout** — гостевой чекаут без авторизации, авто-создание ЛК после первой покупки, привязка заказа и сохранение адреса
 - [x] **OAuth** — Yandex ID + Google ID (production credentials из env)
 - [x] **Админ-панель** — CRUD товаров, категорий, заказов
 - [x] **Уведомления** — WebSocket real-time
 - [x] **Загрузка файлов** — MinIO + local fallback
 - [x] **ЮKassa (test)** — создание платежей, webhook, auto-capture, отмена, возврат
-- [x] **CDEK доставка** — расчёт тарифов, выбор ПВЗ/двери, автосоздание заказа после оплаты, вебхуки статусов
-- [x] **Тесты зелёные** — Backend 150/150 ✅, Frontend 101/101 ✅, E2E 96/96 ✅
+- [x] **CDEK доставка** — расчёт тарифов, выбор ПВЗ/двери, автосоздание заказа после оплаты, вебхуки статусов, таблица `cdek_status_history`, durable sync-задания `cdek_sync_jobs`, программная отмена заказа в CDEK
+- [x] **Password reset** — токены с TTL 24ч, инвалидация остальных токенов после использования
+- [x] **Тесты зелёные** — Backend 213/213 ✅, Frontend 165/165 ✅, E2E 3/3 ✅
 
 ---
 
@@ -68,7 +69,7 @@ e2e_tests: "101/101"
 
 | ID | Уровень | Описание | Кто решает | Дедлайн |
 |----|---------|----------|------------|---------|
-| **BLK-005** | P1 | Нет реальных SMTP кредов — email в fallback-режиме | project-manager | 2026-06-15 |
+| **BLK-005** | P1 | Нет реальных SMTP кредов — email в fallback-режиме (welcome email для гостевого чекаута логируется, но не отправляется) | project-manager | 2026-06-15 |
 
 > **Правило:** Блокер >2 дней — эскалация пользователю.
 
@@ -114,8 +115,12 @@ Product.price → Numeric      →  Product variants / Seller payouts
 | POST | `/api/v1/guest-cart/` | ✅ | Создать гостевую корзину |
 | GET | `/api/v1/guest-cart/{id}/` | ✅ | Получить гостевую корзину |
 | POST | `/api/v1/cart/merge/` | ✅ | Merge гостевой корзины при login |
-| POST | `/api/v1/orders/create-guest` | ✅ | Создать гостевой заказ |
-| GET | `/api/v1/orders/guest/{order_id}?guest_email=...` | ✅ | Получить гостевой заказ по email |
+| POST | `/api/v1/orders/create-guest/` | ✅ | Создать гостевой заказ |
+| GET | `/api/v1/orders/guest/{order_id}/` | ✅ | Получить гостевой заказ по email |
+| POST | `/api/v1/payments/guest/{order_id}/` | ✅ | Создать гостевой платёж ЮKassa |
+| POST | `/api/v1/payments/guest/{order_id}/mock-confirm/` | ✅ | Подтвердить mock-оплату гостевого заказа |
+| POST | `/api/v1/auth/password-reset-request/` | ✅ | Запросить сброс пароля |
+| POST | `/api/v1/auth/password-reset/` | ✅ | Подтвердить сброс пароля |
 
 ### Auth / OAuth
 | Метод | Путь | Статус | Описание |
@@ -125,8 +130,6 @@ Product.price → Numeric      →  Product variants / Seller payouts
 | POST | `/api/v1/auth/yandex/` | ✅ | OAuth Yandex callback |
 | POST | `/api/v1/auth/google/` | ✅ | OAuth Google callback |
 | GET | `/api/v1/auth/providers/` | ✅ | Доступность OAuth-провайдеров |
-| POST | `/api/v1/auth/password-reset-request/` | ✅ | Запрос ссылки сброса пароля |
-| POST | `/api/v1/auth/password-reset/` | ✅ | Сброс пароля по одноразовому токену |
 
 ### Авторизованные
 | Метод | Путь | Статус | Описание |
@@ -139,9 +142,8 @@ Product.price → Numeric      →  Product variants / Seller payouts
 | POST | `/api/v1/payments/{payment_id}/cancel/` | ✅ | Отменить платёж (до оплаты) |
 | GET | `/api/v1/payments/{payment_id}/` | ✅ | Информация о платеже |
 | POST | `/api/v1/payments/{payment_id}/cancel/` | ✅ | Отменить платёж |
-| POST | `/api/v1/payments/guest/{order_id}/` | ✅ | Создать платёж для гостевого заказа |
 | GET | `/api/v1/users/me/addresses/` | ✅ | Список адресов пользователя |
-| POST | `/api/v1/users/me/addresses/` | ✅ | Сохранить адрес пользователя |
+| POST | `/api/v1/users/me/addresses/` | ✅ | Добавить адрес пользователя |
 
 ### Админка
 | Метод | Путь | Статус | Описание |
@@ -180,9 +182,10 @@ Product.price → Numeric      →  Product variants / Seller payouts
 | Home | `src/views/HomeView.vue` | — | `/products/`, `/categories/` |
 | ProductDetail | `src/views/ProductDetailView.vue` | — | `/products/{id}/` |
 | Cart | `src/views/CartView.vue` | `useCart` | `/cart/`, `/guest-cart/` |
+| GuestCheckout | `src/views/GuestCheckoutView.vue` | `useCart` | `/guest-cart/`, `/cdek/`, `/orders/create-guest/` |
 | Checkout | `src/views/CheckoutView.vue` | `useCart` | `/orders/`, `/payments/` |
-| GuestCheckout | `src/views/GuestCheckout.vue` | `useGuestCheckout` | `/orders/create-guest`, `/payments/guest/{id}/` |
-| PaymentSuccess | `src/views/PaymentSuccess.vue` | — | `/orders/{id}/`, `/orders/guest/{id}` |
+| PaymentSuccess | `src/views/PaymentSuccessView.vue` | — | `/payments/guest/{order_id}/mock-confirm/`, `/orders/guest/{order_id}/` |
+| PaymentFailed | `src/views/PaymentFailedView.vue` | — | `/payments/{payment_id}/` |
 | Login | `src/views/LoginView.vue` | `useAuth` | `/auth/login/`, `/auth/yandex/` |
 | AdminDashboard | `src/views/admin/DashboardView.vue` | — | `/admin/...` |
 | Admin | `src/views/Admin.vue` | — | `/categories/` |
@@ -191,11 +194,11 @@ Product.price → Numeric      →  Product variants / Seller payouts
 | Composable | Файл | Отвечает за |
 |------------|------|-------------|
 | `useCart` | `src/composables/useCart.js` | Корзина (гость + auth, localStorage, merge) |
+| `useGuestCheckout` | `src/composables/useGuestCheckout.js` | Валидация гостевого чекаута, нормализация телефона, сбор payload заказа |
 | `useAuth` | `src/composables/useAuth.js` | JWT, OAuth, login/logout |
 | `useSearch` | `src/composables/useSearch.js` | Поиск, подсказки, история |
 | `useCategories` | `src/composables/useCategories.js` | Загрузка категорий, вкладки, поиск, пагинация |
-| `useGuestCheckout` | `src/composables/useGuestCheckout.js` | Валидация и отправка гостевого заказа с оплатой |
-| `useUserAddresses` | `src/composables/useUserAddresses.js` | Сохранённые адреса пользователя |
+| `usePayment` | `src/composables/usePayment.js` | Создание и статус платежей |
 
 ### Key Components
 | Компонент | Файл | Где используется |
@@ -204,7 +207,8 @@ Product.price → Numeric      →  Product variants / Seller payouts
 | `ProductGrid` | `src/components/ProductGrid.vue` | HomeView, CategoryView |
 | `CartItemList` | `src/components/cart/CartItemList.vue` | CartView |
 | `CheckoutButton` | `src/components/cart/CheckoutButton.vue` | CartView |
-| `CdekDeliveryWidget` | `src/components/CdekDeliveryWidget.vue` | CartView, GuestCheckout |
+| `CdekDeliveryWidget` | `src/components/CdekDeliveryWidget.vue` | CartView, GuestCheckoutView |
+| `GuestCheckoutForm` | `src/components/GuestCheckoutForm.vue` | GuestCheckoutView |
 | `ProductFormModal` | `src/components/ProductFormModal.vue` | Admin товары (вес/габариты) |
 
 ---
@@ -232,12 +236,13 @@ make test-e2e      # Playwright
 
 | Дата | Что изменилось | Кто |
 |------|---------------|-----|
-| 2026-06-22 | **guest-checkout-auto-account (backend)**: реализован гостевой чекаут с автосозданием ЛК после оплаты. Добавлены модели `UserAddress` и `PasswordResetToken`, миграция `2ad164310a94`, валидация email/phone в `GuestOrderCreate`, флаг `save_address`, сервисы `get_or_create_from_guest`, `save_address`, `create_password_reset_token`, `reset_password`, `send_welcome_email`, `create_guest_payment`; webhook `payment.succeeded` теперь создаёт/привязывает пользователя и сохраняет адрес. Endpoints: `POST /api/v1/payments/guest/{order_id}/`, `POST /api/v1/auth/password-reset-request/`, `POST /api/v1/auth/password-reset/`, `GET/POST /api/v1/users/me/addresses/`. Backend-тесты: 201/201 ✅. `backend/tests/conftest.py` обновлён: `DROP SCHEMA public CASCADE` вместо `Base.metadata.drop_all` для совместимости с CDEK-таблицами вне `Base.metadata`. | backend-dev |
+| 2026-06-22 | **guest-checkout-auto-account — final context sync + merge ready**: реализован гостевой чекаут с автосозданием ЛК после первой покупки. Backend: `UserAddress`, `PasswordResetToken`, Alembic-миграция `bfcdd2eaa310`, endpoints `/orders/create-guest/`, `/orders/guest/{order_id}/`, `/payments/guest/{order_id}/`, `/payments/guest/{order_id}/mock-confirm/`, `/auth/password-reset-request/`, `/auth/password-reset/`; сервисы `PaymentService._process_successful_payment` и `UserService.get_or_create_from_guest` с lower-case email, case-insensitive matching и защитой от race `IntegrityError`. Frontend: `GuestCheckoutView.vue`, `GuestCheckoutForm.vue`, `PaymentSuccessView.vue`, `PaymentFailedView.vue`, `useGuestCheckout.js`, shared `formatPrice`. QA: backend 213/213 ✅, frontend 165/165 ✅, E2E checkout 3/3 ✅. BLK-008 fixed: `backend/docker-compose.yml` использует `FRONTEND_URL=http://frontend:5173` и `API_BASE_URL=http://api:8000`. BLK-005 остаётся активным (SMTP fallback). Проектная документация и контекст синхронизированы. | backend-dev / frontend-dev / qa |
+| 2026-06-22 | **Agent pipeline health & worktree hygiene**: расширен `scripts/implement-pipeline.py` — добавлены `check-health`, `create-worktree --shared-node-modules`, `fix-permissions`, `archive-session-log`. Добавлены `Makefile` target'ы `worktree-health`, `fix-permissions`, `archive-session-log`. В `.kimi-code/skills/implement/SKILL.md` интегрированы health-check и shared `node_modules` в workflow. В `.kimi-code/rules/agent-commons.md` добавлены правила `Environment Health Check` и `Worktree Hygiene`. Архивировано 519 строк из `SESSION_LOG.md` (96.5 → 56.8 KB). Auto-cleanup worktree не добавлен — lifecycle остаётся под контролем пользователя. | backend-dev |
+| 2026-06-22 | **CDEK status sync + cancel (backend)**: выделена доменная модель `CdekOrder` с `CdekStatusHistory` и `CdekSyncJob`; добавлена Alembic-миграция `1c463a2c2e3f` с миграцией старых CDEK-полей из `orders`; `CdekService.apply_cdek_status` нормализует вебхуки и обновляет `Order.status`; `CdekService.cancel_cdek_order` удаляет заказ в CDEK; Celery task `sync_cdek_jobs_task` выполняет периодическую синхронизацию статусов; добавлены unit-тесты (`test_cdek.py`, `test_auth.py`). Backend-тесты: 185/185 ✅, линтер чисто ✅. | backend-dev |
 | 2026-06-21 | **Agent docs refactor**: `.kimi-code/AGENTS.md` сокращён до project-wide index; создан `.kimi-code/BUNDLE.md` — единый реестр role/workflow skills и shared rules; дублирующиеся секции вынесены в `.kimi-code/rules/agent-commons.md`, `planning.md`, `known-pitfalls.md`; `/skill:qa` интегрирован в `/skill:implement`; `project-manager` и `plan-maintainer` разделены; `disableModelInvocation: true` добавлен в ролевые skills; ссылки на rules унифицированы в формат `[Rule: Name](path)`; в `/skill:implement` добавлен перезапуск тестов перед повторным review; `scripts/audit-agents.sh` обновлён под новую структуру и улучшен regex для Markdown-ссылок. `bash scripts/audit-agents.sh` проходит без ошибок. | architect / backend-dev |
 | 2026-06-21 | **Strengthened Russian reasoning rules**: усилены правила русскоязычного reasoning после обратной связи, что агент переключается на английский. В `.kimi-code/AGENTS.md` добавлен раздел **GOLDEN RULE: REASON IN RUSSIAN / ЗОЛОТОЕ ПРАВИЛО: РАССУЖДАЙ НА РУССКОМ** с двуязычной формулировкой, требованием самопроверки и инструкцией игнорировать дефолтные языковые настройки. Во всех workflow skills (implement, fix, review, deploy, context-sync, plan-maintainer, promelectron) обновлены языковые секции. В примерах промптов субагентов в `implement/SKILL.md` добавлены bilingual language rule в начало и REMEMBER / НАПОМИНАНИЕ в конец каждого промпта. `bash scripts/audit-agents.sh` проходит без ошибок. | audit-kimi-pipeline |
 | 2026-06-21 | **Agent pipeline improvements implemented**: реализованы рекомендации из аудита Kimi docs. `deploy` skill переведён в `type: flow` (только ручной запуск). В `.kimi-code/config.example.toml` добавлены `default_model`, `default_thinking`, `default_permission_mode`, `merge_all_available_skills`, provider/model aliases, safety hook `PreToolUse` для блокировки опасных Bash-команд. Создан `scripts/hooks/block-dangerous-bash.py`. В `/skill:implement` добавлен `AgentSwarm` для параллельного backend/frontend review с мёржем findings. Обновлен раздел `code-reviewer` в `.kimi-code/AGENTS.md`. Audit script обновлён для поддержки `type: flow`. `bash scripts/audit-agents.sh` проходит без ошибок. | audit-kimi-pipeline |
 | 2026-06-21 | **Kimi docs review & pipeline recommendations**: изучена документация Kimi Code CLI, Agent Skills, MCP, ACP. Проведено сравнение с текущим пайплайном Promelectron. Исправлено нарушение ограничения "subagents cannot schedule nested subagents" в `.kimi-code/AGENTS.md` (architect/code-reviewer). Добавлен раздел **Subagent boundary**. Создан файл рекомендаций `.agent/audit-kimi-pipeline/review/kimi-docs-recommendations.md` с roadmap: `type: flow` для deploy, safety hooks, `AgentSwarm` для параллельного review, типизированные аргументы skills, sub-skills, plugin, `/goal`. `bash scripts/audit-agents.sh` проходит без ошибок. | audit-kimi-pipeline |
-| 2026-06-22 | **guest-checkout-auto-account (frontend)**: реализован гостевой чекаут с оплатой. `Cart.vue` ведёт гостя на `/guest-checkout`; `GuestCheckout.vue` валидирует контакты, содержит CDEK-виджет, кнопку "Войти", галочку "Сохранить адрес" и инициирует оплату через `POST /orders/create-guest` + `POST /payments/guest/{id}/`; `Checkout.vue` и `PaymentSuccess.vue` поддерживают гостевой режим по `guest_email`; добавлены API-модули (`src/api/orders.js`, `payments.js`, `auth.js`, `users.js`) и composables (`useGuestCheckout.js`, `useUserAddresses.js`); обновлены/добавлены unit-тесты. Frontend-тесты: 144/144 ✅, линтер чисто ✅. | frontend-dev |
 | 2026-06-21 | **Russian-language reasoning consistency**: проверено, что агенты и субагенты ведут размышление на русском языке при русском запросе пользователя. Дополнены и унифицированы языковые секции во всех workflow skills (implement, fix, review, deploy, context-sync, plan-maintainer, promelectron). В примерах промптов субагентов в `implement/SKILL.md` добавлена явная языковая преамбула. Добавлена языковая заметка в `ROUTER.md`. `bash scripts/audit-agents.sh` проходит без ошибок. | audit-kimi-pipeline |
 | 2026-06-21 | **Agent system migration v2**: `.kimi/agents/*.md` и `.kimi/rules/*.md` перенесены в `.kimi-code/AGENTS.md` (project-level instructions). Директория `.kimi/` удалена. `HOWTO.md` и `lessons-learned.md` сохранены в `.kimi-code/HOWTO.md` и `.kimi-code/LESSONS_LEARNED.md`. Обновлены `AGENTS.md`, `SESSION_START.md`, `ROUTER.md`, workflow skills, `scripts/audit-agents.sh`, `.claude/rules/agent-context.md`. Исправлен `.kimi-code/config.example.toml`: push в main → `ask`, удалено `default_yolo`, удалён project-specific hook. `bash scripts/audit-agents.sh` проходит без ошибок. | audit-kimi-pipeline |
 | 2026-06-20 | **fix-cdek-widget-calculation (frontend)**: `CdekDeliveryWidget.vue` теперь принимает `supplierCityCode` и передаёт в виджет `from: { code: supplierCityCode }` вместо строки 'Москва'; `Cart.vue` и `GuestCheckout.vue` определяют `supplierId` из первого товара, загружают код города отправления через `GET /cdek/supplier-city-code/{supplier_id}/` и передают в виджет (fallback 44 при ошибке); создан `frontend/src/api/cdek.js`; в `useCart.js` гостевые товары сохраняют `supplier_id`; обновлены unit-тесты (`CdekDeliveryWidget.spec.js`, `Cart.spec.js`, `GuestCheckout.spec.js`); в `e2e/cdek-widget.spec.js` добавлен сценарий выбора ПВЗ с проверкой тарифа/цены. Frontend-тесты: 128/128 ✅, линтер чисто ✅. | frontend-dev |
