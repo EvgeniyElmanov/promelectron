@@ -14,8 +14,10 @@ from src.app.models.cart import Cart, CartItem
 from src.app.models.order import Order, OrderItem
 from src.app.models.payment import Payment
 from src.app.models.user import User
+from src.app.schemas.user import UserAddressCreate
 from src.app.services.email_service import EmailService
 from src.app.services.notification_service import NotificationService
+from src.app.services.user_service import UserService
 from src.app.services.yookassa_service import YooKassaService
 
 # Imported lazily inside methods to avoid circular imports with Celery
@@ -136,6 +138,106 @@ class PaymentService:
         return payment
 
     @staticmethod
+    async def create_guest_payment(order_id: int, guest_email: str, db: AsyncSession) -> Payment:
+        """Создать платёж для гостевого заказа через ЮKassa."""
+        result = await db.execute(
+            select(Order)
+            .where(Order.id == order_id, Order.user_id.is_(None), Order.guest_email == guest_email)
+            .options(
+                selectinload(Order.items).selectinload(OrderItem.product),
+            )
+        )
+        order = result.scalars().first()
+
+        if not order:
+            raise HTTPException(status_code=404, detail="Order not found")
+
+        if order.status != "pending":
+            raise HTTPException(status_code=400, detail="Order is not in pending status")
+
+        existing_result = await db.execute(select(Payment).where(Payment.order_id == order_id))
+        existing_payment = existing_result.scalars().first()
+        if existing_payment:
+            if existing_payment.status == "paid":
+                raise HTTPException(status_code=400, detail="Order is already paid")
+            payment = existing_payment
+            payment.status = "pending"
+        else:
+            payment = None
+
+        receipt_data = None
+        if settings.yookassa_receipt_enabled and order.guest_email and order.items:
+            receipt_items = []
+            for oi in order.items:
+                receipt_items.append(
+                    {
+                        "description": (oi.product.name if oi.product else "Товар")[:128],
+                        "quantity": f"{oi.quantity:.2f}",
+                        "amount": {
+                            "value": f"{float(oi.price_at_time * oi.quantity):.2f}",
+                            "currency": "RUB",
+                        },
+                        "vat_code": settings.yookassa_vat_code,
+                        "payment_subject": "commodity",
+                        "payment_mode": "full_payment",
+                    }
+                )
+            receipt_data = {
+                "customer": {"email": order.guest_email},
+                "items": receipt_items,
+                "tax_system_code": settings.yookassa_tax_system_code,
+            }
+
+        if YooKassaService.is_configured():
+            yookassa_result = await YooKassaService.create_payment(
+                order_id=order.id,
+                amount=order.total_price,
+                description=f"Заказ №{order.id}",
+                user_id=None,
+                receipt_data=receipt_data,
+            )
+        else:
+            logger.info("YooKassa not configured — creating mock payment for guest order %s", order.id)
+            yookassa_result = {
+                "yookassa_payment_id": f"mock-{uuid.uuid4()}",
+                "status": "pending",
+                "confirmation_url": f"{settings.frontend_url.rstrip('/')}/payment/success?order_id={order.id}&mock=1",
+                "amount": order.total_price,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "test": True,
+            }
+
+        if payment is None:
+            payment = Payment(
+                order_id=order.id,
+                amount=order.total_price,
+                status="pending",
+                provider_payment_id=yookassa_result["yookassa_payment_id"],
+                yookassa_payment_id=yookassa_result["yookassa_payment_id"],
+                yookassa_status=yookassa_result["status"],
+                confirmation_url=yookassa_result["confirmation_url"],
+                yookassa_created_at=datetime.fromisoformat(
+                    yookassa_result["created_at"].replace("Z", "+00:00")
+                ),
+            )
+            db.add(payment)
+        else:
+            payment.amount = order.total_price
+            payment.provider_payment_id = yookassa_result["yookassa_payment_id"]
+            payment.yookassa_payment_id = yookassa_result["yookassa_payment_id"]
+            payment.yookassa_status = yookassa_result["status"]
+            payment.confirmation_url = yookassa_result["confirmation_url"]
+            payment.yookassa_created_at = datetime.fromisoformat(
+                yookassa_result["created_at"].replace("Z", "+00:00")
+            )
+            payment.updated_at = datetime.now(timezone.utc)
+
+        await db.commit()
+        await db.refresh(payment)
+
+        return payment
+
+    @staticmethod
     async def _process_successful_payment(payment: Payment, db: AsyncSession) -> None:
         """Обработка успешной оплаты: обновление статусов, очистка корзины, уведомления."""
         if payment.status == "paid":
@@ -153,6 +255,37 @@ class PaymentService:
         order_shipping_address = payment.order.shipping_address
         order_items = list(payment.order.items)
 
+        # Автосоздание / привязка пользователя для гостевых заказов
+        current_user_id = order_user_id
+        if current_user_id is None and payment.order.guest_email:
+            try:
+                user, created, temp_password = await UserService.get_or_create_from_guest(
+                    email=payment.order.guest_email,
+                    first_name=payment.order.recipient_first_name or "",
+                    last_name=payment.order.recipient_last_name or "",
+                    phone=payment.order.guest_phone,
+                    db=db,
+                )
+                payment.order.user_id = user.id
+                current_user_id = user.id
+
+                if created:
+                    reset_token = await UserService.create_password_reset_token(
+                        user_id=user.id, db=db
+                    )
+                    await EmailService.send_welcome_email(
+                        to=user.email,
+                        temp_password=temp_password,
+                        reset_token=reset_token,
+                        frontend_url=settings.frontend_url,
+                    )
+                    logger.info("Created user from guest checkout: %s", user.email)
+
+                if payment.order.save_address:
+                    await PaymentService._save_guest_address(payment.order, user.id, db)
+            except Exception:
+                logger.exception("Failed to auto-create/link guest user for order %s", order_id)
+
         payment.status = "paid"
         payment.paid_at = datetime.now(timezone.utc)
         payment.order.status = "paid"
@@ -160,8 +293,8 @@ class PaymentService:
         await db.commit()
 
         # Очищаем корзину пользователя после успешной оплаты
-        if order_user_id:
-            cart_result = await db.execute(select(Cart).where(Cart.user_id == order_user_id))
+        if current_user_id:
+            cart_result = await db.execute(select(Cart).where(Cart.user_id == current_user_id))
             cart = cart_result.scalars().first()
             if cart:
                 await db.execute(delete(CartItem).where(CartItem.cart_id == cart.id))
@@ -178,7 +311,7 @@ class PaymentService:
 
         # Отправляем email о подтверждении оплаты (best-effort)
         try:
-            user_result = await db.execute(select(User).where(User.id == order_user_id))
+            user_result = await db.execute(select(User).where(User.id == current_user_id))
             user = user_result.scalars().first()
             if user:
                 items_for_email = []
@@ -212,6 +345,55 @@ class PaymentService:
                 )
         except Exception:
             logger.exception("Failed to send payment confirmation side-effects")
+
+    @staticmethod
+    async def _save_guest_address(order: Order, user_id: int, db: AsyncSession) -> None:
+        """Сохранить адрес доставки гостя в адреса пользователя."""
+        city = None
+        street = None
+        house = None
+        apartment = None
+        postal_code = None
+        cdek_location_code = None
+        cdek_delivery_point = order.cdek_delivery_point
+
+        to_location = order.cdek_to_location
+        if isinstance(to_location, dict):
+            city = to_location.get("city") or city
+            cdek_location_code = to_location.get("code") or cdek_location_code
+            address_str = to_location.get("address")
+            if address_str and isinstance(address_str, str):
+                # Простая эвристика для извлечения улицы/дома/квартиры
+                parts = [p.strip() for p in address_str.split(",")]
+                if parts:
+                    street = parts[0]
+                if len(parts) > 1:
+                    house = parts[1]
+                if len(parts) > 2:
+                    apartment = parts[2]
+
+        if not city and order.shipping_address:
+            shipping = order.shipping_address
+            if isinstance(shipping, str):
+                city = shipping.split(",")[0].strip() if shipping else None
+            elif isinstance(shipping, dict):
+                city = shipping.get("city")
+
+        if not city:
+            city = "Не указан"
+
+        address_data = UserAddressCreate(
+            label="Адрес доставки",
+            city=city,
+            street=street,
+            house=house,
+            apartment=apartment,
+            postal_code=postal_code,
+            cdek_location_code=cdek_location_code,
+            cdek_delivery_point=cdek_delivery_point,
+            is_default=True,
+        )
+        await UserService.save_address(user_id=user_id, address_data=address_data, db=db)
 
     @staticmethod
     async def handle_webhook(

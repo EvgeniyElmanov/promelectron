@@ -1,13 +1,13 @@
 ---
 sprint: "Sprint 1"
 sprint_dates: "2026-06-01 — 2026-06-14"
-last_update: "2026-06-21"
+last_update: "2026-06-22"
 last_commit: "f469859"
 commit_message: "feat(admin): unified section tabs for admin panel"
 blockers_count: 1
 blockers_p0: 0
 blockers_p1: 1
-backend_tests: "175/175"
+backend_tests: "201/201"
 frontend_tests: "128/128"
 e2e_tests: "101/101"
 ---
@@ -39,7 +39,7 @@ e2e_tests: "101/101"
 
 - [x] **Каталог** — товары, категории, фильтры, поиск с подсказками
 - [x] **Корзина (авторизованная + гостевая)** — backend API + localStorage + merge при login
-- [x] **Checkout** — redirect гостей на login перед оплатой
+- [x] **Checkout** — гостевой чекаут без авторизации, автосоздание ЛК после оплаты
 - [x] **OAuth** — Yandex ID + Google ID (production credentials из env)
 - [x] **Админ-панель** — CRUD товаров, категорий, заказов
 - [x] **Уведомления** — WebSocket real-time
@@ -123,6 +123,8 @@ Product.price → Numeric      →  Product variants / Seller payouts
 | POST | `/api/v1/auth/yandex/` | ✅ | OAuth Yandex callback |
 | POST | `/api/v1/auth/google/` | ✅ | OAuth Google callback |
 | GET | `/api/v1/auth/providers/` | ✅ | Доступность OAuth-провайдеров |
+| POST | `/api/v1/auth/password-reset-request/` | ✅ | Запрос ссылки сброса пароля |
+| POST | `/api/v1/auth/password-reset/` | ✅ | Сброс пароля по одноразовому токену |
 
 ### Авторизованные
 | Метод | Путь | Статус | Описание |
@@ -135,6 +137,9 @@ Product.price → Numeric      →  Product variants / Seller payouts
 | POST | `/api/v1/payments/{payment_id}/cancel/` | ✅ | Отменить платёж (до оплаты) |
 | GET | `/api/v1/payments/{payment_id}/` | ✅ | Информация о платеже |
 | POST | `/api/v1/payments/{payment_id}/cancel/` | ✅ | Отменить платёж |
+| POST | `/api/v1/payments/guest/{order_id}/` | ✅ | Создать платёж для гостевого заказа |
+| GET | `/api/v1/users/me/addresses/` | ✅ | Список адресов пользователя |
+| POST | `/api/v1/users/me/addresses/` | ✅ | Сохранить адрес пользователя |
 
 ### Админка
 | Метод | Путь | Статус | Описание |
@@ -221,6 +226,7 @@ make test-e2e      # Playwright
 
 | Дата | Что изменилось | Кто |
 |------|---------------|-----|
+| 2026-06-22 | **guest-checkout-auto-account (backend)**: реализован гостевой чекаут с автосозданием ЛК после оплаты. Добавлены модели `UserAddress` и `PasswordResetToken`, миграция `2ad164310a94`, валидация email/phone в `GuestOrderCreate`, флаг `save_address`, сервисы `get_or_create_from_guest`, `save_address`, `create_password_reset_token`, `reset_password`, `send_welcome_email`, `create_guest_payment`; webhook `payment.succeeded` теперь создаёт/привязывает пользователя и сохраняет адрес. Endpoints: `POST /api/v1/payments/guest/{order_id}/`, `POST /api/v1/auth/password-reset-request/`, `POST /api/v1/auth/password-reset/`, `GET/POST /api/v1/users/me/addresses/`. Backend-тесты: 201/201 ✅. `backend/tests/conftest.py` обновлён: `DROP SCHEMA public CASCADE` вместо `Base.metadata.drop_all` для совместимости с CDEK-таблицами вне `Base.metadata`. | backend-dev |
 | 2026-06-21 | **Agent docs refactor**: `.kimi-code/AGENTS.md` сокращён до project-wide index; создан `.kimi-code/BUNDLE.md` — единый реестр role/workflow skills и shared rules; дублирующиеся секции вынесены в `.kimi-code/rules/agent-commons.md`, `planning.md`, `known-pitfalls.md`; `/skill:qa` интегрирован в `/skill:implement`; `project-manager` и `plan-maintainer` разделены; `disableModelInvocation: true` добавлен в ролевые skills; ссылки на rules унифицированы в формат `[Rule: Name](path)`; в `/skill:implement` добавлен перезапуск тестов перед повторным review; `scripts/audit-agents.sh` обновлён под новую структуру и улучшен regex для Markdown-ссылок. `bash scripts/audit-agents.sh` проходит без ошибок. | architect / backend-dev |
 | 2026-06-21 | **Strengthened Russian reasoning rules**: усилены правила русскоязычного reasoning после обратной связи, что агент переключается на английский. В `.kimi-code/AGENTS.md` добавлен раздел **GOLDEN RULE: REASON IN RUSSIAN / ЗОЛОТОЕ ПРАВИЛО: РАССУЖДАЙ НА РУССКОМ** с двуязычной формулировкой, требованием самопроверки и инструкцией игнорировать дефолтные языковые настройки. Во всех workflow skills (implement, fix, review, deploy, context-sync, plan-maintainer, promelectron) обновлены языковые секции. В примерах промптов субагентов в `implement/SKILL.md` добавлены bilingual language rule в начало и REMEMBER / НАПОМИНАНИЕ в конец каждого промпта. `bash scripts/audit-agents.sh` проходит без ошибок. | audit-kimi-pipeline |
 | 2026-06-21 | **Agent pipeline improvements implemented**: реализованы рекомендации из аудита Kimi docs. `deploy` skill переведён в `type: flow` (только ручной запуск). В `.kimi-code/config.example.toml` добавлены `default_model`, `default_thinking`, `default_permission_mode`, `merge_all_available_skills`, provider/model aliases, safety hook `PreToolUse` для блокировки опасных Bash-команд. Создан `scripts/hooks/block-dangerous-bash.py`. В `/skill:implement` добавлен `AgentSwarm` для параллельного backend/frontend review с мёржем findings. Обновлен раздел `code-reviewer` в `.kimi-code/AGENTS.md`. Audit script обновлён для поддержки `type: flow`. `bash scripts/audit-agents.sh` проходит без ошибок. | audit-kimi-pipeline |

@@ -9,7 +9,9 @@ from .product import Product as Product
 from .review import Review as Review
 from .social_account import SocialAccount as SocialAccount
 from .supplier import Supplier as Supplier
+from .user import PasswordResetToken as PasswordResetToken
 from .user import User as User
+from .user import UserAddress as UserAddress
 
 __all__ = [
     "Cart",
@@ -21,9 +23,11 @@ __all__ = [
     "Order",
     "OrderItem",
     "Payment",
+    "PasswordResetToken",
     "Product",
     "Review",
     "SocialAccount",
     "Supplier",
     "User",
+    "UserAddress",
 ]

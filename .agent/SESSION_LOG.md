@@ -14,6 +14,35 @@ YYYY-MM-DD HH:MM | <role> | <краткое описание>
 
 ## Записи (новые сверху)
 
+### 2026-06-22 06:40 | backend-dev | Гостевой чекаут с автосозданием ЛК (guest-checkout-auto-account) — backend
+  Изменено:
+  - `backend/src/app/models/user.py` — добавлены модели `UserAddress` и `PasswordResetToken`; `User` дополнен relationships.
+  - `backend/src/app/models/__init__.py` — экспорт новых моделей.
+  - `backend/src/app/models/order.py` — добавлено поле `save_address`.
+  - `backend/src/app/schemas/order.py` — валидация email/phone в `GuestOrderCreate`, флаг `save_address`.
+  - `backend/src/app/schemas/user.py` — добавлены `UserAddressCreate`, `UserAddressOut`, `PasswordResetRequest`, `PasswordResetConfirm`.
+  - `backend/src/app/services/user_service.py` — `get_or_create_from_guest`, `save_address`, `list_addresses`, `create_password_reset_token`, `reset_password`.
+  - `backend/src/app/services/email_service.py` — `send_welcome_email`.
+  - `backend/src/app/services/payment_service.py` — `create_guest_payment`, авто-создание/привязка пользователя и сохранение адреса в `_process_successful_payment`.
+  - `backend/src/app/services/order_service.py` — `create_guest_order` сохраняет `save_address`.
+  - `backend/src/app/api/payments.py` — endpoint `POST /api/v1/payments/guest/{order_id}/`.
+  - `backend/src/app/api/auth.py` — endpoints `POST /api/v1/auth/password-reset-request/` и `POST /api/v1/auth/password-reset/`.
+  - `backend/src/app/api/users.py` — endpoints `GET/POST /api/v1/users/me/addresses/`.
+  - `backend/alembic/versions/2ad164310a94_add_user_addresses_and_password_reset_.py` — Alembic-миграция для `user_addresses`, `password_reset_tokens` и `orders.save_address`.
+  - `backend/tests/test_guest_orders.py` — тесты на `save_address`, валидацию email/phone.
+  - `backend/tests/test_guest_payments.py` — новые тесты гостевой оплаты и webhook с автосозданием пользователя.
+  - `backend/tests/test_password_reset.py` — новые тесты сброса пароля.
+  - `backend/tests/test_user_addresses.py` — новые тесты CRUD адресов пользователя.
+  - `backend/tests/conftest.py` — заменён `Base.metadata.drop_all` на `DROP/CREATE SCHEMA public CASCADE` для корректной очистки БД с внешними CDEK-таблицами.
+  Результат:
+  - `make test-backend` — 201/201 ✅
+  - `ruff check src/ tests/` — чисто ✅
+  - `alembic upgrade head` — применена новая миграция ✅
+  Риск/Техдолг:
+  - Изменение `conftest.py` затрагивает все backend-тесты; используется `DROP SCHEMA public CASCADE`, что агрессивно, но необходимо из-за CDEK-таблиц вне `Base.metadata`.
+  - Email-уведомления остаются в fallback (SMTP не настроен, BLK-005).
+  Блокер: Нет.
+
 ### 2026-06-21 17:25 | architect / backend-dev | Рефакторинг агентской документации: flat skills, BUNDLE, unified rule links
   Изменено:
   - Исправлены broken links на rule-файлы в `.kimi-code/skills/*` и `.kimi-code/AGENTS.md`.

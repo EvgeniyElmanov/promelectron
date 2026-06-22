@@ -35,6 +35,7 @@ class Order(Base):
     cdek_status = Column(String, nullable=True)
     cdek_sync_attempts = Column(Integer, nullable=False, default=0)
     cdek_sync_failed = Column(Boolean, nullable=False, default=False)
+    save_address = Column(Boolean, nullable=False, default=False)
 
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(

@@ -10,7 +10,14 @@ from src.app.db.database import get_db
 from src.app.models.supplier import Supplier
 from src.app.models.user import User
 from src.app.schemas.supplier import SupplierOut, SupplierUpdate
-from src.app.schemas.user import PasswordChange, UserCreate, UserOut, UserUpdate
+from src.app.schemas.user import (
+    PasswordChange,
+    UserAddressCreate,
+    UserAddressOut,
+    UserCreate,
+    UserOut,
+    UserUpdate,
+)
 from src.app.services.user_service import UserService
 from src.app.services.storage_service import storage
 from src.app.utils.auth import (
@@ -144,3 +151,24 @@ async def upload_avatar(
         "large": result["large"],
     })
     return response_data
+
+
+@router.get("/users/me/addresses/", response_model=list[UserAddressOut])
+async def get_my_addresses(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Получить сохранённые адреса текущего пользователя."""
+    return await UserService.list_addresses(user_id=current_user.id, db=db)
+
+
+@router.post("/users/me/addresses/", response_model=UserAddressOut)
+async def create_my_address(
+    address_data: UserAddressCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Сохранить новый адрес текущего пользователя."""
+    return await UserService.save_address(
+        user_id=current_user.id, address_data=address_data, db=db
+    )

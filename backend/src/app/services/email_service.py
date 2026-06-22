@@ -118,3 +118,40 @@ class EmailService:
 """
         text = f"Статус заказа №{order_id} изменён: {label}"
         await cls.send_email(to, f"MyShop — Заказ №{order_id}: {label}", html, text)
+
+    @classmethod
+    async def send_welcome_email(
+        cls, to: str, temp_password: str, reset_token: str, frontend_url: str
+    ) -> None:
+        reset_url = f"{frontend_url.rstrip('/')}/reset-password?token={reset_token}"
+        html = f"""\
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"></head>
+<body style="font-family: Arial, sans-serif; color: #181818;">
+  <div style="max-width: 600px; margin: 0 auto; padding: 24px;">
+    <h2 style="color: #005BFF;">MyShop — Аккаунт создан</h2>
+    <p>Спасибо за покупку! Мы автоматически создали для вас личный кабинет.</p>
+
+    <p><strong>Ваш временный пароль:</strong> {temp_password}</p>
+
+    <p>Для безопасности рекомендуем сразу сменить пароль по ссылке ниже:</p>
+    <p>
+      <a href="{reset_url}" style="display: inline-block; padding: 12px 24px; background: #005BFF; color: #fff; text-decoration: none; border-radius: 6px;">
+        Сменить пароль
+      </a>
+    </p>
+    <p style="color: #6c757d; font-size: 12px;">Ссылка действительна 24 часа.</p>
+
+    <p style="margin-top: 24px; color: #6c757d; font-size: 12px;">
+      Если у вас есть вопросы, ответьте на это письмо.
+    </p>
+  </div>
+</body>
+</html>
+"""
+        text = (
+            f"Ваш аккаунт MyShop создан. Временный пароль: {temp_password}. "
+            f"Сменить пароль: {reset_url} (действует 24 часа)."
+        )
+        await cls.send_email(to, "MyShop — Аккаунт создан", html, text)

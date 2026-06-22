@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 from fastapi import HTTPException, status
@@ -7,8 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.app.core.config import ACCESS_TOKEN_EXPIRE_MINUTES
 from src.app.models.supplier import Supplier
-from src.app.models.user import User
-from src.app.schemas.user import UserCreate, UserOut
+from src.app.models.user import PasswordResetToken, User, UserAddress
+from src.app.schemas.user import UserAddressCreate, UserCreate, UserOut
 from src.app.utils.auth import create_access_token, hash_password, verify_password
 
 
@@ -124,3 +124,140 @@ class UserService:
         user.hashed_password = hash_password(password_data.new_password)
         await db.commit()
         return {"message": "Password updated successfully"}
+
+    @staticmethod
+    async def get_or_create_from_guest(
+        email: str,
+        first_name: str,
+        last_name: str,
+        phone: str | None,
+        db: AsyncSession,
+    ) -> tuple[User, bool, str]:
+        """Получить существующего пользователя или создать из данных гостя.
+
+        Возвращает (user, created, temp_password).
+        """
+        result = await db.execute(select(User).where(User.email == email).with_for_update())
+        user = result.scalars().first()
+
+        if user:
+            # Обновляем пустые поля данными из чекаута
+            updated = False
+            full_name = f"{first_name} {last_name}".strip()
+            if full_name and not user.full_name:
+                user.full_name = full_name
+                updated = True
+            if phone and not user.phone:
+                user.phone = phone
+                updated = True
+            if updated:
+                await db.commit()
+                await db.refresh(user)
+            return user, False, ""
+
+        temp_password = uuid4().hex[:16]
+        full_name = f"{first_name} {last_name}".strip()
+        new_user = User(
+            email=email,
+            hashed_password=hash_password(temp_password),
+            full_name=full_name or None,
+            phone=phone,
+            role="user",
+            is_active=True,
+        )
+        db.add(new_user)
+        await db.commit()
+        await db.refresh(new_user)
+        return new_user, True, temp_password
+
+    @staticmethod
+    async def save_address(user_id: int, address_data: UserAddressCreate, db: AsyncSession) -> UserAddress:
+        result = await db.execute(select(User).where(User.id == user_id))
+        user = result.scalars().first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        if address_data.is_default:
+            await db.execute(
+                select(UserAddress)
+                .where(UserAddress.user_id == user_id, UserAddress.is_default.is_(True))
+            )
+            # Снимаем флаг is_default с остальных адресов
+            existing_defaults = await db.execute(
+                select(UserAddress).where(
+                    UserAddress.user_id == user_id, UserAddress.is_default.is_(True)
+                )
+            )
+            for addr in existing_defaults.scalars().all():
+                addr.is_default = False
+
+        address = UserAddress(
+            user_id=user_id,
+            label=address_data.label,
+            country=address_data.country or "Россия",
+            city=address_data.city,
+            street=address_data.street,
+            house=address_data.house,
+            apartment=address_data.apartment,
+            postal_code=address_data.postal_code,
+            cdek_location_code=address_data.cdek_location_code,
+            cdek_delivery_point=address_data.cdek_delivery_point,
+            is_default=address_data.is_default,
+        )
+        db.add(address)
+        await db.commit()
+        await db.refresh(address)
+        return address
+
+    @staticmethod
+    async def list_addresses(user_id: int, db: AsyncSession) -> list[UserAddress]:
+        result = await db.execute(
+            select(UserAddress)
+            .where(UserAddress.user_id == user_id)
+            .order_by(UserAddress.is_default.desc(), UserAddress.created_at.desc())
+        )
+        return list(result.scalars().all())
+
+    @staticmethod
+    async def create_password_reset_token(user_id: int, db: AsyncSession) -> str:
+        """Создать одноразовый токен сброса пароля. Возвращает plaintext токен."""
+        token = uuid4().hex
+        token_hash = hash_password(token)
+        expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
+
+        reset_token = PasswordResetToken(
+            user_id=user_id,
+            token_hash=token_hash,
+            expires_at=expires_at,
+        )
+        db.add(reset_token)
+        await db.commit()
+        await db.refresh(reset_token)
+        return token
+
+    @staticmethod
+    async def reset_password(token: str, new_password: str, db: AsyncSession) -> dict:
+        """Сбросить пароль по одноразовому токену."""
+        result = await db.execute(
+            select(PasswordResetToken)
+            .where(PasswordResetToken.used_at.is_(None))
+            .order_by(PasswordResetToken.created_at.desc())
+        )
+        tokens = result.scalars().all()
+
+        for reset_token in tokens:
+            if verify_password(token, reset_token.token_hash):
+                if reset_token.is_expired():
+                    raise HTTPException(status_code=400, detail="Token expired")
+
+                user_result = await db.execute(select(User).where(User.id == reset_token.user_id))
+                user = user_result.scalars().first()
+                if not user:
+                    raise HTTPException(status_code=404, detail="User not found")
+
+                user.hashed_password = hash_password(new_password)
+                reset_token.used_at = datetime.now(timezone.utc)
+                await db.commit()
+                return {"message": "Password reset successfully"}
+
+        raise HTTPException(status_code=400, detail="Invalid or expired token")

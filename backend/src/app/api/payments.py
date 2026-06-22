@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.app.core.config import settings
@@ -14,6 +15,10 @@ from src.app.utils.auth import get_current_active_user
 router = APIRouter(prefix="/payments", tags=["payments"])
 
 
+class GuestPaymentRequest(BaseModel):
+    guest_email: str = Field(..., pattern=r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+
+
 @router.post("/{order_id}", response_model=PaymentCreateResponse)
 async def create_payment(
     order_id: int,
@@ -22,6 +27,24 @@ async def create_payment(
 ):
     """Создать платёж для заказа через ЮKassa."""
     payment = await PaymentService.create_payment(order_id=order_id, user_id=current_user.id, db=db)
+    return PaymentCreateResponse(
+        payment_id=payment.id,
+        status=payment.status,
+        confirmation_url=payment.confirmation_url,
+        amount=payment.amount,
+    )
+
+
+@router.post("/guest/{order_id}/", response_model=PaymentCreateResponse)
+async def create_guest_payment(
+    order_id: int,
+    request_data: GuestPaymentRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Создать платёж для гостевого заказа через ЮKassa."""
+    payment = await PaymentService.create_guest_payment(
+        order_id=order_id, guest_email=request_data.guest_email, db=db
+    )
     return PaymentCreateResponse(
         payment_id=payment.id,
         status=payment.status,

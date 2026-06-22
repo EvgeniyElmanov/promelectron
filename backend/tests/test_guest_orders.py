@@ -30,6 +30,57 @@ class TestGuestOrdersAPI:
         assert len(data["items"]) == 1
         assert data["items"][0]["quantity"] == 2
         assert data["cdek_tariff_code"] == cdek_delivery_payload["tariff_code"]
+        assert data["save_address"] is False
+
+    @pytest.mark.asyncio
+    async def test_create_guest_order_save_address_flag(self, client, test_product, cdek_delivery_payload):
+        """Гость может запросить сохранение адреса."""
+        response = await client.post(
+            "/api/v1/orders/create-guest",
+            json={
+                "items": [{"product_id": test_product.id, "quantity": 1}],
+                "cdek_delivery": cdek_delivery_payload,
+                "guest_email": "guest@example.com",
+                "guest_phone": "+79990001122",
+                "recipient_first_name": "Иван",
+                "recipient_last_name": "Гость",
+                "save_address": True,
+            },
+        )
+        assert response.status_code == 200
+        assert response.json()["save_address"] is True
+
+    @pytest.mark.asyncio
+    async def test_create_guest_order_invalid_email(self, client, test_product, cdek_delivery_payload):
+        """Невалидный email отклоняется."""
+        response = await client.post(
+            "/api/v1/orders/create-guest",
+            json={
+                "items": [{"product_id": test_product.id, "quantity": 1}],
+                "cdek_delivery": cdek_delivery_payload,
+                "guest_email": "not-an-email",
+                "guest_phone": "+79990001122",
+                "recipient_first_name": "Иван",
+                "recipient_last_name": "Гость",
+            },
+        )
+        assert response.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_create_guest_order_invalid_phone(self, client, test_product, cdek_delivery_payload):
+        """Невалидный телефон отклоняется."""
+        response = await client.post(
+            "/api/v1/orders/create-guest",
+            json={
+                "items": [{"product_id": test_product.id, "quantity": 1}],
+                "cdek_delivery": cdek_delivery_payload,
+                "guest_email": "guest@example.com",
+                "guest_phone": "89990001122",
+                "recipient_first_name": "Иван",
+                "recipient_last_name": "Гость",
+            },
+        )
+        assert response.status_code == 422
 
     @pytest.mark.asyncio
     async def test_create_guest_order_empty_items(self, client, cdek_delivery_payload):

@@ -167,6 +167,7 @@ class OrderService:
             guest_phone=order_data.guest_phone,
             recipient_first_name=order_data.recipient_first_name,
             recipient_last_name=order_data.recipient_last_name,
+            save_address=order_data.save_address,
             items=order_items,
         )
         db.add(new_order)
