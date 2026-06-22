@@ -2,8 +2,8 @@
 sprint: "Sprint 1"
 sprint_dates: "2026-06-01 — 2026-06-14"
 last_update: "2026-06-22"
-last_commit: "9b1efec"
-commit_message: "docs: update PROJECT_CONTEXT, BLOCKERS and SESSION_LOG for guest-checkout-polish"
+last_commit: "4590325"
+commit_message: "docs: update SESSION_LOG and PROJECT_CONTEXT to reference v2 branch"
 blockers_count: 2
 blockers_p0: 0
 blockers_p1: 2
