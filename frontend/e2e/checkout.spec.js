@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { goToCart } from './helpers.js';
+import { goToCart, completeYooKassaPaymentIfNeeded } from './helpers.js';
 
 function uniqueEmail() {
   return `test_${Date.now()}_w${test.info().workerIndex}@example.com`;
@@ -133,7 +133,7 @@ test.describe('Checkout Flow', () => {
     await expect(payButton).toContainText('Оплатить');
   });
 
-  test('guest user can place an order and complete mock payment', async ({ page }) => {
+  test('guest user can place an order and complete payment', async ({ page }) => {
     const email = uniqueEmail();
 
     await mockCdekWidget(page);
@@ -189,13 +189,18 @@ test.describe('Checkout Flow', () => {
     const payResponse = await payResponsePromise;
     expect(payResponse.status()).toBe(200);
 
-    // In dev/test environment YooKassa is not configured, so mock flow redirects to local success page
-    await expect(page).toHaveURL(new RegExp(`/payment/success\\?order_id=${order.id}&mock=1$`), { timeout: 30000 });
+    // Complete real YooKassa payment if configured; otherwise mock flow is used
+    await completeYooKassaPaymentIfNeeded(page);
+
+    // Wait for redirect back to our success page
+    await page.waitForURL(/\/payment\/success/, { timeout: 30000 });
     await expect(page.locator('[data-testid="payment-success-page"]')).toBeVisible();
 
-    // Verify success status is shown
-    await expect(page.locator('.payment-result__badge')).toContainText('Оплачен');
-    await expect(page.locator('.payment-result__title')).toHaveText('Оплата прошла успешно!');
+    // Verify success/processing title is shown (webhook may still be pending)
+    const title = page.locator('.payment-result__title');
+    await expect(title).toBeVisible();
+    const titleText = await title.textContent();
+    expect(['Оплата прошла успешно!', 'Платёж в обработке']).toContain(titleText);
   });
 
   test('user can pay with YooKassa test card', async ({ page }) => {
