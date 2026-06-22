@@ -62,7 +62,7 @@
     </div>
 
     <div class="payment-result__actions">
-      <router-link to="/orders" class="payment-result__btn payment-result__btn--primary">
+      <router-link v-if="isAuthenticated" to="/orders" class="payment-result__btn payment-result__btn--primary">
         Мои заказы
       </router-link>
       <router-link to="/" class="payment-result__btn payment-result__btn--secondary">
@@ -75,11 +75,16 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import api from '@/services/api';
+import { useAuth } from '@/composables/useAuth';
+import { getOrder, getGuestOrder } from '@/api/orders';
+import { syncPaymentStatusByOrder, confirmMockPayment as confirmMockPaymentApi } from '@/api/payments';
 
 const route = useRoute();
 const router = useRouter();
+const { isAuthenticated } = useAuth();
 const orderId = ref(route.query.order_id || route.params.id);
+const guestEmail = ref(route.query.guest_email || localStorage.getItem('guest_checkout_email') || '');
+const isGuest = computed(() => !isAuthenticated.value && Boolean(guestEmail.value));
 const order = ref(null);
 const loading = ref(true);
 const error = ref(null);
@@ -147,7 +152,9 @@ const fetchOrder = async () => {
   error.value = null;
   loading.value = true;
   try {
-    const { data } = await api.get(`/orders/${orderId.value}`);
+    const { data } = isGuest.value
+      ? await getGuestOrder(orderId.value, guestEmail.value)
+      : await getOrder(orderId.value);
     order.value = data;
   } catch (err) {
     if (err.response?.status === 404) {
@@ -168,16 +175,17 @@ const startPolling = () => {
   pollTimer = setInterval(async () => {
     pollCount.value += 1;
     try {
-      // Force sync with YooKassa API, then refresh order
-      await api.post(`/payments/sync-by-order/${orderId.value}`);
-      const { data } = await api.get(`/orders/${orderId.value}`);
-      order.value = data;
+      if (!isGuest.value) {
+        // Force sync with YooKassa API, then refresh order
+        await syncPaymentStatusByOrder(orderId.value);
+      }
+      await fetchOrder();
 
-      if (data.status === 'paid' || data.status === 'cancelled' || data.status === 'canceled') {
+      if (order.value && (order.value.status === 'paid' || order.value.status === 'cancelled' || order.value.status === 'canceled')) {
         stopPolling();
       }
-    } catch (err) {
-      console.error('Polling error:', err);
+    } catch {
+      // Silent polling errors
     }
 
     if (pollCount.value >= maxPolls) {
@@ -216,22 +224,24 @@ const checkPaymentStatus = async () => {
   if (!orderId.value) return;
   syncing.value = true;
   try {
-    await api.post(`/payments/sync-by-order/${orderId.value}`);
+    if (!isGuest.value) {
+      await syncPaymentStatusByOrder(orderId.value);
+    }
     await fetchOrder();
-  } catch (err) {
-    console.error('Failed to sync payment status:', err);
+  } catch {
+    // Silent sync errors
   } finally {
     syncing.value = false;
   }
 };
 
 const confirmMockPayment = async () => {
-  if (!orderId.value) return;
+  if (!orderId.value || isGuest.value) return;
   syncing.value = true;
   try {
-    await api.post(`/payments/${orderId.value}/mock-confirm`);
-  } catch (err) {
-    console.error('Failed to confirm mock payment:', err);
+    await confirmMockPaymentApi(orderId.value);
+  } catch {
+    // Silent mock confirm errors
   } finally {
     syncing.value = false;
   }
@@ -240,7 +250,8 @@ const confirmMockPayment = async () => {
 // Redirect to /payment/failed if order was cancelled
 watch(order, (newOrder) => {
   if (newOrder && (newOrder.status === 'cancelled' || newOrder.status === 'canceled')) {
-    router.replace(`/payment/failed?order_id=${orderId.value}`);
+    const query = `order_id=${orderId.value}${isGuest.value ? `&guest_email=${encodeURIComponent(guestEmail.value)}` : ''}`;
+    router.replace(`/payment/failed?${query}`);
   }
 });
 

@@ -8,7 +8,7 @@ blockers_count: 1
 blockers_p0: 0
 blockers_p1: 1
 backend_tests: "201/201"
-frontend_tests: "128/128"
+frontend_tests: "144/144"
 e2e_tests: "101/101"
 ---
 
@@ -114,6 +114,8 @@ Product.price → Numeric      →  Product variants / Seller payouts
 | POST | `/api/v1/guest-cart/` | ✅ | Создать гостевую корзину |
 | GET | `/api/v1/guest-cart/{id}/` | ✅ | Получить гостевую корзину |
 | POST | `/api/v1/cart/merge/` | ✅ | Merge гостевой корзины при login |
+| POST | `/api/v1/orders/create-guest` | ✅ | Создать гостевой заказ |
+| GET | `/api/v1/orders/guest/{order_id}?guest_email=...` | ✅ | Получить гостевой заказ по email |
 
 ### Auth / OAuth
 | Метод | Путь | Статус | Описание |
@@ -179,6 +181,8 @@ Product.price → Numeric      →  Product variants / Seller payouts
 | ProductDetail | `src/views/ProductDetailView.vue` | — | `/products/{id}/` |
 | Cart | `src/views/CartView.vue` | `useCart` | `/cart/`, `/guest-cart/` |
 | Checkout | `src/views/CheckoutView.vue` | `useCart` | `/orders/`, `/payments/` |
+| GuestCheckout | `src/views/GuestCheckout.vue` | `useGuestCheckout` | `/orders/create-guest`, `/payments/guest/{id}/` |
+| PaymentSuccess | `src/views/PaymentSuccess.vue` | — | `/orders/{id}/`, `/orders/guest/{id}` |
 | Login | `src/views/LoginView.vue` | `useAuth` | `/auth/login/`, `/auth/yandex/` |
 | AdminDashboard | `src/views/admin/DashboardView.vue` | — | `/admin/...` |
 | Admin | `src/views/Admin.vue` | — | `/categories/` |
@@ -190,6 +194,8 @@ Product.price → Numeric      →  Product variants / Seller payouts
 | `useAuth` | `src/composables/useAuth.js` | JWT, OAuth, login/logout |
 | `useSearch` | `src/composables/useSearch.js` | Поиск, подсказки, история |
 | `useCategories` | `src/composables/useCategories.js` | Загрузка категорий, вкладки, поиск, пагинация |
+| `useGuestCheckout` | `src/composables/useGuestCheckout.js` | Валидация и отправка гостевого заказа с оплатой |
+| `useUserAddresses` | `src/composables/useUserAddresses.js` | Сохранённые адреса пользователя |
 
 ### Key Components
 | Компонент | Файл | Где используется |
@@ -231,6 +237,7 @@ make test-e2e      # Playwright
 | 2026-06-21 | **Strengthened Russian reasoning rules**: усилены правила русскоязычного reasoning после обратной связи, что агент переключается на английский. В `.kimi-code/AGENTS.md` добавлен раздел **GOLDEN RULE: REASON IN RUSSIAN / ЗОЛОТОЕ ПРАВИЛО: РАССУЖДАЙ НА РУССКОМ** с двуязычной формулировкой, требованием самопроверки и инструкцией игнорировать дефолтные языковые настройки. Во всех workflow skills (implement, fix, review, deploy, context-sync, plan-maintainer, promelectron) обновлены языковые секции. В примерах промптов субагентов в `implement/SKILL.md` добавлены bilingual language rule в начало и REMEMBER / НАПОМИНАНИЕ в конец каждого промпта. `bash scripts/audit-agents.sh` проходит без ошибок. | audit-kimi-pipeline |
 | 2026-06-21 | **Agent pipeline improvements implemented**: реализованы рекомендации из аудита Kimi docs. `deploy` skill переведён в `type: flow` (только ручной запуск). В `.kimi-code/config.example.toml` добавлены `default_model`, `default_thinking`, `default_permission_mode`, `merge_all_available_skills`, provider/model aliases, safety hook `PreToolUse` для блокировки опасных Bash-команд. Создан `scripts/hooks/block-dangerous-bash.py`. В `/skill:implement` добавлен `AgentSwarm` для параллельного backend/frontend review с мёржем findings. Обновлен раздел `code-reviewer` в `.kimi-code/AGENTS.md`. Audit script обновлён для поддержки `type: flow`. `bash scripts/audit-agents.sh` проходит без ошибок. | audit-kimi-pipeline |
 | 2026-06-21 | **Kimi docs review & pipeline recommendations**: изучена документация Kimi Code CLI, Agent Skills, MCP, ACP. Проведено сравнение с текущим пайплайном Promelectron. Исправлено нарушение ограничения "subagents cannot schedule nested subagents" в `.kimi-code/AGENTS.md` (architect/code-reviewer). Добавлен раздел **Subagent boundary**. Создан файл рекомендаций `.agent/audit-kimi-pipeline/review/kimi-docs-recommendations.md` с roadmap: `type: flow` для deploy, safety hooks, `AgentSwarm` для параллельного review, типизированные аргументы skills, sub-skills, plugin, `/goal`. `bash scripts/audit-agents.sh` проходит без ошибок. | audit-kimi-pipeline |
+| 2026-06-22 | **guest-checkout-auto-account (frontend)**: реализован гостевой чекаут с оплатой. `Cart.vue` ведёт гостя на `/guest-checkout`; `GuestCheckout.vue` валидирует контакты, содержит CDEK-виджет, кнопку "Войти", галочку "Сохранить адрес" и инициирует оплату через `POST /orders/create-guest` + `POST /payments/guest/{id}/`; `Checkout.vue` и `PaymentSuccess.vue` поддерживают гостевой режим по `guest_email`; добавлены API-модули (`src/api/orders.js`, `payments.js`, `auth.js`, `users.js`) и composables (`useGuestCheckout.js`, `useUserAddresses.js`); обновлены/добавлены unit-тесты. Frontend-тесты: 144/144 ✅, линтер чисто ✅. | frontend-dev |
 | 2026-06-21 | **Russian-language reasoning consistency**: проверено, что агенты и субагенты ведут размышление на русском языке при русском запросе пользователя. Дополнены и унифицированы языковые секции во всех workflow skills (implement, fix, review, deploy, context-sync, plan-maintainer, promelectron). В примерах промптов субагентов в `implement/SKILL.md` добавлена явная языковая преамбула. Добавлена языковая заметка в `ROUTER.md`. `bash scripts/audit-agents.sh` проходит без ошибок. | audit-kimi-pipeline |
 | 2026-06-21 | **Agent system migration v2**: `.kimi/agents/*.md` и `.kimi/rules/*.md` перенесены в `.kimi-code/AGENTS.md` (project-level instructions). Директория `.kimi/` удалена. `HOWTO.md` и `lessons-learned.md` сохранены в `.kimi-code/HOWTO.md` и `.kimi-code/LESSONS_LEARNED.md`. Обновлены `AGENTS.md`, `SESSION_START.md`, `ROUTER.md`, workflow skills, `scripts/audit-agents.sh`, `.claude/rules/agent-context.md`. Исправлен `.kimi-code/config.example.toml`: push в main → `ask`, удалено `default_yolo`, удалён project-specific hook. `bash scripts/audit-agents.sh` проходит без ошибок. | audit-kimi-pipeline |
 | 2026-06-20 | **fix-cdek-widget-calculation (frontend)**: `CdekDeliveryWidget.vue` теперь принимает `supplierCityCode` и передаёт в виджет `from: { code: supplierCityCode }` вместо строки 'Москва'; `Cart.vue` и `GuestCheckout.vue` определяют `supplierId` из первого товара, загружают код города отправления через `GET /cdek/supplier-city-code/{supplier_id}/` и передают в виджет (fallback 44 при ошибке); создан `frontend/src/api/cdek.js`; в `useCart.js` гостевые товары сохраняют `supplier_id`; обновлены unit-тесты (`CdekDeliveryWidget.spec.js`, `Cart.spec.js`, `GuestCheckout.spec.js`); в `e2e/cdek-widget.spec.js` добавлен сценарий выбора ПВЗ с проверкой тарифа/цены. Frontend-тесты: 128/128 ✅, линтер чисто ✅. | frontend-dev |

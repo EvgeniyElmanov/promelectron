@@ -284,7 +284,7 @@ describe('Cart.vue — гостевая корзина', () => {
     expect(checkoutBtn.text()).toContain('Оформить заказ');
   });
 
-  it('редиректит гостя на /login при оформлении', async () => {
+  it('редиректит гостя на /guest-checkout при оформлении', async () => {
     const push = vi.spyOn(router, 'push');
     const wrapper = mount(Cart, { global: { plugins: [router] } });
     await flushPromises();
@@ -293,7 +293,7 @@ describe('Cart.vue — гостевая корзина', () => {
     await checkoutBtn.trigger('click');
     await flushPromises();
 
-    expect(push).toHaveBeenCalledWith('/login?redirect=/cart');
+    expect(push).toHaveBeenCalledWith('/guest-checkout');
   });
 
   it('не показывает блоки доставки и адреса для гостя', async () => {

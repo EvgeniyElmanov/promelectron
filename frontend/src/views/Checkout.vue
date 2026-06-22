@@ -84,14 +84,19 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import api from '@/services/api';
+import { useAuth } from '@/composables/useAuth';
 import { useToast } from '@/composables/useToast';
+import { getOrder, getGuestOrder } from '@/api/orders';
+import { createPayment, createGuestPayment } from '@/api/payments';
 
 const route = useRoute();
 const router = useRouter();
 const { add: toast } = useToast();
+const { isAuthenticated } = useAuth();
 
 const orderId = computed(() => route.params.id);
+const guestEmail = computed(() => route.query.guest_email || localStorage.getItem('guest_checkout_email') || '');
+const isGuest = computed(() => !isAuthenticated.value && Boolean(guestEmail.value));
 
 const order = ref(null);
 const loading = ref(true);
@@ -106,10 +111,15 @@ const fetchOrder = async () => {
   loading.value = true;
   error.value = null;
   try {
-    const { data } = await api.get(`/orders/${orderId.value}`);
+    const { data } = isGuest.value
+      ? await getGuestOrder(orderId.value, guestEmail.value)
+      : await getOrder(orderId.value);
     order.value = data;
     if (data.status !== 'pending') {
-      await router.replace(`/orders/${orderId.value}`);
+      const target = isGuest.value
+        ? `/payment/success?order_id=${orderId.value}&guest_email=${encodeURIComponent(guestEmail.value)}`
+        : `/orders/${orderId.value}`;
+      await router.replace(target);
       return;
     }
   } catch (err) {
@@ -124,7 +134,9 @@ const processPayment = async () => {
   processing.value = true;
 
   try {
-    const { data } = await api.post(`/payments/${orderId.value}`);
+    const { data } = isGuest.value
+      ? await createGuestPayment(orderId.value, guestEmail.value)
+      : await createPayment(orderId.value);
     const confirmationUrl = data.confirmation_url;
 
     if (!confirmationUrl) {
@@ -144,7 +156,10 @@ const processPayment = async () => {
 
 const cancelPayment = () => {
   if (confirm('Отменить оплату? Заказ останется в ожидании.')) {
-    router.push(`/orders/${orderId.value}`);
+    const target = isGuest.value
+      ? `/payment/failed?order_id=${orderId.value}&guest_email=${encodeURIComponent(guestEmail.value)}`
+      : `/orders/${orderId.value}`;
+    router.push(target);
   }
 };
 

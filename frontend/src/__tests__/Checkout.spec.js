@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 import { createRouter, createWebHistory } from 'vue-router';
+import { computed, ref } from 'vue';
 import Checkout from '../views/Checkout.vue';
 
 const mockGet = vi.fn();
@@ -11,6 +12,14 @@ vi.mock('@/services/api', () => ({
     get: (...args) => mockGet(...args),
     post: (...args) => mockPost(...args),
   },
+}));
+
+const mockIsAuthenticated = ref(true);
+
+vi.mock('@/composables/useAuth', () => ({
+  useAuth: () => ({
+    isAuthenticated: computed(() => mockIsAuthenticated.value),
+  }),
 }));
 
 const toastFn = vi.fn();
@@ -24,6 +33,8 @@ const router = createRouter({
     { path: '/', component: { template: '<div>Home</div>' } },
     { path: '/orders/:id', component: { template: '<div>Order</div>' } },
     { path: '/checkout/:id', component: Checkout },
+    { path: '/payment/success', component: { template: '<div>Success</div>' } },
+    { path: '/payment/failed', component: { template: '<div>Failed</div>' } },
   ],
 });
 
@@ -41,10 +52,11 @@ const mockOrder = {
   ],
 };
 
-describe('Checkout.vue', () => {
+describe('Checkout.vue — авторизованный пользователь', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     toastFn.mockClear();
+    mockIsAuthenticated.value = true;
     mockGet.mockImplementation((url) => {
       if (url === '/orders/42') return Promise.resolve({ data: mockOrder });
       return Promise.resolve({ data: {} });
@@ -53,6 +65,8 @@ describe('Checkout.vue', () => {
       if (url === '/payments/42') return Promise.resolve({ data: { payment_id: 99, status: 'pending', confirmation_url: 'https://yoomoney.ru/checkout/42/pay', amount: 14990 } });
       return Promise.resolve({ data: {} });
     });
+    delete window.location;
+    window.location = { href: '' };
   });
 
   const mountComponent = async () => {
@@ -96,6 +110,7 @@ describe('Checkout.vue', () => {
     await flushPromises();
 
     expect(mockPost).toHaveBeenCalledWith('/payments/42');
+    expect(window.location.href).toBe('https://yoomoney.ru/checkout/42/pay');
   });
 
   it('редиректит если заказ уже оплачен', async () => {
@@ -108,5 +123,72 @@ describe('Checkout.vue', () => {
     await flushPromises();
 
     expect(router.currentRoute.value.path).toBe('/orders/42');
+  });
+});
+
+describe('Checkout.vue — гостевой режим', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    toastFn.mockClear();
+    mockIsAuthenticated.value = false;
+    mockGet.mockImplementation((url) => {
+      if (url === '/orders/guest/42?guest_email=guest%40example.com') {
+        return Promise.resolve({ data: { ...mockOrder, user_id: null, guest_email: 'guest@example.com' } });
+      }
+      return Promise.resolve({ data: {} });
+    });
+    mockPost.mockImplementation((url) => {
+      if (url === '/payments/guest/42/') {
+        return Promise.resolve({ data: { payment_id: 99, status: 'pending', confirmation_url: 'https://yoomoney.ru/checkout/guest/42/pay', amount: 14990 } });
+      }
+      return Promise.resolve({ data: {} });
+    });
+    vi.stubGlobal('localStorage', {
+      getItem: () => 'guest@example.com',
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+    });
+    delete window.location;
+    window.location = { href: '' };
+  });
+
+  const mountGuestComponent = async () => {
+    await router.push('/checkout/42?guest_email=guest@example.com');
+    await router.isReady();
+    const wrapper = mount(Checkout, { global: { plugins: [router] } });
+    await flushPromises();
+    return wrapper;
+  };
+
+  it('загружает гостевой заказ по email', async () => {
+    await mountGuestComponent();
+
+    expect(mockGet).toHaveBeenCalledWith('/orders/guest/42?guest_email=guest%40example.com');
+  });
+
+  it('инициирует гостевой платёж', async () => {
+    const wrapper = await mountGuestComponent();
+
+    await wrapper.find('[data-testid="pay-button"]').trigger('click');
+    await flushPromises();
+
+    expect(mockPost).toHaveBeenCalledWith('/payments/guest/42/', { guest_email: 'guest@example.com' });
+    expect(window.location.href).toBe('https://yoomoney.ru/checkout/guest/42/pay');
+  });
+
+  it('редиректит на success если гостевой заказ уже оплачен', async () => {
+    mockGet.mockImplementation((url) => {
+      if (url === '/orders/guest/42?guest_email=guest%40example.com') {
+        return Promise.resolve({ data: { ...mockOrder, user_id: null, guest_email: 'guest@example.com', status: 'paid' } });
+      }
+      return Promise.resolve({ data: {} });
+    });
+
+    await mountGuestComponent();
+    await flushPromises();
+
+    expect(router.currentRoute.value.path).toBe('/payment/success');
+    expect(router.currentRoute.value.query.order_id).toBe('42');
+    expect(router.currentRoute.value.query.guest_email).toBe('guest@example.com');
   });
 });

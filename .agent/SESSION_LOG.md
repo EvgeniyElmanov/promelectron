@@ -14,6 +14,28 @@ YYYY-MM-DD HH:MM | <role> | <краткое описание>
 
 ## Записи (новые сверху)
 
+### 2026-06-22 06:50 | frontend-dev | Гостевой чекаут с автосозданием ЛК (guest-checkout-auto-account) — frontend
+  Изменено:
+  - `frontend/src/views/Cart.vue` — гость при оформлении редиректится на `/guest-checkout` вместо `/login`.
+  - `frontend/src/views/GuestCheckout.vue` — валидация email/phone/имён, кнопка "Уже есть аккаунт? Войти", галочка "Сохранить адрес", создание заказа + гостевой платёж + редирект на `confirmation_url` ЮKassa.
+  - `frontend/src/views/Checkout.vue` — поддержка гостевого режима: `GET /orders/guest/{id}?guest_email=...` и `POST /payments/guest/{id}/`.
+  - `frontend/src/views/PaymentSuccess.vue` — загрузка гостевого заказа по `guest_email`, polling без auth-only endpoints, скрыта кнопка "Мои заказы" для гостей.
+  - `frontend/src/router/index.js` — убран `requiresAuth` с `/checkout/:id`.
+  - `frontend/src/api/orders.js`, `frontend/src/api/payments.js`, `frontend/src/api/auth.js`, `frontend/src/api/users.js` — API-модули для гостевого чекаута, сброса пароля и адресов.
+  - `frontend/src/composables/useGuestCheckout.js` — валидация и сборка payload гостевого заказа.
+  - `frontend/src/composables/useUserAddresses.js` — CRUD сохранённых адресов пользователя.
+  - `frontend/src/__tests__/GuestCheckout.spec.js` — тесты валидации, кнопки login, save_address, создания заказа и инициации платежа.
+  - `frontend/src/__tests__/Cart.spec.js` — обновлён тест редиректа гостя на `/guest-checkout`.
+  - `frontend/src/__tests__/Checkout.spec.js` — добавлены тесты гостевого режима.
+  - `frontend/src/__tests__/PaymentSuccess.spec.js` — новые тесты загрузки гостевого заказа.
+  Результат:
+  - `cd frontend && npm run test` — 144/144 ✅
+  - `cd frontend && npm run lint` — чисто ✅
+  Риск/Техдолг:
+  - Backend endpoint `POST /orders/create-guest` не имеет trailing slash; frontend использует тот путь, что определён в backend, чтобы избежать 307 редиректа axios.
+  - Гостевой `mock=1` на `/payment/success` не подтверждает платёж автоматически (endpoint требует авторизации); для E2E гостевого флоу потребуется отдельный сценарий или backend webhook mock.
+  Блокер: Нет.
+
 ### 2026-06-22 06:40 | backend-dev | Гостевой чекаут с автосозданием ЛК (guest-checkout-auto-account) — backend
   Изменено:
   - `backend/src/app/models/user.py` — добавлены модели `UserAddress` и `PasswordResetToken`; `User` дополнен relationships.
