@@ -34,13 +34,16 @@ api.interceptors.response.use(
   },
   (error) => {
     if (error.response?.status === 401) {
+      const token = localStorage.getItem('access_token');
       const isAuthPage = window.location.pathname === '/login' || window.location.pathname === '/register';
       const isAuthRequest = error.config?.url?.includes('/login') || error.config?.url?.includes('/register');
       const url = error.config?.url || '';
       const isPublicRequest = url.includes('/products/')
         || url.includes('/categories')
         || url.includes('/reviews');
-      if (!isAuthPage && !isAuthRequest && !isPublicRequest) {
+      // Перенаправляем на login только если у пользователя был токен (протухшая сессия).
+      // Гость без токена не должен улетать на login из-за 401 на необязательных endpoints.
+      if (token && !isAuthPage && !isAuthRequest && !isPublicRequest) {
         localStorage.removeItem('access_token');
         window.location.href = '/login';
       }
