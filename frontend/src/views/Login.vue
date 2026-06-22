@@ -48,6 +48,9 @@
             </button>
           </div>
           <span v-if="errors.password" class="field-error">{{ errors.password }}</span>
+          <div class="field-extra">
+            <router-link to="/forgot-password" class="field-link" data-testid="login-forgot-password">Забыли пароль?</router-link>
+          </div>
         </div>
 
         <!-- Submit -->
@@ -268,6 +271,18 @@ async function loginWithYandex() {
 .field-error {
   font-size: 12px;
   color: var(--color-danger);
+}
+
+.field-extra {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+.field-link {
+  font-size: 13px;
+  color: var(--color-primary);
+  text-decoration: none;
 }
 
 .auth-submit {

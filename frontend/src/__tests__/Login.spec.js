@@ -20,6 +20,7 @@ function createTestRouter() {
     routes: [
       { path: '/login', component: Login },
       { path: '/register', component: { template: '<div>Register</div>' } },
+      { path: '/forgot-password', component: { template: '<div>Forgot Password</div>' } },
     ],
   })
 }
@@ -57,6 +58,25 @@ describe('Login.vue', () => {
     await wrapper.vm.$nextTick()
 
     expect(wrapper.text()).toContain('Зарегистрироваться')
+  })
+
+  it('содержит ссылку "Забыли пароль?"', async () => {
+    api.get.mockResolvedValue({ data: { google: false, yandex: false } })
+
+    const router = createTestRouter()
+    const wrapper = mount(Login, {
+      global: {
+        plugins: [router],
+      },
+    })
+
+    await router.isReady()
+    await wrapper.vm.$nextTick()
+
+    const link = wrapper.find('[data-testid="login-forgot-password"]')
+    expect(link.exists()).toBe(true)
+    expect(link.text()).toContain('Забыли пароль?')
+    expect(link.attributes('href')).toBe('/forgot-password')
   })
 
   it('показывает OAuth кнопки, когда провайдеры включены', async () => {
