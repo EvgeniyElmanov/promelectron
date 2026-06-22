@@ -52,8 +52,8 @@ services:
       SECRET_KEY: dev-secret-key-change-in-production-minimum-32-chars
       ALGORITHM: HS256
       ENVIRONMENT: development
-      FRONTEND_URL: http://localhost:5173
-      API_BASE_URL: http://localhost:8000
+      FRONTEND_URL: http://frontend:5173
+      API_BASE_URL: http://api:8000
       MINIO_ENDPOINT: http://minio:9000
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin
@@ -94,8 +94,8 @@ services:
       SECRET_KEY: dev-secret-key-change-in-production-minimum-32-chars
       ALGORITHM: HS256
       ENVIRONMENT: development
-      FRONTEND_URL: http://localhost:5173
-      API_BASE_URL: http://localhost:8000
+      FRONTEND_URL: http://frontend:5173
+      API_BASE_URL: http://api:8000
       MINIO_ENDPOINT: http://minio:9000
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin
@@ -132,8 +132,8 @@ services:
       SECRET_KEY: dev-secret-key-change-in-production-minimum-32-chars
       ALGORITHM: HS256
       ENVIRONMENT: development
-      FRONTEND_URL: http://localhost:5173
-      API_BASE_URL: http://localhost:8000
+      FRONTEND_URL: http://frontend:5173
+      API_BASE_URL: http://api:8000
       MINIO_ENDPOINT: http://minio:9000
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin

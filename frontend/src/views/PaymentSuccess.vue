@@ -62,7 +62,7 @@
     </div>
 
     <div class="payment-result__actions">
-      <router-link to="/orders" class="payment-result__btn payment-result__btn--primary">
+      <router-link v-if="isAuthenticated" to="/orders" class="payment-result__btn payment-result__btn--primary">
         Мои заказы
       </router-link>
       <router-link to="/" class="payment-result__btn payment-result__btn--secondary">
@@ -75,11 +75,17 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import api from '@/services/api';
+import { useAuth } from '@/composables/useAuth';
+import { getOrder, getGuestOrder } from '@/api/orders';
+import { syncPaymentStatusByOrder, confirmMockPayment as confirmMockPaymentApi, confirmGuestMockPayment } from '@/api/payments';
+import { formatPrice } from '@/utils/price';
 
 const route = useRoute();
 const router = useRouter();
+const { isAuthenticated } = useAuth();
 const orderId = ref(route.query.order_id || route.params.id);
+const guestEmail = ref(route.query.guest_email || localStorage.getItem('guest_checkout_email') || '');
+const isGuest = computed(() => !isAuthenticated.value && Boolean(guestEmail.value));
 const order = ref(null);
 const loading = ref(true);
 const error = ref(null);
@@ -88,11 +94,9 @@ const syncing = ref(false);
 const pollCount = ref(0);
 const maxPolls = 30;
 const pollInterval = 2000; // 2 seconds
+const consecutiveErrorCount = ref(0);
+const maxConsecutiveErrors = 3;
 let pollTimer = null;
-
-function formatPrice(value) {
-  return Number(value).toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-}
 
 const displayStatus = computed(() => {
   if (!order.value) return '';
@@ -145,9 +149,12 @@ const fetchOrder = async () => {
     return;
   }
   error.value = null;
+  consecutiveErrorCount.value = 0;
   loading.value = true;
   try {
-    const { data } = await api.get(`/orders/${orderId.value}`);
+    const { data } = isGuest.value
+      ? await getGuestOrder(orderId.value, guestEmail.value)
+      : await getOrder(orderId.value);
     order.value = data;
   } catch (err) {
     if (err.response?.status === 404) {
@@ -164,20 +171,27 @@ const startPolling = () => {
   if (pollTimer) return;
   polling.value = true;
   pollCount.value = 0;
+  consecutiveErrorCount.value = 0;
 
   pollTimer = setInterval(async () => {
     pollCount.value += 1;
     try {
-      // Force sync with YooKassa API, then refresh order
-      await api.post(`/payments/sync-by-order/${orderId.value}`);
-      const { data } = await api.get(`/orders/${orderId.value}`);
-      order.value = data;
+      if (!isGuest.value) {
+        // Force sync with YooKassa API, then refresh order
+        await syncPaymentStatusByOrder(orderId.value);
+      }
+      await fetchOrder();
+      consecutiveErrorCount.value = 0;
 
-      if (data.status === 'paid' || data.status === 'cancelled' || data.status === 'canceled') {
+      if (order.value && (order.value.status === 'paid' || order.value.status === 'cancelled' || order.value.status === 'canceled')) {
         stopPolling();
       }
-    } catch (err) {
-      console.error('Polling error:', err);
+    } catch {
+      consecutiveErrorCount.value += 1;
+      if (consecutiveErrorCount.value >= maxConsecutiveErrors) {
+        error.value = 'Не удалось проверить статус заказа. Пожалуйста, обновите страницу или свяжитесь с поддержкой.';
+        stopPolling();
+      }
     }
 
     if (pollCount.value >= maxPolls) {
@@ -216,10 +230,12 @@ const checkPaymentStatus = async () => {
   if (!orderId.value) return;
   syncing.value = true;
   try {
-    await api.post(`/payments/sync-by-order/${orderId.value}`);
+    if (!isGuest.value) {
+      await syncPaymentStatusByOrder(orderId.value);
+    }
     await fetchOrder();
-  } catch (err) {
-    console.error('Failed to sync payment status:', err);
+  } catch {
+    // Silent sync errors
   } finally {
     syncing.value = false;
   }
@@ -229,9 +245,15 @@ const confirmMockPayment = async () => {
   if (!orderId.value) return;
   syncing.value = true;
   try {
-    await api.post(`/payments/${orderId.value}/mock-confirm`);
+    if (isGuest.value) {
+      await confirmGuestMockPayment(orderId.value, guestEmail.value);
+    } else {
+      await confirmMockPaymentApi(orderId.value);
+    }
   } catch (err) {
-    console.error('Failed to confirm mock payment:', err);
+    if (import.meta.env.DEV) {
+      console.error('Mock payment confirmation failed:', err);
+    }
   } finally {
     syncing.value = false;
   }
@@ -240,7 +262,8 @@ const confirmMockPayment = async () => {
 // Redirect to /payment/failed if order was cancelled
 watch(order, (newOrder) => {
   if (newOrder && (newOrder.status === 'cancelled' || newOrder.status === 'canceled')) {
-    router.replace(`/payment/failed?order_id=${orderId.value}`);
+    const query = `order_id=${orderId.value}${isGuest.value ? `&guest_email=${encodeURIComponent(guestEmail.value)}` : ''}`;
+    router.replace(`/payment/failed?${query}`);
   }
 });
 

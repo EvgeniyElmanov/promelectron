@@ -83,9 +83,9 @@ class GuestOrderItemCreate(BaseModel):
 class GuestOrderCreate(BaseModel):
     items: List[GuestOrderItemCreate]
     cdek_delivery: CdekDeliveryIn
-    guest_email: str
+    guest_email: str = Field(..., pattern=r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
     guest_name: Optional[str] = None
-    guest_phone: str
+    guest_phone: str = Field(..., pattern=r'^\+7\d{10}$')
     recipient_first_name: str = Field(
         ...,
         min_length=1,
@@ -98,6 +98,7 @@ class GuestOrderCreate(BaseModel):
         max_length=100,
         pattern=r'^[A-Za-zА-Яа-яЁё\- ]+$',
     )
+    save_address: bool = False
 
     model_config = ConfigDict(from_attributes=True, str_strip_whitespace=True)
 
@@ -163,5 +164,6 @@ class OrderOut(BaseModel):
     cdek_uuid: Optional[str] = None
     cdek_number: Optional[str] = None
     cdek_status: Optional[str] = None
+    save_address: bool = False
 
     model_config = ConfigDict(from_attributes=True)

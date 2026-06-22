@@ -8,7 +8,7 @@ class TestGuestOrdersAPI:
     async def test_create_guest_order_success(self, client, test_product, cdek_delivery_payload):
         """Гость может оформить заказ."""
         response = await client.post(
-            "/api/v1/orders/create-guest",
+            "/api/v1/orders/create-guest/",
             json={
                 "items": [{"product_id": test_product.id, "quantity": 2}],
                 "cdek_delivery": cdek_delivery_payload,
@@ -30,12 +30,86 @@ class TestGuestOrdersAPI:
         assert len(data["items"]) == 1
         assert data["items"][0]["quantity"] == 2
         assert data["cdek_tariff_code"] == cdek_delivery_payload["tariff_code"]
+        assert data["save_address"] is False
+
+    @pytest.mark.asyncio
+    async def test_create_guest_order_save_address_flag(self, client, test_product, cdek_delivery_payload):
+        """Гость может запросить сохранение адреса."""
+        response = await client.post(
+            "/api/v1/orders/create-guest/",
+            json={
+                "items": [{"product_id": test_product.id, "quantity": 1}],
+                "cdek_delivery": cdek_delivery_payload,
+                "guest_email": "guest@example.com",
+                "guest_phone": "+79990001122",
+                "recipient_first_name": "Иван",
+                "recipient_last_name": "Гость",
+                "save_address": True,
+            },
+        )
+        assert response.status_code == 200
+        assert response.json()["save_address"] is True
+
+    @pytest.mark.asyncio
+    async def test_create_guest_order_invalid_email(self, client, test_product, cdek_delivery_payload):
+        """Невалидный email отклоняется."""
+        response = await client.post(
+            "/api/v1/orders/create-guest/",
+            json={
+                "items": [{"product_id": test_product.id, "quantity": 1}],
+                "cdek_delivery": cdek_delivery_payload,
+                "guest_email": "not-an-email",
+                "guest_phone": "+79990001122",
+                "recipient_first_name": "Иван",
+                "recipient_last_name": "Гость",
+            },
+        )
+        assert response.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_create_guest_order_invalid_phone(self, client, test_product, cdek_delivery_payload):
+        """Невалидный телефон отклоняется."""
+        response = await client.post(
+            "/api/v1/orders/create-guest/",
+            json={
+                "items": [{"product_id": test_product.id, "quantity": 1}],
+                "cdek_delivery": cdek_delivery_payload,
+                "guest_email": "guest@example.com",
+                "guest_phone": "89990001122",
+                "recipient_first_name": "Иван",
+                "recipient_last_name": "Гость",
+            },
+        )
+        assert response.status_code == 422
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("first_name,last_name", [
+        ("Иван123", "Гость"),
+        ("Иван", "Гость@"),
+        ("Иван_Петров", "Гость"),
+    ])
+    async def test_create_guest_order_invalid_names(
+        self, client, test_product, cdek_delivery_payload, first_name, last_name
+    ):
+        """Имя и фамилия с цифрами или спецсимволами отклоняются."""
+        response = await client.post(
+            "/api/v1/orders/create-guest/",
+            json={
+                "items": [{"product_id": test_product.id, "quantity": 1}],
+                "cdek_delivery": cdek_delivery_payload,
+                "guest_email": "guest@example.com",
+                "guest_phone": "+79990001122",
+                "recipient_first_name": first_name,
+                "recipient_last_name": last_name,
+            },
+        )
+        assert response.status_code == 422
 
     @pytest.mark.asyncio
     async def test_create_guest_order_empty_items(self, client, cdek_delivery_payload):
         """Гость не может оформить заказ с пустой корзиной."""
         response = await client.post(
-            "/api/v1/orders/create-guest",
+            "/api/v1/orders/create-guest/",
             json={
                 "items": [],
                 "cdek_delivery": cdek_delivery_payload,
@@ -52,7 +126,7 @@ class TestGuestOrdersAPI:
     async def test_create_guest_order_invalid_product(self, client, cdek_delivery_payload):
         """Гость не может оформить заказ с несуществующим товаром."""
         response = await client.post(
-            "/api/v1/orders/create-guest",
+            "/api/v1/orders/create-guest/",
             json={
                 "items": [{"product_id": 99999, "quantity": 1}],
                 "cdek_delivery": cdek_delivery_payload,
@@ -68,7 +142,7 @@ class TestGuestOrdersAPI:
     async def test_create_guest_order_insufficient_stock(self, client, test_product, cdek_delivery_payload):
         """Гость не может оформить заказ при недостатке stock."""
         response = await client.post(
-            "/api/v1/orders/create-guest",
+            "/api/v1/orders/create-guest/",
             json={
                 "items": [{"product_id": test_product.id, "quantity": test_product.stock + 1}],
                 "cdek_delivery": cdek_delivery_payload,
@@ -86,7 +160,7 @@ class TestGuestOrdersAPI:
         """После гостевого заказа stock уменьшается."""
         initial_stock = test_product.stock
         response = await client.post(
-            "/api/v1/orders/create-guest",
+            "/api/v1/orders/create-guest/",
             json={
                 "items": [{"product_id": test_product.id, "quantity": 2}],
                 "cdek_delivery": cdek_delivery_payload,
@@ -105,7 +179,7 @@ class TestGuestOrdersAPI:
     async def test_get_guest_order_success(self, client, test_product, cdek_delivery_payload):
         """Гость может получить свой заказ по ID и email."""
         create_resp = await client.post(
-            "/api/v1/orders/create-guest",
+            "/api/v1/orders/create-guest/",
             json={
                 "items": [{"product_id": test_product.id, "quantity": 1}],
                 "cdek_delivery": cdek_delivery_payload,
@@ -118,7 +192,7 @@ class TestGuestOrdersAPI:
         order_id = create_resp.json()["id"]
 
         response = await client.get(
-            f"/api/v1/orders/guest/{order_id}",
+            f"/api/v1/orders/guest/{order_id}/",
             params={"guest_email": "guest@example.com"},
         )
         assert response.status_code == 200
@@ -130,7 +204,7 @@ class TestGuestOrdersAPI:
     async def test_get_guest_order_wrong_email(self, client, test_product, cdek_delivery_payload):
         """Неверный email — 404."""
         create_resp = await client.post(
-            "/api/v1/orders/create-guest",
+            "/api/v1/orders/create-guest/",
             json={
                 "items": [{"product_id": test_product.id, "quantity": 1}],
                 "cdek_delivery": cdek_delivery_payload,
@@ -143,7 +217,51 @@ class TestGuestOrdersAPI:
         order_id = create_resp.json()["id"]
 
         response = await client.get(
-            f"/api/v1/orders/guest/{order_id}",
+            f"/api/v1/orders/guest/{order_id}/",
             params={"guest_email": "wrong@example.com"},
         )
         assert response.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_create_guest_order_saves_email_lowercase(
+        self, client, test_product, cdek_delivery_payload
+    ):
+        """Email гостевого заказа сохраняется в нижнем регистре."""
+        response = await client.post(
+            "/api/v1/orders/create-guest/",
+            json={
+                "items": [{"product_id": test_product.id, "quantity": 1}],
+                "cdek_delivery": cdek_delivery_payload,
+                "guest_email": "Guest@Example.COM",
+                "guest_phone": "+79990001122",
+                "recipient_first_name": "Иван",
+                "recipient_last_name": "Гость",
+            },
+        )
+        assert response.status_code == 200
+        assert response.json()["guest_email"] == "guest@example.com"
+
+    @pytest.mark.asyncio
+    async def test_get_guest_order_case_insensitive_email(
+        self, client, test_product, cdek_delivery_payload
+    ):
+        """Получение гостевого заказа работает с email в другом регистре."""
+        create_resp = await client.post(
+            "/api/v1/orders/create-guest/",
+            json={
+                "items": [{"product_id": test_product.id, "quantity": 1}],
+                "cdek_delivery": cdek_delivery_payload,
+                "guest_email": "guest@example.com",
+                "guest_phone": "+79990001122",
+                "recipient_first_name": "Иван",
+                "recipient_last_name": "Гость",
+            },
+        )
+        order_id = create_resp.json()["id"]
+
+        response = await client.get(
+            f"/api/v1/orders/guest/{order_id}/",
+            params={"guest_email": "GUEST@EXAMPLE.COM"},
+        )
+        assert response.status_code == 200
+        assert response.json()["id"] == order_id

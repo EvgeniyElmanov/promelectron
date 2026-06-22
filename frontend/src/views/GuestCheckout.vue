@@ -9,6 +9,18 @@
       <h1 class="guest-checkout__title">Оформление заказа</h1>
     </div>
 
+    <!-- Login hint -->
+    <div class="guest-checkout__login-hint">
+      <span>Уже есть аккаунт?</span>
+      <router-link
+        to="/login?redirect=/guest-checkout"
+        class="guest-checkout__login-link"
+        data-testid="guest-login-link"
+      >
+        Войти
+      </router-link>
+    </div>
+
     <!-- Items -->
     <div class="guest-checkout__card">
       <div class="guest-checkout__section-title">Товары</div>
@@ -47,39 +59,57 @@
         <input
           v-model="guestEmail"
           class="field__input"
+          :class="{ 'field__input--error': validationErrors.email }"
           type="email"
           placeholder="your@email.com"
           data-testid="guest-email"
         />
+        <span v-if="validationErrors.email" class="field__error" data-testid="guest-email-error">{{ validationErrors.email }}</span>
       </div>
       <div class="field">
         <label class="field__label">Имя <span class="field__required">*</span></label>
         <input
           v-model="guestFirstName"
           class="field__input"
+          :class="{ 'field__input--error': validationErrors.firstName }"
           placeholder="Иван"
           data-testid="guest-first-name"
         />
+        <span v-if="validationErrors.firstName" class="field__error" data-testid="guest-first-name-error">{{ validationErrors.firstName }}</span>
       </div>
       <div class="field">
         <label class="field__label">Фамилия <span class="field__required">*</span></label>
         <input
           v-model="guestLastName"
           class="field__input"
+          :class="{ 'field__input--error': validationErrors.lastName }"
           placeholder="Иванов"
           data-testid="guest-last-name"
         />
+        <span v-if="validationErrors.lastName" class="field__error" data-testid="guest-last-name-error">{{ validationErrors.lastName }}</span>
       </div>
       <div class="field">
         <label class="field__label">Телефон <span class="field__required">*</span></label>
         <input
           v-model="guestPhone"
           class="field__input"
+          :class="{ 'field__input--error': validationErrors.phone }"
           type="tel"
           placeholder="+7 (999) 000-00-00"
           data-testid="guest-phone"
         />
+        <span v-if="validationErrors.phone" class="field__error" data-testid="guest-phone-error">{{ validationErrors.phone }}</span>
       </div>
+
+      <!-- Save address -->
+      <label class="guest-checkout__save-address" data-testid="guest-save-address-label">
+        <input
+          v-model="saveAddress"
+          type="checkbox"
+          data-testid="guest-save-address"
+        />
+        <span>Сохранить адрес для следующих заказов</span>
+      </label>
     </div>
 
     <!-- Total -->
@@ -96,7 +126,7 @@
       :disabled="!canSubmit || submitting"
       @click="submitOrder"
     >
-      {{ submitting ? 'Оформление...' : 'Оформить заказ' }}
+      {{ submitting ? 'Оформление...' : 'Оплатить заказ' }}
     </button>
   </div>
 </template>
@@ -104,15 +134,19 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import api from '@/services/api';
 import { useCart } from '@/composables/useCart';
 import { useToast } from '@/composables/useToast';
+import { useGuestCheckout } from '@/composables/useGuestCheckout';
 import { getSupplierCityCode } from '@/api/cdek';
+import { formatPrice } from '@/utils/price';
 import CdekDeliveryWidget from '@/components/CdekDeliveryWidget.vue';
+
+const GUEST_EMAIL_KEY = 'guest_checkout_email';
 
 const router = useRouter();
 const { add: toast } = useToast();
 const { getGuestCartItems, clearGuestCart } = useCart();
+const { submitting, submitGuestCheckout, validateGuestForm } = useGuestCheckout();
 
 const items = ref([]);
 const selectedDelivery = ref(null);
@@ -122,7 +156,8 @@ const guestEmail = ref('');
 const guestFirstName = ref('');
 const guestLastName = ref('');
 const guestPhone = ref('');
-const submitting = ref(false);
+const saveAddress = ref(false);
+const validationErrors = ref({});
 
 const supplierId = computed(() => items.value[0]?.supplier_id ?? null);
 
@@ -141,7 +176,10 @@ const loadSupplierCityCode = async () => {
       isFallback.value = false;
       supplierCityCode.value = code;
     }
-  } catch {
+  } catch (err) {
+    if (import.meta.env.DEV) {
+      console.error('Failed to load supplier city code:', err);
+    }
     isFallback.value = true;
     supplierCityCode.value = 44;
   }
@@ -162,16 +200,14 @@ const isDeliveryValid = computed(() => {
 });
 
 const canSubmit = computed(() => {
-  return guestEmail.value.trim().length > 0
-    && guestFirstName.value.trim().length > 0
-    && guestLastName.value.trim().length > 0
-    && guestPhone.value.trim().length > 0
-    && isDeliveryValid.value;
+  const errors = validateGuestForm({
+    email: guestEmail.value,
+    firstName: guestFirstName.value,
+    lastName: guestLastName.value,
+    phone: guestPhone.value,
+  });
+  return Object.keys(errors).length === 0 && isDeliveryValid.value;
 });
-
-const formatPrice = (price) => {
-  return Number(price).toLocaleString('ru-RU');
-};
 
 const loadItems = () => {
   items.value = getGuestCartItems();
@@ -183,52 +219,38 @@ watch(supplierId, () => {
 
 const submitOrder = async () => {
   if (submitting.value) return;
-  if (!guestEmail.value.trim()) {
-    toast('Укажите email', 'error');
-    return;
-  }
-  if (!guestFirstName.value.trim()) {
-    toast('Укажите имя', 'error');
-    return;
-  }
-  if (!guestLastName.value.trim()) {
-    toast('Укажите фамилию', 'error');
-    return;
-  }
-  if (!guestPhone.value.trim()) {
-    toast('Укажите телефон', 'error');
-    return;
-  }
-  if (!isDeliveryValid.value) {
-    toast('Выберите доставку СДЭК', 'error');
-    return;
-  }
+  validationErrors.value = {};
+
   if (items.value.length === 0) {
     toast('Корзина пуста', 'error');
     return;
   }
 
-  submitting.value = true;
   try {
-    const firstName = guestFirstName.value.trim();
-    const lastName = guestLastName.value.trim();
-    const payload = {
-      items: items.value.map(i => ({ product_id: i.product_id, quantity: i.quantity })),
-      cdek_delivery: { ...selectedDelivery.value },
-      guest_email: guestEmail.value.trim(),
-      guest_phone: guestPhone.value.trim(),
-      recipient_first_name: firstName,
-      recipient_last_name: lastName,
-    };
-    const { data: order } = await api.post('/orders/create-guest', payload);
+    const { order } = await submitGuestCheckout({
+      items: items.value,
+      selectedDelivery: selectedDelivery.value,
+      email: guestEmail.value,
+      firstName: guestFirstName.value,
+      lastName: guestLastName.value,
+      phone: guestPhone.value,
+      saveAddress: saveAddress.value,
+    });
+
+    const email = order.guest_email || guestEmail.value.trim();
+    localStorage.setItem(GUEST_EMAIL_KEY, email);
     clearGuestCart();
-    toast('Заказ успешно создан!', 'success');
-    await router.push(`/guest-order-success/${order.id}?email=${encodeURIComponent(order.guest_email)}`);
+    toast('Заказ создан. Переходим к оплате...', 'success');
+
+    await router.push(`/checkout/${order.id}?guest_email=${encodeURIComponent(email)}`);
   } catch (err) {
-    const detail = err.response?.data?.detail;
-    toast(detail || 'Не удалось создать заказ', 'error');
-  } finally {
-    submitting.value = false;
+    if (err.field && err.message) {
+      validationErrors.value = { [err.field]: err.message };
+      toast(err.message, 'error');
+    } else {
+      const detail = err.response?.data?.detail;
+      toast(detail || err.message || 'Не удалось создать заказ', 'error');
+    }
   }
 };
 
@@ -250,7 +272,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
 }
 
 .guest-checkout__back {
@@ -270,6 +292,25 @@ onMounted(() => {
   font-size: 18px;
   font-weight: 700;
   color: var(--color-text);
+}
+
+.guest-checkout__login-hint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--color-bg-white);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  color: var(--color-text);
+}
+
+.guest-checkout__login-link {
+  color: var(--color-primary);
+  font-weight: 600;
+  text-decoration: none;
 }
 
 .guest-checkout__card {
@@ -427,6 +468,32 @@ onMounted(() => {
 .field__input:focus {
   outline: none;
   border-color: var(--color-primary);
+}
+
+.field__input--error {
+  border-color: var(--color-danger);
+}
+
+.field__error {
+  font-size: 12px;
+  color: var(--color-danger);
+}
+
+.guest-checkout__save-address {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  font-size: 14px;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.guest-checkout__save-address input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-primary);
+  flex-shrink: 0;
 }
 
 .guest-checkout__total {

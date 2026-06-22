@@ -7,9 +7,10 @@ from urllib.parse import urlencode
 from src.app.db.database import get_db
 from src.app.models.user import User
 from src.app.models.social_account import SocialAccount
-from src.app.schemas.user import UserOut
+from src.app.schemas.user import PasswordResetConfirm, PasswordResetRequest, UserOut
 from src.app.core.config import settings
 from src.app.services.feature_flags import is_enabled
+from src.app.services.user_service import UserService
 from src.app.utils.auth import create_access_token, get_current_user
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -211,3 +212,57 @@ async def oauth_callback(
             "created_at": user.created_at.isoformat() if user.created_at else None,
         },
     }
+
+
+@router.post("/password-reset-request/")
+async def password_reset_request(
+    data: PasswordResetRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Запросить ссылку на сброс пароля.
+
+    Всегда возвращает успешный ответ, чтобы не раскрывать существование email.
+    """
+    result = await db.execute(select(User).where(User.email == data.email))
+    user = result.scalars().first()
+    if user:
+        token = await UserService.create_password_reset_token(user_id=user.id, db=db)
+        # Email отправляется в best-effort режиме; без SMTP просто логируем
+        from src.app.services.email_service import EmailService
+
+        reset_url = f"{settings.frontend_url.rstrip('/')}/reset-password?token={token}"
+        try:
+            await EmailService.send_email(
+                to=user.email,
+                subject="MyShop — Сброс пароля",
+                html=f"""\
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"></head>
+<body style="font-family: Arial, sans-serif; color: #181818;">
+  <div style="max-width: 600px; margin: 0 auto; padding: 24px;">
+    <h2 style="color: #005BFF;">MyShop — Сброс пароля</h2>
+    <p>Для сброса пароля перейдите по ссылке:</p>
+    <p><a href="{reset_url}">{reset_url}</a></p>
+    <p style="color: #6c757d; font-size: 12px;">Ссылка действительна 24 часа.</p>
+  </div>
+</body>
+</html>
+""",
+                text=f"Сброс пароля: {reset_url} (действует 24 часа).",
+            )
+        except Exception:
+            pass
+
+    return {"message": "If the email exists, a reset link has been sent"}
+
+
+@router.post("/password-reset/")
+async def password_reset(
+    data: PasswordResetConfirm,
+    db: AsyncSession = Depends(get_db),
+):
+    """Сбросить пароль по одноразовому токену."""
+    return await UserService.reset_password(
+        token=data.token, new_password=data.new_password, db=db
+    )

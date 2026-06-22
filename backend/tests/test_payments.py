@@ -13,7 +13,7 @@ class TestPaymentsAPI:
         # Сначала создаём корзину и заказ
         await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
         order_resp = await client.post(
-            "/api/v1/orders/create",
+            "/api/v1/orders/create/",
             json={"cdek_delivery": cdek_delivery_payload},
             headers={"Authorization": f"Bearer {user_token}"},
         )
@@ -35,7 +35,7 @@ class TestPaymentsAPI:
             patch("src.app.services.payment_service.YooKassaService.create_payment", mock_yookassa),
         ):
             payment_resp = await client.post(
-                f"/api/v1/payments/{order_id}",
+                f"/api/v1/payments/{order_id}/",
                 headers={"Authorization": f"Bearer {user_token}"},
             )
 
@@ -50,7 +50,7 @@ class TestPaymentsAPI:
     async def test_create_payment_for_nonexistent_order(self, client, test_user, user_token):
         """Платёж для несуществующего заказа — 404."""
         response = await client.post(
-            "/api/v1/payments/99999",
+            "/api/v1/payments/99999/",
             headers={"Authorization": f"Bearer {user_token}"},
         )
         assert response.status_code == 404
@@ -61,7 +61,7 @@ class TestPaymentsAPI:
         # Создаём заказ
         await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
         order_resp = await client.post(
-            "/api/v1/orders/create",
+            "/api/v1/orders/create/",
             json={"cdek_delivery": cdek_delivery_payload},
             headers={"Authorization": f"Bearer {user_token}"},
         )
@@ -80,12 +80,12 @@ class TestPaymentsAPI:
             patch("src.app.services.payment_service.YooKassaService.is_configured", return_value=True),
             patch("src.app.services.payment_service.YooKassaService.create_payment", mock_yookassa),
         ):
-            first = await client.post(f"/api/v1/payments/{order_id}", headers={"Authorization": f"Bearer {user_token}"})
+            first = await client.post(f"/api/v1/payments/{order_id}/", headers={"Authorization": f"Bearer {user_token}"})
             assert first.status_code == 200
             first_data = first.json()
 
             # Повторный запрос — возвращаем тот же платёж (не 400)
-            second = await client.post(f"/api/v1/payments/{order_id}", headers={"Authorization": f"Bearer {user_token}"})
+            second = await client.post(f"/api/v1/payments/{order_id}/", headers={"Authorization": f"Bearer {user_token}"})
             assert second.status_code == 200
             second_data = second.json()
             assert second_data["payment_id"] == first_data["payment_id"]
@@ -96,7 +96,7 @@ class TestPaymentsAPI:
         """Получение информации о платеже."""
         await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
         order_resp = await client.post(
-            "/api/v1/orders/create",
+            "/api/v1/orders/create/",
             json={"cdek_delivery": cdek_delivery_payload},
             headers={"Authorization": f"Bearer {user_token}"},
         )
@@ -114,10 +114,10 @@ class TestPaymentsAPI:
             patch("src.app.services.payment_service.YooKassaService.is_configured", return_value=True),
             patch("src.app.services.payment_service.YooKassaService.create_payment", mock_yookassa),
         ):
-            payment_resp = await client.post(f"/api/v1/payments/{order_id}", headers={"Authorization": f"Bearer {user_token}"})
+            payment_resp = await client.post(f"/api/v1/payments/{order_id}/", headers={"Authorization": f"Bearer {user_token}"})
             payment_id = payment_resp.json()["payment_id"]
 
-        get_resp = await client.get(f"/api/v1/payments/{payment_id}", headers={"Authorization": f"Bearer {user_token}"})
+        get_resp = await client.get(f"/api/v1/payments/{payment_id}/", headers={"Authorization": f"Bearer {user_token}"})
         assert get_resp.status_code == 200
         assert get_resp.json()["status"] == "pending"
 
@@ -126,7 +126,7 @@ class TestPaymentsAPI:
         """Отмена неоплаченного платежа."""
         await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
         order_resp = await client.post(
-            "/api/v1/orders/create",
+            "/api/v1/orders/create/",
             json={"cdek_delivery": cdek_delivery_payload},
             headers={"Authorization": f"Bearer {user_token}"},
         )
@@ -144,11 +144,11 @@ class TestPaymentsAPI:
             patch("src.app.services.payment_service.YooKassaService.is_configured", return_value=True),
             patch("src.app.services.payment_service.YooKassaService.create_payment", mock_yookassa),
         ):
-            payment_resp = await client.post(f"/api/v1/payments/{order_id}", headers={"Authorization": f"Bearer {user_token}"})
+            payment_resp = await client.post(f"/api/v1/payments/{order_id}/", headers={"Authorization": f"Bearer {user_token}"})
             payment_id = payment_resp.json()["payment_id"]
 
         with patch("src.app.services.payment_service.YooKassaService.cancel_payment", AsyncMock()):
-            cancel_resp = await client.post(f"/api/v1/payments/{payment_id}/cancel", headers={"Authorization": f"Bearer {user_token}"})
+            cancel_resp = await client.post(f"/api/v1/payments/{payment_id}/cancel/", headers={"Authorization": f"Bearer {user_token}"})
 
         assert cancel_resp.status_code == 200
         assert cancel_resp.json()["status"] == "cancelled"
@@ -158,7 +158,7 @@ class TestPaymentsAPI:
         """Webhook payment.succeeded обновляет статус заказа."""
         await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
         order_resp = await client.post(
-            "/api/v1/orders/create",
+            "/api/v1/orders/create/",
             json={"cdek_delivery": cdek_delivery_payload},
             headers={"Authorization": f"Bearer {user_token}"},
         )
@@ -176,7 +176,7 @@ class TestPaymentsAPI:
             patch("src.app.services.payment_service.YooKassaService.is_configured", return_value=True),
             patch("src.app.services.payment_service.YooKassaService.create_payment", mock_yookassa),
         ):
-            await client.post(f"/api/v1/payments/{order_id}", headers={"Authorization": f"Bearer {user_token}"})
+            await client.post(f"/api/v1/payments/{order_id}/", headers={"Authorization": f"Bearer {user_token}"})
 
         # Отправляем webhook (raw_body передаётся автоматически через Request)
         webhook_payload = {
@@ -188,15 +188,15 @@ class TestPaymentsAPI:
             },
         }
 
-        resp = await client.post("/api/v1/payments/yookassa/webhook", json=webhook_payload)
+        resp = await client.post("/api/v1/payments/yookassa/webhook/", json=webhook_payload)
         assert resp.status_code == 200
 
         # Проверяем статус заказа
-        order_get = await client.get(f"/api/v1/orders/{order_id}", headers={"Authorization": f"Bearer {user_token}"})
+        order_get = await client.get(f"/api/v1/orders/{order_id}/", headers={"Authorization": f"Bearer {user_token}"})
         assert order_get.json()["status"] == "paid"
 
     @pytest.mark.asyncio
     async def test_payment_unauthorized(self, client):
         """Без токена доступ к платежам запрещён."""
-        response = await client.post("/api/v1/payments/1")
+        response = await client.post("/api/v1/payments/1/")
         assert response.status_code in (401, 403)

@@ -22,7 +22,7 @@ from src.app.utils.auth import get_current_active_admin, get_current_active_supp
 router = APIRouter(prefix="/orders", tags=["orders"])
 
 
-@router.post("/create", response_model=OrderOut)
+@router.post("/create/", response_model=OrderOut)
 @conditional_limit("50/minute")
 async def create_order(request: Request,
     order_data: OrderCreate,
@@ -40,7 +40,7 @@ async def create_order(request: Request,
     return await OrderService.create_order(current_user=current_user, order_data=order_data, db=db)
 
 
-@router.post("/create-guest", response_model=OrderOut)
+@router.post("/create-guest/", response_model=OrderOut)
 @conditional_limit("10/minute")
 async def create_guest_order(
     request: Request,
@@ -57,7 +57,7 @@ async def create_guest_order(
     return await OrderService.create_guest_order(order_data=order_data, db=db)
 
 
-@router.get("/guest/{order_id}", response_model=OrderOut)
+@router.get("/guest/{order_id}/", response_model=OrderOut)
 async def get_guest_order(
     order_id: int,
     guest_email: str,
@@ -65,46 +65,6 @@ async def get_guest_order(
 ):
     """Get a guest order by ID and email."""
     return await OrderService.get_guest_order(order_id=order_id, guest_email=guest_email, db=db)
-
-
-@router.get("/{order_id}", response_model=OrderOut)
-async def get_order(
-    order_id: int,
-    current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db),
-):
-    return await OrderService.get_order(order_id=order_id, current_user=current_user, db=db)
-
-
-@router.get("/", response_model=List[OrderOut])
-async def get_orders(
-    current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db),
-):
-    return await OrderService.get_orders(current_user=current_user, db=db)
-
-
-@router.patch("/{order_id}/cancel", response_model=OrderOut)
-async def cancel_order(
-    order_id: int,
-    current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """Отменить заказ (только если статус pending)."""
-    return await OrderService.cancel_order(order_id=order_id, current_user=current_user, db=db)
-
-
-@router.put("/{order_id}/status", response_model=OrderOut)
-@conditional_limit("10/minute")
-async def update_order_status(request: Request,
-    order_id: int,
-    status_update: OrderUpdateStatus,
-    current_user: User = Depends(get_current_active_admin),
-    db: AsyncSession = Depends(get_db),
-):
-    return await OrderService.update_order_status(
-        order_id=order_id, status_update=status_update, current_user=current_user, db=db
-    )
 
 
 @router.get("/supplier/", response_model=List[SupplierOrderOut])
@@ -146,7 +106,7 @@ async def get_supplier_orders(
     ]
 
 
-@router.get("/supplier/{order_id}", response_model=SupplierOrderOut)
+@router.get("/supplier/{order_id}/", response_model=SupplierOrderOut)
 async def get_supplier_order(
     order_id: int,
     current_user: User = Depends(get_current_active_supplier),
@@ -181,7 +141,7 @@ async def get_supplier_order(
     )
 
 
-@router.patch("/supplier/{order_id}/ship", response_model=SupplierOrderOut)
+@router.patch("/supplier/{order_id}/ship/", response_model=SupplierOrderOut)
 async def ship_supplier_order(
     order_id: int,
     current_user: User = Depends(get_current_active_supplier),
@@ -214,4 +174,46 @@ async def ship_supplier_order(
             if item.product and item.product.supplier_id == supplier.id
         ],
     )
+
+
+@router.get("/{order_id}/", response_model=OrderOut)
+async def get_order(
+    order_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return await OrderService.get_order(order_id=order_id, current_user=current_user, db=db)
+
+
+@router.get("/", response_model=List[OrderOut])
+async def get_orders(
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return await OrderService.get_orders(current_user=current_user, db=db)
+
+
+@router.patch("/{order_id}/cancel/", response_model=OrderOut)
+async def cancel_order(
+    order_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Отменить заказ (только если статус pending)."""
+    return await OrderService.cancel_order(order_id=order_id, current_user=current_user, db=db)
+
+
+@router.put("/{order_id}/status/", response_model=OrderOut)
+@conditional_limit("10/minute")
+async def update_order_status(request: Request,
+    order_id: int,
+    status_update: OrderUpdateStatus,
+    current_user: User = Depends(get_current_active_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    return await OrderService.update_order_status(
+        order_id=order_id, status_update=status_update, current_user=current_user, db=db
+    )
+
+
 

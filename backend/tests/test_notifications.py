@@ -9,7 +9,7 @@ class TestNotificationsAPI:
         """Создание заказа генерирует уведомление."""
         await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
         await client.post(
-            "/api/v1/orders/create",
+            "/api/v1/orders/create/",
             json={"cdek_delivery": cdek_delivery_payload},
             headers={"Authorization": f"Bearer {user_token}"},
         )
@@ -30,7 +30,7 @@ class TestNotificationsAPI:
 
         await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
         order_resp = await client.post(
-            "/api/v1/orders/create",
+            "/api/v1/orders/create/",
             json={"cdek_delivery": cdek_delivery_payload},
             headers={"Authorization": f"Bearer {user_token}"},
         )
@@ -48,7 +48,7 @@ class TestNotificationsAPI:
             patch("src.app.services.payment_service.YooKassaService.is_configured", return_value=True),
             patch("src.app.services.payment_service.YooKassaService.create_payment", mock_yookassa),
         ):
-            await client.post(f"/api/v1/payments/{order_id}", headers={"Authorization": f"Bearer {user_token}"})
+            await client.post(f"/api/v1/payments/{order_id}/", headers={"Authorization": f"Bearer {user_token}"})
 
         # Имитируем webhook от ЮKassa
         webhook_payload = {
@@ -59,7 +59,7 @@ class TestNotificationsAPI:
                 "amount": {"value": str(test_product.price), "currency": "RUB"},
             },
         }
-        await client.post("/api/v1/payments/yookassa/webhook", json=webhook_payload)
+        await client.post("/api/v1/payments/yookassa/webhook/", json=webhook_payload)
 
         response = await client.get("/api/v1/notifications/", headers={"Authorization": f"Bearer {user_token}"})
         assert response.status_code == 200
@@ -72,7 +72,7 @@ class TestNotificationsAPI:
         """Отметка уведомления как прочитанного."""
         await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
         await client.post(
-            "/api/v1/orders/create",
+            "/api/v1/orders/create/",
             json={"cdek_delivery": cdek_delivery_payload},
             headers={"Authorization": f"Bearer {user_token}"},
         )
@@ -93,7 +93,7 @@ class TestNotificationsAPI:
         """Отметка всех уведомлений как прочитанных."""
         await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
         await client.post(
-            "/api/v1/orders/create",
+            "/api/v1/orders/create/",
             json={"cdek_delivery": cdek_delivery_payload},
             headers={"Authorization": f"Bearer {user_token}"},
         )
@@ -107,7 +107,7 @@ class TestNotificationsAPI:
         """Удаление уведомления."""
         await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
         await client.post(
-            "/api/v1/orders/create",
+            "/api/v1/orders/create/",
             json={"cdek_delivery": cdek_delivery_payload},
             headers={"Authorization": f"Bearer {user_token}"},
         )

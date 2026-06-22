@@ -1,6 +1,7 @@
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.app.core.config import settings
@@ -14,7 +15,15 @@ from src.app.utils.auth import get_current_active_user
 router = APIRouter(prefix="/payments", tags=["payments"])
 
 
-@router.post("/{order_id}", response_model=PaymentCreateResponse)
+class GuestPaymentRequest(BaseModel):
+    guest_email: str = Field(..., pattern=r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+
+
+class GuestMockConfirmRequest(BaseModel):
+    guest_email: str = Field(..., pattern=r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+
+
+@router.post("/{order_id}/", response_model=PaymentCreateResponse)
 async def create_payment(
     order_id: int,
     current_user: User = Depends(get_current_active_user),
@@ -30,7 +39,45 @@ async def create_payment(
     )
 
 
-@router.post("/{order_id}/mock-confirm", response_model=PaymentOut)
+@router.post("/guest/{order_id}/", response_model=PaymentCreateResponse)
+async def create_guest_payment(
+    order_id: int,
+    request_data: GuestPaymentRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Создать платёж для гостевого заказа через ЮKassa."""
+    payment = await PaymentService.create_guest_payment(
+        order_id=order_id, guest_email=request_data.guest_email, db=db
+    )
+    return PaymentCreateResponse(
+        payment_id=payment.id,
+        status=payment.status,
+        confirmation_url=payment.confirmation_url,
+        amount=payment.amount,
+    )
+
+
+@router.post("/guest/{order_id}/mock-confirm/", response_model=PaymentOut)
+async def mock_confirm_guest_payment(
+    order_id: int,
+    request_data: GuestMockConfirmRequest | None = Body(None),
+    guest_email: str | None = Query(None, pattern=r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'),
+    db: AsyncSession = Depends(get_db),
+):
+    """Подтвердить mock-платёж для гостевого заказа (для dev-режима).
+
+    Email можно передать либо в теле, либо query-параметром `guest_email`.
+    """
+    email = (request_data.guest_email if request_data else None) or guest_email
+    if not email:
+        raise HTTPException(status_code=422, detail="guest_email is required")
+    payment = await PaymentService.confirm_guest_mock_payment_by_order(
+        order_id=order_id, guest_email=email, db=db
+    )
+    return payment
+
+
+@router.post("/{order_id}/mock-confirm/", response_model=PaymentOut)
 async def mock_confirm_payment(
     order_id: int,
     current_user: User = Depends(get_current_active_user),
@@ -43,7 +90,7 @@ async def mock_confirm_payment(
     return payment
 
 
-@router.get("/{payment_id}", response_model=PaymentOut)
+@router.get("/{payment_id}/", response_model=PaymentOut)
 async def get_payment(
     payment_id: int,
     current_user: User = Depends(get_current_active_user),
@@ -54,7 +101,7 @@ async def get_payment(
     return payment
 
 
-@router.post("/{payment_id}/cancel", response_model=PaymentOut)
+@router.post("/{payment_id}/cancel/", response_model=PaymentOut)
 async def cancel_payment(
     payment_id: int,
     current_user: User = Depends(get_current_active_user),
@@ -65,7 +112,7 @@ async def cancel_payment(
     return payment
 
 
-@router.post("/{payment_id}/sync", response_model=PaymentOut)
+@router.post("/{payment_id}/sync/", response_model=PaymentOut)
 async def sync_payment_status(
     payment_id: int,
     current_user: User = Depends(get_current_active_user),
@@ -79,7 +126,7 @@ async def sync_payment_status(
     return payment
 
 
-@router.post("/sync-by-order/{order_id}", response_model=PaymentOut)
+@router.post("/sync-by-order/{order_id}/", response_model=PaymentOut)
 async def sync_payment_status_by_order(
     order_id: int,
     current_user: User = Depends(get_current_active_user),
@@ -93,7 +140,7 @@ async def sync_payment_status_by_order(
     return payment
 
 
-@router.post("/debug/yookassa/create")
+@router.post("/debug/yookassa/create/")
 async def debug_yookassa_create(
     request: Request,
     current_user: User = Depends(get_current_active_user),
@@ -119,7 +166,7 @@ async def debug_yookassa_create(
     return result
 
 
-@router.post("/yookassa/webhook")
+@router.post("/yookassa/webhook/")
 async def yookassa_webhook(
     request: Request,
     db: AsyncSession = Depends(get_db),

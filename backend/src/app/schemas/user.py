@@ -44,3 +44,45 @@ class UserUpdate(BaseModel):
 class PasswordChange(BaseModel):
     old_password: str = Field(..., min_length=1)
     new_password: str = Field(..., min_length=6)
+
+
+class UserAddressCreate(BaseModel):
+    label: Optional[str] = None
+    country: Optional[str] = "Россия"
+    city: str = Field(..., min_length=1, max_length=200)
+    street: Optional[str] = None
+    house: Optional[str] = None
+    apartment: Optional[str] = None
+    postal_code: Optional[str] = None
+    cdek_location_code: Optional[int] = None
+    cdek_delivery_point: Optional[str] = None
+    is_default: bool = False
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+
+class UserAddressOut(BaseModel):
+    id: int
+    user_id: int
+    label: Optional[str] = None
+    country: str
+    city: str
+    street: Optional[str] = None
+    house: Optional[str] = None
+    apartment: Optional[str] = None
+    postal_code: Optional[str] = None
+    cdek_location_code: Optional[int] = None
+    cdek_delivery_point: Optional[str] = None
+    is_default: bool
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PasswordResetRequest(BaseModel):
+    email: str = Field(..., pattern=r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+
+
+class PasswordResetConfirm(BaseModel):
+    token: str = Field(..., min_length=1)
+    new_password: str = Field(..., min_length=6)

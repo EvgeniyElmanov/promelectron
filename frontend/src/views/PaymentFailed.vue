@@ -57,7 +57,7 @@
       >
         Попробовать ещё раз
       </button>
-      <router-link to="/orders" class="payment-result__btn payment-result__btn--secondary">
+      <router-link v-if="isAuthenticated" to="/orders" class="payment-result__btn payment-result__btn--secondary">
         Мои заказы
       </router-link>
       <router-link to="/" class="payment-result__btn payment-result__btn--ghost">
@@ -70,18 +70,19 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import api from '@/services/api';
+import { useAuth } from '@/composables/useAuth';
+import { getOrder, getGuestOrder } from '@/api/orders';
+import { formatPrice } from '@/utils/price';
 
 const route = useRoute();
 const router = useRouter();
+const { isAuthenticated } = useAuth();
 const orderId = ref(route.query.order_id || route.params.id);
+const guestEmail = ref(route.query.guest_email || localStorage.getItem('guest_checkout_email') || '');
+const isGuest = computed(() => !isAuthenticated.value && Boolean(guestEmail.value));
 const order = ref(null);
 const loading = ref(true);
 const error = ref(null);
-
-function formatPrice(value) {
-  return Number(value).toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-}
 
 const title = computed(() => {
   if (error.value) return 'Ошибка';
@@ -114,7 +115,9 @@ const fetchOrder = async () => {
   error.value = null;
   loading.value = true;
   try {
-    const { data } = await api.get(`/orders/${orderId.value}`);
+    const { data } = isGuest.value
+      ? await getGuestOrder(orderId.value, guestEmail.value)
+      : await getOrder(orderId.value);
     order.value = data;
   } catch (err) {
     if (err.response?.status === 404) {
@@ -128,7 +131,10 @@ const fetchOrder = async () => {
 };
 
 const retryPayment = () => {
-  router.push(`/checkout/${orderId.value}`);
+  const target = isGuest.value
+    ? `/checkout/${orderId.value}?guest_email=${encodeURIComponent(guestEmail.value)}`
+    : `/checkout/${orderId.value}`;
+  router.push(target);
 };
 
 onMounted(() => {

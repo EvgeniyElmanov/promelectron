@@ -30,7 +30,7 @@ const routes = [
   { path: '/cart', component: Cart },
   { path: '/orders', component: Orders, meta: { requiresAuth: true } },
   { path: '/orders/:id', component: OrderDetail, meta: { requiresAuth: true } },
-  { path: '/checkout/:id', component: Checkout, meta: { requiresAuth: true } },
+  { path: '/checkout/:id', component: Checkout },
   { path: '/guest-checkout', component: GuestCheckout },
   { path: '/guest-order-success/:id', component: GuestOrderSuccess },
   { path: '/payment/success', component: PaymentSuccess },

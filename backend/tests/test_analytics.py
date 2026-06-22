@@ -17,7 +17,7 @@ class TestSupplierAnalytics:
         # Создаём заказ с товаром поставщика
         await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 2}, headers={"Authorization": f"Bearer {user_token}"})
         order_resp = await client.post(
-            "/api/v1/orders/create",
+            "/api/v1/orders/create/",
             json={"cdek_delivery": cdek_delivery_payload},
             headers={"Authorization": f"Bearer {user_token}"},
         )
@@ -96,7 +96,7 @@ class TestSupplierAnalytics:
         # Создаём заказ с товаром другого поставщика
         await client.post("/api/v1/cart/add", json={"product_id": other_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
         order_resp = await client.post(
-            "/api/v1/orders/create",
+            "/api/v1/orders/create/",
             json={"cdek_delivery": cdek_delivery_payload},
             headers={"Authorization": f"Bearer {user_token}"},
         )
@@ -137,7 +137,7 @@ class TestSupplierAnalytics:
         for i in range(3):
             await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
             order_resp = await client.post(
-                "/api/v1/orders/create",
+                "/api/v1/orders/create/",
                 json={"cdek_delivery": cdek_delivery_payload},
                 headers={"Authorization": f"Bearer {user_token}"},
             )
