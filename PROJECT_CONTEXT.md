@@ -2,8 +2,8 @@
 sprint: "Sprint 1"
 sprint_dates: "2026-06-01 — 2026-06-14"
 last_update: "2026-06-22"
-last_commit: "80a0de1"
-commit_message: "fix(auth): add forgot-password and reset-password pages for guest checkout users"
+last_commit: "9b1efec"
+commit_message: "docs: update PROJECT_CONTEXT, BLOCKERS and SESSION_LOG for guest-checkout-polish"
 blockers_count: 2
 blockers_p0: 0
 blockers_p1: 2
@@ -240,7 +240,7 @@ make test-e2e      # Playwright
 
 | Дата | Что изменилось | Кто |
 |------|---------------|-----|
-| 2026-06-22 | **bugfix/guest-checkout-polish**: исправлены два дефекта гостевого чекаута. (1) `YooKassaService._build_return_url` теперь включает `guest_email` в return URL — success page может загружать заказ без авторизации после редиректа от YooKassa (`backend/src/app/services/yookassa_service.py`, `payment_service.py`). (2) Добавлены страницы сброса пароля `ForgotPassword.vue` и `ResetPassword.vue`, роуты `/forgot-password` и `/reset-password`, ссылка «Забыли пароль?» на `/login`, unit-тесты (175/175 ✅). Ветка `bugfix/guest-checkout-polish` запушена. BLK-011 закрыт. BLK-005 (SMTP) остаётся на следующую сессию. | backend-dev / frontend-dev |
+| 2026-06-22 | **bugfix/guest-checkout-polish-v2**: исправлены два дефекта гостевого чекаута. (1) `YooKassaService._build_return_url` теперь включает `guest_email` в return URL — success page может загружать заказ без авторизации после редиректа от YooKassa (`backend/src/app/services/yookassa_service.py`, `payment_service.py`). (2) Добавлены страницы сброса пароля `ForgotPassword.vue` и `ResetPassword.vue`, роуты `/forgot-password` и `/reset-password`, ссылка «Забыли пароль?» на `/login`, unit-тесты (175/175 ✅). Ветка `bugfix/guest-checkout-polish-v2` запушена. BLK-011 закрыт. BLK-005 (SMTP) остаётся на следующую сессию. | backend-dev / frontend-dev |
 | 2026-06-22 | **Agent pipeline health & worktree hygiene**: расширен `scripts/implement-pipeline.py` — добавлены `check-health`, `create-worktree --shared-node-modules`, `fix-permissions`, `archive-session-log`. Добавлены `Makefile` target'ы `worktree-health`, `fix-permissions`, `archive-session-log`. В `.kimi-code/skills/implement/SKILL.md` интегрированы health-check и shared `node_modules` в workflow. В `.kimi-code/rules/agent-commons.md` добавлены правила `Environment Health Check` и `Worktree Hygiene`. Архивировано 519 строк из `SESSION_LOG.md` (96.5 → 56.8 KB). Auto-cleanup worktree не добавлен — lifecycle остаётся под контролем пользователя. | backend-dev |
 | 2026-06-22 | **CDEK status sync + cancel (backend)**: выделена доменная модель `CdekOrder` с `CdekStatusHistory` и `CdekSyncJob`; добавлена Alembic-миграция `1c463a2c2e3f` с миграцией старых CDEK-полей из `orders`; `CdekService.apply_cdek_status` нормализует вебхуки и обновляет `Order.status`; `CdekService.cancel_cdek_order` удаляет заказ в CDEK; Celery task `sync_cdek_jobs_task` выполняет периодическую синхронизацию статусов; добавлены unit-тесты (`test_cdek.py`, `test_auth.py`). Backend-тесты: 185/185 ✅, линтер чисто ✅. | backend-dev |
 | 2026-06-21 | **Agent docs refactor**: `.kimi-code/AGENTS.md` сокращён до project-wide index; создан `.kimi-code/BUNDLE.md` — единый реестр role/workflow skills и shared rules; дублирующиеся секции вынесены в `.kimi-code/rules/agent-commons.md`, `planning.md`, `known-pitfalls.md`; `/skill:qa` интегрирован в `/skill:implement`; `project-manager` и `plan-maintainer` разделены; `disableModelInvocation: true` добавлен в ролевые skills; ссылки на rules унифицированы в формат `[Rule: Name](path)`; в `/skill:implement` добавлен перезапуск тестов перед повторным review; `scripts/audit-agents.sh` обновлён под новую структуру и улучшен regex для Markdown-ссылок. `bash scripts/audit-agents.sh` проходит без ошибок. | architect / backend-dev |

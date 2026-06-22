@@ -17,19 +17,21 @@
   - Остались 3 активных блокера/дефекта: BLK-009 (CDEK calculate 502), BLK-010 (YooKassa webhook), BLK-011 (нет страниц сброса пароля).
   - Нужен explicit user approval для коммита bugfix'а return_url в main.
 
-### 2026-06-22 22:20 | backend-dev / frontend-dev | guest-checkout-polish bugfix branch pushed
+### 2026-06-22 22:35 | backend-dev / frontend-dev | guest-checkout-polish-v2 clean branch pushed
   Роль: backend-dev + frontend-dev.
-  Запрос пользователя: одобрение на реализацию BLK-011 (страницы сброса пароля); BLK-005 отложить на следующую сессию.
+  Запрос пользователя: одобрение на реализацию BLK-011 (страницы сброса пароля); BLK-005 отложить на следующую сессию; сделать чистую историю.
   Выполнено:
-  - Создана и запушена ветка `bugfix/guest-checkout-polish` с двумя коммитами:
-    - `08b2273` — `fix(payments): include guest_email in YooKassa return_url for guest checkout success page` (`backend/src/app/services/yookassa_service.py`, `payment_service.py`).
-    - `80a0de1` — `fix(auth): add forgot-password and reset-password pages for guest checkout users` (`frontend/src/views/ForgotPassword.vue`, `ResetPassword.vue`, `frontend/src/router/index.js`, `frontend/src/views/Login.vue`, unit-tests).
+  - Из-за случайного `git add -A` в первом коммите старая ветка `bugfix/guest-checkout-polish` содержала revert + лишние артефакты.
+  - Создана чистая ветка `bugfix/guest-checkout-polish-v2` от `main` с тремя аккуратными коммитами:
+    - `af3afb9` — `fix(payments): include guest_email in YooKassa return_url for guest checkout success page`.
+    - `c85e893` — `fix(auth): add forgot-password and reset-password pages for guest checkout users`.
+    - `9b1efec` — `docs: update PROJECT_CONTEXT, BLOCKERS and SESSION_LOG for guest-checkout-polish`.
   - `npm run lint` — чисто ✅; `npm run test` — 175/175 ✅.
   - Локальный dev-server проверил: `/forgot-password` и `/reset-password?token=abc123` возвращают 200.
   - Обновлены артефакты: `PROJECT_CONTEXT.md`, `.agent/BLOCKERS.md` (BLK-011 закрыт), `.agent/SESSION_LOG.md`.
   Результат:
   - BLK-011 закрыт. Остались активные блокеры: BLK-005 (SMTP, отложен), BLK-009 (CDEK 502), BLK-010 (YooKassa webhook).
-  - Ветка готова к merge в main после review / explicit approval.
+  - Ветка `bugfix/guest-checkout-polish-v2` готова к merge в main после review / explicit approval.
 
 ### 2026-06-22 20:25 | implement pipeline | guest-checkout-auto-account — implementation complete, ready for merge review
   Роль: orchestrator / implement pipeline.
