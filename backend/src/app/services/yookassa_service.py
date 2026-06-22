@@ -40,9 +40,12 @@ class YooKassaService:
         return bool(settings.yookassa_shop_id and settings.yookassa_secret_key)
 
     @staticmethod
-    def _build_return_url(order_id: int) -> str:
+    def _build_return_url(order_id: int, guest_email: str | None = None) -> str:
         base = settings.frontend_url.rstrip("/")
-        return f"{base}/payment/success?order_id={order_id}"
+        params = f"order_id={order_id}"
+        if guest_email:
+            params += f"&guest_email={guest_email.lower()}"
+        return f"{base}/payment/success?{params}"
 
     @staticmethod
     def _ensure_configured() -> None:
@@ -82,6 +85,7 @@ class YooKassaService:
         description: str,
         user_id: int | None = None,
         receipt_data: dict[str, Any] | None = None,
+        guest_email: str | None = None,
     ) -> dict[str, Any]:
         cls._ensure_configured()
         """Create a new payment in YooKassa.
@@ -103,7 +107,7 @@ class YooKassaService:
             "capture": settings.yookassa_capture_auto,
             "confirmation": {
                 "type": "redirect",
-                "return_url": cls._build_return_url(order_id),
+                "return_url": cls._build_return_url(order_id, guest_email=guest_email),
             },
             "description": description[:128],
             "metadata": {

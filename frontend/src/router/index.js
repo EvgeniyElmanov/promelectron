@@ -22,11 +22,15 @@ import GuestOrderSuccess from '../views/GuestOrderSuccess.vue';
 import PaymentSuccess from '../views/PaymentSuccess.vue';
 import PaymentFailed from '../views/PaymentFailed.vue';
 import Notifications from '../views/Notifications.vue';
+import ForgotPassword from '../views/ForgotPassword.vue';
+import ResetPassword from '../views/ResetPassword.vue';
 
 const routes = [
   { path: '/', component: Products },
   { path: '/login', component: Login },
   { path: '/register', component: Register },
+  { path: '/forgot-password', component: ForgotPassword },
+  { path: '/reset-password', component: ResetPassword },
   { path: '/cart', component: Cart },
   { path: '/orders', component: Orders, meta: { requiresAuth: true } },
   { path: '/orders/:id', component: OrderDetail, meta: { requiresAuth: true } },

@@ -2,14 +2,14 @@
 sprint: "Sprint 1"
 sprint_dates: "2026-06-01 — 2026-06-14"
 last_update: "2026-06-22"
-last_commit: "2f77465"
-commit_message: "fix(dev): BLK-008 use docker service names for FRONTEND_URL/API_BASE_URL"
-blockers_count: 1
+last_commit: "4590325"
+commit_message: "docs: update SESSION_LOG and PROJECT_CONTEXT to reference v2 branch"
+blockers_count: 2
 blockers_p0: 0
-blockers_p1: 1
-backend_tests: "213/213"
-frontend_tests: "165/165"
-e2e_tests: "3/3"
+blockers_p1: 2
+backend_tests: "213/213 (not runnable locally on SQLite)"
+frontend_tests: "175/175"
+e2e_tests: "not run locally (requires dev stack + permissions)"
 ---
 
 # PROJECT_CONTEXT — Promelectron
@@ -70,6 +70,8 @@ e2e_tests: "3/3"
 | ID | Уровень | Описание | Кто решает | Дедлайн |
 |----|---------|----------|------------|---------|
 | **BLK-005** | P1 | Нет реальных SMTP кредов — email в fallback-режиме (welcome email для гостевого чекаута логируется, но не отправляется) | project-manager | 2026-06-15 |
+| **BLK-009** | P1 | CDEK widget-service `calculate` возвращает 502 на test-окружении при передаче адреса без `code`. Блокирует UI-выбор доставки гостем. | backend-dev / devops | 2026-06-23 |
+| **BLK-010** | P1 | YooKassa webhook `payment.succeeded` не приходит на `/api/v1/payments/yookassa/webhook/` в test-окружении — заказ не переходит в `paid` без ручной синхронизации. Нужно настроить webhook URL в личном кабинете YooKassa. | devops / project-manager | 2026-06-23 |
 
 > **Правило:** Блокер >2 дней — эскалация пользователю.
 
@@ -187,6 +189,8 @@ Product.price → Numeric      →  Product variants / Seller payouts
 | PaymentSuccess | `src/views/PaymentSuccessView.vue` | — | `/payments/guest/{order_id}/mock-confirm/`, `/orders/guest/{order_id}/` |
 | PaymentFailed | `src/views/PaymentFailedView.vue` | — | `/payments/{payment_id}/` |
 | Login | `src/views/LoginView.vue` | `useAuth` | `/auth/login/`, `/auth/yandex/` |
+| ForgotPassword | `src/views/ForgotPassword.vue` | — | `/auth/password-reset-request/` |
+| ResetPassword | `src/views/ResetPassword.vue` | — | `/auth/password-reset/` |
 | AdminDashboard | `src/views/admin/DashboardView.vue` | — | `/admin/...` |
 | Admin | `src/views/Admin.vue` | — | `/categories/` |
 
@@ -236,7 +240,7 @@ make test-e2e      # Playwright
 
 | Дата | Что изменилось | Кто |
 |------|---------------|-----|
-| 2026-06-22 | **guest-checkout-auto-account — final context sync + merge ready**: реализован гостевой чекаут с автосозданием ЛК после первой покупки. Backend: `UserAddress`, `PasswordResetToken`, Alembic-миграция `bfcdd2eaa310`, endpoints `/orders/create-guest/`, `/orders/guest/{order_id}/`, `/payments/guest/{order_id}/`, `/payments/guest/{order_id}/mock-confirm/`, `/auth/password-reset-request/`, `/auth/password-reset/`; сервисы `PaymentService._process_successful_payment` и `UserService.get_or_create_from_guest` с lower-case email, case-insensitive matching и защитой от race `IntegrityError`. Frontend: `GuestCheckoutView.vue`, `GuestCheckoutForm.vue`, `PaymentSuccessView.vue`, `PaymentFailedView.vue`, `useGuestCheckout.js`, shared `formatPrice`. QA: backend 213/213 ✅, frontend 165/165 ✅, E2E checkout 3/3 ✅. BLK-008 fixed: `backend/docker-compose.yml` использует `FRONTEND_URL=http://frontend:5173` и `API_BASE_URL=http://api:8000`. BLK-005 остаётся активным (SMTP fallback). Проектная документация и контекст синхронизированы. | backend-dev / frontend-dev / qa |
+| 2026-06-22 | **bugfix/guest-checkout-polish-v2**: исправлены два дефекта гостевого чекаута. (1) `YooKassaService._build_return_url` теперь включает `guest_email` в return URL — success page может загружать заказ без авторизации после редиректа от YooKassa (`backend/src/app/services/yookassa_service.py`, `payment_service.py`). (2) Добавлены страницы сброса пароля `ForgotPassword.vue` и `ResetPassword.vue`, роуты `/forgot-password` и `/reset-password`, ссылка «Забыли пароль?» на `/login`, unit-тесты (175/175 ✅). Ветка `bugfix/guest-checkout-polish-v2` запушена. BLK-011 закрыт. BLK-005 (SMTP) остаётся на следующую сессию. | backend-dev / frontend-dev |
 | 2026-06-22 | **Agent pipeline health & worktree hygiene**: расширен `scripts/implement-pipeline.py` — добавлены `check-health`, `create-worktree --shared-node-modules`, `fix-permissions`, `archive-session-log`. Добавлены `Makefile` target'ы `worktree-health`, `fix-permissions`, `archive-session-log`. В `.kimi-code/skills/implement/SKILL.md` интегрированы health-check и shared `node_modules` в workflow. В `.kimi-code/rules/agent-commons.md` добавлены правила `Environment Health Check` и `Worktree Hygiene`. Архивировано 519 строк из `SESSION_LOG.md` (96.5 → 56.8 KB). Auto-cleanup worktree не добавлен — lifecycle остаётся под контролем пользователя. | backend-dev |
 | 2026-06-22 | **CDEK status sync + cancel (backend)**: выделена доменная модель `CdekOrder` с `CdekStatusHistory` и `CdekSyncJob`; добавлена Alembic-миграция `1c463a2c2e3f` с миграцией старых CDEK-полей из `orders`; `CdekService.apply_cdek_status` нормализует вебхуки и обновляет `Order.status`; `CdekService.cancel_cdek_order` удаляет заказ в CDEK; Celery task `sync_cdek_jobs_task` выполняет периодическую синхронизацию статусов; добавлены unit-тесты (`test_cdek.py`, `test_auth.py`). Backend-тесты: 185/185 ✅, линтер чисто ✅. | backend-dev |
 | 2026-06-21 | **Agent docs refactor**: `.kimi-code/AGENTS.md` сокращён до project-wide index; создан `.kimi-code/BUNDLE.md` — единый реестр role/workflow skills и shared rules; дублирующиеся секции вынесены в `.kimi-code/rules/agent-commons.md`, `planning.md`, `known-pitfalls.md`; `/skill:qa` интегрирован в `/skill:implement`; `project-manager` и `plan-maintainer` разделены; `disableModelInvocation: true` добавлен в ролевые skills; ссылки на rules унифицированы в формат `[Rule: Name](path)`; в `/skill:implement` добавлен перезапуск тестов перед повторным review; `scripts/audit-agents.sh` обновлён под новую структуру и улучшен regex для Markdown-ссылок. `bash scripts/audit-agents.sh` проходит без ошибок. | architect / backend-dev |
