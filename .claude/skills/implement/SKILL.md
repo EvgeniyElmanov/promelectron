@@ -1,17 +1,20 @@
 ---
 name: implement
-description: Full development cycle for any feature or bug fix. Runs architect phase, then developer → code-review loop → QA loop → Merge Request creation.
-argument-hint: "<task description> [--quick] [--backend-only] [--frontend-only]"
+description: Full development cycle (Spec-Driven). Brainstorm + spec via the architect agent, then parallel backend/frontend development, parallel code review, QA loop, and Merge Request creation.
+argument-hint: "<task description> [--quick] [--backend-only] [--frontend-only] [--serial]"
 disable-model-invocation: true
 allowed-tools: Read Write Edit Bash(git *) Bash(gh *) Bash(mkdir *) Bash(ls *)
 ---
 
-# /implement — Full Development Cycle
+# /implement — Full Development Cycle (Spec-Driven)
+
+Pipeline: **Brainstorm + Spec (architect) → parallel Dev → parallel Review → QA → MR.**
 
 Flags:
-- `--quick` — skip architect phase (use for trivial tasks)
+- `--quick` — skip the architect/spec phase (only for trivial, unambiguous tasks)
 - `--backend-only` — only invoke backend-dev
 - `--frontend-only` — only invoke frontend-dev
+- `--serial` — force backend then frontend sequentially (default is parallel)
 
 ## Step 1: Parse and Setup
 
@@ -34,52 +37,44 @@ mkdir -p .agent/<task-id>/review
 <full task description>
 ## Flags
 <active flags or "none">
+## Clarifications
+<appended here as the user answers them — newest at bottom>
 ```
 
 ---
 
-## Step 2: Architect Phase (skip if --quick)
+## Step 2: Brainstorm + Spec Phase (skip if --quick)
 
-**You are the architect.** Analyse the task in context of the project:
+The spec is written by the **`architect` agent** — you (the orchestrator) only drive the
+loop and talk to the user. Do not write the spec yourself.
 
-1. Read relevant existing code to understand current structure
-2. Ask the user clarifying questions if anything is ambiguous — wait for answers
-3. Propose approach with trade-offs if multiple options exist — wait for user choice
-4. Write `.agent/<task-id>/spec.md`:
-
-```markdown
-# Technical Specification: <task-id>
-
-## Task Type
-Feature | Bug Fix | Refactoring
-
-## Analysis
-[How the task fits into existing architecture]
-
-## Decisions
-- **D-01:** [Decision with rationale — developer must follow exactly]
-
-## Components Affected
-- Backend: [files/modules] | Not affected
-- Frontend: [files/modules] | Not affected
-
-## Technical Design
-[What to create/modify and how]
-
-## Must-haves
-- [ ] Behaviour 1
-- [ ] Behaviour 2
-
-## Acceptance Criteria
-- [ ] Criterion 1
-- [ ] Criterion 2
-
-## Out of Scope
-- [What this task does NOT include]
+### 2a. Invoke the architect
+Invoke `architect`:
+```
+Write the technical specification (Spec-Driven Development).
+Task directory: .agent/<task-id>/
+Read task.md first. Load context in parallel. Brainstorm 2–3 approaches.
+Produce .agent/<task-id>/spec.md per your template.
+If a requirement is ambiguous and changes the design, set Status: NEEDS_CLARIFICATION
+and list questions under "Clarifications Needed" — do NOT guess.
 ```
 
-Tell user: "Spec ready. Shall I start implementation?"
-**Wait for user confirmation before continuing.**
+### 2b. Clarification loop
+Read `.agent/<task-id>/spec.md`.
+
+- **If `Status: NEEDS_CLARIFICATION`** (or the recommended approach is a consequential
+  choice the user should own):
+  1. Use `AskUserQuestion` to ask the open questions + approach choice. Keep each question
+     self-contained with the options the architect surfaced.
+  2. Append the answers to the `## Clarifications` section of `task.md`.
+  3. Re-invoke `architect`: "User answered — see task.md Clarifications. Update spec.md and
+     set Status: READY when nothing blocking remains."
+  4. Repeat until `Status: READY`.
+
+- **If `Status: READY`:** show the user a tight summary — chosen approach, the **API
+  Contract**, Must-haves, and the **Parallelization Plan** (will BE and FE run concurrently?).
+
+Tell the user: **"Spec ready. Start implementation?"** and **wait for confirmation.**
 
 ---
 
@@ -92,55 +87,69 @@ git checkout -b feature/<task-id> origin/main
 
 ---
 
-## Step 4: Implementation
+## Step 4: Implementation — PARALLEL by default
 
-Based on Components Affected in spec.md, invoke the appropriate developer subagent(s):
+Read `Components Affected` and `Parallelization Plan` from spec.md.
 
-**If backend affected (and not --frontend-only):**
-Invoke `backend-dev`:
+**If both backend and frontend are affected and `Parallelization Plan` says independent
+(and neither `--backend-only`/`--frontend-only`/`--serial`):**
+Launch `backend-dev` and `frontend-dev` **in the same message** so they run concurrently.
+They edit disjoint trees (`backend/` vs `frontend/`) and both build against the spec's
+**API Contract**, so there is no conflict — the frontend mocks the API until the backend
+endpoint lands.
+
+Prompt for each developer:
 ```
-Implement the task.
+Implement your part of the task.
 Task directory: .agent/<task-id>/
-Read task.md and spec.md before starting.
+Read task.md and spec.md before starting. Build strictly against the API Contract.
+Backend: model → schema → service → route → tests. Frontend: service → composable → component → page → tests.
+Run your own tests + lint before finishing. Commit to feature/<task-id> with a descriptive message.
 ```
 
-**If frontend affected (and not --backend-only):**
-Invoke `frontend-dev`:
-```
-Implement the task.
-Task directory: .agent/<task-id>/
-Read task.md and spec.md before starting.
-```
+**If only one side is affected, or `--serial`/`--backend-only`/`--frontend-only`:**
+run the relevant developer(s); for `--serial` run backend first, then frontend.
 
 ---
 
-## Step 5: Code Review Loop (max 3 iterations)
+## Step 5: Code Review Loop — PARALLEL (max 3 iterations)
 
-### Each iteration:
+### Each iteration
 
-1. Invoke `code-reviewer`:
+1. **Determine scope** from what changed:
+   - Backend + frontend changed → launch **two** `code-reviewer` agents **in one message**
+     (one scoped to `backend/`, one to `frontend/`), writing `review/findings-backend.md`
+     and `review/findings-frontend.md` respectively. For security-sensitive work (auth,
+     payments, orders) add `security-reviewer` to the same parallel batch.
+   - Single side → one `code-reviewer`, writing `review/findings.md`.
+
+   Reviewer prompt:
    ```
-   Review the code changes.
+   Review the code changes (scope: <backend|frontend|all>).
    Task directory: .agent/<task-id>/
-   Read spec.md. Write results to review/findings.md.
+   Read spec.md. Check against Decisions, API Contract, and Acceptance Criteria.
+   Write results to review/findings<-scope>.md. Do NOT edit source.
    ```
 
-2. Read `.agent/<task-id>/review/findings.md`
+2. **Merge** parallel reports into `review/findings.md`:
+   - Overall `Status` = `FIXES_NEEDED` if any sub-report needs fixes, else `APPROVED`.
+   - Combine findings, renumber so IDs are unique across scopes, preserve Human Decisions.
 
-3. **If `APPROVED`** → go to Step 6
+3. **If `APPROVED`** → go to Step 6.
 
 4. **If `FIXES_NEEDED`:**
-   - Show user: findings summary + any `[H-xxx]` Human Decision items
-   - For H-items: wait for user decision, update spec.md with decision
-   - Invoke developer(s) to fix:
+   - Show the user: findings summary + any `[H-xxx]` Human Decision items.
+   - For H-items: wait for the user's decision, update spec.md with it.
+   - Invoke the affected developer(s) — **in parallel** if both sides have open findings:
      ```
-     Fix findings from review/findings.md.
+     Fix OPEN findings from review/findings.md for your scope.
      Task directory: .agent/<task-id>/
-     Fix all OPEN items and mark them FIXED with Developer note.
+     Mark each fixed item FIXED with a Developer note. Re-run your tests.
      ```
-   - Repeat from iteration start
+   - Repeat from iteration start.
 
-5. **After iteration 3, still FIXES_NEEDED:** Show user remaining open findings. Ask how to proceed. Do not continue automatically.
+5. **After iteration 3, still FIXES_NEEDED:** show remaining open findings, ask the user
+   how to proceed. Do not continue automatically.
 
 ---
 
@@ -150,24 +159,20 @@ Read task.md and spec.md before starting.
    ```
    Run tests and verify acceptance criteria.
    Task directory: .agent/<task-id>/
-   Read spec.md. Write results to review/test-findings.md.
+   Read spec.md. Run backend + frontend tests (in parallel where possible) and E2E if UI.
+   Verify each Acceptance Criterion and Scenario. Write results to review/test-findings.md.
    ```
 
-2. Read `.agent/<task-id>/review/test-findings.md`
+2. Read `.agent/<task-id>/review/test-findings.md`.
 
-3. **If `TESTS_PASSED`** → go to Step 7
+3. **If `TESTS_PASSED`** → go to Step 7.
 
 4. **If `TESTS_FAILED`:**
-   - Show user test failures summary
-   - Invoke developer(s) to fix:
-     ```
-     Fix test failures from review/test-findings.md.
-     Task directory: .agent/<task-id>/
-     Fix all OPEN items.
-     ```
-   - Return to **Step 5** (code review) — code changed so it must be re-reviewed
+   - Show the user the failures summary.
+   - Invoke the affected developer(s) to fix OPEN items.
+   - Return to **Step 5** (code changed → must be re-reviewed).
 
-5. **After 2 QA iterations still TESTS_FAILED:** Show full test-findings.md and ask user how to proceed.
+5. **After 2 QA iterations still TESTS_FAILED:** show full test-findings.md, ask the user.
 
 ---
 
@@ -187,6 +192,9 @@ Read task.md and spec.md before starting.
      --body "$(cat <<'EOF'
    ## Summary
    <what was done>
+
+   ## Spec
+   <link/path: .agent/<task-id>/spec.md — chosen approach + API contract>
 
    ## Changes
    <changed files/components>
@@ -213,9 +221,13 @@ Read task.md and spec.md before starting.
 
 ## Rules
 
-- **NEVER push directly to main** — always via MR
-- `.agent/` is in `.gitignore` — files stay local
-- Developer never marks findings `VERIFIED` — only reviewer does
-- Reviewer never edits source code — only writes findings.md
-- QA never edits source code — only writes test-findings.md
-- Max 3 code-review + 2 QA iterations, then escalate to user
+- **NEVER push directly to main** — always via MR.
+- **Spec first:** no developer runs before `spec.md` is `READY` (except `--quick`).
+- The architect writes the spec; developers/reviewers/QA never rewrite it (they may append
+  Human-Decision outcomes the orchestrator records).
+- **Parallel by default:** batch independent agents into a single message (BE‖FE dev,
+  BE‖FE‖security review). Only serialise when streams share files or `--serial` is set.
+- `.agent/` is in `.gitignore` — files stay local.
+- Developer marks findings `FIXED`; only the reviewer marks `VERIFIED`.
+- Reviewer/QA never edit source code — they only write findings.
+- Max 3 code-review + 2 QA iterations, then escalate to the user.
