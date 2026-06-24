@@ -1,3 +1,33 @@
+### 2026-06-24 23:25 | orchestrator | fix-cart-badge-position — PR открыт, ожидает merge
+  Роль: orchestrator / architect / frontend-dev / code-reviewer.
+  Запрос пользователя: исправить позиционирование бейджа корзины/уведомлений в десктопной шапке и мобильной нижней навигации.
+  Выполнено:
+  - Создан coordination plane `.agent/runs/fix-cart-badge-position/` и worktree `.worktrees/fix-cart-badge-position/` (ветка `feature/fix-cart-badge-position`).
+  - Architect: написана и согласована спецификация `spec.md`.
+  - Frontend-dev: фикс `Header.vue` (`position: relative` для `.header__icon`), фикс `BottomNav.vue` (`top/right: -4px` для бейджа), обновлены `Header.spec.js` и `BottomNav.spec.js`.
+  - Code review: 1 итерация, статус APPROVED.
+  - QA (light): frontend unit tests 190/190 ✅, lint чисто ✅, build успешно ✅.
+  - Открыт PR #24: https://github.com/AutonomaCo/promelectron/pull/24.
+  - GitHub Issue не создан по explicit user request ("нет фикси так").
+  Результат:
+  - Фича-ветка `feature/fix-cart-badge-position` запушена, PR открыт.
+  - Оценка токенов: 1260 / 180000.
+  Блокер: Нет.
+
+### 2026-06-24 23:20 | frontend-dev | fix-cart-badge-position — исправлено позиционирование бейджей корзины в шапке и нижней навигации
+  Роль: frontend-dev.
+  Запрос: исправить позиционирование бейджа уведомлений корзины в десктопной шапке и мобильной нижней навигации.
+  Выполнено:
+  - `frontend/src/components/Header.vue`: добавлено `position: relative;` в базовый класс `.header__icon` для создания контекста позиционирования всех бейджей иконок шапки.
+  - `frontend/src/components/BottomNav.vue`: смещение бейджа `.bottom-nav__badge` изменено с `top: -2px; right: -2px;` на `top: -4px; right: -4px;`.
+  - `frontend/src/__tests__/Header.spec.js`: добавлены тесты проверки `position: relative` в `.header__icon` и расположения бейджей корзины/избранного внутри `.header__icon`.
+  - `frontend/src/__tests__/BottomNav.spec.js`: обновлены ожидаемые значения смещения бейджа на `-4px`.
+  Результат:
+  - `cd frontend && npm test -- --run` — 190/190 ✅
+  - `cd frontend && npm run lint` — чисто ✅
+  - `cd frontend && npm run build` — успешно ✅
+  Блокер: Нет.
+
 ### 2026-06-24 21:30 | orchestrator | user-cancel-order-admin-ship-confirm — реализована отмена заказа и кнопка «Подтвердить отправку» в админке
   Роль: orchestrator / backend-dev / frontend-dev / code-reviewer / security-reviewer.
   Запрос пользователя: реализовать отмену заказа пользователем до отправки + кнопку «Подтвердить отправку» в админке (issue #6).

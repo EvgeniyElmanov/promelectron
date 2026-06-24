@@ -4,14 +4,16 @@ import { createRouter, createWebHistory } from 'vue-router';
 import { ref, computed } from 'vue';
 import { readFileSync } from 'node:fs';
 import Header from '@/components/Header.vue';
+import api from '@/services/api';
 
 const headerSource = readFileSync('./src/components/Header.vue', 'utf-8');
 
 const mockCartCount = ref(0);
+const mockIsAuthenticated = ref(false);
 
 vi.mock('@/composables/useAuth', () => ({
   useAuth: () => ({
-    isAuthenticated: ref(false),
+    isAuthenticated: computed(() => mockIsAuthenticated.value),
     isSupplier: ref(false),
   }),
 }));
@@ -43,6 +45,8 @@ const router = createRouter({
 describe('Header.vue', () => {
   beforeEach(async () => {
     mockCartCount.value = 0;
+    mockIsAuthenticated.value = false;
+    vi.mocked(api.get).mockReset();
     await router.push('/');
     await router.isReady();
   });
@@ -83,6 +87,28 @@ describe('Header.vue', () => {
     const toast = wrapper.find('.header__toast');
     expect(toast.exists()).toBe(true);
     expect(toast.element.closest('.header__actions')).toBeNull();
+    wrapper.unmount();
+  });
+
+  it('базовый класс .header__icon задаёт контекст позиционирования для бейджей', () => {
+    expect(headerSource).toContain('.header__icon {');
+    expect(headerSource).toContain('position: relative;');
+  });
+
+  it('бейджи корзины и избранного находятся внутри .header__icon', async () => {
+    mockCartCount.value = 2;
+    mockIsAuthenticated.value = true;
+    vi.mocked(api.get).mockImplementation((url) => {
+      if (url === '/favorites/') return Promise.resolve({ data: [1, 2, 3, 4, 5] });
+      return Promise.resolve({ data: [] });
+    });
+    const wrapper = await mountHeader();
+    const cartBadge = wrapper.find('[data-testid="cart-link"] .header__notif-badge');
+    const favBadge = wrapper.find('.header__action-item[href="/favorites"] .header__notif-badge');
+    expect(cartBadge.exists()).toBe(true);
+    expect(favBadge.exists()).toBe(true);
+    expect(cartBadge.element.closest('.header__icon')).not.toBeNull();
+    expect(favBadge.element.closest('.header__icon')).not.toBeNull();
     wrapper.unmount();
   });
 });

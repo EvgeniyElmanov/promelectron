@@ -116,8 +116,8 @@ const isActive = (to) => {
 
 .bottom-nav__badge {
   position: absolute;
-  top: -2px;
-  right: -2px;
+  top: -4px;
+  right: -4px;
   min-width: 16px;
   height: 16px;
   padding: 0 4px;

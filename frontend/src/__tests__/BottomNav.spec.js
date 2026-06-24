@@ -76,8 +76,8 @@ describe('BottomNav.vue', () => {
     expect(bottomNavSource).toContain('.bottom-nav__icon {');
     expect(bottomNavSource).toContain('position: relative;');
     expect(bottomNavSource).toContain('.bottom-nav__badge {');
-    expect(bottomNavSource).toContain('top: -2px;');
-    expect(bottomNavSource).toContain('right: -2px;');
+    expect(bottomNavSource).toContain('top: -4px;');
+    expect(bottomNavSource).toContain('right: -4px;');
     wrapper.unmount();
   });
 });
