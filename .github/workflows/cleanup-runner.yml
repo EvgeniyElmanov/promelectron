@@ -7,7 +7,7 @@ on:
 
 jobs:
   cleanup:
-    runs-on: dadeko-vm
+    runs-on: [self-hosted, Linux, X64]
     steps:
       - name: Disk usage before cleanup
         run: df -h
