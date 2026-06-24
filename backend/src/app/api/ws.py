@@ -2,6 +2,7 @@ from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 from jose import JWTError, jwt
 
 from src.app.core.config import ALGORITHM, SECRET_KEY
+from src.app.services.token_denylist import is_revoked
 
 router = APIRouter(tags=["websocket"])
 
@@ -30,32 +31,44 @@ async def notifications_websocket(
     """
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email: str = payload.get("sub")
-        if not email:
+        # F-10: sub is now the stable numeric user id (str).
+        sub: str = payload.get("sub")
+        if not sub:
+            await websocket.close(code=4001)
+            return
+        try:
+            user_id = int(sub)
+        except (ValueError, TypeError):
+            await websocket.close(code=4001)
+            return
+        # F-07 (review fix): check jti denylist — revoked tokens must not open a socket.
+        jti: str = payload.get("jti")
+        if await is_revoked(jti):
             await websocket.close(code=4001)
             return
     except JWTError:
         await websocket.close(code=4001)
         return
 
-    from src.app.db.database import async_session_maker
-    from src.app.models.user import User
     from sqlalchemy import select
 
+    from src.app.db.database import async_session_maker
+    from src.app.models.user import User
+
     async with async_session_maker() as db:
-        result = await db.execute(select(User).where(User.email == email))
+        result = await db.execute(select(User).where(User.id == user_id))
         user = result.scalars().first()
         if not user:
             await websocket.close(code=4001)
             return
 
-        user_id = user.id
+        ws_user_id = user.id
 
     await websocket.accept()
 
-    if user_id not in connected_clients:
-        connected_clients[user_id] = []
-    connected_clients[user_id].append(websocket)
+    if ws_user_id not in connected_clients:
+        connected_clients[ws_user_id] = []
+    connected_clients[ws_user_id].append(websocket)
 
     try:
         while True:
@@ -66,8 +79,8 @@ async def notifications_websocket(
     except WebSocketDisconnect:
         pass
     finally:
-        if user_id in connected_clients:
-            if websocket in connected_clients[user_id]:
-                connected_clients[user_id].remove(websocket)
-            if not connected_clients[user_id]:
-                del connected_clients[user_id]
+        if ws_user_id in connected_clients:
+            if websocket in connected_clients[ws_user_id]:
+                connected_clients[ws_user_id].remove(websocket)
+            if not connected_clients[ws_user_id]:
+                del connected_clients[ws_user_id]

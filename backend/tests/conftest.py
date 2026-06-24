@@ -162,18 +162,23 @@ async def client(test_session):
 
 
 @pytest.fixture
-def user_token():
-    return create_access_token(data={"sub": "testuser@example.com"})
+async def user_token(test_user):
+    # F-10: sub is now the stable numeric user id, not email.
+    return create_access_token(data={"sub": str(test_user.id), "role": test_user.role.value})
 
 
 @pytest.fixture
-def admin_token():
-    return create_access_token(data={"sub": "admin@example.com"})
+async def admin_token(test_admin):
+    # F-10: sub is now the stable numeric user id, not email.
+    return create_access_token(data={"sub": str(test_admin.id), "role": test_admin.role.value})
 
 
 @pytest.fixture
-def supplier_token():
-    return create_access_token(data={"sub": "supplier@example.com"})
+async def supplier_token(test_supplier_user_only):
+    # F-10: sub is now the stable numeric user id, not email.
+    return create_access_token(
+        data={"sub": str(test_supplier_user_only.id), "role": test_supplier_user_only.role.value}
+    )
 
 
 @pytest.fixture

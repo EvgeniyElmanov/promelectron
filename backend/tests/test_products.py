@@ -287,7 +287,7 @@ class TestProductsAPI:
         """Создание товара поставщиком — успешно."""
         from src.app.utils.auth import create_access_token
 
-        token = create_access_token(data={"sub": test_supplier.email})
+        token = create_access_token(data={"sub": str(test_supplier.id), "role": test_supplier.role.value})
         response = await client.post(
             "/api/v1/products/",
             json={
@@ -309,7 +309,7 @@ class TestProductsAPI:
         """Создание товара поставщиком без записи в Supplier — 403."""
         from src.app.utils.auth import create_access_token
 
-        token = create_access_token(data={"sub": test_supplier_user_only.email})
+        token = create_access_token(data={"sub": str(test_supplier_user_only.id), "role": test_supplier_user_only.role.value})
         response = await client.post(
             "/api/v1/products/",
             json={
@@ -328,7 +328,7 @@ class TestProductsAPI:
         """Загрузка изображения поставщиком — успешно."""
         from src.app.utils.auth import create_access_token
 
-        token = create_access_token(data={"sub": test_supplier.email})
+        token = create_access_token(data={"sub": str(test_supplier.id), "role": test_supplier.role.value})
         file_data = BytesIO(b"fake-image-data")
         response = await client.post(
             f"/api/v1/products/{test_product.id}/images",
@@ -362,7 +362,7 @@ class TestProductsAPI:
         """Загрузка не-изображения — 400."""
         from src.app.utils.auth import create_access_token
 
-        token = create_access_token(data={"sub": test_supplier.email})
+        token = create_access_token(data={"sub": str(test_supplier.id), "role": test_supplier.role.value})
         file_data = BytesIO(b"not-an-image")
         response = await client.post(
             f"/api/v1/products/{test_product.id}/images",
@@ -383,7 +383,7 @@ class TestProductsAPI:
         """Загрузка всех поддерживаемых форматов изображений."""
         from src.app.utils.auth import create_access_token
 
-        token = create_access_token(data={"sub": test_supplier.email})
+        token = create_access_token(data={"sub": str(test_supplier.id), "role": test_supplier.role.value})
         file_data = BytesIO(b"fake-image-data")
         response = await client.post(
             f"/api/v1/products/{test_product.id}/images",

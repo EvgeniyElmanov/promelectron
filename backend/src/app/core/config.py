@@ -1,5 +1,12 @@
+import ipaddress
 import os
 from dataclasses import dataclass
+from urllib.parse import urlparse
+
+# Dev-only placeholder — NEVER use in production.
+# In production the real value comes from the SECRET_KEY env var
+# (sops-encrypted in infra/helm/stage/*/secrets.yaml, or GitHub Secret OVR_SECRET_KEY).
+_DEV_SECRET_PLACEHOLDER = "dev-only-insecure-change-me"
 
 
 @dataclass(frozen=True)
@@ -56,8 +63,53 @@ def _parse_csv_env(name: str, default: str) -> frozenset[str]:
     return frozenset(item.strip() for item in value.split(",") if item.strip())
 
 
+def _load_secret_key() -> str:
+    """Return SECRET_KEY from env. In production, fail fast if absent or placeholder."""
+    key = os.getenv("SECRET_KEY", _DEV_SECRET_PLACEHOLDER)
+    if os.getenv("ENVIRONMENT") == "production":
+        if not key or key == _DEV_SECRET_PLACEHOLDER:
+            raise RuntimeError(
+                "SECRET_KEY must be set to a strong random value in production. "
+                "Set the SECRET_KEY environment variable (never use the dev placeholder)."
+            )
+    return key
+
+
+def _validate_frontend_url(url: str) -> str:
+    """Validate frontend_url in production (F-09).
+
+    Fails fast when the URL is insecure (non-https) or points at a loopback,
+    private, link-local, or unspecified address — mirroring the fail-fast
+    pattern of ``_load_secret_key``.  Dev/test are unaffected.
+    """
+    if os.getenv("ENVIRONMENT") == "production":
+        parsed = urlparse(url)
+        if parsed.scheme != "https":
+            raise RuntimeError(
+                f"FRONTEND_URL must use https:// in production. Got: {url!r}"
+            )
+        host = parsed.hostname or ""
+        # Named loopback aliases
+        if host in ("localhost",):
+            raise RuntimeError(
+                f"FRONTEND_URL must not point at localhost in production. Got: {url!r}"
+            )
+        # IP literal check — covers 127.x.x.x, ::1, 10.x, 192.168.x, 169.254.x, etc.
+        try:
+            ip = ipaddress.ip_address(host)
+            if ip.is_loopback or ip.is_private or ip.is_link_local or ip.is_unspecified:
+                raise RuntimeError(
+                    f"FRONTEND_URL must not point at a loopback/private/link-local IP in "
+                    f"production. Got: {url!r}"
+                )
+        except ValueError:
+            # Not an IP literal — a real domain name, which is fine.
+            pass
+    return url
+
+
 settings = Settings(
-    secret_key=os.getenv("SECRET_KEY", "your-secret-key-here"),
+    secret_key=_load_secret_key(),
     algorithm=os.getenv("ALGORITHM", "HS256"),
     access_token_expire_minutes=int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440")),
     database_url=os.getenv(
@@ -67,7 +119,7 @@ settings = Settings(
     google_client_secret=os.getenv("GOOGLE_CLIENT_SECRET", ""),
     yandex_client_id=os.getenv("YANDEX_CLIENT_ID", ""),
     yandex_client_secret=os.getenv("YANDEX_CLIENT_SECRET", ""),
-    frontend_url=os.getenv("FRONTEND_URL", "http://localhost:5173"),
+    frontend_url=_validate_frontend_url(os.getenv("FRONTEND_URL", "http://localhost:5173")),
     smtp_host=os.getenv("SMTP_HOST", "smtp.gmail.com"),
     smtp_port=int(os.getenv("SMTP_PORT", "587")),
     smtp_user=os.getenv("SMTP_USER", ""),
