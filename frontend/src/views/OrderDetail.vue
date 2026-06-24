@@ -196,7 +196,6 @@ const statusSteps = [
   { value: 'paid', label: 'Оплачен' },
   { value: 'shipped', label: 'Отправлен' },
   { value: 'delivered', label: 'Доставлен' },
-  { value: 'cancelled', label: 'Отменён' },
 ];
 
 const statusLabels = {
@@ -238,7 +237,6 @@ const cdekStatusClass = computed(() => {
 });
 
 const isStepCompleted = (stepValue) => {
-  if (order.value?.status === 'cancelled') return false;
   const stepOrder = ['pending', 'paid', 'shipped', 'delivered'];
   const currentIdx = stepOrder.indexOf(order.value?.status);
   const stepIdx = stepOrder.indexOf(stepValue);
