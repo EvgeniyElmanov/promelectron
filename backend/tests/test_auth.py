@@ -928,13 +928,22 @@ class TestOAuthHardeningFindings:
         assert data is not None, "State was burned despite token exchange failure"
 
     # -------------------------------------------------------------------
-    # Finding #5 — user deleted without cascade → 400 not 500
+    # Finding #5 — social account references missing user → 400 not AttributeError/500
     # -------------------------------------------------------------------
     @pytest.mark.asyncio
     async def test_callback_when_linked_user_deleted_should_return_400(
         self, client, test_session, monkeypatch
     ):
-        """Finding #5: social account references deleted user → clean 400, not AttributeError."""
+        """Finding #5: guard `if user is None` fires when the User row is absent.
+
+        The guard is defensive — in production the ORM cascade + FK constraint
+        prevent true orphans. We reach the branch by leaving the SocialAccount in
+        the DB and monkeypatching db.execute so the User-by-id query returns empty,
+        simulating the case where the row was removed outside ORM (e.g., a raw SQL
+        DELETE with no cascade).
+        """
+        from unittest.mock import AsyncMock, MagicMock
+        from sqlalchemy.ext.asyncio import AsyncSession
         from src.app.models.social_account import SocialAccount
         from src.app.models.user import RoleEnum, User
 
@@ -947,9 +956,10 @@ class TestOAuthHardeningFindings:
         monkeypatch.setattr("src.app.api.auth.settings", new_settings)
         monkeypatch.setattr("src.app.services.feature_flags.settings", new_settings)
 
-        # Create a user + social_account, then delete the user (orphaned social)
+        # Create user + social_account — do NOT delete via ORM (cascade would also
+        # remove the SocialAccount, causing the callback to take the wrong branch).
         orphan_user = User(
-            email="orphaned@example.com",
+            email="orphaned5@example.com",
             hashed_password=None,
             role=RoleEnum.user,
             is_active=True,
@@ -957,25 +967,48 @@ class TestOAuthHardeningFindings:
         test_session.add(orphan_user)
         await test_session.commit()
         await test_session.refresh(orphan_user)
-
         orphan_id = orphan_user.id
-        social = SocialAccount(
+
+        social_row = SocialAccount(
             user_id=orphan_id,
             provider="google",
-            provider_id="orphaned-provider-id-999",
+            provider_id="orphaned-provider-id-5",
         )
-        test_session.add(social)
+        test_session.add(social_row)
         await test_session.commit()
 
-        # Delete user without cascade
-        await test_session.delete(orphan_user)
-        await test_session.commit()
+        # Patch db.execute on the SESSION INSTANCE (not the class) to intercept
+        # exactly `SELECT user WHERE id = orphan_id` — the query the callback makes
+        # after it finds the SocialAccount row. All other queries pass through.
+        # Detection: the statement targets the "user" table and NOT "social_account".
+        from unittest.mock import MagicMock
+
+        real_execute = test_session.execute
+        user_by_id_intercepted = {"done": False}
+
+        async def patched_execute(statement, *args, **kwargs):
+            if not user_by_id_intercepted["done"]:
+                try:
+                    froms = statement.get_final_froms()
+                    table_names = {f.name for f in froms if hasattr(f, "name")}
+                    if "users" in table_names and "social_accounts" not in table_names:
+                        user_by_id_intercepted["done"] = True
+                        mock_result = MagicMock()
+                        mock_result.scalars.return_value.first.return_value = None
+                        return mock_result
+                except Exception:
+                    pass
+            return await real_execute(statement, *args, **kwargs)
+
+        # Patch on the instance so only this session is affected
+        import types
+        test_session.execute = patched_execute
 
         FakeClient = _make_fake_async_client(
             token_resp_data={"access_token": "fake-token"},
             user_info_data={
-                "id": "orphaned-provider-id-999",
-                "email": "orphaned@example.com",
+                "id": "orphaned-provider-id-5",
+                "email": "orphaned5@example.com",
                 "name": "Orphaned",
                 "verified_email": True,
             },
@@ -986,8 +1019,8 @@ class TestOAuthHardeningFindings:
         response = await client.get(
             f"/api/v1/auth/callback?code=fake-code&state={state}"
         )
-        # Must be 400, not 500
-        assert response.status_code in (400, 404)
+        # Guard fires → 400, not 500 (no AttributeError on user.full_name etc.)
+        assert response.status_code == 400
         assert response.status_code != 500
 
     # -------------------------------------------------------------------
