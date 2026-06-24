@@ -21,12 +21,19 @@ OAUTH_PROVIDERS = {
         "token_url": "https://oauth2.googleapis.com/token",
         "user_info_url": "https://www.googleapis.com/oauth2/v2/userinfo",
         "scope": "openid email profile",
+        # prompt=select_account заставляет Google показывать выбор аккаунта
+        # при каждом входе, даже если в браузере одна активная сессия.
+        "extra_auth_params": {"prompt": "select_account"},
     },
     "yandex": {
         "auth_url": "https://oauth.yandex.ru/authorize",
         "token_url": "https://oauth.yandex.ru/token",
         "user_info_url": "https://login.yandex.ru/info?format=json",
         "scope": "login:email login:info",
+        # force_confirm=yes заставляет Яндекс показывать экран подтверждения
+        # и выбора аккаунта при каждом входе, а не молча переиспользовать
+        # ранее выданное разрешение (issue #4).
+        "extra_auth_params": {"force_confirm": "yes"},
     },
 }
 
@@ -90,6 +97,7 @@ async def oauth_login(provider: str):
         "response_type": "code",
         "scope": config["scope"],
         "state": provider,
+        **config.get("extra_auth_params", {}),
     }
 
     auth_url = f"{config['auth_url']}?{urlencode(auth_params)}"

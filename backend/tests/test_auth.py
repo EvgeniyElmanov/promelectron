@@ -289,6 +289,31 @@ class TestOAuth:
         assert "client_id=test-google-client-id" in data["url"]
         assert "response_type=code" in data["url"]
         assert "state=google" in data["url"]
+        assert "prompt=select_account" in data["url"]
+
+    @pytest.mark.asyncio
+    async def test_yandex_login_url_when_called_should_force_account_select(
+        self, client, monkeypatch
+    ):
+        """Эндпоинт /auth/yandex/login возвращает URL с force_confirm=yes (issue #4)."""
+        new_settings = _make_oauth_settings(
+            {
+                "yandex_client_id": "test-yandex-client-id",
+                "yandex_client_secret": "test-yandex-secret",
+            }
+        )
+        monkeypatch.setattr("src.app.api.auth.settings", new_settings)
+        monkeypatch.setattr("src.app.services.feature_flags.settings", new_settings)
+
+        response = await client.get("/api/v1/auth/yandex/login")
+        assert response.status_code == 200
+        data = response.json()
+        assert "url" in data
+        assert "oauth.yandex.ru" in data["url"]
+        assert "client_id=test-yandex-client-id" in data["url"]
+        assert "response_type=code" in data["url"]
+        assert "state=yandex" in data["url"]
+        assert "force_confirm=yes" in data["url"]
 
     @pytest.mark.asyncio
     async def test_google_callback_creates_user(
