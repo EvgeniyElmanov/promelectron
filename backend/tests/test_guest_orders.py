@@ -29,7 +29,7 @@ class TestGuestOrdersAPI:
         assert data["status"] == "pending"
         assert len(data["items"]) == 1
         assert data["items"][0]["quantity"] == 2
-        assert data["cdek_tariff_code"] == cdek_delivery_payload["tariff_code"]
+        assert data["cdek_order"]["tariff_code"] == cdek_delivery_payload["tariff_code"]
         assert data["save_address"] is False
 
     @pytest.mark.asyncio

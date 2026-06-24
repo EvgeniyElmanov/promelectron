@@ -249,6 +249,15 @@ class CdekClient:
         """GET /v2/orders/{uuid}"""
         return await self._request("GET", f"/v2/orders/{cdek_uuid}")
 
+    async def delete_order(self, cdek_uuid: str) -> dict[str, Any]:
+        """DELETE /v2/orders/{uuid}.
+
+        CDEK allows deleting orders only while they are in CREATED status.
+        The helper returns the parsed response for 200/204 and raises
+        CdekAPIError otherwise.
+        """
+        return await self._request("DELETE", f"/v2/orders/{cdek_uuid}")
+
     async def get_delivery_points(self, params: dict[str, Any] | None = None) -> list[dict[str, Any]]:
         """GET /v2/deliverypoints"""
         result = await self._request("GET", "/v2/deliverypoints", params=params or {})

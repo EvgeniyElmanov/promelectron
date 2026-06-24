@@ -462,7 +462,26 @@
           <h3>Заказ №{{ editingOrder?.id }}</h3>
           <button class="modal__close" @click="closeOrderModal">&times;</button>
         </div>
-        <form class="modal__form" @submit.prevent="handleOrderSubmit">
+        <div class="order-modal__tabs">
+          <button
+            class="order-modal__tab"
+            :class="{ 'order-modal__tab--active': activeOrderModalTab === 'order' }"
+            data-testid="order-modal-tab-order"
+            @click="activeOrderModalTab = 'order'"
+          >
+            Заказ
+          </button>
+          <button
+            v-if="editingOrder?.cdek_order"
+            class="order-modal__tab"
+            :class="{ 'order-modal__tab--active': activeOrderModalTab === 'cdek' }"
+            data-testid="order-modal-tab-cdek"
+            @click="activeOrderModalTab = 'cdek'"
+          >
+            CDEK
+          </button>
+        </div>
+        <form v-show="activeOrderModalTab === 'order'" class="modal__form" @submit.prevent="handleOrderSubmit">
           <div class="field">
             <label class="field__label">Статус</label>
             <select v-model="orderForm.status" class="field__input">
@@ -481,6 +500,61 @@
             {{ submittingOrderStatus ? 'Сохранение...' : 'Сохранить' }}
           </button>
         </form>
+        <div v-show="activeOrderModalTab === 'cdek'" class="order-modal__cdek" data-testid="order-modal-cdek-tab">
+          <div class="info-list">
+            <div class="info-row">
+              <span class="info-label">cdek_uuid</span>
+              <span class="info-value info-value--monospace">{{ editingOrder.cdek_order.cdek_uuid || '—' }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">cdek_number</span>
+              <span class="info-value info-value--monospace">{{ editingOrder.cdek_order.cdek_number || '—' }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">tracking_number</span>
+              <span class="info-value info-value--monospace">{{ editingOrder.cdek_order.tracking_number || '—' }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">cdek_status</span>
+              <span class="info-value">{{ editingOrder.cdek_order.cdek_status || '—' }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">status_date_time</span>
+              <span class="info-value">{{ editingOrder.cdek_order.status_date_time ? formatShortDate(editingOrder.cdek_order.status_date_time) : '—' }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">status_city</span>
+              <span class="info-value">{{ editingOrder.cdek_order.status_city || '—' }}</span>
+            </div>
+          </div>
+          <div v-if="editingOrder.cdek_order.tracking_url" class="order-modal__cdek-track">
+            <a
+              :href="editingOrder.cdek_order.tracking_url"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="order-modal__track-link"
+              data-testid="order-modal-cdek-tracking-link"
+            >
+              Отследить в CDEK
+            </a>
+          </div>
+          <div v-if="cdekStatusHistory.length" class="order-modal__cdek-history" data-testid="order-modal-cdek-history">
+            <h4 class="order-modal__cdek-history-title">История статусов</h4>
+            <div class="order-modal__history-list">
+              <div
+                v-for="entry in cdekStatusHistory"
+                :key="entry.id"
+                class="order-modal__history-item"
+              >
+                <div class="order-modal__history-status">{{ entry.cdek_status_name || entry.cdek_status }}</div>
+                <div class="order-modal__history-meta">
+                  <span v-if="entry.status_date_time">{{ formatShortDate(entry.status_date_time) }}</span>
+                  <span v-if="entry.city">{{ entry.city }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -591,6 +665,16 @@ const showOrderModal = ref(false);
 const editingOrder = ref(null);
 const orderForm = ref({ status: '', tracking_number: '' });
 const submittingOrderStatus = ref(false);
+const activeOrderModalTab = ref('order');
+
+const cdekStatusHistory = computed(() => {
+  const history = editingOrder.value?.cdek_order?.status_history || [];
+  return [...history].sort((a, b) => {
+    const aDate = a.status_date_time ? new Date(a.status_date_time) : 0;
+    const bDate = b.status_date_time ? new Date(b.status_date_time) : 0;
+    return bDate - aDate;
+  });
+});
 
 // KPI computed
 const kpiData = computed(() => [
@@ -894,12 +978,14 @@ const openEditOrderModal = (order) => {
     status: order.status,
     tracking_number: order.tracking_number || '',
   };
+  activeOrderModalTab.value = 'order';
   showOrderModal.value = true;
 };
 
 const closeOrderModal = () => {
   showOrderModal.value = false;
   editingOrder.value = null;
+  activeOrderModalTab.value = 'order';
 };
 
 const handleOrderSubmit = async () => {
@@ -1544,5 +1630,114 @@ onMounted(() => {
 
 .admin__load-more:hover {
   background: #e8f0fe;
+}
+
+.order-modal__tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 8px;
+}
+
+.order-modal__tab {
+  padding: 8px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-white);
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.order-modal__tab--active {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+
+.order-modal__cdek .info-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.order-modal__cdek .info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+}
+
+.order-modal__cdek .info-label {
+  color: var(--color-text-secondary);
+}
+
+.order-modal__cdek .info-value {
+  color: var(--color-text);
+  font-weight: 500;
+  text-align: right;
+  word-break: break-all;
+}
+
+.order-modal__cdek .info-value--monospace {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+}
+
+.order-modal__cdek-track {
+  margin-top: 16px;
+}
+
+.order-modal__track-link {
+  display: inline-block;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.order-modal__cdek-history {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
+}
+
+.order-modal__cdek-history-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 12px;
+}
+
+.order-modal__history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.order-modal__history-item {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--color-bg);
+}
+
+.order-modal__history-status {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text);
+  margin-bottom: 4px;
+}
+
+.order-modal__history-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
 }
 </style>

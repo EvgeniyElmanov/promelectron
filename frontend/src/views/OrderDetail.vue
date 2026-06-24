@@ -102,6 +102,59 @@
         </div>
       </div>
 
+      <!-- CDEK Delivery -->
+      <div v-if="order.cdek_order" class="order-detail__card" data-testid="cdek-order-card">
+        <h2 class="order-detail__section-title">Доставка CDEK</h2>
+        <div class="info-list">
+          <div class="info-row">
+            <span class="info-label">Статус CDEK</span>
+            <span class="info-value">
+              <span class="status-badge" :class="cdekStatusClass">
+                {{ order.cdek_order.cdek_status_name || order.cdek_order.cdek_status }}
+              </span>
+            </span>
+          </div>
+          <div v-if="order.cdek_order.tracking_number" class="info-row">
+            <span class="info-label">Трек-номер</span>
+            <span class="info-value">{{ order.cdek_order.tracking_number }}</span>
+          </div>
+          <div v-if="order.cdek_order.tracking_url" class="info-row">
+            <span class="info-label">Отследить</span>
+            <a
+              :href="order.cdek_order.tracking_url"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="order-cdek-track-link"
+              data-testid="cdek-tracking-link"
+            >
+              Перейти к отслеживанию
+            </a>
+          </div>
+        </div>
+
+        <div v-if="cdekStatusHistory.length" class="cdek-history" data-testid="cdek-status-history">
+          <h3 class="cdek-history__title">История статусов</h3>
+          <div class="timeline">
+            <div
+              v-for="(entry, idx) in cdekStatusHistory"
+              :key="entry.id"
+              class="timeline__step"
+              :class="{ 'timeline__step--current': idx === 0 }"
+            >
+              <div class="timeline__dot">
+                <span class="timeline__dot-inner"></span>
+              </div>
+              <div class="timeline__info">
+                <span class="timeline__label">{{ entry.cdek_status_name || entry.cdek_status }}</span>
+                <span v-if="entry.status_date_time" class="timeline__current">{{ formatDate(entry.status_date_time) }}</span>
+                <span v-if="entry.city" class="timeline__current">{{ entry.city }}</span>
+              </div>
+              <div v-if="idx < cdekStatusHistory.length - 1" class="timeline__line" />
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Items -->
       <div class="order-detail__card">
         <h2 class="order-detail__section-title">Товары ({{ order.items.length }})</h2>
@@ -154,6 +207,32 @@ const statusLabels = {
 
 const statusLabel = computed(() => statusLabels[order.value?.status] || order.value?.status);
 
+const cdekStatusHistory = computed(() => {
+  const history = order.value?.cdek_order?.status_history || [];
+  return [...history].sort((a, b) => {
+    if (!a.status_date_time) return 1;
+    if (!b.status_date_time) return -1;
+    return new Date(b.status_date_time) - new Date(a.status_date_time);
+  });
+});
+
+const cdekStatusClass = computed(() => {
+  const status = order.value?.cdek_order?.cdek_status;
+  if (!status) return 'status-badge--shipped';
+  const statusLower = status.toLowerCase();
+  if (statusLower.includes('cancel') || statusLower.includes('return') || statusLower.includes('not_delivered')) {
+    return 'status-badge--cancelled';
+  }
+  if (statusLower.includes('delivered')) {
+    return 'status-badge--delivered';
+  }
+  if (statusLower.includes('created') || statusLower.includes('accepted_at_shipment')) {
+    return 'status-badge--pending';
+  }
+  // In transit / out for delivery / warehouse statuses
+  return 'status-badge--shipped';
+});
+
 const isStepCompleted = (stepValue) => {
   const stepOrder = ['pending', 'paid', 'shipped', 'delivered'];
   const currentIdx = stepOrder.indexOf(order.value?.status);
@@ -179,7 +258,6 @@ const fetchOrder = async () => {
     const response = await api.get(`/orders/${orderId.value}`);
     order.value = response.data;
   } catch (err) {
-    console.error('Failed to fetch order:', err);
     error.value = err.response?.data?.detail || 'Не удалось загрузить заказ';
     toast(error.value, 'error');
   } finally {
@@ -521,5 +599,29 @@ onMounted(fetchOrder);
 .delivery-days {
   color: var(--color-text-secondary);
   font-size: 13px;
+}
+
+.cdek-history {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
+}
+
+.cdek-history__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 12px;
+}
+
+.order-cdek-track-link {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.order-cdek-track-link:hover {
+  text-decoration: underline;
 }
 </style>

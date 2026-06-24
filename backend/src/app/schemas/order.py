@@ -4,6 +4,8 @@ from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from src.app.schemas.cdek_order import CdekLocation, CdekOrderOut
+
 
 class OrderItemOut(BaseModel):
     id: int
@@ -21,13 +23,6 @@ class AddressDetails(BaseModel):
     street: Optional[str] = None
     house: Optional[str] = None
     apartment: Optional[str] = None
-
-
-class CdekLocation(BaseModel):
-    code: Optional[int] = None
-    city: Optional[str] = None
-    address: Optional[str] = None
-    postal_code: Optional[str] = None
 
 
 class CdekDeliveryIn(BaseModel):
@@ -151,19 +146,7 @@ class OrderOut(BaseModel):
     created_at: datetime
     items: List[OrderItemOut]
     tracking_number: Optional[str] = None
-
-    # CDEK fields
-    cdek_tariff_code: int
-    cdek_delivery_mode: str
-    cdek_delivery_point: Optional[str] = None
-    cdek_to_location: Optional[CdekLocation] = None
-    cdek_from_location: Optional[CdekLocation] = None
-    cdek_price: Decimal
-    cdek_period_min: Optional[int] = None
-    cdek_period_max: Optional[int] = None
-    cdek_uuid: Optional[str] = None
-    cdek_number: Optional[str] = None
-    cdek_status: Optional[str] = None
+    cdek_order: Optional[CdekOrderOut] = None
     save_address: bool = False
 
     model_config = ConfigDict(from_attributes=True)

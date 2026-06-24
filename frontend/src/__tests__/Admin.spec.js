@@ -99,13 +99,40 @@ const defaultMockGet = (url, config, categories = mockCategories) => {
   if (url === '/admin/users') return Promise.resolve({ data: mockUsers });
   if (url === '/categories/') return Promise.resolve({ data: matchCategoriesRequest(url, params, categories) });
   if (url === '/delivery-methods/') return Promise.resolve({ data: [] });
-  if (url === '/admin/orders') return Promise.resolve({ data: [] });
+  if (url === '/admin/orders') return Promise.resolve({ data: mockOrders });
   if (url === '/admin/feature-flags') return Promise.resolve({ data: mockFeatureFlags });
   return Promise.resolve({ data: {} });
 };
 
 const mockFeatureFlags = [
   { name: 'google_oauth', enabled: true, env_default: true, redis_override: null, source: 'env' },
+];
+
+const mockOrders = [
+  {
+    id: 101,
+    user_id: 5,
+    status: 'paid',
+    total_price: 29990,
+    delivery_method: { name: 'CDEK' },
+    tracking_number: 'TRK987654321',
+    created_at: '2026-05-18T10:00:00Z',
+    cdek_order: {
+      id: 1,
+      cdek_uuid: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+      cdek_number: 'CDEK123456',
+      tracking_number: 'TRK987654321',
+      cdek_status: 'ACCEPTED',
+      cdek_status_name: 'Принят',
+      status_date_time: '2026-05-19T10:00:00Z',
+      status_city: 'Москва',
+      tracking_url: 'https://cdek.ru/track?number=TRK987654321',
+      status_history: [
+        { id: 1, cdek_status: 'CREATED', cdek_status_name: 'Создан', status_date_time: '2026-05-18T12:00:00Z', city: null },
+        { id: 2, cdek_status: 'ACCEPTED', cdek_status_name: 'Принят', status_date_time: '2026-05-19T10:00:00Z', city: 'Москва' },
+      ],
+    },
+  },
 ];
 
 const switchSectionTab = async (wrapper, key) => {
@@ -391,5 +418,41 @@ describe('Admin.vue', () => {
 
     expect(mockPatch).toHaveBeenCalledWith('/admin/feature-flags/google_oauth', { enabled: false });
     expect(toastFn).toHaveBeenCalledWith('Флаг "google_oauth" выключен', 'success');
+  });
+
+  it('открывает модал заказа с вкладкой CDEK', async () => {
+    const wrapper = mount(Admin, { global: { plugins: [router] } });
+    await flushPromises();
+
+    await switchSectionTab(wrapper, 'orders');
+
+    expect(wrapper.text()).toContain('TRK987654321');
+
+    const editBtn = wrapper.find('[data-testid="orders-table"] .admin__icon-btn--edit');
+    expect(editBtn.exists()).toBe(true);
+    await editBtn.trigger('click');
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Заказ №101');
+    expect(wrapper.find('[data-testid="order-modal-tab-order"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="order-modal-tab-cdek"]').exists()).toBe(true);
+
+    const cdekTab = wrapper.find('[data-testid="order-modal-tab-cdek"]');
+    await cdekTab.trigger('click');
+    await flushPromises();
+
+    const cdekPanel = wrapper.find('[data-testid="order-modal-cdek-tab"]');
+    expect(cdekPanel.exists()).toBe(true);
+    expect(cdekPanel.text()).toContain('f47ac10b-58cc-4372-a567-0e02b2c3d479');
+    expect(cdekPanel.text()).toContain('CDEK123456');
+    expect(cdekPanel.text()).toContain('TRK987654321');
+    expect(cdekPanel.text()).toContain('ACCEPTED');
+    expect(cdekPanel.text()).toContain('Москва');
+    expect(cdekPanel.text()).toContain('Принят');
+    expect(cdekPanel.text()).toContain('Создан');
+
+    const trackingLink = wrapper.find('[data-testid="order-modal-cdek-tracking-link"]');
+    expect(trackingLink.exists()).toBe(true);
+    expect(trackingLink.attributes('href')).toBe(mockOrders[0].cdek_order.tracking_url);
   });
 });
