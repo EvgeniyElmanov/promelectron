@@ -72,7 +72,6 @@ e2e_tests: "not run locally (requires dev stack + permissions)"
 | **BLK-005** | P1 | Нет реальных SMTP кредов — email в fallback-режиме (welcome email для гостевого чекаута логируется, но не отправляется) | project-manager | 2026-06-15 |
 | **BLK-009** | P1 | CDEK widget-service `calculate` возвращает 502 на test-окружении при передаче адреса без `code`. Блокирует UI-выбор доставки гостем. | backend-dev / devops | 2026-06-23 |
 | **BLK-010** | P1 | YooKassa webhook `payment.succeeded` не приходит на `/api/v1/payments/yookassa/webhook/` в test-окружении — заказ не переходит в `paid` без ручной синхронизации. Нужно настроить webhook URL в личном кабинете YooKassa. | devops / project-manager | 2026-06-23 |
-| **BLK-011** | P1 | Self-hosted GitHub Actions runner `dadeko-vm` заканчивается дисковое пространство (66 MB free) — E2E падают с `ERR_INSUFFICIENT_RESOURCES` / `Page crashed`. Нужно почистить диск (docker system prune, удалить старые образы/артефакты). | devops | 2026-06-24 |
 
 > **Правило:** Блокер >2 дней — эскалация пользователю.
 

@@ -15,10 +15,17 @@
     - Также замечен один flaky/assertion в `checkout.spec.js`: expected "Обработка платежа...", received "Платёж в обработке".
   - API test-окружения работает: `curl https://api.promelectron-test.aidrivencode.ru/health` → `{"status":"ok"}`.
   - Удалён временный debug pod `migrate-debug`.
+  - Создан `.github/workflows/cleanup-runner.yml` для очистки диска runner'а (Docker prune, temp, npm/pip caches, disk analysis). Первый запуск показал, что `sudo` требует пароля на runner'е, а основной диск `/dev/sda1` имеет 24G free; первоначальный warning о 66 MB free, вероятно, относился к tmpfs-разделу, который runner освобождает между job.
+  - Перезапущен CI run `28079884807`:
+    - build ✅
+    - deploy-test ✅
+    - test-e2e / smoke ✅
+    - test-e2e / e2e ✅ (1m17s)
+  - Все CI job'ы на test-окружении прошли успешно.
   Результат:
-  - Проблема с миграцией решена, deploy в test проходит.
-  - E2E упали по причине инфраструктуры (диск runner'а), не по причине кода.
-  Блокер: Нужно почистить дисковое пространство на self-hosted runner `dadeko-vm` для повторного прогона E2E.
+  - Проблема с миграцией решена, deploy и E2E в test проходят.
+  - BLK-011 закрыт.
+  Блокер: Нет.
 
 ### 2026-06-24 05:45 | qa + final-report | cdek-status-sync-and-cancel — QA passed, ready for merge review
   Роль: qa.
