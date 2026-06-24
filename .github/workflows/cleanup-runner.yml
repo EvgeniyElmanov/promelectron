@@ -22,6 +22,24 @@ jobs:
           sudo rm -rf /home/aleksandr/AutonomaCo/actions-runner/_work/_temp/* || true
           sudo rm -rf /home/aleksandr/AutonomaCo/actions-runner/_diag/* || true
           sudo rm -rf /home/aleksandr/AutonomaCo/actions-runner/_work/promelectron/promelectron/frontend/node_modules/.cache || true
+          sudo rm -rf /home/aleksandr/AutonomaCo/actions-runner/_work/promelectron/promelectron/frontend/test-results/* || true
+          sudo rm -rf /home/aleksandr/AutonomaCo/actions-runner/_work/promelectron/promelectron/frontend/playwright-report/* || true
+
+      - name: Clean package manager caches
+        run: |
+          sudo rm -rf /root/.npm/_cacache/* || true
+          sudo rm -rf /home/aleksandr/.npm/_cacache/* || true
+          sudo rm -rf /root/.cache/pip/* || true
+          sudo rm -rf /home/aleksandr/.cache/pip/* || true
+          sudo apt-get clean || true
+          sudo journalctl --vacuum-time=3d || true
+
+      - name: Find largest directories
+        run: |
+          echo "=== Top 20 dirs under /home/aleksandr ==="
+          sudo du -h /home/aleksandr 2>/dev/null | sort -rh | head -20
+          echo "=== Top 10 dirs under /var ==="
+          sudo du -h /var 2>/dev/null | sort -rh | head -10
 
       - name: Disk usage after cleanup
         run: df -h
