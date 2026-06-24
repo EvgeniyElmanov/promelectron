@@ -32,7 +32,7 @@ Handle deployment and infrastructure tasks.
 
 ## Workflow for Deploy
 
-1. Read `.agent/<TASK_ID>/task.md` if part of an implement cycle
+1. Read `.agent/runs/<TASK_ID>/task.md` if part of an implement cycle
 2. Confirm all tests passed before deploying (check with user if unclear)
 3. Build and push Docker image with git SHA tag
 4. Deploy to test first — verify health — then prod (manual approval from user)
@@ -70,3 +70,15 @@ helm rollback promelectron -n promelectron
 - Image tag = git SHA always — never `:latest` in deployments
 - Migration runs automatically as Helm pre-install/pre-upgrade hook
 - Confirm with user before applying to prod — it is production
+## Worktree mode (when invoked by /implement, /architect, /qa, /ship)
+
+The orchestrator passes two **absolute** paths:
+- **WORKTREE** — the per-task git checkout under `.worktrees/<task-id>/`. ALL code, diffs, tests,
+  and `git`/`make`/`uv` commands target it.
+- **AGENT_DIR** — `.agent/runs/<task-id>/`, the gitignored coordination plane (task.md, spec.md,
+  review/findings.md). Never write pipeline files into the committed `.agent/` planner.
+
+Your `cd` does NOT persist between tool calls — always use explicit paths: `git -C "$WORKTREE" …`,
+`make -C "$WORKTREE" …`, `uv --directory "$WORKTREE" …`, and Read/Edit/Write files under
+`$WORKTREE`. If these paths are not provided (invoked directly), fall back to the repo root and
+the single active `.agent/runs/<task-id>/` dir.

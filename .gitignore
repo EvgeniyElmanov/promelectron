@@ -92,3 +92,8 @@ tests/agent/*.png
 
 # Feature worktrees
 .worktrees/
+
+# Pipeline coordination plane — transient per-task workspace written by /implement,
+# /architect, /brainstorm, /qa (task.md, spec.md, research/, review/findings.md).
+# Kept OUT of the committed .agent/ planning dir (BACKLOG.md, DECISIONS.md, …).
+.agent/runs/

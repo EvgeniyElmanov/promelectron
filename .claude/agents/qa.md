@@ -34,7 +34,7 @@ Run tests and verify acceptance criteria. **Do NOT modify source code.**
 
 ## Workflow
 
-1. Read `.agent/<TASK_ID>/spec.md` — Acceptance Criteria and Must-haves
+1. Read `.agent/runs/<TASK_ID>/spec.md` — Acceptance Criteria and Must-haves
 2. Run backend tests (if backend changed):
    ```bash
    cd backend && uv run pytest -x -v 2>&1
@@ -49,7 +49,7 @@ Run tests and verify acceptance criteria. **Do NOT modify source code.**
    API_URL=https://api.promelectron-test.aidrivencode.ru npx playwright test --reporter=list 2>&1
    ```
 5. Check each Acceptance Criterion from spec.md
-6. Write results to `.agent/<TASK_ID>/review/test-findings.md`
+6. Write results to `.agent/runs/<TASK_ID>/review/test-findings.md`
 
 ## Triggering Deployments
 
@@ -106,3 +106,15 @@ gh workflow run e2e.yml -f environment=prod
 - If TESTS_FAILED after 2 iterations — escalate to user with full output
 - Never mock the database in backend tests — use real test DB
 - External HTTP calls in tests must use `respx` mocking
+## Worktree mode (when invoked by /implement, /architect, /qa, /ship)
+
+The orchestrator passes two **absolute** paths:
+- **WORKTREE** — the per-task git checkout under `.worktrees/<task-id>/`. ALL code, diffs, tests,
+  and `git`/`make`/`uv` commands target it.
+- **AGENT_DIR** — `.agent/runs/<task-id>/`, the gitignored coordination plane (task.md, spec.md,
+  review/findings.md). Never write pipeline files into the committed `.agent/` planner.
+
+Your `cd` does NOT persist between tool calls — always use explicit paths: `git -C "$WORKTREE" …`,
+`make -C "$WORKTREE" …`, `uv --directory "$WORKTREE" …`, and Read/Edit/Write files under
+`$WORKTREE`. If these paths are not provided (invoked directly), fall back to the repo root and
+the single active `.agent/runs/<task-id>/` dir.

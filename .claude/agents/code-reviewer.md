@@ -27,10 +27,10 @@ Review code changes against the specification. **Do NOT run tests or modify code
 
 ## Workflow
 
-1. Read `.agent/<TASK_ID>/spec.md` — understand what was supposed to be built
+1. Read `.agent/runs/<TASK_ID>/spec.md` — understand what was supposed to be built
 2. Run `git diff origin/main...HEAD` — full diff of all changes
 3. Analyse every changed file against the checklist below
-4. Write results to `.agent/<TASK_ID>/review/findings.md`
+4. Write results to `.agent/runs/<TASK_ID>/review/findings.md`
 
 ## Review Checklist
 
@@ -110,3 +110,15 @@ Review code changes against the specification. **Do NOT run tests or modify code
 3. Set overall `Status: APPROVED` only when zero `OPEN` items remain
 
 **Rules:** Never edit source code. Never mark items `VERIFIED` without verifying.
+## Worktree mode (when invoked by /implement, /architect, /qa, /ship)
+
+The orchestrator passes two **absolute** paths:
+- **WORKTREE** — the per-task git checkout under `.worktrees/<task-id>/`. ALL code, diffs, tests,
+  and `git`/`make`/`uv` commands target it.
+- **AGENT_DIR** — `.agent/runs/<task-id>/`, the gitignored coordination plane (task.md, spec.md,
+  review/findings.md). Never write pipeline files into the committed `.agent/` planner.
+
+Your `cd` does NOT persist between tool calls — always use explicit paths: `git -C "$WORKTREE" …`,
+`make -C "$WORKTREE" …`, `uv --directory "$WORKTREE" …`, and Read/Edit/Write files under
+`$WORKTREE`. If these paths are not provided (invoked directly), fall back to the repo root and
+the single active `.agent/runs/<task-id>/` dir.

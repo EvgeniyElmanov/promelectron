@@ -37,7 +37,7 @@ and QA all build against.
 
 ### 1. Load context — IN PARALLEL
 Issue all of these reads/searches in a **single batch** (one message, many tool calls):
-- `.agent/<TASK_ID>/task.md` — the task and any user answers appended to it
+- `.agent/runs/<TASK_ID>/task.md` — the task and any user answers appended to it
 - `PROJECT_CONTEXT.md`, `ARCHITECTURE.md` — stack, conventions, feature status
 - Existing code related to the task (models, services, routes, Vue pages/components)
 - Relevant `.claude/rules/*.md` (api, models, db-schemas, integrations, testing)
@@ -61,7 +61,7 @@ The orchestrator (`/implement`) will ask the user and re-invoke you with answers
 to `task.md`. When nothing blocking remains, set `Status: READY`.
 
 ### 4. Write the spec
-Write `.agent/<TASK_ID>/spec.md` using the template below. This is your only deliverable.
+Write `.agent/runs/<TASK_ID>/spec.md` using the template below. This is your only deliverable.
 
 ## Spec Template
 
@@ -149,3 +149,15 @@ Write `.agent/<TASK_ID>/spec.md` using the template below. This is your only del
 - Honour project conventions: money as int kopecks, soft deletes, business logic in
   services (not route handlers), trailing slash on FastAPI routes, ORM not raw SQL.
 - Do not start implementation. Do not edit anything except `spec.md`.
+## Worktree mode (when invoked by /implement, /architect, /qa, /ship)
+
+The orchestrator passes two **absolute** paths:
+- **WORKTREE** — the per-task git checkout under `.worktrees/<task-id>/`. ALL code, diffs, tests,
+  and `git`/`make`/`uv` commands target it.
+- **AGENT_DIR** — `.agent/runs/<task-id>/`, the gitignored coordination plane (task.md, spec.md,
+  review/findings.md). Never write pipeline files into the committed `.agent/` planner.
+
+Your `cd` does NOT persist between tool calls — always use explicit paths: `git -C "$WORKTREE" …`,
+`make -C "$WORKTREE" …`, `uv --directory "$WORKTREE" …`, and Read/Edit/Write files under
+`$WORKTREE`. If these paths are not provided (invoked directly), fall back to the repo root and
+the single active `.agent/runs/<task-id>/` dir.
