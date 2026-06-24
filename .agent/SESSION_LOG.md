@@ -1,3 +1,18 @@
+### 2026-06-24 06:05 | backend-dev | improve-agent-pipeline — agent pipeline refactor
+  Роль: backend-dev / system.
+  Выполнено:
+  - Перевёл transient task-артефакты из `.agent/<task-id>/` в gitignored `.agent/runs/<task-id>/`.
+  - Обновил `scripts/implement-pipeline.py`: `.agent/runs/`, `.worktrees/<task-id>/`, default base `origin/main`.
+  - Переписал `/skill:implement`: worktree создаётся до architect, флаги `--serial`/`--qa`, Step 8 открывает PR.
+  - Обновил ролевые skills (architect, backend-dev, frontend-dev, code-reviewer, qa, e2e-tester, security-reviewer) на `.agent/runs/` + worktree mode.
+  - Добавил standalone workflow skills: `/skill:spec`, `/skill:qa-gate`, `/skill:ship`.
+  - Обновил `.gitignore`, `.kimi-code/AGENTS.md`, `.kimi-code/BUNDLE.md`, `.kimi-code/HOWTO.md`, `.kimi-code/rules/agent-commons.md`.
+  - Проверки: `bash scripts/audit-agents.sh` проходит, `python scripts/implement-pipeline.py setup/...` работает.
+  Результат:
+  - Коммит `115de58` на ветке `feature/improve-agent-pipeline`.
+  - Готов к PR / merge с explicit approval.
+  Блокер: Нет.
+
 ### 2026-06-24 05:45 | qa + final-report | cdek-status-sync-and-cancel — QA passed, ready for merge review
   Роль: qa.
   Выполнено:
