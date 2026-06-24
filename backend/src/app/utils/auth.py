@@ -1,3 +1,4 @@
+import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -22,8 +23,8 @@ def verify_password(plain_password, hashed_password):
 
 
 def hash_password(password: str):
-    truncated_password = password.encode("utf-8")[:72].decode("utf-8", errors="ignore")
-    return pwd_context.hash(truncated_password)
+    # F-13: argon2 has no 72-byte truncation limit — hash the full password.
+    return pwd_context.hash(password)
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
@@ -31,7 +32,9 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     expire = datetime.now(timezone.utc) + (
         expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
-    to_encode.update({"exp": expire})
+    # F-07: include a unique jti so tokens can be individually revoked.
+    jti = secrets.token_urlsafe(16)
+    to_encode.update({"exp": expire, "jti": jti})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
@@ -47,18 +50,27 @@ async def get_current_user(
     )
     try:
         payload = jwt.decode(token.credentials, SECRET_KEY, algorithms=[ALGORITHM])
-        email: str = payload.get("sub")
-        if email is None:
+        # F-10: sub is now the stable numeric user id (str).
+        sub: str = payload.get("sub")
+        if sub is None:
+            raise credentials_exception
+        try:
+            user_id = int(sub)
+        except (ValueError, TypeError):
+            raise credentials_exception
+        # F-07: check jti denylist (tokens logged out are rejected).
+        from src.app.services.token_denylist import is_revoked
+
+        jti: str = payload.get("jti")
+        if await is_revoked(jti):
             raise credentials_exception
     except JWTError:
         raise credentials_exception
-    result = await db.execute(select(User).where(User.email == email))
+    result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalars().first()
     if user is None:
         raise credentials_exception
-
-    await db.refresh(user)
-
+    # F-10: removed db.refresh — select already returns a fresh row.
     return user
 
 
@@ -70,16 +82,27 @@ async def get_optional_user(
         return None
     try:
         payload = jwt.decode(token.credentials, SECRET_KEY, algorithms=[ALGORITHM])
-        email: str = payload.get("sub")
-        if email is None:
+        # F-10: sub is now the stable numeric user id (str).
+        sub: str = payload.get("sub")
+        if sub is None:
+            return None
+        try:
+            user_id = int(sub)
+        except (ValueError, TypeError):
+            return None
+        # F-07: check jti denylist.
+        from src.app.services.token_denylist import is_revoked
+
+        jti: str = payload.get("jti")
+        if await is_revoked(jti):
             return None
     except JWTError:
         return None
-    result = await db.execute(select(User).where(User.email == email))
+    result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalars().first()
     if user is None:
         return None
-    await db.refresh(user)
+    # F-10: removed db.refresh — select already returns a fresh row.
     return user
 
 

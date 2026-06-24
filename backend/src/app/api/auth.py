@@ -1,21 +1,26 @@
 import logging
+from datetime import timezone
 
-from fastapi import APIRouter, HTTPException, Depends, Query
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.security import HTTPAuthorizationCredentials
+from jose import JWTError, jwt
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 import httpx
 from urllib.parse import urlencode
 
+from src.app.core.config import ALGORITHM, SECRET_KEY, settings
 from src.app.db.database import get_db
-from src.app.models.user import User
 from src.app.models.social_account import SocialAccount
+from src.app.models.user import User
 from src.app.schemas.user import PasswordResetConfirm, PasswordResetRequest, UserOut
-from src.app.core.config import settings
 from src.app.services.feature_flags import is_enabled
-from src.app.services.oauth_state import delete_state, peek_state, create_state, generate_pkce_pair
+from src.app.services.oauth_state import create_state, delete_state, generate_pkce_pair, peek_state
+from src.app.services.token_denylist import revoke as revoke_token
 from src.app.services.user_service import UserService, _token_for_user
-from src.app.utils.auth import get_current_user
+from src.app.utils.auth import get_current_user, security
+from src.app.utils.rate_limiter import conditional_limit
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +86,32 @@ async def get_auth_profile(
     return current_user
 
 
+@router.post("/logout")
+async def logout(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+):
+    """Revoke the presented JWT (F-07).
+
+    Idempotent: an invalid or already-revoked token still returns 200 so
+    that clients can always complete a logout UI flow without leaking token
+    validity information.
+    """
+    try:
+        payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
+        jti: str = payload.get("jti")
+        exp = payload.get("exp")
+        if jti and exp is not None:
+            from datetime import datetime
+
+            now = int(datetime.now(timezone.utc).timestamp())
+            ttl = int(exp) - now
+            await revoke_token(jti, ttl)
+    except JWTError:
+        # Decoding failed — still return 200 (idempotent logout).
+        pass
+    return {"message": "Logged out"}
+
+
 @router.get("/providers/")
 async def oauth_providers():
     """Вернуть доступность OAuth-провайдеров для текущего окружения."""
@@ -130,7 +161,9 @@ def _provider_email_verified(provider: str, user_info: dict) -> bool:
 
 
 @router.get("/callback")
+@conditional_limit("30/minute")
 async def oauth_callback(
+    request: Request,
     code: str = Query(...),
     state: str = Query(...),
     db: AsyncSession = Depends(get_db),
@@ -357,7 +390,9 @@ async def oauth_callback(
 
 
 @router.post("/password-reset-request/")
+@conditional_limit("10/minute")
 async def password_reset_request(
+    request: Request,
     data: PasswordResetRequest,
     db: AsyncSession = Depends(get_db),
 ):
@@ -400,7 +435,9 @@ async def password_reset_request(
 
 
 @router.post("/password-reset/")
+@conditional_limit("10/minute")
 async def password_reset(
+    request: Request,
     data: PasswordResetConfirm,
     db: AsyncSession = Depends(get_db),
 ):

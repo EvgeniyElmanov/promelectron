@@ -15,7 +15,8 @@ class AddressDetails(BaseModel):
 
 class UserCreate(BaseModel):
     email: str
-    password: str
+    # F-13: max_length=128 prevents unbounded input (argon2 has no implicit truncation).
+    password: str = Field(..., max_length=128)
     full_name: Optional[str] = None
     role: Optional[str] = "user"
 
@@ -42,8 +43,9 @@ class UserUpdate(BaseModel):
 
 
 class PasswordChange(BaseModel):
-    old_password: str = Field(..., min_length=1)
-    new_password: str = Field(..., min_length=6)
+    # F-13: max_length=128 prevents unbounded input.
+    old_password: str = Field(..., min_length=1, max_length=128)
+    new_password: str = Field(..., min_length=6, max_length=128)
 
 
 class UserAddressCreate(BaseModel):
@@ -85,4 +87,5 @@ class PasswordResetRequest(BaseModel):
 
 class PasswordResetConfirm(BaseModel):
     token: str = Field(..., min_length=1)
-    new_password: str = Field(..., min_length=6)
+    # F-13: max_length=128 prevents unbounded input.
+    new_password: str = Field(..., min_length=6, max_length=128)

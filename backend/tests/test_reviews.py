@@ -81,5 +81,6 @@ class TestReviewsAPI:
 
 
 def create_token(user):
+    # F-10: sub is now the stable numeric user id, not email.
     from src.app.utils.auth import create_access_token
-    return create_access_token(data={"sub": user.email})
+    return create_access_token(data={"sub": str(user.id), "role": user.role.value})

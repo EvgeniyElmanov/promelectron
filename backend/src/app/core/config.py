@@ -1,5 +1,6 @@
 import os
 from dataclasses import dataclass
+from urllib.parse import urlparse
 
 # Dev-only placeholder — NEVER use in production.
 # In production the real value comes from the SECRET_KEY env var
@@ -60,6 +61,26 @@ def _load_secret_key() -> str:
     return key
 
 
+def _validate_frontend_url(url: str) -> str:
+    """Validate frontend_url in production (F-09).
+
+    Fails fast when the URL is insecure (non-https) or points at localhost/loopback,
+    mirroring the fail-fast pattern of ``_load_secret_key``.  Dev/test are unaffected.
+    """
+    if os.getenv("ENVIRONMENT") == "production":
+        parsed = urlparse(url)
+        if parsed.scheme != "https":
+            raise RuntimeError(
+                f"FRONTEND_URL must use https:// in production. Got: {url!r}"
+            )
+        host = parsed.hostname or ""
+        if host in ("localhost", "127.0.0.1"):
+            raise RuntimeError(
+                f"FRONTEND_URL must not point at localhost/127.0.0.1 in production. Got: {url!r}"
+            )
+    return url
+
+
 settings = Settings(
     secret_key=_load_secret_key(),
     algorithm=os.getenv("ALGORITHM", "HS256"),
@@ -71,7 +92,7 @@ settings = Settings(
     google_client_secret=os.getenv("GOOGLE_CLIENT_SECRET", ""),
     yandex_client_id=os.getenv("YANDEX_CLIENT_ID", ""),
     yandex_client_secret=os.getenv("YANDEX_CLIENT_SECRET", ""),
-    frontend_url=os.getenv("FRONTEND_URL", "http://localhost:5173"),
+    frontend_url=_validate_frontend_url(os.getenv("FRONTEND_URL", "http://localhost:5173")),
     smtp_host=os.getenv("SMTP_HOST", "smtp.gmail.com"),
     smtp_port=int(os.getenv("SMTP_PORT", "587")),
     smtp_user=os.getenv("SMTP_USER", ""),

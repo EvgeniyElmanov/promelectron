@@ -831,8 +831,6 @@ class TestOAuthHardeningFindings:
     # -------------------------------------------------------------------
     def test_config_when_production_and_placeholder_key_should_raise(self, monkeypatch):
         """Finding #2: RuntimeError raised at import time when prod uses placeholder."""
-        import os
-        import importlib
 
         monkeypatch.setenv("ENVIRONMENT", "production")
         monkeypatch.delenv("SECRET_KEY", raising=False)
@@ -867,23 +865,31 @@ class TestOAuthHardeningFindings:
     # -------------------------------------------------------------------
     @pytest.mark.asyncio
     async def test_change_password_when_oauth_user_should_return_400(
-        self, client, test_session, user_token
+        self, client, test_session
     ):
         """Finding #3: OAuth user (no hashed_password) calling change-password → 400."""
         from src.app.models.user import RoleEnum, User
+        from src.app.utils.auth import create_access_token
 
+        # Create a dedicated OAuth-only user (no password hash)
         oauth_user = User(
-            email="testuser@example.com",  # same as user_token fixture
+            email="oauthonly_f03@example.com",
             hashed_password=None,
             role=RoleEnum.user,
             is_active=True,
         )
         test_session.add(oauth_user)
         await test_session.commit()
+        await test_session.refresh(oauth_user)
+
+        # Mint a token for this OAuth user (F-10: sub=str(id))
+        oauth_token = create_access_token(
+            data={"sub": str(oauth_user.id), "role": oauth_user.role.value}
+        )
 
         response = await client.patch(
             "/api/v1/me/password",
-            headers={"Authorization": f"Bearer {user_token}"},
+            headers={"Authorization": f"Bearer {oauth_token}"},
             json={"old_password": "anything", "new_password": "newpass123"},
         )
         assert response.status_code == 400
@@ -942,8 +948,7 @@ class TestOAuthHardeningFindings:
         simulating the case where the row was removed outside ORM (e.g., a raw SQL
         DELETE with no cascade).
         """
-        from unittest.mock import AsyncMock, MagicMock
-        from sqlalchemy.ext.asyncio import AsyncSession
+        from unittest.mock import MagicMock
         from src.app.models.social_account import SocialAccount
         from src.app.models.user import RoleEnum, User
 
@@ -981,7 +986,6 @@ class TestOAuthHardeningFindings:
         # exactly `SELECT user WHERE id = orphan_id` — the query the callback makes
         # after it finds the SocialAccount row. All other queries pass through.
         # Detection: the statement targets the "user" table and NOT "social_account".
-        from unittest.mock import MagicMock
 
         real_execute = test_session.execute
         user_by_id_intercepted = {"done": False}
@@ -1001,7 +1005,6 @@ class TestOAuthHardeningFindings:
             return await real_execute(statement, *args, **kwargs)
 
         # Patch on the instance so only this session is affected
-        import types
         test_session.execute = patched_execute
 
         FakeClient = _make_fake_async_client(
@@ -1289,3 +1292,306 @@ class TestOAuthHardeningFindings:
         assert "настройках" not in detail.lower()
         # Should instruct normal login
         assert "войдите" in detail.lower() or "войти" in detail.lower()
+
+
+# ---------------------------------------------------------------------------
+# Tests for deferred hardening batch (F-07, F-08, F-09, F-10, F-13)
+# ---------------------------------------------------------------------------
+
+
+class TestHardeningDeferred:
+    """Tests for F-07 (jti denylist/logout), F-08 (rate limits),
+    F-09 (frontend_url guard), F-10 (sub=id), F-13 (no pw truncation)."""
+
+    # -------------------------------------------------------------------
+    # F-07 — logout revokes token; other tokens unaffected
+    # -------------------------------------------------------------------
+
+    @pytest.mark.asyncio
+    async def test_logout_revokes_token(self, client, test_user):
+        """Login → protected endpoint OK → logout → same token → 401."""
+        # Login to get a real token
+        login_resp = await client.post(
+            "/api/v1/login",
+            json={"email": "testuser@example.com", "password": "password123"},
+        )
+        assert login_resp.status_code == 200
+        token = login_resp.json()["access_token"]
+
+        # Token works before logout
+        me_resp = await client.get(
+            "/api/v1/me",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert me_resp.status_code == 200
+
+        # Logout
+        logout_resp = await client.post(
+            "/api/v1/auth/logout",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert logout_resp.status_code == 200
+        assert logout_resp.json()["message"] == "Logged out"
+
+        # Same token is now rejected
+        me_after = await client.get(
+            "/api/v1/me",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert me_after.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_logout_idempotent_with_garbage_token(self, client):
+        """Logout with an invalid token returns 200 (idempotent)."""
+        resp = await client.post(
+            "/api/v1/auth/logout",
+            headers={"Authorization": "Bearer not.a.valid.jwt"},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["message"] == "Logged out"
+
+    @pytest.mark.asyncio
+    async def test_logout_does_not_revoke_other_tokens(self, client, test_user, test_admin):
+        """Logging out one token does not affect another user's valid token."""
+        # Login as regular user
+        user_resp = await client.post(
+            "/api/v1/login",
+            json={"email": "testuser@example.com", "password": "password123"},
+        )
+        assert user_resp.status_code == 200
+        user_token = user_resp.json()["access_token"]
+
+        # Login as admin (separate token)
+        admin_resp = await client.post(
+            "/api/v1/login",
+            json={"email": "admin@example.com", "password": "admin123"},
+        )
+        assert admin_resp.status_code == 200
+        admin_token_val = admin_resp.json()["access_token"]
+
+        # Logout user
+        await client.post(
+            "/api/v1/auth/logout",
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+
+        # Admin token still works
+        admin_me = await client.get(
+            "/api/v1/me",
+            headers={"Authorization": f"Bearer {admin_token_val}"},
+        )
+        assert admin_me.status_code == 200
+        assert admin_me.json()["email"] == "admin@example.com"
+
+    # -------------------------------------------------------------------
+    # F-08 — rate-limit decorators are no-ops outside production
+    # -------------------------------------------------------------------
+
+    @pytest.mark.asyncio
+    async def test_oauth_callback_reachable_without_429(self, client):
+        """GET /auth/callback is reachable in test env (no 429 from rate limiter)."""
+        # Use invalid state — just assert we don't get 429
+        resp = await client.get("/api/v1/auth/callback?code=x&state=bogus")
+        assert resp.status_code != 429
+        # We expect 400 (invalid state) not a rate-limit error
+        assert resp.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_password_reset_request_reachable_without_429(self, client):
+        """POST /auth/password-reset-request/ is reachable without 429 in test env."""
+        resp = await client.post(
+            "/api/v1/auth/password-reset-request/",
+            json={"email": "nobody@example.com"},
+        )
+        assert resp.status_code != 429
+        assert resp.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_password_reset_reachable_without_429(self, client):
+        """POST /auth/password-reset/ is reachable without 429 in test env."""
+        resp = await client.post(
+            "/api/v1/auth/password-reset/",
+            json={"token": "bogustoken", "new_password": "newpass123"},
+        )
+        assert resp.status_code != 429
+        # Expect 400 (invalid/expired token) not a rate-limit error
+        assert resp.status_code == 400
+
+    def test_conditional_limit_is_noop_outside_production(self, monkeypatch):
+        """conditional_limit returns the function unchanged when ENVIRONMENT != production."""
+
+        monkeypatch.delenv("ENVIRONMENT", raising=False)
+
+        from src.app.utils.rate_limiter import conditional_limit
+
+        def my_func():
+            return "original"
+
+        decorated = conditional_limit("5/minute")(my_func)
+        assert decorated is my_func
+
+    # -------------------------------------------------------------------
+    # F-09 — frontend_url validation in production
+    # -------------------------------------------------------------------
+
+    def test_validate_frontend_url_production_http_localhost_raises(self, monkeypatch):
+        """Production + http://localhost:5173 → RuntimeError."""
+        monkeypatch.setenv("ENVIRONMENT", "production")
+
+        from src.app.core.config import _validate_frontend_url
+        import pytest
+
+        with pytest.raises(RuntimeError, match="https"):
+            _validate_frontend_url("http://localhost:5173")
+
+    def test_validate_frontend_url_production_https_localhost_raises(self, monkeypatch):
+        """Production + https://localhost:5173 → RuntimeError (localhost not allowed)."""
+        monkeypatch.setenv("ENVIRONMENT", "production")
+
+        from src.app.core.config import _validate_frontend_url
+        import pytest
+
+        with pytest.raises(RuntimeError, match="localhost"):
+            _validate_frontend_url("https://localhost:5173")
+
+    def test_validate_frontend_url_production_https_valid_passes(self, monkeypatch):
+        """Production + https://promelectron.ru → ok."""
+        monkeypatch.setenv("ENVIRONMENT", "production")
+
+        from src.app.core.config import _validate_frontend_url
+
+        result = _validate_frontend_url("https://promelectron.ru")
+        assert result == "https://promelectron.ru"
+
+    def test_validate_frontend_url_development_any_url_passes(self, monkeypatch):
+        """Non-production → any URL is accepted."""
+        monkeypatch.setenv("ENVIRONMENT", "development")
+
+        from src.app.core.config import _validate_frontend_url
+
+        result = _validate_frontend_url("http://localhost:5173")
+        assert result == "http://localhost:5173"
+
+    def test_validate_frontend_url_no_env_any_url_passes(self, monkeypatch):
+        """No ENVIRONMENT set → any URL is accepted."""
+        monkeypatch.delenv("ENVIRONMENT", raising=False)
+
+        from src.app.core.config import _validate_frontend_url
+
+        result = _validate_frontend_url("http://127.0.0.1:3000")
+        assert result == "http://127.0.0.1:3000"
+
+    # -------------------------------------------------------------------
+    # F-10 — sub = numeric user id; email change doesn't break existing token
+    # -------------------------------------------------------------------
+
+    @pytest.mark.asyncio
+    async def test_token_sub_is_numeric_id(self, client, test_user):
+        """Freshly minted token has sub = str(user.id), role present."""
+        login_resp = await client.post(
+            "/api/v1/login",
+            json={"email": "testuser@example.com", "password": "password123"},
+        )
+        assert login_resp.status_code == 200
+        token = login_resp.json()["access_token"]
+
+        from src.app.core.config import ALGORITHM, SECRET_KEY
+        from jose import jwt as jose_jwt
+
+        payload = jose_jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        assert payload["sub"] == str(test_user.id)
+        assert "role" in payload
+        assert payload["role"] == "user"
+
+    @pytest.mark.asyncio
+    async def test_protected_endpoint_resolves_correct_user(self, client, test_user):
+        """Protected endpoint returns the right user after F-10 sub=id change."""
+        login_resp = await client.post(
+            "/api/v1/login",
+            json={"email": "testuser@example.com", "password": "password123"},
+        )
+        token = login_resp.json()["access_token"]
+
+        me_resp = await client.get(
+            "/api/v1/me",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert me_resp.status_code == 200
+        data = me_resp.json()
+        assert data["id"] == test_user.id
+        assert data["email"] == "testuser@example.com"
+
+    @pytest.mark.asyncio
+    async def test_email_change_does_not_invalidate_existing_token(
+        self, client, test_user, user_token
+    ):
+        """Changing email doesn't 401 an existing token (sub is id, not email)."""
+        # Confirm token works first
+        me_before = await client.get(
+            "/api/v1/me",
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert me_before.status_code == 200
+
+        # Change email
+        patch_resp = await client.patch(
+            "/api/v1/me",
+            headers={"Authorization": f"Bearer {user_token}"},
+            json={"email": "changed_f10@example.com"},
+        )
+        assert patch_resp.status_code == 200
+
+        # Token still resolves to the same user (sub=id is stable)
+        me_after = await client.get(
+            "/api/v1/me",
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert me_after.status_code == 200
+        assert me_after.json()["email"] == "changed_f10@example.com"
+
+    # -------------------------------------------------------------------
+    # F-13 — no silent password truncation; max_length=128 enforced at schema
+    # -------------------------------------------------------------------
+
+    @pytest.mark.asyncio
+    async def test_long_password_registers_and_logs_in(self, client):
+        """A 100-char password registers and logs in successfully (no truncation)."""
+        long_pw = "A" * 100
+        reg_resp = await client.post(
+            "/api/v1/register",
+            json={"email": "longpw@example.com", "password": long_pw},
+        )
+        assert reg_resp.status_code == 200
+
+        login_resp = await client.post(
+            "/api/v1/login",
+            json={"email": "longpw@example.com", "password": long_pw},
+        )
+        assert login_resp.status_code == 200
+        assert "access_token" in login_resp.json()
+
+    @pytest.mark.asyncio
+    async def test_overlong_password_returns_422(self, client):
+        """A 200-char password → 422 validation error at the schema layer."""
+        overlong_pw = "B" * 200
+        resp = await client.post(
+            "/api/v1/register",
+            json={"email": "overlongpw@example.com", "password": overlong_pw},
+        )
+        assert resp.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_password_at_max_length_is_accepted(self, client):
+        """Exactly 128-char password is accepted (boundary check)."""
+        max_pw = "C" * 128
+        reg_resp = await client.post(
+            "/api/v1/register",
+            json={"email": "maxpw@example.com", "password": max_pw},
+        )
+        assert reg_resp.status_code == 200
+
+        login_resp = await client.post(
+            "/api/v1/login",
+            json={"email": "maxpw@example.com", "password": max_pw},
+        )
+        assert login_resp.status_code == 200

@@ -14,9 +14,10 @@ from src.app.utils.auth import create_access_token, hash_password, verify_passwo
 
 
 def _token_for_user(user: User) -> str:
+    # F-10: sub is the stable numeric user id, not email.
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     return create_access_token(
-        data={"sub": user.email, "role": user.role.value}, expires_delta=access_token_expires
+        data={"sub": str(user.id), "role": user.role.value}, expires_delta=access_token_expires
     )
 
 
