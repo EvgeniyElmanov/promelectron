@@ -1,3 +1,4 @@
+import ipaddress
 import os
 from dataclasses import dataclass
 from urllib.parse import urlparse
@@ -64,8 +65,9 @@ def _load_secret_key() -> str:
 def _validate_frontend_url(url: str) -> str:
     """Validate frontend_url in production (F-09).
 
-    Fails fast when the URL is insecure (non-https) or points at localhost/loopback,
-    mirroring the fail-fast pattern of ``_load_secret_key``.  Dev/test are unaffected.
+    Fails fast when the URL is insecure (non-https) or points at a loopback,
+    private, link-local, or unspecified address — mirroring the fail-fast
+    pattern of ``_load_secret_key``.  Dev/test are unaffected.
     """
     if os.getenv("ENVIRONMENT") == "production":
         parsed = urlparse(url)
@@ -74,10 +76,22 @@ def _validate_frontend_url(url: str) -> str:
                 f"FRONTEND_URL must use https:// in production. Got: {url!r}"
             )
         host = parsed.hostname or ""
-        if host in ("localhost", "127.0.0.1"):
+        # Named loopback aliases
+        if host in ("localhost",):
             raise RuntimeError(
-                f"FRONTEND_URL must not point at localhost/127.0.0.1 in production. Got: {url!r}"
+                f"FRONTEND_URL must not point at localhost in production. Got: {url!r}"
             )
+        # IP literal check — covers 127.x.x.x, ::1, 10.x, 192.168.x, 169.254.x, etc.
+        try:
+            ip = ipaddress.ip_address(host)
+            if ip.is_loopback or ip.is_private or ip.is_link_local or ip.is_unspecified:
+                raise RuntimeError(
+                    f"FRONTEND_URL must not point at a loopback/private/link-local IP in "
+                    f"production. Got: {url!r}"
+                )
+        except ValueError:
+            # Not an IP literal — a real domain name, which is fine.
+            pass
     return url
 
 

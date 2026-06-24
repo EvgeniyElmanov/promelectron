@@ -1595,3 +1595,89 @@ class TestHardeningDeferred:
             json={"email": "maxpw@example.com", "password": max_pw},
         )
         assert login_resp.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# Tests for review-round fixes (ws denylist, fail-open, idempotent logout, IP guard)
+# ---------------------------------------------------------------------------
+
+
+class TestReviewFixes:
+    """Tests covering the 6 findings from the code/security review iteration."""
+
+    # -------------------------------------------------------------------
+    # Fix 1 — ws.py jti denylist gate (unit-level: is_revoked after revoke)
+    # -------------------------------------------------------------------
+
+    @pytest.mark.asyncio
+    async def test_ws_denylist_revoke_then_is_revoked(self):
+        """After revoke(jti, ttl), is_revoked(jti) returns True — ws decode path would close 4001."""
+        import secrets
+
+        from src.app.services.token_denylist import is_revoked, revoke
+
+        jti = secrets.token_urlsafe(16)
+        assert not await is_revoked(jti)
+        await revoke(jti, 300)
+        assert await is_revoked(jti)
+
+    # -------------------------------------------------------------------
+    # Fix 2 — is_revoked fails open when Redis raises
+    # -------------------------------------------------------------------
+
+    @pytest.mark.asyncio
+    async def test_is_revoked_when_redis_raises_should_return_false(self, monkeypatch):
+        """Redis outage → is_revoked returns False (fail-open, no 500)."""
+        from src.app.core.redis_client import RedisClient
+        from src.app.services.token_denylist import is_revoked
+
+        async def boom(key):
+            raise ConnectionError("Redis down")
+
+        monkeypatch.setattr(RedisClient, "get", staticmethod(boom))
+        result = await is_revoked("some-jti-value")
+        assert result is False
+
+    # -------------------------------------------------------------------
+    # Fix 5 — idempotent logout without Authorization header → 200
+    # -------------------------------------------------------------------
+
+    @pytest.mark.asyncio
+    async def test_logout_when_no_authorization_header_should_return_200(self, client):
+        """Logout without an Authorization header returns 200 (truly idempotent)."""
+        resp = await client.post("/api/v1/auth/logout")
+        assert resp.status_code == 200
+        assert resp.json()["message"] == "Logged out"
+
+    # -------------------------------------------------------------------
+    # Fix 6 — _validate_frontend_url rejects private/loopback IP literals
+    # -------------------------------------------------------------------
+
+    def test_validate_frontend_url_production_private_ip_raises(self, monkeypatch):
+        """Production + https://10.0.0.5/ → RuntimeError (private IP)."""
+        monkeypatch.setenv("ENVIRONMENT", "production")
+
+        from src.app.core.config import _validate_frontend_url
+        import pytest
+
+        with pytest.raises(RuntimeError, match="loopback/private"):
+            _validate_frontend_url("https://10.0.0.5/")
+
+    def test_validate_frontend_url_production_ipv6_loopback_raises(self, monkeypatch):
+        """Production + https://[::1]/ → RuntimeError (IPv6 loopback)."""
+        monkeypatch.setenv("ENVIRONMENT", "production")
+
+        from src.app.core.config import _validate_frontend_url
+        import pytest
+
+        with pytest.raises(RuntimeError, match="loopback/private"):
+            _validate_frontend_url("https://[::1]/")
+
+    def test_validate_frontend_url_production_valid_domain_passes(self, monkeypatch):
+        """Production + https://promelectron.ru → ok (real domain, not an IP)."""
+        monkeypatch.setenv("ENVIRONMENT", "production")
+
+        from src.app.core.config import _validate_frontend_url
+
+        result = _validate_frontend_url("https://promelectron.ru")
+        assert result == "https://promelectron.ru"

@@ -2,6 +2,7 @@ from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 from jose import JWTError, jwt
 
 from src.app.core.config import ALGORITHM, SECRET_KEY
+from src.app.services.token_denylist import is_revoked
 
 router = APIRouter(tags=["websocket"])
 
@@ -38,6 +39,11 @@ async def notifications_websocket(
         try:
             user_id = int(sub)
         except (ValueError, TypeError):
+            await websocket.close(code=4001)
+            return
+        # F-07 (review fix): check jti denylist — revoked tokens must not open a socket.
+        jti: str = payload.get("jti")
+        if await is_revoked(jti):
             await websocket.close(code=4001)
             return
     except JWTError:

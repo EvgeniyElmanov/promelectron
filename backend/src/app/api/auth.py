@@ -19,7 +19,7 @@ from src.app.services.feature_flags import is_enabled
 from src.app.services.oauth_state import create_state, delete_state, generate_pkce_pair, peek_state
 from src.app.services.token_denylist import revoke as revoke_token
 from src.app.services.user_service import UserService, _token_for_user
-from src.app.utils.auth import get_current_user, security
+from src.app.utils.auth import get_current_user, optional_security
 from src.app.utils.rate_limiter import conditional_limit
 
 logger = logging.getLogger(__name__)
@@ -88,14 +88,17 @@ async def get_auth_profile(
 
 @router.post("/logout")
 async def logout(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    credentials: HTTPAuthorizationCredentials = Depends(optional_security),
 ):
     """Revoke the presented JWT (F-07).
 
-    Idempotent: an invalid or already-revoked token still returns 200 so
-    that clients can always complete a logout UI flow without leaking token
-    validity information.
+    Idempotent: no Authorization header, an invalid token, or an already-revoked
+    token all return 200 so clients can always complete a logout flow without
+    leaking token validity information.
     """
+    if credentials is None:
+        # No Authorization header — nothing to revoke, idempotent 200.
+        return {"message": "Logged out"}
     try:
         payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
         jti: str = payload.get("jti")
@@ -104,8 +107,15 @@ async def logout(
             from datetime import datetime
 
             now = int(datetime.now(timezone.utc).timestamp())
-            ttl = int(exp) - now
+            # +60s clock-skew slop: ensures the denylist entry outlives the token
+            # even when the server clock is slightly behind the token issuer.
+            ttl = int(exp) - now + 60
             await revoke_token(jti, ttl)
+            logger.info(
+                "token revoked: user_id=%s jti=%s",
+                payload.get("sub"),
+                jti,
+            )
     except JWTError:
         # Decoding failed — still return 200 (idempotent logout).
         pass
