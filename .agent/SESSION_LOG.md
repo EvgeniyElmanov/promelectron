@@ -1,3 +1,25 @@
+### 2026-06-24 06:35 | devops | cdek-status-sync-and-cancel — deploy test fixed, E2E blocked by runner disk space
+  Роль: devops / backend-dev.
+  Запрос пользователя: деплой-тесты упали, сходи проверь.
+  Выполнено:
+  - Последний CI run `28078920021` упал на `Deploy to test` с ошибкой `job promelectron-migrate-163 failed: BackoffLimitExceeded`.
+  - Логи миграции: `Multiple head revisions are present for given argument 'head'`.
+  - Alembic history показала две head-ревизии: `2ad164310a94` (user_addresses/password_reset_tokens) и `9a1b2c3d4e5f` (cdek_orders_and_jobs), обе от `becdb9cce9b1`.
+  - Создана merge-миграция `fbdcfbb48f7d` (`alembic merge 2ad164310a94 9a1b2c3d4e5f`).
+  - Запушен фикс в `main` (`8ba74a2`).
+  - Новый CI run `28079884807`:
+    - build ✅
+    - deploy-test ✅
+    - test-e2e / smoke ✅ (API health, frontend reachable, YooKassa config)
+    - test-e2e / e2e ❌ — упали из-за нехватки диска на runner: `You are running out of disk space. Free space left: 66 MB`. Браузер начал крашиться, страницы не загружались (`ERR_INSUFFICIENT_RESOURCES`, `Page crashed`).
+    - Также замечен один flaky/assertion в `checkout.spec.js`: expected "Обработка платежа...", received "Платёж в обработке".
+  - API test-окружения работает: `curl https://api.promelectron-test.aidrivencode.ru/health` → `{"status":"ok"}`.
+  - Удалён временный debug pod `migrate-debug`.
+  Результат:
+  - Проблема с миграцией решена, deploy в test проходит.
+  - E2E упали по причине инфраструктуры (диск runner'а), не по причине кода.
+  Блокер: Нужно почистить дисковое пространство на self-hosted runner `dadeko-vm` для повторного прогона E2E.
+
 ### 2026-06-24 05:45 | qa + final-report | cdek-status-sync-and-cancel — QA passed, ready for merge review
   Роль: qa.
   Выполнено:
