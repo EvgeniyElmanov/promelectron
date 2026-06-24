@@ -126,6 +126,13 @@ class UserService:
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
 
+        # F-11 guard: OAuth-users have no password — prevent passlib crash on None hash.
+        if not user.hashed_password:
+            raise HTTPException(
+                status_code=400,
+                detail="У вас нет установленного пароля — вы вошли через соцсеть.",
+            )
+
         if not verify_password(password_data.old_password, user.hashed_password):
             raise HTTPException(status_code=400, detail="Incorrect old password")
 

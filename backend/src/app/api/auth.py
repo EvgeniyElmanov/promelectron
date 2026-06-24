@@ -2,7 +2,8 @@ import logging
 
 from fastapi import APIRouter, HTTPException, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 import httpx
 from urllib.parse import urlencode
 
@@ -12,9 +13,9 @@ from src.app.models.social_account import SocialAccount
 from src.app.schemas.user import PasswordResetConfirm, PasswordResetRequest, UserOut
 from src.app.core.config import settings
 from src.app.services.feature_flags import is_enabled
-from src.app.services.oauth_state import consume_state, create_state, generate_pkce_pair
-from src.app.services.user_service import UserService
-from src.app.utils.auth import create_access_token, get_current_user
+from src.app.services.oauth_state import delete_state, peek_state, create_state, generate_pkce_pair
+from src.app.services.user_service import UserService, _token_for_user
+from src.app.utils.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 
@@ -134,9 +135,9 @@ async def oauth_callback(
     state: str = Query(...),
     db: AsyncSession = Depends(get_db),
 ):
-    # Проверяем и «гасим» state (одноразовый). Провайдер и code_verifier
-    # берём из server-side контекста, а не из параметров клиента (F-01, Q-1).
-    state_data = await consume_state(state)
+    # Fix #4: peek without deleting so a transient provider failure doesn't
+    # burn the one-time state. We delete only after a successful token exchange.
+    state_data = await peek_state(state)
     if not state_data:
         raise HTTPException(
             status_code=400,
@@ -164,6 +165,7 @@ async def oauth_callback(
         )
         if token_resp.status_code != 200:
             # F-05: не отдаём ответ провайдера клиенту, только в server-side лог.
+            # State is NOT deleted — caller can retry with the same state.
             logger.warning(
                 "OAuth token exchange failed for %s: %s", provider, token_resp.text
             )
@@ -173,11 +175,27 @@ async def oauth_callback(
             )
         token_data = token_resp.json()
 
+    # Fix #4: token exchange succeeded — now burn the state to prevent replay.
+    await delete_state(state)
+
+    # Fix #6: guard access_token presence before bracket access.
+    access_token = token_data.get("access_token")
+    if not access_token:
+        logger.warning(
+            "OAuth token response for %s missing access_token: %s",
+            provider,
+            list(token_data.keys()),
+        )
+        raise HTTPException(
+            status_code=400,
+            detail="Не удалось завершить авторизацию. Попробуйте снова.",
+        )
+
     # 2. Получение данных пользователя
     async with httpx.AsyncClient() as client:
         user_resp = await client.get(
             config["user_info_url"],
-            headers={"Authorization": f"Bearer {token_data['access_token']}"},
+            headers={"Authorization": f"Bearer {access_token}"},
         )
         if user_resp.status_code != 200:
             logger.warning(
@@ -189,11 +207,27 @@ async def oauth_callback(
             )
         user_info = user_resp.json()
 
+    # Fix #1: guard provider_id — str(None) == "None" causes account collisions.
+    raw_provider_id = user_info.get("id") or user_info.get("sub")
+    if not raw_provider_id:
+        logger.warning(
+            "OAuth provider %s did not return id or sub in user_info keys: %s",
+            provider,
+            list(user_info.keys()),
+        )
+        raise HTTPException(
+            status_code=400,
+            detail="Не удалось получить данные профиля. Попробуйте снова.",
+        )
+    provider_id = str(raw_provider_id)
+
     email = user_info.get("email") or user_info.get("default_email")
-    provider_id = str(user_info.get("id") or user_info.get("sub"))
 
     if not email:
         raise HTTPException(status_code=400, detail="Email not provided by provider")
+
+    # Fix #7: normalise email to lowercase for case-insensitive deduplication.
+    email = email.lower()
 
     full_name = user_info.get("name") or user_info.get("real_name") or user_info.get("display_name")
     avatar_url = user_info.get("picture") or user_info.get("default_avatar_id")
@@ -212,20 +246,30 @@ async def oauth_callback(
     if social:
         user_result = await db.execute(select(User).where(User.id == social.user_id))
         user = user_result.scalars().first()
+
+        # Fix #5: user may be deleted without cascade; guard AttributeError.
+        if user is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Не удалось завершить авторизацию. Попробуйте войти снова.",
+            )
     else:
-        # Нет привязки — ищем пользователя по email.
-        result = await db.execute(select(User).where(User.email == email))
+        # Нет привязки — ищем пользователя по email (Fix #7: case-insensitive).
+        result = await db.execute(
+            select(User).where(func.lower(User.email) == email)
+        )
         user = result.scalars().first()
 
         if user:
             # F-03: автолинковка к существующему аккаунту только при
             # подтверждённом провайдером email — иначе риск захвата аккаунта.
             if not _provider_email_verified(provider, user_info):
+                # Fix #10: corrected instruction — no "link in settings" ghost flow.
                 raise HTTPException(
                     status_code=409,
                     detail=(
-                        "Аккаунт с этим email уже существует. Войдите обычным "
-                        "способом и привяжите вход через соцсеть в настройках профиля."
+                        "Аккаунт с этим email уже существует. "
+                        "Войдите обычным способом с тем же email."
                     ),
                 )
         else:
@@ -241,13 +285,37 @@ async def oauth_callback(
             await db.refresh(user)
 
         # Привязываем соц-аккаунт (токен провайдера не храним — F-04).
-        social = SocialAccount(
-            user_id=user.id,
-            provider=provider,
-            provider_id=provider_id,
-        )
-        db.add(social)
-        await db.commit()
+        # Fix #8: handle race on unique(provider, provider_id) with IntegrityError.
+        try:
+            social = SocialAccount(
+                user_id=user.id,
+                provider=provider,
+                provider_id=provider_id,
+            )
+            db.add(social)
+            await db.commit()
+        except IntegrityError:
+            await db.rollback()
+            # Another request already inserted this social account — re-read it.
+            social_result = await db.execute(
+                select(SocialAccount).where(
+                    SocialAccount.provider == provider,
+                    SocialAccount.provider_id == provider_id,
+                )
+            )
+            social = social_result.scalars().first()
+            if social is None:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Не удалось завершить авторизацию. Попробуйте снова.",
+                )
+            user_result = await db.execute(select(User).where(User.id == social.user_id))
+            user = user_result.scalars().first()
+            if user is None:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Не удалось завершить авторизацию. Попробуйте войти снова.",
+                )
 
     # Обновляем профиль, если поля пустые.
     updated = False
@@ -261,20 +329,13 @@ async def oauth_callback(
         await db.commit()
         await db.refresh(user)
 
-    # 4. Генерация JWT
-    jwt_token = create_access_token(data={"sub": user.email, "role": user.role.value})
+    # Fix #9: reuse shared helper so OAuth and email login return identical shape/expiry.
+    access_token_jwt = _token_for_user(user)
 
     return {
-        "access_token": jwt_token,
+        "access_token": access_token_jwt,
         "token_type": "bearer",
-        "user": {
-            "id": user.id,
-            "email": user.email,
-            "full_name": user.full_name,
-            "avatar_url": user.avatar_url,
-            "role": user.role.value,
-            "created_at": user.created_at.isoformat() if user.created_at else None,
-        },
+        "user": UserOut.model_validate(user),
     }
 
 

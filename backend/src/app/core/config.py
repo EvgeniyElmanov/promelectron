@@ -1,6 +1,11 @@
 import os
 from dataclasses import dataclass
 
+# Dev-only placeholder — NEVER use in production.
+# In production the real value comes from the SECRET_KEY env var
+# (sops-encrypted in infra/helm/stage/*/secrets.yaml, or GitHub Secret OVR_SECRET_KEY).
+_DEV_SECRET_PLACEHOLDER = "dev-only-insecure-change-me"
+
 
 @dataclass(frozen=True)
 class Settings:
@@ -43,13 +48,20 @@ class Settings:
     cdek_test_mode: bool
 
 
+def _load_secret_key() -> str:
+    """Return SECRET_KEY from env. In production, fail fast if absent or placeholder."""
+    key = os.getenv("SECRET_KEY", _DEV_SECRET_PLACEHOLDER)
+    if os.getenv("ENVIRONMENT") == "production":
+        if not key or key == _DEV_SECRET_PLACEHOLDER:
+            raise RuntimeError(
+                "SECRET_KEY must be set to a strong random value in production. "
+                "Set the SECRET_KEY environment variable (never use the dev placeholder)."
+            )
+    return key
+
+
 settings = Settings(
-    # ВНИМАНИЕ: это запасной дефолт для локальной разработки. В проде ОБЯЗАТЕЛЬНО
-    # задавайте свой SECRET_KEY через переменную окружения (и держите его в секрете).
-    secret_key=os.getenv(
-        "SECRET_KEY",
-        "aQi6vSw9EDTWICxGkijaPsO2MA4YR_DeqX92TnAjnzqLP8cBsfi22-ttlCLZGisX",
-    ),
+    secret_key=_load_secret_key(),
     algorithm=os.getenv("ALGORITHM", "HS256"),
     access_token_expire_minutes=int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440")),
     database_url=os.getenv(

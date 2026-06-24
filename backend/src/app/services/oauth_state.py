@@ -38,8 +38,13 @@ async def create_state(provider: str, code_verifier: str) -> str:
     return state
 
 
-async def consume_state(state: str) -> dict | None:
-    """Return the context for ``state`` and invalidate it (single use).
+async def peek_state(state: str) -> dict | None:
+    """Return the context for ``state`` WITHOUT invalidating it.
+
+    Use this before the token exchange so that a transient provider error
+    does not burn the one-time state, leaving the user unable to retry.
+    After a *successful* exchange call :func:`delete_state` to enforce
+    at-most-once semantics.
 
     Returns ``None`` if the state is unknown, expired, or malformed.
     """
@@ -49,12 +54,29 @@ async def consume_state(state: str) -> dict | None:
     raw = await RedisClient.get(key)
     if raw is None:
         return None
-    # One-time use: delete immediately so a replayed code can't be reused.
-    await RedisClient.delete(key)
     try:
         data = json.loads(raw)
     except (ValueError, TypeError):
         return None
     if not isinstance(data, dict) or "provider" not in data:
         return None
+    return data
+
+
+async def delete_state(state: str) -> None:
+    """Invalidate ``state`` after a successful token exchange (at-most-once)."""
+    await RedisClient.delete(f"{_STATE_PREFIX}{state}")
+
+
+async def consume_state(state: str) -> dict | None:
+    """Return the context for ``state`` and invalidate it atomically (single use).
+
+    .. deprecated::
+        Prefer :func:`peek_state` + :func:`delete_state` to preserve the state
+        across transient provider errors. This wrapper is kept for backwards
+        compatibility with existing callers that do not need retry semantics.
+    """
+    data = await peek_state(state)
+    if data is not None:
+        await delete_state(state)
     return data
