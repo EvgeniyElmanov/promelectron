@@ -95,6 +95,26 @@ describe('OrderDetail.vue', () => {
     expect(currentSteps[0].text()).toContain('Отправлен');
   });
 
+  it('не отображает шаг «Отменён» в таймлайне для cancelled заказа', async () => {
+    mockGet.mockResolvedValue({
+      data: { ...mockOrder, status: 'cancelled', cancelled_at: '2026-05-18T11:00:00Z' },
+    });
+
+    await router.push('/orders/42');
+    await router.isReady();
+
+    const wrapper = mount(OrderDetail, { global: { plugins: [router] } });
+    await flushPromises();
+
+    const steps = wrapper.findAll('.timeline__step');
+    const labels = steps.map((s) => s.text());
+    expect(labels).not.toContain('Отменён');
+    expect(labels).toContain('Ожидает оплаты');
+    expect(labels).toContain('Оплачен');
+    expect(labels).toContain('Отправлен');
+    expect(labels).toContain('Доставлен');
+  });
+
   it('отображает ошибку при неудаче загрузки', async () => {
     mockGet.mockRejectedValue({ response: { data: { detail: 'Заказ не найден' } } });
 
