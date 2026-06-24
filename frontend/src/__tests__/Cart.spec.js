@@ -33,6 +33,7 @@ vi.mock('@/composables/useAuth', () => ({
 
 const mockGuestItems = ref([]);
 const mockCartCount = ref(0);
+const mockSyncCartCount = vi.hoisted(() => vi.fn());
 
 vi.mock('@/api/cdek', () => ({
   getSupplierCityCode: vi.fn(() => Promise.resolve(44)),
@@ -47,7 +48,7 @@ vi.mock('@/composables/useCart', () => ({
     getGuestCartItems: () => mockGuestItems.value,
     clearGuestCart: vi.fn(),
     mergeCartOnLogin: vi.fn(),
-    syncCartCount: vi.fn(),
+    syncCartCount: mockSyncCartCount,
   }),
 }));
 
@@ -221,6 +222,24 @@ describe('Cart.vue', () => {
       recipient_first_name: 'Иван',
       recipient_last_name: 'Иванов',
     }));
+  });
+
+  it('вызывает syncCartCount после успешного создания заказа', async () => {
+    mockPost.mockResolvedValue({ data: { id: 42 } });
+
+    const wrapper = mount(Cart, { global: { plugins: [router] } });
+    await flushPromises();
+
+    wrapper.vm.selectedDelivery = { tariff_code: 136, price: 350, delivery_mode: 'PVZ' };
+    wrapper.vm.recipientFirstName = 'Иван';
+    wrapper.vm.recipientLastName = 'Иванов';
+    await flushPromises();
+
+    const btn = wrapper.find('[data-testid="checkout-button"]');
+    await btn.trigger('click');
+    await flushPromises();
+
+    expect(mockSyncCartCount).toHaveBeenCalled();
   });
 
   it('не создаёт заказ без имени получателя', async () => {

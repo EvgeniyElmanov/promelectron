@@ -354,6 +354,7 @@ const createOrder = async () => {
       recipient_last_name: recipientLastName.value.trim(),
     });
     toast('Заказ успешно создан!', 'success');
+    await syncCartCount();
     await router.push(`/checkout/${order.id}`);
   } catch (err) {
     const detail = err.response?.data?.detail;

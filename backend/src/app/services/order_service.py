@@ -14,6 +14,7 @@ from src.app.models.payment import Payment
 from src.app.models.product import Product
 from src.app.models.user import User
 from src.app.schemas.order import AdminOrderUpdate, GuestOrderCreate, OrderCreate, OrderUpdateStatus
+from src.app.services.cart_service import CartService
 from src.app.services.email_service import EmailService
 from src.app.services.notification_service import NotificationService
 from src.app.services.yookassa_service import YooKassaService
@@ -34,6 +35,7 @@ class OrderService:
 
         total_price = Decimal(0)
         order_items: list[OrderItem] = []
+        ordered_cart_item_ids: list[int] = []
         for cart_item in cart.items:
             product_result = await db.execute(
                 select(Product).where(Product.id == cart_item.product_id).with_for_update()
@@ -54,6 +56,7 @@ class OrderService:
             )
             total_price += Decimal(product.price) * cart_item.quantity
             order_items.append(order_item)
+            ordered_cart_item_ids.append(cart_item.id)
 
         delivery = order_data.cdek_delivery
         delivery_price = delivery.price
@@ -88,6 +91,12 @@ class OrderService:
         new_order.cdek_order_id = cdek_order.id
         await db.commit()
         await db.refresh(new_order)
+
+        if ordered_cart_item_ids:
+            await CartService.remove_cart_items_by_ids(
+                cart_item_ids=ordered_cart_item_ids,
+                db=db,
+            )
 
         order_result = await db.execute(
             select(Order).where(Order.id == new_order.id).options(

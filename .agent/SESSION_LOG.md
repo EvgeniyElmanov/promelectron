@@ -1,3 +1,20 @@
+### 2026-06-24 23:45 | orchestrator | clear-cart-after-order — открыт PR #25
+  Роль: orchestrator / architect / backend-dev / frontend-dev / code-reviewer.
+  Запрос пользователя: после оформления заказа из корзины должны исчезнуть только оформленные товары (issue #23).
+  Выполнено:
+  - Создан coordination plane `.agent/runs/clear-cart-after-order/` и worktree `.worktrees/clear-cart-after-order/` (ветка `feature/clear-cart-after-order`).
+  - Architect: написана и согласована спецификация `spec.md` с учётом уточнения пользователя — удалять только оформленные `CartItem` по `cart_item_id`.
+  - Backend-dev: метод `CartService.remove_cart_items_by_ids()`, вызов из `OrderService.create_order()` после `commit`, тесты `test_create_order_removes_only_ordered_items` и `test_create_order_failure_keeps_cart_items`.
+  - Frontend-dev: `await syncCartCount()` в `Cart.vue` после успешного создания заказа, тест в `Cart.spec.js`.
+  - Code review: 2 итерации, finding F001 исправлен, статус APPROVED.
+  - QA: backend 272/272 ✅ (targeted 24/24 ✅), frontend 189/189 ✅ (targeted Cart.spec.js 14/14 ✅), lint чисто ✅.
+  - Открыт PR #25: https://github.com/AutonomaCo/promelectron/pull/25.
+  - GitHub Issue #23 переведён в статус In review.
+  Результат:
+  - Фича-ветка `feature/clear-cart-after-order` запушена, PR открыт, ожидает merge.
+  - Оценка токенов: 3766 / 180000.
+  Блокер: Нет.
+
 ### 2026-06-24 23:25 | orchestrator | fix-cart-badge-position — PR открыт, ожидает merge
   Роль: orchestrator / architect / frontend-dev / code-reviewer.
   Запрос пользователя: исправить позиционирование бейджа корзины/уведомлений в десктопной шапке и мобильной нижней навигации.
@@ -26,6 +43,54 @@
   - `cd frontend && npm test -- --run` — 190/190 ✅
   - `cd frontend && npm run lint` — чисто ✅
   - `cd frontend && npm run build` — успешно ✅
+  Блокер: Нет.
+
+### 2026-06-24 23:19 | backend-dev | clear-cart-after-order — исправлен review finding F001
+  Роль: backend-dev.
+  Запрос пользователя: исправить OPEN finding [F001] из review/findings.md — переименовать тест в соответствии со спецификацией.
+  Выполнено:
+  - В `backend/tests/test_orders.py` переименован метод `test_create_order_removes_ordered_cart_items` → `test_create_order_removes_only_ordered_items` (строка 314).
+  - В `.agent/runs/clear-cart-after-order/review/findings.md` статус F001 изменён на FIXED.
+  Результат:
+  - `make test-backend` — 272/272 ✅.
+  - `ruff check src/` — чисто ✅.
+  Риск/Техдолг:
+  - Нет.
+  Блокер: Нет.
+
+### 2026-06-24 23:09 | backend-dev | clear-cart-after-order — реализован backend
+  Роль: backend-dev.
+  Запрос пользователя: реализовать backend часть задачи clear-cart-after-order — удаление оформленных CartItem после успешного создания авторизованного заказа (issue #23).
+  Выполнено:
+  - В `backend/src/app/services/cart_service.py` добавлен метод `CartService.remove_cart_items_by_ids(cart_item_ids: list[int], db: AsyncSession) -> None`, который удаляет записи `CartItem` по первичному ключу и коммитит изменения.
+  - В `backend/src/app/services/order_service.py` в `OrderService.create_order()` добавлен сбор `ordered_cart_item_ids` для каждого успешно преобразованного `CartItem` в `OrderItem`.
+  - В `OrderService.create_order()` после успешного `await db.commit()` / `await db.refresh(new_order)` добавлен вызов `CartService.remove_cart_items_by_ids(ordered_cart_item_ids, db)`.
+  - Side-effects (email/notification) оставлены best-effort и выполняются после удаления CartItem, как указано в спецификации.
+  - В `backend/tests/test_orders.py` добавлены тесты:
+    - `test_create_order_removes_only_ordered_items`: после создания заказа из корзины с двумя товарами повторный `GET /api/v1/cart/` возвращает пустой `items`.
+    - `test_create_order_failure_keeps_cart_items`: при нехватке stock заказ не создаётся, товар остаётся в корзине.
+  Результат:
+  - `make -C /home/evgeniy/project/my_shop_backend/.worktrees/clear-cart-after-order test-backend` — 272/272 ✅.
+  - `ruff check backend/src/` — чисто ✅.
+  Риск/Техдолг:
+  - Гостевой чекаут не затронут: гостевая корзина хранится в `localStorage` и очищается на фронтенде через `clearGuestCart()`.
+  - Если в будущем появится частичное оформление корзины, удаление по `cart_item_id` останется корректным для успешно созданных `OrderItem`.
+  - При параллельных запросах `create_order` возможна race condition на `CartItem` (нет `SELECT FOR UPDATE` на корзине), но это выходит за рамки текущего багфикса.
+  Блокер: Нет.
+
+### 2026-06-24 23:04 | frontend-dev | clear-cart-after-order — реализован frontend
+  Роль: frontend-dev.
+  Запрос пользователя: вызвать syncCartCount после успешного создания авторизованного заказа и убедиться, что гостевой чекаут очищает корзину (issue #23).
+  Выполнено:
+  - В `frontend/src/views/Cart.vue` в `createOrder` после успешного `api.post('/orders/create/', ...)` добавлен `await syncCartCount();` перед `router.push()`.
+  - Проверено `frontend/src/composables/useCart.js`: `syncCartCount()` корректно обнуляет `cartCount` при пустом ответе корзины.
+  - В `frontend/src/__tests__/Cart.spec.js` добавлен тест `вызывает syncCartCount после успешного создания заказа`.
+  - Проверено `frontend/src/views/GuestCheckout.vue`: `clearGuestCart()` вызывается после успешного создания гостевого заказа, email сохраняется в `localStorage` до очистки корзины.
+  Результат:
+  - `cd frontend && npm run test` — 189/189 ✅.
+  - `cd frontend && npm run lint` — чисто ✅.
+  Риск/Техдолг:
+  - Backend-изменения (удаление CartItem в OrderService) выполняются отдельным backend-dev в этой же ветке.
   Блокер: Нет.
 
 ### 2026-06-24 21:30 | orchestrator | user-cancel-order-admin-ship-confirm — реализована отмена заказа и кнопка «Подтвердить отправку» в админке

@@ -2,6 +2,7 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from sqlalchemy import select
 
 
 class TestOrdersAPI:
@@ -308,3 +309,101 @@ class TestOrdersAPI:
 
         response = await client.patch(f"/api/v1/orders/supplier/{order_id}/ship/", headers={"Authorization": f"Bearer {supplier_token}"})
         assert response.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_create_order_removes_only_ordered_items(
+        self, client, test_user, user_token, test_product, test_category, test_session, test_supplier, cdek_delivery_payload
+    ):
+        """После создания заказа оформленные товары удаляются из корзины."""
+        from src.app.models.product import Product
+        from src.app.models.supplier import Supplier
+
+        result = await test_session.execute(
+            select(Supplier).where(Supplier.user_id == test_supplier.id)
+        )
+        supplier = result.scalars().first()
+
+        product2 = Product(
+            name="Second Product",
+            price=199.99,
+            stock=5,
+            category_id=test_category.id,
+            supplier_id=supplier.id,
+            is_active=True,
+        )
+        test_session.add(product2)
+        await test_session.commit()
+        await test_session.refresh(product2)
+
+        await client.post(
+            "/api/v1/cart/add",
+            json={"product_id": test_product.id, "quantity": 1},
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        await client.post(
+            "/api/v1/cart/add",
+            json={"product_id": product2.id, "quantity": 2},
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+
+        order_resp = await client.post(
+            "/api/v1/orders/create/",
+            json={
+                "cdek_delivery": cdek_delivery_payload,
+                "recipient_first_name": "Тест",
+                "recipient_last_name": "Пользователь",
+            },
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert order_resp.status_code == 200
+        order_data = order_resp.json()
+        assert len(order_data["items"]) == 2
+
+        cart_resp = await client.get(
+            "/api/v1/cart/",
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert cart_resp.status_code == 200
+        cart_data = cart_resp.json()
+        assert cart_data["items"] == []
+
+    @pytest.mark.asyncio
+    async def test_create_order_failure_keeps_cart_items(
+        self, client, test_user, user_token, test_product, test_session, cdek_delivery_payload
+    ):
+        """Если заказ не создан из-за нехватки stock, корзина остаётся нетронутой."""
+        from src.app.models.product import Product
+
+        await client.post(
+            "/api/v1/cart/add",
+            json={"product_id": test_product.id, "quantity": 1},
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+
+        result = await test_session.execute(
+            select(Product).where(Product.id == test_product.id)
+        )
+        product = result.scalars().first()
+        product.stock = 0
+        await test_session.commit()
+
+        order_resp = await client.post(
+            "/api/v1/orders/create/",
+            json={
+                "cdek_delivery": cdek_delivery_payload,
+                "recipient_first_name": "Тест",
+                "recipient_last_name": "Пользователь",
+            },
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert order_resp.status_code == 400
+
+        cart_resp = await client.get(
+            "/api/v1/cart/",
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert cart_resp.status_code == 200
+        cart_data = cart_resp.json()
+        assert len(cart_data["items"]) == 1
+        assert cart_data["items"][0]["product_id"] == test_product.id
+        assert cart_data["items"][0]["quantity"] == 1

@@ -1,5 +1,5 @@
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -112,6 +112,15 @@ class CartService:
         await db.delete(item)
         await db.commit()
         return {"message": "Item removed from cart"}
+
+    @staticmethod
+    async def remove_cart_items_by_ids(cart_item_ids: list[int], db: AsyncSession) -> None:
+        if not cart_item_ids:
+            return
+        await db.execute(
+            delete(CartItem).where(CartItem.id.in_(cart_item_ids))
+        )
+        await db.commit()
 
     @staticmethod
     async def get_cart(current_user: User, db: AsyncSession) -> dict[str, object]:

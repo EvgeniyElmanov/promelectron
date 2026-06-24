@@ -2,13 +2,13 @@
 sprint: "Sprint 1"
 sprint_dates: "2026-06-01 — 2026-06-14"
 last_update: "2026-06-24"
-last_commit: "4590325"
-commit_message: "docs: update SESSION_LOG and PROJECT_CONTEXT to reference v2 branch"
+last_commit: "ff1cced"
+commit_message: "fix(tests): rename test to match spec acceptance criteria (F001)"
 blockers_count: 2
 blockers_p0: 0
 blockers_p1: 2
-backend_tests: "213/213 (not runnable locally on SQLite)"
-frontend_tests: "177/177"
+backend_tests: "272/272"
+frontend_tests: "189/189"
 e2e_tests: "not run locally (requires dev stack + permissions)"
 ---
 
@@ -47,7 +47,7 @@ e2e_tests: "not run locally (requires dev stack + permissions)"
 - [x] **ЮKassa (test)** — создание платежей, webhook, auto-capture, отмена, возврат
 - [x] **CDEK доставка** — расчёт тарифов, выбор ПВЗ/двери, автосоздание заказа после оплаты через job `CDEK_CREATE_ORDER`, вебхуки статусов + polling через job `CDEK_SYNC_ORDER_STATUS`, универсальная таблица `jobs`, `job_worker` в бесконечном цикле, таблица `cdek_status_history`, программная отмена заказа в CDEK
 - [x] **Password reset** — токены с TTL 24ч, инвалидация остальных токенов после использования
-- [x] **Тесты зелёные** — Backend 222/222 ✅, Frontend 177/177 ✅, E2E 3/3 ✅
+- [x] **Тесты зелёные** — Backend 272/272 ✅, Frontend 189/189 ✅, E2E 3/3 ✅
 
 ---
 
@@ -239,6 +239,7 @@ make test-e2e      # Playwright
 ## История изменений (кратко)
 
 | Дата | Что изменилось | Кто |
+| 2026-06-24 | **clear-cart-after-order (PR #25)**: исправлен баг — после оформления авторизованного заказа из корзины удаляются только оформленные `CartItem` по `cart_item_id` (`CartService.remove_cart_items_by_ids()`, вызов из `OrderService.create_order()` после `commit`). На фронтенде `Cart.vue` вызывает `syncCartCount()` после успешного создания заказа. Добавлены backend-тесты `test_create_order_removes_only_ordered_items` и `test_create_order_failure_keeps_cart_items`, frontend-тест в `Cart.spec.js`. Backend 272/272 ✅, frontend 189/189 ✅, lint чисто ✅. Issue #23, PR #25. | orchestrator / backend-dev / frontend-dev |
 | 2026-06-24 | **Backlog automation for `/skill:implement`**: добавлена автоматическая публикация задач в GitHub Issues + GitHub Projects после approve spec. Расширен `scripts/implement-pipeline.py` командами `create-issue`, `set-status`, `sync-backlog`. Обновлён `.kimi-code/skills/implement/SKILL.md` (Step 4.5, статус-транзишены In progress → In review → Done). Обновлены `.kimi-code/AGENTS.md` (hard rules) и `.agent/BACKLOG.md` (колонка Issue + раздел agent intake). Протестировано на issue #20, `bash scripts/audit-agents.sh` проходит без ошибок. | orchestrator |
 | 2026-06-24 | **Agent pipeline refactor (merged)**: transient task-артефакты переехали из `.agent/<task-id>/` в gitignored `.agent/runs/<task-id>/`; `scripts/implement-pipeline.py` теперь использует `.worktrees/<task-id>/` и ветвится от `origin/main`; `/skill:implement` создаёт worktree до architect phase, поддерживает `--serial`/`--qa` и открывает PR через `gh pr create` с постингом `[H-xxx]` comments; ролевые skills переведены на `.agent/runs/` + `AGENT_DIR`/`WORKTREE` absolute paths; добавлены standalone workflow skills `/skill:spec`, `/skill:qa-gate`, `/skill:ship`; обновлены `.kimi-code/AGENTS.md`, `.kimi-code/BUNDLE.md`, `.kimi-code/HOWTO.md`, `.kimi-code/rules/agent-commons.md`. `bash scripts/audit-agents.sh` проходит без ошибок. Ветка `feature/improve-agent-pipeline` смержена в `main`. | backend-dev |
 | 2026-06-24 | **cdek-status-sync-and-cancel (Variant A — merged)**: backend: универсальная таблица `jobs` с job types `CDEK_CREATE_ORDER` / `CDEK_SYNC_ORDER_STATUS`, `job_worker.py` в бесконечном цикле, модели `CdekOrder` + `CdekStatusHistory`, `CdekService.apply_cdek_status` с `SELECT FOR UPDATE`, `CdekService.cancel_cdek_order` helper, миграция `9a1b2c3d4e5f`; Celery убран из CDEK-пути, 1С-sync оставлен на Celery; Helm cronjobs + deployment `job-worker`. Frontend: CDEK-блок в `OrderDetail.vue` и вкладка CDEK в `Admin.vue` со статусом, треком, ссылкой и timeline. Backend-тесты: 222/222 ✅, frontend-тесты: 177/177 ✅, review findings F001–F014 исправлены. Ветка `feature/cdek-status-sync-and-cancel` смержена в `main`. | backend-dev / frontend-dev |
