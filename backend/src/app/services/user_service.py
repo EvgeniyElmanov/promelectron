@@ -67,7 +67,14 @@ class UserService:
     async def login_user(user_data: UserCreate, db: AsyncSession) -> dict:
         result = await db.execute(select(User).where(User.email == user_data.email))
         user = result.scalars().first()
-        if not user or not verify_password(user_data.password, user.hashed_password):
+        # F-11: у OAuth-пользователей нет пароля (hashed_password is None) —
+        # парольный вход для них запрещён. Проверяем явно до verify_password,
+        # т.к. passlib бросает исключение на пустом/None-хеше.
+        if (
+            not user
+            or not user.hashed_password
+            or not verify_password(user_data.password, user.hashed_password)
+        ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Incorrect email or password",

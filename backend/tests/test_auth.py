@@ -4,6 +4,7 @@ import pytest
 from jose import jwt
 
 from src.app.core.config import ACCESS_TOKEN_EXPIRE_MINUTES, ALGORITHM, SECRET_KEY
+from src.app.services.oauth_state import create_state
 
 
 def _decode_access_token(token: str) -> dict:
@@ -288,8 +289,10 @@ class TestOAuth:
         assert "accounts.google.com" in data["url"]
         assert "client_id=test-google-client-id" in data["url"]
         assert "response_type=code" in data["url"]
-        assert "state=google" in data["url"]
+        assert "state=" in data["url"]
         assert "prompt=select_account" in data["url"]
+        assert "code_challenge=" in data["url"]
+        assert "code_challenge_method=S256" in data["url"]
 
     @pytest.mark.asyncio
     async def test_yandex_login_url_when_called_should_force_account_select(
@@ -312,8 +315,9 @@ class TestOAuth:
         assert "oauth.yandex.ru" in data["url"]
         assert "client_id=test-yandex-client-id" in data["url"]
         assert "response_type=code" in data["url"]
-        assert "state=yandex" in data["url"]
+        assert "state=" in data["url"]
         assert "force_confirm=yes" in data["url"]
+        assert "code_challenge_method=S256" in data["url"]
 
     @pytest.mark.asyncio
     async def test_google_callback_creates_user(
@@ -360,7 +364,10 @@ class TestOAuth:
 
         monkeypatch.setattr("src.app.api.auth.httpx.AsyncClient", FakeAsyncClient)
 
-        response = await client.get("/api/v1/auth/google/callback?code=fake-code")
+        state = await create_state("google", "test-verifier")
+        response = await client.get(
+            f"/api/v1/auth/callback?code=fake-code&state={state}"
+        )
         assert response.status_code == 200
         data = response.json()
         assert "access_token" in data
@@ -414,7 +421,10 @@ class TestOAuth:
 
         monkeypatch.setattr("src.app.api.auth.httpx.AsyncClient", FakeAsyncClient)
 
-        response = await client.get("/api/v1/auth/google/callback?code=fake-code")
+        state = await create_state("google", "test-verifier")
+        response = await client.get(
+            f"/api/v1/auth/callback?code=fake-code&state={state}"
+        )
         assert response.status_code == 200
         data = response.json()
         _assert_token_expiry(data["access_token"])
@@ -454,6 +464,7 @@ class TestOAuth:
                     {
                         "id": "987654321",
                         "email": test_user.email,
+                        "verified_email": True,
                         "name": "Updated Name",
                         "picture": "https://example.com/new-avatar.jpg",
                     }
@@ -461,7 +472,10 @@ class TestOAuth:
 
         monkeypatch.setattr("src.app.api.auth.httpx.AsyncClient", FakeAsyncClient)
 
-        response = await client.get("/api/v1/auth/google/callback?code=fake-code")
+        state = await create_state("google", "test-verifier")
+        response = await client.get(
+            f"/api/v1/auth/callback?code=fake-code&state={state}"
+        )
         assert response.status_code == 200
         data = response.json()
         assert data["user"]["email"] == test_user.email
@@ -525,7 +539,10 @@ class TestOAuth:
         monkeypatch.setattr("src.app.api.auth.settings", new_settings)
         monkeypatch.setattr("src.app.services.feature_flags.settings", new_settings)
 
-        response = await client.get("/api/v1/auth/google/callback?code=fake-code")
+        state = await create_state("google", "test-verifier")
+        response = await client.get(
+            f"/api/v1/auth/callback?code=fake-code&state={state}"
+        )
         assert response.status_code == 503
         assert "Google" in response.json()["detail"]
 
@@ -549,3 +566,190 @@ class TestOAuth:
         data = response.json()
         assert data["google"] is False
         assert data["yandex"] is True
+
+    @pytest.mark.asyncio
+    async def test_oauth_callback_when_state_invalid_should_return_400(self, client):
+        """Колбэк с неизвестным state отклоняется (F-01, CSRF)."""
+        response = await client.get(
+            "/api/v1/auth/callback?code=fake-code&state=totally-bogus-state"
+        )
+        assert response.status_code == 400
+        assert "истек" in response.json()["detail"].lower() or "недействительна" in response.json()["detail"].lower()
+
+    @pytest.mark.asyncio
+    async def test_oauth_callback_when_state_missing_should_return_422(self, client):
+        """Колбэк без обязательного параметра state — 422."""
+        response = await client.get("/api/v1/auth/callback?code=fake-code")
+        assert response.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_oauth_callback_when_state_reused_should_return_400(
+        self, client, test_session, monkeypatch
+    ):
+        """state одноразовый: повторное использование отклоняется (F-01)."""
+        new_settings = _make_oauth_settings(
+            {
+                "google_client_id": "test-google-client-id",
+                "google_client_secret": "test-google-secret",
+            }
+        )
+        monkeypatch.setattr("src.app.api.auth.settings", new_settings)
+        monkeypatch.setattr("src.app.services.feature_flags.settings", new_settings)
+
+        class FakeResponse:
+            def __init__(self, json_data, status_code=200):
+                self._json = json_data
+                self.status_code = status_code
+
+            def json(self):
+                return self._json
+
+        class FakeAsyncClient:
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *args):
+                pass
+
+            async def post(self, url, **kwargs):
+                return FakeResponse({"access_token": "fake-google-token"})
+
+            async def get(self, url, **kwargs):
+                return FakeResponse(
+                    {
+                        "id": "reuse-1",
+                        "email": "reuse@example.com",
+                        "verified_email": True,
+                        "name": "Reuse User",
+                    }
+                )
+
+        monkeypatch.setattr("src.app.api.auth.httpx.AsyncClient", FakeAsyncClient)
+
+        state = await create_state("google", "test-verifier")
+        first = await client.get(f"/api/v1/auth/callback?code=fake-code&state={state}")
+        assert first.status_code == 200
+        second = await client.get(f"/api/v1/auth/callback?code=fake-code&state={state}")
+        assert second.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_oauth_callback_when_token_exchange_fails_should_not_leak_provider_text(
+        self, client, monkeypatch
+    ):
+        """Ошибка обмена кода не раскрывает ответ провайдера клиенту (F-05)."""
+        new_settings = _make_oauth_settings(
+            {
+                "google_client_id": "test-google-client-id",
+                "google_client_secret": "test-google-secret",
+            }
+        )
+        monkeypatch.setattr("src.app.api.auth.settings", new_settings)
+        monkeypatch.setattr("src.app.services.feature_flags.settings", new_settings)
+
+        class FakeResponse:
+            def __init__(self, json_data, status_code=200, text=""):
+                self._json = json_data
+                self.status_code = status_code
+                self.text = text
+
+            def json(self):
+                return self._json
+
+        class FakeAsyncClient:
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *args):
+                pass
+
+            async def post(self, url, **kwargs):
+                return FakeResponse(
+                    {"error": "invalid_grant"},
+                    status_code=400,
+                    text="invalid_grant: secret-internal-detail",
+                )
+
+            async def get(self, url, **kwargs):
+                return FakeResponse({})
+
+        monkeypatch.setattr("src.app.api.auth.httpx.AsyncClient", FakeAsyncClient)
+
+        state = await create_state("google", "test-verifier")
+        response = await client.get(
+            f"/api/v1/auth/callback?code=bad-code&state={state}"
+        )
+        assert response.status_code == 400
+        assert "secret-internal-detail" not in response.json()["detail"]
+        assert "invalid_grant" not in response.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_oauth_callback_when_email_unverified_and_user_exists_should_return_409(
+        self, client, test_user, monkeypatch
+    ):
+        """Не линкуем соцаккаунт к существующему email при неподтверждённом email (F-03)."""
+        new_settings = _make_oauth_settings(
+            {
+                "google_client_id": "test-google-client-id",
+                "google_client_secret": "test-google-secret",
+            }
+        )
+        monkeypatch.setattr("src.app.api.auth.settings", new_settings)
+        monkeypatch.setattr("src.app.services.feature_flags.settings", new_settings)
+
+        class FakeResponse:
+            def __init__(self, json_data, status_code=200):
+                self._json = json_data
+                self.status_code = status_code
+
+            def json(self):
+                return self._json
+
+        class FakeAsyncClient:
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *args):
+                pass
+
+            async def post(self, url, **kwargs):
+                return FakeResponse({"access_token": "fake-google-token"})
+
+            async def get(self, url, **kwargs):
+                return FakeResponse(
+                    {
+                        "id": "unverified-1",
+                        "email": test_user.email,
+                        "verified_email": False,
+                        "name": "Attacker",
+                    }
+                )
+
+        monkeypatch.setattr("src.app.api.auth.httpx.AsyncClient", FakeAsyncClient)
+
+        state = await create_state("google", "test-verifier")
+        response = await client.get(
+            f"/api/v1/auth/callback?code=fake-code&state={state}"
+        )
+        assert response.status_code == 409
+
+    @pytest.mark.asyncio
+    async def test_login_when_user_has_no_password_should_return_401(
+        self, client, test_session
+    ):
+        """OAuth-пользователь без пароля не может войти по паролю (F-11)."""
+        from src.app.models.user import RoleEnum, User
+
+        user = User(
+            email="oauthonly@example.com",
+            hashed_password=None,
+            role=RoleEnum.user,
+            is_active=True,
+        )
+        test_session.add(user)
+        await test_session.commit()
+
+        response = await client.post(
+            "/api/v1/login",
+            json={"email": "oauthonly@example.com", "password": "anypassword123"},
+        )
+        assert response.status_code == 401

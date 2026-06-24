@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, HTTPException, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -10,8 +12,11 @@ from src.app.models.social_account import SocialAccount
 from src.app.schemas.user import PasswordResetConfirm, PasswordResetRequest, UserOut
 from src.app.core.config import settings
 from src.app.services.feature_flags import is_enabled
+from src.app.services.oauth_state import consume_state, create_state, generate_pkce_pair
 from src.app.services.user_service import UserService
 from src.app.utils.auth import create_access_token, get_current_user
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -91,12 +96,19 @@ async def oauth_login(provider: str):
     client_id, _ = await get_provider_credentials(provider)
     redirect_uri = f"{settings.frontend_url}/auth/callback"
 
+    # CSRF-защита (F-01) + PKCE (F-06): случайный одноразовый state и
+    # code_verifier сохраняются server-side в Redis и привязываются к провайдеру.
+    code_verifier, code_challenge = generate_pkce_pair()
+    state = await create_state(provider, code_verifier)
+
     auth_params = {
         "client_id": client_id,
         "redirect_uri": redirect_uri,
         "response_type": "code",
         "scope": config["scope"],
-        "state": provider,
+        "state": state,
+        "code_challenge": code_challenge,
+        "code_challenge_method": "S256",
         **config.get("extra_auth_params", {}),
     }
 
@@ -105,17 +117,39 @@ async def oauth_login(provider: str):
     return {"url": auth_url}
 
 
-@router.get("/{provider}/callback")
+def _provider_email_verified(provider: str, user_info: dict) -> bool:
+    """Считается ли email подтверждённым провайдером (F-03).
+
+    Яндекс возвращает только подтверждённые email-адреса. Google отдаёт
+    флаг ``verified_email`` (v2/userinfo) или ``email_verified`` (OIDC).
+    """
+    if provider == "yandex":
+        return True
+    return bool(user_info.get("email_verified") or user_info.get("verified_email"))
+
+
+@router.get("/callback")
 async def oauth_callback(
-    provider: str,
     code: str = Query(...),
+    state: str = Query(...),
     db: AsyncSession = Depends(get_db),
 ):
+    # Проверяем и «гасим» state (одноразовый). Провайдер и code_verifier
+    # берём из server-side контекста, а не из параметров клиента (F-01, Q-1).
+    state_data = await consume_state(state)
+    if not state_data:
+        raise HTTPException(
+            status_code=400,
+            detail="Сессия авторизации недействительна или истекла. Попробуйте войти снова.",
+        )
+    provider = state_data["provider"]
+    code_verifier = state_data.get("code_verifier")
+
     config = get_provider_config(provider)
     client_id, client_secret = await get_provider_credentials(provider)
     redirect_uri = f"{settings.frontend_url}/auth/callback"
 
-    # 1. Обмен кода на токен
+    # 1. Обмен кода на токен (с PKCE code_verifier)
     async with httpx.AsyncClient() as client:
         token_resp = await client.post(
             config["token_url"],
@@ -125,10 +159,18 @@ async def oauth_callback(
                 "code": code,
                 "redirect_uri": redirect_uri,
                 "grant_type": "authorization_code",
+                "code_verifier": code_verifier,
             },
         )
         if token_resp.status_code != 200:
-            raise HTTPException(status_code=400, detail=f"Failed to get token: {token_resp.text}")
+            # F-05: не отдаём ответ провайдера клиенту, только в server-side лог.
+            logger.warning(
+                "OAuth token exchange failed for %s: %s", provider, token_resp.text
+            )
+            raise HTTPException(
+                status_code=400,
+                detail="Не удалось завершить авторизацию. Попробуйте снова.",
+            )
         token_data = token_resp.json()
 
     # 2. Получение данных пользователя
@@ -138,7 +180,13 @@ async def oauth_callback(
             headers={"Authorization": f"Bearer {token_data['access_token']}"},
         )
         if user_resp.status_code != 200:
-            raise HTTPException(status_code=400, detail=f"Failed to get user info: {user_resp.text}")
+            logger.warning(
+                "OAuth user info request failed for %s: %s", provider, user_resp.text
+            )
+            raise HTTPException(
+                status_code=400,
+                detail="Не удалось получить данные профиля. Попробуйте снова.",
+            )
         user_info = user_resp.json()
 
     email = user_info.get("email") or user_info.get("default_email")
@@ -147,41 +195,12 @@ async def oauth_callback(
     if not email:
         raise HTTPException(status_code=400, detail="Email not provided by provider")
 
-    # 3. Поиск или создание пользователя
-    result = await db.execute(select(User).where(User.email == email))
-    user = result.scalars().first()
-
-    # Извлекаем доп. данные из профиля провайдера
     full_name = user_info.get("name") or user_info.get("real_name") or user_info.get("display_name")
     avatar_url = user_info.get("picture") or user_info.get("default_avatar_id")
     if avatar_url and provider == "yandex" and not avatar_url.startswith("http"):
         avatar_url = f"https://avatars.yandex.net/get-yapic/{avatar_url}/islands-200"
 
-    if not user:
-        user = User(
-            email=email,
-            full_name=full_name,
-            avatar_url=avatar_url,
-            hashed_password="",  # OAuth-пользователь без пароля
-            is_active=True,
-        )
-        db.add(user)
-        await db.commit()
-        await db.refresh(user)
-    else:
-        # Обновляем профиль если данные пустые
-        updated = False
-        if full_name and not user.full_name:
-            user.full_name = full_name
-            updated = True
-        if avatar_url and not user.avatar_url:
-            user.avatar_url = avatar_url
-            updated = True
-        if updated:
-            await db.commit()
-            await db.refresh(user)
-
-    # 4. Привязка соц. аккаунта
+    # 3. Ищем уже привязанный соц-аккаунт — это безопасный путь «возврата».
     social_result = await db.execute(
         select(SocialAccount).where(
             SocialAccount.provider == provider,
@@ -190,22 +209,59 @@ async def oauth_callback(
     )
     social = social_result.scalars().first()
 
-    if not social:
+    if social:
+        user_result = await db.execute(select(User).where(User.id == social.user_id))
+        user = user_result.scalars().first()
+    else:
+        # Нет привязки — ищем пользователя по email.
+        result = await db.execute(select(User).where(User.email == email))
+        user = result.scalars().first()
+
+        if user:
+            # F-03: автолинковка к существующему аккаунту только при
+            # подтверждённом провайдером email — иначе риск захвата аккаунта.
+            if not _provider_email_verified(provider, user_info):
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        "Аккаунт с этим email уже существует. Войдите обычным "
+                        "способом и привяжите вход через соцсеть в настройках профиля."
+                    ),
+                )
+        else:
+            user = User(
+                email=email,
+                full_name=full_name,
+                avatar_url=avatar_url,
+                hashed_password=None,  # OAuth-пользователь без пароля (F-11)
+                is_active=True,
+            )
+            db.add(user)
+            await db.commit()
+            await db.refresh(user)
+
+        # Привязываем соц-аккаунт (токен провайдера не храним — F-04).
         social = SocialAccount(
             user_id=user.id,
             provider=provider,
             provider_id=provider_id,
-            access_token=token_data.get("access_token"),
         )
         db.add(social)
         await db.commit()
-    else:
-        # Обновляем токен если изменился
-        if social.access_token != token_data.get("access_token"):
-            social.access_token = token_data.get("access_token")
-            await db.commit()
 
-    # 5. Генерация JWT
+    # Обновляем профиль, если поля пустые.
+    updated = False
+    if full_name and not user.full_name:
+        user.full_name = full_name
+        updated = True
+    if avatar_url and not user.avatar_url:
+        user.avatar_url = avatar_url
+        updated = True
+    if updated:
+        await db.commit()
+        await db.refresh(user)
+
+    # 4. Генерация JWT
     jwt_token = create_access_token(data={"sub": user.email, "role": user.role.value})
 
     return {

@@ -44,7 +44,12 @@ class Settings:
 
 
 settings = Settings(
-    secret_key=os.getenv("SECRET_KEY", "your-secret-key-here"),
+    # ВНИМАНИЕ: это запасной дефолт для локальной разработки. В проде ОБЯЗАТЕЛЬНО
+    # задавайте свой SECRET_KEY через переменную окружения (и держите его в секрете).
+    secret_key=os.getenv(
+        "SECRET_KEY",
+        "aQi6vSw9EDTWICxGkijaPsO2MA4YR_DeqX92TnAjnzqLP8cBsfi22-ttlCLZGisX",
+    ),
     algorithm=os.getenv("ALGORITHM", "HS256"),
     access_token_expire_minutes=int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440")),
     database_url=os.getenv(

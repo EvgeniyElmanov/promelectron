@@ -21,16 +21,18 @@ const { mergeCartOnLogin } = useCart();
 
 onMounted(async () => {
   try {
-    const provider = route.query.state || route.query.provider;
     const code = route.query.code;
+    const state = route.query.state;
 
-    if (!provider || !code) {
-      error.value = 'Некорректный запрос: отсутствуют параметры provider или code';
+    if (!code || !state) {
+      error.value = 'Некорректный запрос: отсутствуют параметры code или state';
       return;
     }
 
-    const response = await api.get(`/auth/${provider}/callback`, {
-      params: { code }
+    // Провайдер бэкенд определяет сам по state (server-side), поэтому
+    // здесь достаточно передать code и state.
+    const response = await api.get('/auth/callback', {
+      params: { code, state }
     });
 
     setAuth(response.data.access_token, response.data.user);
