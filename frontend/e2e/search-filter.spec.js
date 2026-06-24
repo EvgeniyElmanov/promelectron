@@ -79,14 +79,16 @@ test.describe('Search & Filters', () => {
     await page.fill('[data-testid="min-price-input"]', '20000');
     await page.fill('[data-testid="max-price-input"]', '50000');
     await page.click('[data-testid="apply-price-btn"]');
-    await page.waitForTimeout(400);
 
-    // Verify all visible products are within range
-    const prices = await page.locator('[data-testid="product-card"] [data-testid="product-price"]').allTextContents();
-    for (const priceText of prices) {
-      const price = parseFloat(priceText.replace(/[^\d.]/g, ''));
-      expect(price).toBeGreaterThanOrEqual(20000);
-      expect(price).toBeLessThanOrEqual(50000);
-    }
+    // Wait for the filter to apply (prices may update asynchronously)
+    await expect(async () => {
+      const prices = await page.locator('[data-testid="product-card"] [data-testid="product-price"]').allTextContents();
+      expect(prices.length).toBeGreaterThan(0);
+      for (const priceText of prices) {
+        const price = parseFloat(priceText.replace(/[^\d.]/g, ''));
+        expect(price).toBeGreaterThanOrEqual(20000);
+        expect(price).toBeLessThanOrEqual(50000);
+      }
+    }).toPass({ timeout: 5000 });
   });
 });
