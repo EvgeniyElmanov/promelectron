@@ -1,3 +1,52 @@
+### 2026-06-24 05:45 | qa + final-report | cdek-status-sync-and-cancel — QA passed, ready for merge review
+  Роль: qa.
+  Выполнено:
+  - QA-проверка: backend `222/222 passed`, frontend `177/177 passed`.
+  - Проверено, что 1C Celery-sync (`sync_products_from_onec`) не затронут.
+  - Все 6 критериев приёмки из spec.md — PASS.
+  - E2E в рамках этой проверки не запускались (CI запустит после deploy).
+  - Context size: 10044 / 180000 tokens.
+  - Feature branch: `feature/cdek-status-sync-and-cancel`.
+  - Worktree: `.worktrees/implement-cdek-status-sync-and-cancel`.
+  Результат:
+  - Задача `cdek-status-sync-and-cancel` реализована по варианту А (Celery убран только из CDEK-пути, 1С-sync оставлен на Celery).
+  - Готово к review/merge с explicit user approval.
+  Блокер: Нет.
+
+### 2026-06-24 05:27 | backend-dev + frontend-dev | cdek-status-sync-and-cancel — review findings F001–F014 fixed
+  Роль: backend-dev + frontend-dev.
+  Выполнено:
+  - Прочитаны task.md, spec.md, review/findings.md, backend-dev SKILL.md, frontend-dev SKILL.md, pre-edit-checklist.
+  - Исправлены backend findings:
+    - F001: `selectinload(CdekOrder.order)` во всех поисковых запросах `handle_order_status_webhook`.
+    - F002: `selectinload(Order.user)` в `create_cdek_order`.
+    - F003: `SELECT FOR UPDATE` на `CdekOrder` и `Order` в начале `apply_cdek_status`.
+    - F004: удалён устаревший `infra/helm/templates/cronjob-sync-cdek-statuses.yaml`.
+    - F005: создан `infra/helm/templates/job-worker-deployment.yaml` с `python -m src.app.workers.job_worker`.
+    - F006: `resync_cdek_order` защищён `get_current_active_admin`.
+    - F007: добавлен `@property tracking_url` в модель `CdekOrder`.
+    - F008: добавлен тест `test_apply_cdek_status_race_condition_webhook_and_polling`.
+    - F009: в `job_worker` выставляется `timeout` при захвате job; добавлен `reset_stuck_jobs` на старте воркера.
+    - F010: `handle_cdek_create_order` выбрасывает `ValueError`, если CDEK не вернул `cdek_uuid`.
+    - F011: добавлен комментарий в `backend/docker-compose.yml` о Celery для 1С vs job-worker для CDEK.
+  - Исправлены frontend findings:
+    - F012: удалён `console.error` из `OrderDetail.vue`.
+    - F013: сортировка истории CDEK в `Admin.vue` вынесена в computed `cdekStatusHistory`.
+    - F014: добавлен computed `cdekStatusClass` для динамического CSS-класса бейджа статуса CDEK.
+  - Проверки:
+    - `make test-backend` — 222/222 ✅
+    - `make test-frontend` — 177/177 ✅
+    - `ruff check src/` — чисто ✅
+    - frontend lint — чисто ✅
+  - Обновлены артефакты:
+    - `.agent/cdek-status-sync-and-cancel/review/findings.md` — все F001–F014 отмечены FIXED, статус FIXED.
+    - `.agent/SESSION_LOG.md` — эта запись.
+  Результат:
+  - Все review findings исправлены и верифицированы тестами.
+  - Worktree: `.worktrees/implement-cdek-status-sync-and-cancel/`
+  - Feature branch: `feature/cdek-status-sync-and-cancel`
+  Блокер: `make lint` из корня таймаутится, потому что `lint-backend` в Makefile запускает `docker compose run api ruff check src/` без `--entrypoint ""` и без предустановленного ruff. Для проверки использовалась ручная команда с установкой ruff.
+
 ### 2026-06-24 02:00 | architect | Пересмотр планов под отказ от Celery и универсальную таблицу jobs
   Изменено:
   - Получены новые требования от Александра: убрать Celery из проекта, использовать универсальную таблицу `jobs` в PostgreSQL и worker в бесконечном цикле; есть cronjobs для запуска задач по расписанию.
