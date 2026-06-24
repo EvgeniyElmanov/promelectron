@@ -1,0 +1,27 @@
+name: Cleanup Runner Disk
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * *'
+
+jobs:
+  cleanup:
+    runs-on: dadeko-vm
+    steps:
+      - name: Disk usage before cleanup
+        run: df -h
+
+      - name: Prune Docker
+        run: |
+          docker system prune -af --volumes
+          docker volume prune -f
+
+      - name: Remove old runner temp and diag logs
+        run: |
+          sudo rm -rf /home/aleksandr/AutonomaCo/actions-runner/_work/_temp/* || true
+          sudo rm -rf /home/aleksandr/AutonomaCo/actions-runner/_diag/* || true
+          sudo rm -rf /home/aleksandr/AutonomaCo/actions-runner/_work/promelectron/promelectron/frontend/node_modules/.cache || true
+
+      - name: Disk usage after cleanup
+        run: df -h
