@@ -41,7 +41,7 @@ Before launching subagents, estimate task context size:
 python scripts/implement-pipeline.py check-context <task-id>
 ```
 
-- If `ESTIMATED_TOKENS` >= 180000, read `.agent/<task-id>/CONTEXT_SUMMARY.md` instead of the full history.
+- If `ESTIMATED_TOKENS` >= 180000, read `.agent/runs/<task-id>/CONTEXT_SUMMARY.md` instead of the full history.
 - Log the estimated token count in `.agent/SESSION_LOG.md`.
 
 Kimi K2.7 has a 256K context window with mandatory thinking mode. Staying below 180K leaves room for `reasoning_content`, tool outputs, and system instructions.

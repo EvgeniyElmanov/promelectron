@@ -18,15 +18,23 @@ You are a code-quality reviewer. Read the full diff, check the implementation ag
 
 ### Required context (read all)
 
-1. `.agent/<task-id>/task.md`
-2. `.agent/<task-id>/spec.md`
-3. Previous findings (`.agent/<task-id>/review/findings.md`) if this is a repeat review
+1. `$AGENT_DIR/task.md` (`.agent/runs/<task-id>/task.md`)
+2. `$AGENT_DIR/spec.md`
+3. Previous findings (`$AGENT_DIR/review/findings.md`) if this is a repeat review
 4. `PROJECT_CONTEXT.md`
 5. `.agent/BACKLOG.md`
 6. `.agent/SESSION_LOG.md`
 7. [Rule: pre-edit-checklist](../../rules/pre-edit-checklist.md)
 8. [Rule: golden-path](../../rules/golden-path.md)
 9. [Rule: security](../../rules/security.md)
+
+### Worktree mode
+
+When invoked by `/skill:implement`, the orchestrator passes two absolute paths:
+- **AGENT_DIR** — `.agent/runs/<task-id>/`, the gitignored coordination plane.
+- **WORKTREE** — `.worktrees/<task-id>/`, the per-task code checkout.
+
+Read the diff from **WORKTREE**: `git -C "$WORKTREE" diff origin/main...HEAD`. Write findings to **AGENT_DIR/review/**. A subagent's `cd` does not persist between tool calls — use explicit paths.
 
 ### Workflow
 
@@ -36,11 +44,11 @@ You are a code-quality reviewer. Read the full diff, check the implementation ag
 2. Read the spec and relevant changed implementation files in **parallel**.
 3. Obtain the diff:
    - If the parent agent provided a diff in your prompt, use it.
-   - Otherwise, run `git diff` in the worktree to see all changes.
+   - Otherwise, run `git -C "$WORKTREE" diff origin/main...HEAD` to see all changes.
 4. Analyze every changed file against the checklist below (logic, security, architecture, business rules, tests, golden-path impact).
 5. Write findings:
-   - Single reviewer → `.agent/<task-id>/review/findings.md`.
-   - Parallel review scope `{{item}}` → `.agent/<task-id>/review/findings-{{item}}.md`.
+   - Single reviewer → `$AGENT_DIR/review/findings.md`.
+   - Parallel review scope `{{item}}` → `$AGENT_DIR/review/findings-{{item}}.md`.
 
 ### Checklist
 

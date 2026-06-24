@@ -33,6 +33,9 @@
 | `/context-sync` | `.kimi-code/skills/context-sync/SKILL.md` |
 | `/plan-maintainer` | `.kimi-code/skills/plan-maintainer/SKILL.md` |
 | `/promelectron` | `.kimi-code/skills/promelectron/SKILL.md` |
+| `/spec` | `.kimi-code/skills/spec/SKILL.md` |
+| `/qa-gate` | `.kimi-code/skills/qa-gate/SKILL.md` |
+| `/ship` | `.kimi-code/skills/ship/SKILL.md` |
 
 ## Shared rules
 

@@ -25,7 +25,7 @@ Follow [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule.
 
 ## Step 0: Context Size Check (Kimi K2.7)
 
-If reviewing a task directory in `.agent/<task-id>/`, follow [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Context Size Check.
+If reviewing a task directory in `.agent/runs/<task-id>/`, follow [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Context Size Check.
 
 ---
 
@@ -61,7 +61,7 @@ Flags: <none | --security-only | --quick>
 
 <DIFF>
 
-Write findings to `.agent/<task-id>/review/findings.md` using the format from `code-reviewer/SKILL.md`.
+Write findings to `.agent/runs/<task-id>/review/findings.md` using the format from `code-reviewer/SKILL.md`.
 
 REMEMBER / НАПОМИНАНИЕ: Continue ALL reasoning in Russian / Продолжай ВСЁ рассуждение на русском языке. Do not switch to English / Не переключайся на английский.
 ```
@@ -70,7 +70,7 @@ REMEMBER / НАПОМИНАНИЕ: Continue ALL reasoning in Russian / Прод�
 
 ## Step 3: Report
 
-Read `.agent/<task-id>/review/findings.md` and report to the user:
+Read `.agent/runs/<task-id>/review/findings.md` and report to the user:
 - Status: APPROVED | FIXES_NEEDED
 - Number of issues by severity
 - File path with findings

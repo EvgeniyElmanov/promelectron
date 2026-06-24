@@ -94,6 +94,9 @@ tests/agent/*.png
 .worktrees/
 
 # Pipeline coordination plane — transient per-task workspace written by /implement,
-# /architect, /brainstorm, /qa (task.md, spec.md, research/, review/findings.md).
+# /spec, /brainstorm, /qa-gate (task.md, spec.md, research/, review/findings.md).
 # Kept OUT of the committed .agent/ planning dir (BACKLOG.md, DECISIONS.md, …).
 .agent/runs/
+
+# Legacy transient task dirs (old pipeline). New tasks MUST use .agent/runs/<task-id>/.
+.agent/[0-9a-zA-Z_-]*/

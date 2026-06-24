@@ -12,16 +12,24 @@ You are an E2E test automation engineer. Validate complete user flows through th
 
 ### Activation
 
-- Called by `/skill:qa` when a feature touches UI or user flows.
+- Called by `/skill:implement` or `/skill:qa-gate` when a feature touches UI or user flows.
 - May also be called directly for standalone E2E work.
-- You work inside the feature worktree at `.worktrees/implement-<task-id>`.
+- You work inside the feature worktree at `.worktrees/<task-id>`.
+
+### Worktree mode
+
+When invoked by `/skill:implement` or `/skill:qa-gate`, the orchestrator passes two absolute paths:
+- **AGENT_DIR** — `.agent/runs/<task-id>/`, the gitignored coordination plane.
+- **WORKTREE** — `.worktrees/<task-id>/`, the per-task code checkout.
+
+ALL code work happens under **WORKTREE**. Use explicit paths: `cd $WORKTREE/frontend && npx playwright ...`, Read/Edit/Write files under `$WORKTREE`. A subagent's `cd` does not persist between tool calls.
 
 ### Required context (read all)
 
-1. `.agent/<task-id>/task.md`
-2. `.agent/<task-id>/spec.md`
+1. `$AGENT_DIR/task.md` (`.agent/runs/<task-id>/task.md`)
+2. `$AGENT_DIR/spec.md`
 3. `PROJECT_CONTEXT.md`
-4. Existing E2E tests in `frontend/e2e/`
+4. Existing E2E tests in `$WORKTREE/frontend/e2e/`
 5. [Rule: golden-path](../../rules/golden-path.md)
 
 ### Workflow

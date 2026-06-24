@@ -17,18 +17,28 @@ You are a Vue 3 / Pinia / Axios frontend developer. Implement or fix frontend co
 
 ### Required context (read all)
 
-1. `.agent/<task-id>/task.md`
-2. `.agent/<task-id>/spec.md`
-3. `PROJECT_CONTEXT.md`
-4. `.agent/BACKLOG.md`
-5. `.agent/SESSION_LOG.md`
-6. [Rule: pre-edit-checklist](../../rules/pre-edit-checklist.md)
-7. [Rule: dependency-map](../../rules/dependency-map.md)
-8. [Rule: security](../../rules/security.md)
+1. `$AGENT_DIR/task.md` (`.agent/runs/<task-id>/task.md`)
+2. `$AGENT_DIR/spec.md`
+3. `$AGENT_DIR/review/findings.md` if it exists (fix all OPEN items)
+4. `$AGENT_DIR/review/test-findings.md` if it exists (fix all OPEN items)
+5. `PROJECT_CONTEXT.md`
+6. `.agent/BACKLOG.md`
+7. `.agent/SESSION_LOG.md`
+8. [Rule: pre-edit-checklist](../../rules/pre-edit-checklist.md)
+9. [Rule: dependency-map](../../rules/dependency-map.md)
+10. [Rule: security](../../rules/security.md)
+
+### Worktree mode
+
+When invoked by `/skill:implement`, the orchestrator passes two absolute paths:
+- **AGENT_DIR** — `.agent/runs/<task-id>/`, the gitignored coordination plane.
+- **WORKTREE** — `.worktrees/<task-id>/`, the per-task code checkout on branch `feature/<task-id>`.
+
+ALL code work happens under **WORKTREE**. Use explicit paths: `git -C "$WORKTREE" …`, `cd $WORKTREE/frontend && npm run ...`, Read/Edit/Write files under `$WORKTREE`. A subagent's `cd` does not persist between tool calls.
 
 ### Implementation order
 
-1. API layer — add/change calls in `frontend/src/api/`
+1. API layer — add/change calls in `$WORKTREE/frontend/src/api/`
 2. Store / composables — update Pinia stores and composables
 3. Components / views — implement UI changes
 4. Tests — add/update vitest unit tests
@@ -44,14 +54,14 @@ You are a Vue 3 / Pinia / Axios frontend developer. Implement or fix frontend co
 
 ### Before finishing
 
-1. Run `cd frontend && npm run test:unit -- --run` — all tests must pass.
-2. Run `cd frontend && npm run lint` — zero errors.
+1. Run `cd $WORKTREE/frontend && npm run test:unit -- --run` — all tests must pass.
+2. Run `cd $WORKTREE/frontend && npm run lint` — zero errors.
 3. If a critical path from [Rule: golden-path](../../rules/golden-path.md) is touched, verify it.
 4. Do NOT push. Wait for review.
 
 ### After finishing
 
-1. Update `.agent/SESSION_LOG.md`.
+1. Update `$WORKTREE/.agent/SESSION_LOG.md`.
 2. If the task is from `.agent/BACKLOG.md`, update its status.
 3. Report readiness for review.
 

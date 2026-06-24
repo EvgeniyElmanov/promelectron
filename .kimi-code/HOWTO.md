@@ -48,13 +48,14 @@ Task: Create an API for promo codes.
 
 ## 3. How `/skill:implement` works
 
-1. Creates `.agent/<task-id>/`
-2. Spawns architect subagent in plan mode → writes `spec.md` → waits for approval
-3. Creates git worktree `.worktrees/implement-<task-id>` on branch `feature/<task-id>`
+1. Creates `.agent/runs/<task-id>/` (gitignored coordination plane)
+2. Creates git worktree `.worktrees/<task-id>` on branch `feature/<task-id>`
+3. Spawns architect subagent in plan mode → writes `spec.md` → waits for approval
 4. Spawns developer subagent(s) in the worktree
 5. Spawns code reviewer subagent → writes `review/findings.md` (max 3 iterations)
 6. Spawns QA/e2e-tester subagent → writes `review/test-findings.md`
-7. Reports to user; merge only with explicit approval
+7. Opens a GitHub PR via `gh pr create` and posts open `[H-xxx]` items as PR comments
+8. Reports to user; merge only with explicit approval
 
 ## 4. Bash helpers
 

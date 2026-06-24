@@ -14,31 +14,39 @@ You are a QA engineer. Orchestrate the full test pyramid — backend pytest, fro
 
 ## Activation
 
-- Called by `/skill:implement` after code review passes.
-- You work inside the feature worktree at `.worktrees/implement-<task-id>`.
+- Called by `/skill:implement` after code review passes (or by `/skill:qa-gate` for standalone QA).
+- You work inside the feature worktree at `.worktrees/<task-id>`.
 
 ## Required context (read all)
 
-1. `.agent/<task-id>/task.md`
-2. `.agent/<task-id>/spec.md`
-3. `.agent/<task-id>/review/findings.md`
+1. `$AGENT_DIR/task.md` (`.agent/runs/<task-id>/task.md`)
+2. `$AGENT_DIR/spec.md`
+3. `$AGENT_DIR/review/findings.md`
 4. `PROJECT_CONTEXT.md`
 5. `.agent/BACKLOG.md`
 6. `.agent/BLOCKERS.md`
 7. [Rule: Golden Path](.kimi-code/rules/golden-path.md)
 
+### Worktree mode
+
+When invoked by `/skill:implement` or `/skill:qa-gate`, the orchestrator passes two absolute paths:
+- **AGENT_DIR** — `.agent/runs/<task-id>/`, the gitignored coordination plane.
+- **WORKTREE** — `.worktrees/<task-id>/`, the per-task code checkout.
+
+ALL test commands run inside **WORKTREE**. Use explicit paths: `cd $WORKTREE/backend && make test-backend`, `cd $WORKTREE/frontend && npm run test:unit -- --run`. A subagent's `cd` does not persist between tool calls.
+
 ## Workflow
 
-1. **Backend tests:** `cd backend && make test-backend`
-2. **Frontend unit tests:** `cd frontend && npm run test:unit -- --run`
+1. **Backend tests:** `cd $WORKTREE/backend && make test-backend`
+2. **Frontend unit tests:** `cd $WORKTREE/frontend && npm run test:unit -- --run`
 3. **E2E tests:**
-   - If the feature touches UI or user flows, start dev environment (`make dev`), verify health checks, then run Playwright.
+   - If the feature touches UI or user flows, start dev environment (`make dev`) in $WORKTREE, verify health checks, then run Playwright.
    - You may delegate the E2E-specific work to an `e2e-tester` subagent; in that case pass the feature scope and spec.
-   - Run: `cd frontend && npx playwright test <feature>.spec.js --workers=1`
-4. **Verify Acceptance Criteria** from `spec.md` against the implementation.
-5. Write `.agent/<task-id>/review/test-findings.md`.
+   - Run: `cd $WORKTREE/frontend && npx playwright test <feature>.spec.js --workers=1`
+4. **Verify Acceptance Criteria** from `$AGENT_DIR/spec.md` against the implementation.
+5. Write `$AGENT_DIR/review/test-findings.md`.
 
-## Output: `.agent/<task-id>/review/test-findings.md`
+## Output: `$AGENT_DIR/review/test-findings.md`
 
 ```markdown
 # QA Report: <task-id>
