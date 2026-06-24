@@ -1,3 +1,5 @@
+import logging
+from datetime import datetime, timezone
 from decimal import Decimal
 
 from fastapi import HTTPException
@@ -8,11 +10,15 @@ from sqlalchemy.orm import selectinload
 from src.app.models.cart import Cart
 from src.app.models.cdek_order import CdekOrder
 from src.app.models.order import Order, OrderItem
+from src.app.models.payment import Payment
 from src.app.models.product import Product
 from src.app.models.user import User
 from src.app.schemas.order import AdminOrderUpdate, GuestOrderCreate, OrderCreate, OrderUpdateStatus
 from src.app.services.email_service import EmailService
 from src.app.services.notification_service import NotificationService
+from src.app.services.yookassa_service import YooKassaService
+
+logger = logging.getLogger(__name__)
 
 
 class OrderService:
@@ -437,16 +443,54 @@ class OrderService:
             select(Order)
             .where(Order.id == order_id, Order.user_id == current_user.id)
             .options(selectinload(Order.items), selectinload(Order.cdek_order).selectinload(CdekOrder.status_history))
+            .with_for_update()
         )
         order = result.scalars().first()
 
         if not order:
             raise HTTPException(status_code=404, detail="Order not found")
 
-        if order.status != "pending":
-            raise HTTPException(status_code=400, detail="Only pending orders can be cancelled")
+        if order.status not in ("pending", "paid"):
+            raise HTTPException(status_code=400, detail="Order cannot be cancelled")
 
-        order.status = "cancelled"
+        if order.status == "paid":
+            payment_result = await db.execute(
+                select(Payment).where(Payment.order_id == order_id).with_for_update()
+            )
+            payment = payment_result.scalars().first()
+
+            if not payment:
+                raise HTTPException(status_code=400, detail="Payment not found for paid order")
+
+            if payment.status == "refunded":
+                raise HTTPException(status_code=400, detail="Order already refunded")
+
+            try:
+                await YooKassaService.create_refund(
+                    payment.yookassa_payment_id,
+                    order.total_price,
+                    description=f"Возврат по заказу №{order.id}",
+                )
+            except HTTPException as exc:
+                logger.warning(
+                    "Refund failed for order %s, payment %s: %s",
+                    order.id,
+                    payment.id,
+                    exc.detail,
+                )
+                raise HTTPException(
+                    status_code=502,
+                    detail="Refund could not be processed. Order was not cancelled.",
+                ) from exc
+            except Exception as exc:
+                logger.exception("Refund failed for order %s, payment %s", order.id, payment.id)
+                raise HTTPException(
+                    status_code=502,
+                    detail="Refund could not be processed. Order was not cancelled.",
+                ) from exc
+
+            payment.status = "refunded"
+            payment.refunded_amount = order.total_price
 
         # Return stock
         for item in order.items:
@@ -456,6 +500,17 @@ class OrderService:
             product = product_result.scalars().first()
             if product:
                 product.stock += item.quantity
+
+        order.status = "cancelled"
+        order.cancelled_at = datetime.now(timezone.utc)
+        order.cancellation_reason = "user_cancelled"
+
+        if order.cdek_order and order.cdek_order.cdek_uuid:
+            logger.warning(
+                "Order %s has CDEK order %s, cancellation in CDEK is not implemented",
+                order.id,
+                order.cdek_order.cdek_uuid,
+            )
 
         await db.commit()
 
@@ -467,15 +522,73 @@ class OrderService:
         )
         order = order_result.scalars().first()
 
-        # Send notification
-        await NotificationService.create_notification(
-            db=db,
-            user_id=current_user.id,
-            type="order_cancelled",
-            title="Заказ отменён",
-            message=f"Заказ №{order.id} отменён.",
-            order_id=order.id,
+        # Send notification (best-effort)
+        try:
+            await NotificationService.create_notification(
+                db=db,
+                user_id=current_user.id,
+                type="order_cancelled",
+                title="Заказ отменён",
+                message=f"Заказ №{order.id} отменён.",
+                order_id=order.id,
+            )
+        except Exception:
+            logger.exception("Failed to send order cancellation notification")
+
+        return order
+
+    @staticmethod
+    async def ship_order_by_admin(order_id: int, db: AsyncSession) -> Order:
+        result = await db.execute(
+            select(Order)
+            .where(Order.id == order_id)
+            .options(selectinload(Order.items), selectinload(Order.cdek_order))
+            .with_for_update()
         )
+        order = result.scalars().first()
+
+        if not order:
+            raise HTTPException(status_code=404, detail="Order not found")
+
+        if order.status != "paid":
+            raise HTTPException(status_code=400, detail="Only paid orders can be shipped")
+
+        order.status = "shipped"
+
+        if order.cdek_order and order.cdek_order.tracking_number:
+            order.tracking_number = order.cdek_order.tracking_number
+
+        await db.commit()
+
+        # Reload order with items for response
+        order_result = await db.execute(
+            select(Order)
+            .where(Order.id == order_id)
+            .options(selectinload(Order.items), selectinload(Order.cdek_order).selectinload(CdekOrder.status_history))
+        )
+        order = order_result.scalars().first()
+
+        # Send notification (best-effort)
+        try:
+            if order.user_id:
+                status_labels = {
+                    "pending": "Ожидает оплаты",
+                    "paid": "Оплачен",
+                    "shipped": "Отправлен",
+                    "delivered": "Доставлен",
+                    "cancelled": "Отменён",
+                }
+                label = status_labels.get(order.status, order.status)
+                await NotificationService.create_notification(
+                    db=db,
+                    user_id=order.user_id,
+                    type="status_changed",
+                    title="Статус заказа изменён",
+                    message=f"Заказ №{order.id}: {label}",
+                    order_id=order.id,
+                )
+        except Exception:
+            logger.exception("Failed to send order shipped notification")
 
         return order
 

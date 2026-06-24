@@ -1,3 +1,6 @@
+from decimal import Decimal
+from unittest.mock import AsyncMock, patch
+
 import pytest
 
 
@@ -23,17 +26,15 @@ class TestOrdersAPI:
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "cancelled"
+        assert data["cancelled_at"] is not None
 
         # Check stock returned
         prod_resp = await client.get(f"/api/v1/products/{test_product.id}")
         assert prod_resp.json()["stock"] == test_product.stock
 
     @pytest.mark.asyncio
-    async def test_cancel_paid_order_fails(self, client, test_user, user_token, test_product, cdek_delivery_payload):
-        """Отмена оплаченного заказа — 400."""
-        from unittest.mock import AsyncMock, patch
-        from decimal import Decimal
-
+    async def test_cancel_paid_order(self, client, test_user, user_token, test_product, cdek_delivery_payload):
+        """Отмена оплаченного заказа с автоматическим YooKassa refund."""
         await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
         order_resp = await client.post(
             "/api/v1/orders/create/",
@@ -71,9 +72,71 @@ class TestOrdersAPI:
         }
         await client.post("/api/v1/payments/yookassa/webhook/", json=webhook_payload)
 
+        mock_refund = AsyncMock(return_value={
+            "refund_id": "test-refund-id",
+            "status": "succeeded",
+            "amount": Decimal(str(test_product.price)),
+            "created_at": "2026-06-02T12:00:00.000Z",
+        })
+
+        with patch("src.app.services.order_service.YooKassaService.create_refund", mock_refund):
+            response = await client.patch(f"/api/v1/orders/{order_id}/cancel/", headers={"Authorization": f"Bearer {user_token}"})
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "cancelled"
+        assert data["cancelled_at"] is not None
+        mock_refund.assert_awaited_once()
+
+        # Check stock returned
+        prod_resp = await client.get(f"/api/v1/products/{test_product.id}")
+        assert prod_resp.json()["stock"] == test_product.stock
+
+    @pytest.mark.asyncio
+    async def test_cancel_shipped_order(self, client, test_user, user_token, test_product, cdek_delivery_payload, admin_token):
+        """Отмена отправленного заказа — 400."""
+        await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
+        order_resp = await client.post(
+            "/api/v1/orders/create/",
+            json={
+                "cdek_delivery": cdek_delivery_payload,
+                "recipient_first_name": "Тест",
+                "recipient_last_name": "Пользователь",
+            },
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        order_id = order_resp.json()["id"]
+
+        mock_yookassa = AsyncMock(return_value={
+            "yookassa_payment_id": "test-yookassa-id",
+            "status": "pending",
+            "confirmation_url": "https://yoomoney.ru/checkout/test",
+            "amount": Decimal(str(test_product.price)),
+            "created_at": "2026-06-02T12:00:00.000Z",
+        })
+
+        with (
+            patch("src.app.services.payment_service.YooKassaService.is_configured", return_value=True),
+            patch("src.app.services.payment_service.YooKassaService.create_payment", mock_yookassa),
+        ):
+            await client.post(f"/api/v1/payments/{order_id}/", headers={"Authorization": f"Bearer {user_token}"})
+
+        webhook_payload = {
+            "event": "payment.succeeded",
+            "object": {
+                "id": "test-yookassa-id",
+                "status": "succeeded",
+                "amount": {"value": str(test_product.price), "currency": "RUB"},
+            },
+        }
+        await client.post("/api/v1/payments/yookassa/webhook/", json=webhook_payload)
+
+        # Переводим заказ в shipped через админку
+        await client.post(f"/api/v1/admin/orders/{order_id}/ship/", headers={"Authorization": f"Bearer {admin_token}"})
+
         response = await client.patch(f"/api/v1/orders/{order_id}/cancel/", headers={"Authorization": f"Bearer {user_token}"})
         assert response.status_code == 400
-        assert "Only pending orders can be cancelled" in response.json()["detail"]
+        assert "Order cannot be cancelled" in response.json()["detail"]
 
     @pytest.mark.asyncio
     async def test_cancel_other_user_order(self, client, test_user, user_token, test_product):

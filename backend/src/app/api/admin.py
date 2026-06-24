@@ -96,6 +96,16 @@ async def update_admin_order(
     return await OrderService.update_order_by_admin(order_id=order_id, data=data, current_user=current_user, db=db)
 
 
+@router.post("/admin/orders/{order_id}/ship/", response_model=OrderOut)
+async def ship_admin_order(
+    order_id: int,
+    current_user: User = Depends(get_current_active_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Подтвердить отправку заказа (только для статуса paid)."""
+    return await OrderService.ship_order_by_admin(order_id=order_id, db=db)
+
+
 @router.get("/admin/feature-flags", response_model=list[FeatureFlagOut])
 async def get_feature_flags(
     current_user: User = Depends(get_current_active_admin),

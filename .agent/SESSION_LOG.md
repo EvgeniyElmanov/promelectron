@@ -1,3 +1,44 @@
+### 2026-06-24 12:20 | backend-dev | user-cancel-order-admin-ship-confirm — реализован backend
+  Роль: backend-dev.
+  Запрос пользователя: реализовать backend часть задачи user-cancel-order-admin-ship-confirm согласно спецификации.
+  Выполнено:
+  - В `backend/src/app/models/order.py` добавлены поля `cancelled_at` и `cancellation_reason`.
+  - Создана Alembic-миграция `db0971c05386_add_order_cancellation_fields.py`.
+  - В `backend/src/app/schemas/order.py` поле `OrderOut.cancelled_at` добавлено в ответ.
+  - В `backend/src/app/services/order_service.py`:
+    - `cancel_order` теперь разрешает отмену `pending` и `paid` заказов.
+    - Для `paid` заказа вызывается `YooKassaService.create_refund`, обновляется `Payment.status = "refunded"` и `Payment.refunded_amount`.
+    - При отмене возвращается stock всех товаров через `SELECT FOR UPDATE`.
+    - Устанавливаются `status = "cancelled"`, `cancelled_at`, `cancellation_reason = "user_cancelled"`.
+    - Логируется warning, если `CdekOrder.cdek_uuid` заполнен.
+    - Добавлен `ship_order_by_admin` для перевода `paid` → `shipped` с `SELECT FOR UPDATE`.
+  - В `backend/src/app/api/admin.py` добавлен endpoint `POST /api/v1/admin/orders/{order_id}/ship/` (admin only).
+  - Добавлены/обновлены backend unit-тесты в `tests/test_orders.py`, `tests/test_admin.py`, `tests/test_payments.py`.
+  - Исправлен pre-existing lint-дефект в `tests/test_jobs.py` (неиспользуемый import).
+  Результат:
+  - `make test-backend`: 270/270 ✅.
+  - `ruff check backend/src backend/tests`: чисто ✅.
+  Блокер: Нет.
+
+### 2026-06-24 11:30 | frontend-dev | user-cancel-order-admin-ship-confirm — реализован frontend
+  Роль: frontend-dev.
+  Запрос пользователя: реализовать frontend часть задачи user-cancel-order-admin-ship-confirm согласно спецификации.
+  Выполнено:
+  - В `frontend/src/api/orders.js` добавлены `cancelOrder(orderId)` и `shipOrderAdmin(orderId)` с trailing slash.
+  - В `frontend/src/views/OrderDetail.vue`:
+    - Кнопка «Отменить заказ» отображается для статусов `pending` и `paid`.
+    - Для `paid` заказа показывается подтверждающий диалог с информацией о возврате денег.
+    - Обновлен таймлайн статусов: добавлен шаг `cancelled`.
+  - В `frontend/src/views/Admin.vue` (раздел Orders):
+    - Для `paid` заказов добавлена кнопка «Подтвердить отправку`.
+    - По клику вызывается `shipOrderAdmin(orderId)` и обновляется список заказов.
+    - Добавлены `data-testid="admin-order-ship-btn-{id}"`.
+  - Обновлены/добавлены unit-тесты в `frontend/src/__tests__/OrderDetail.spec.js` и `frontend/src/__tests__/Admin.spec.js`.
+  Результат:
+  - `make test-frontend`: 187/187 ✅.
+  - `make lint-frontend`: проходит без ошибок.
+  Блокер: Нет.
+
 ### 2026-06-24 11:00 | project-manager | order-cancellation-v2 — обновлён заголовок issue #6
   Роль: project-manager.
   Запрос пользователя: обновить заголовок issue #6, чтобы он отражал объединённую задачу.

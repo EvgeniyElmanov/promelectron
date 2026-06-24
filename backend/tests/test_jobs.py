@@ -1,5 +1,4 @@
 import pytest
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from src.app.models.job import Job

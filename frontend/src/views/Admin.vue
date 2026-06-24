@@ -325,6 +325,14 @@
                 <td>{{ order.tracking_number || '—' }}</td>
                 <td>{{ formatShortDate(order.created_at) }}</td>
                 <td class="admin__table-actions">
+                  <button
+                    v-if="order.status === 'paid'"
+                    class="admin__btn admin__btn--small admin__btn--success"
+                    :data-testid="`admin-order-ship-btn-${order.id}`"
+                    @click="handleShipOrder(order.id)"
+                  >
+                    Подтвердить отправку
+                  </button>
                   <button class="admin__icon-btn admin__icon-btn--edit" @click="openEditOrderModal(order)">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
@@ -565,6 +573,7 @@ import { ref, onMounted, onUnmounted, computed } from 'vue';
 import api from '@/services/api';
 import { useToast } from '@/composables/useToast';
 import { useCategories } from '@/composables/useCategories';
+import { shipOrderAdmin } from '@/api/orders';
 import SkeletonAdminTable from '@/components/SkeletonAdminTable.vue';
 
 const { add: toast } = useToast();
@@ -999,6 +1008,16 @@ const handleOrderSubmit = async () => {
     toast(err.response?.data?.detail || 'Ошибка обновления заказа', 'error');
   } finally {
     submittingOrderStatus.value = false;
+  }
+};
+
+const handleShipOrder = async (orderId) => {
+  try {
+    await shipOrderAdmin(orderId);
+    toast('Заказ отправлен', 'success');
+    await fetchOrders();
+  } catch (err) {
+    toast(err.response?.data?.detail || 'Не удалось подтвердить отправку', 'error');
   }
 };
 

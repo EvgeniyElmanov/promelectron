@@ -91,11 +91,11 @@
             <span class="info-label">Трек-номер</span>
             <span class="info-value">{{ order.tracking_number }}</span>
           </div>
-          <div v-if="order.status === 'pending'" class="info-row info-row--action">
-            <router-link :to="`/checkout/${order.id}`" class="order-pay-btn">
+          <div v-if="canCancel" class="info-row info-row--action">
+            <router-link v-if="order.status === 'pending'" :to="`/checkout/${order.id}`" class="order-pay-btn">
               Оплатить {{ formatPrice(order.total_price) }} ₽
             </router-link>
-            <button class="order-cancel-btn" @click="cancelOrder">
+            <button class="order-cancel-btn" data-testid="order-cancel-btn" @click="handleCancelOrder">
               Отменить заказ
             </button>
           </div>
@@ -181,6 +181,7 @@ import { ref, onMounted, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import api from '@/services/api';
 import { useToast } from '@/composables/useToast';
+import { cancelOrder } from '@/api/orders';
 
 const route = useRoute();
 const { add: toast } = useToast();
@@ -195,6 +196,7 @@ const statusSteps = [
   { value: 'paid', label: 'Оплачен' },
   { value: 'shipped', label: 'Отправлен' },
   { value: 'delivered', label: 'Доставлен' },
+  { value: 'cancelled', label: 'Отменён' },
 ];
 
 const statusLabels = {
@@ -206,6 +208,8 @@ const statusLabels = {
 };
 
 const statusLabel = computed(() => statusLabels[order.value?.status] || order.value?.status);
+
+const canCancel = computed(() => ['pending', 'paid'].includes(order.value?.status));
 
 const cdekStatusHistory = computed(() => {
   const history = order.value?.cdek_order?.status_history || [];
@@ -234,10 +238,10 @@ const cdekStatusClass = computed(() => {
 });
 
 const isStepCompleted = (stepValue) => {
+  if (order.value?.status === 'cancelled') return false;
   const stepOrder = ['pending', 'paid', 'shipped', 'delivered'];
   const currentIdx = stepOrder.indexOf(order.value?.status);
   const stepIdx = stepOrder.indexOf(stepValue);
-  if (order.value?.status === 'cancelled') return false;
   return stepIdx <= currentIdx && currentIdx >= 0;
 };
 
@@ -265,10 +269,14 @@ const fetchOrder = async () => {
   }
 };
 
-const cancelOrder = async () => {
-  if (!confirm('Отменить заказ?')) return;
+const handleCancelOrder = async () => {
+  let message = 'Отменить заказ?';
+  if (order.value?.status === 'paid') {
+    message = 'Заказ уже оплачен. При отмене деньги будут автоматически возвращены на ваш счёт в течение нескольких рабочих дней. Отменить заказ?';
+  }
+  if (!confirm(message)) return;
   try {
-    const response = await api.patch(`/orders/${orderId.value}/cancel`);
+    const response = await cancelOrder(orderId.value);
     order.value = response.data;
     toast('Заказ отменён', 'info');
   } catch (err) {

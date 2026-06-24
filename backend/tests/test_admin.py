@@ -1,3 +1,6 @@
+from decimal import Decimal
+from unittest.mock import AsyncMock, patch
+
 import pytest
 
 
@@ -209,6 +212,86 @@ class TestAdminOrders:
         """Обычный пользователь не может получить список всех заказов."""
         response = await client.get(
             "/api/v1/admin/orders",
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert response.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_admin_ship_paid_order(
+        self, client, test_admin, admin_token, test_user, user_token, test_product, cdek_delivery_payload
+    ):
+        """Админ переводит оплаченный заказ в статус shipped."""
+        await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
+        order_resp = await client.post(
+            "/api/v1/orders/create/",
+            json={
+                "cdek_delivery": cdek_delivery_payload,
+                "recipient_first_name": "Тест",
+                "recipient_last_name": "Пользователь",
+            },
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        order_id = order_resp.json()["id"]
+
+        mock_yookassa = AsyncMock(return_value={
+            "yookassa_payment_id": "test-yookassa-id",
+            "status": "pending",
+            "confirmation_url": "https://yoomoney.ru/checkout/test",
+            "amount": Decimal(str(test_product.price)),
+            "created_at": "2026-06-02T12:00:00.000Z",
+        })
+
+        with (
+            patch("src.app.services.payment_service.YooKassaService.is_configured", return_value=True),
+            patch("src.app.services.payment_service.YooKassaService.create_payment", mock_yookassa),
+        ):
+            await client.post(f"/api/v1/payments/{order_id}/", headers={"Authorization": f"Bearer {user_token}"})
+
+        webhook_payload = {
+            "event": "payment.succeeded",
+            "object": {
+                "id": "test-yookassa-id",
+                "status": "succeeded",
+                "amount": {"value": str(test_product.price), "currency": "RUB"},
+            },
+        }
+        await client.post("/api/v1/payments/yookassa/webhook/", json=webhook_payload)
+
+        response = await client.post(
+            f"/api/v1/admin/orders/{order_id}/ship/",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "shipped"
+
+    @pytest.mark.asyncio
+    async def test_admin_ship_pending_order_fails(self, client, test_admin, admin_token, test_user, user_token, test_product, cdek_delivery_payload):
+        """Админ не может перевести pending заказ в shipped."""
+        await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
+        order_resp = await client.post(
+            "/api/v1/orders/create/",
+            json={
+                "cdek_delivery": cdek_delivery_payload,
+                "recipient_first_name": "Тест",
+                "recipient_last_name": "Пользователь",
+            },
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        order_id = order_resp.json()["id"]
+
+        response = await client.post(
+            f"/api/v1/admin/orders/{order_id}/ship/",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert response.status_code == 400
+        assert "Only paid orders can be shipped" in response.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_user_cannot_ship_order(self, client, test_user, user_token, test_order):
+        """Обычный пользователь не может подтвердить отправку."""
+        response = await client.post(
+            f"/api/v1/admin/orders/{test_order.id}/ship/",
             headers={"Authorization": f"Bearer {user_token}"},
         )
         assert response.status_code == 403

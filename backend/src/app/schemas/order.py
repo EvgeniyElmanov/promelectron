@@ -148,5 +148,6 @@ class OrderOut(BaseModel):
     tracking_number: Optional[str] = None
     cdek_order: Optional[CdekOrderOut] = None
     save_address: bool = False
+    cancelled_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)

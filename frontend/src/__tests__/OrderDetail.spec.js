@@ -1,13 +1,15 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 import { createRouter, createWebHistory } from 'vue-router';
 import OrderDetail from '../views/OrderDetail.vue';
 
 const mockGet = vi.fn();
+const mockPatch = vi.fn();
 
 vi.mock('@/services/api', () => ({
   default: {
     get: (...args) => mockGet(...args),
+    patch: (...args) => mockPatch(...args),
   },
 }));
 
@@ -57,6 +59,11 @@ const mockOrderWithCdek = {
 };
 
 describe('OrderDetail.vue', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    window.confirm = vi.fn();
+  });
+
   it('отображает детали заказа с таймлайном', async () => {
     mockGet.mockResolvedValue({ data: mockOrder });
 
@@ -124,5 +131,99 @@ describe('OrderDetail.vue', () => {
     expect(history.text()).toContain('Доставлено');
     expect(history.text()).toContain('Принят');
     expect(history.text()).toContain('Создан');
+  });
+
+  it('показывает кнопку отмены для pending заказа', async () => {
+    mockGet.mockResolvedValue({ data: { ...mockOrder, status: 'pending' } });
+
+    await router.push('/orders/42');
+    await router.isReady();
+
+    const wrapper = mount(OrderDetail, { global: { plugins: [router] } });
+    await flushPromises();
+
+    const cancelBtn = wrapper.find('[data-testid="order-cancel-btn"]');
+    expect(cancelBtn.exists()).toBe(true);
+    expect(cancelBtn.text()).toBe('Отменить заказ');
+
+    expect(wrapper.find('.order-pay-btn').exists()).toBe(true);
+  });
+
+  it('показывает кнопку отмены для paid заказа', async () => {
+    mockGet.mockResolvedValue({ data: { ...mockOrder, status: 'paid' } });
+
+    await router.push('/orders/42');
+    await router.isReady();
+
+    const wrapper = mount(OrderDetail, { global: { plugins: [router] } });
+    await flushPromises();
+
+    const cancelBtn = wrapper.find('[data-testid="order-cancel-btn"]');
+    expect(cancelBtn.exists()).toBe(true);
+    expect(cancelBtn.text()).toBe('Отменить заказ');
+
+    expect(wrapper.find('.order-pay-btn').exists()).toBe(false);
+  });
+
+  it('не показывает кнопку отмены для shipped, delivered и cancelled', async () => {
+    for (const status of ['shipped', 'delivered', 'cancelled']) {
+      mockGet.mockResolvedValue({ data: { ...mockOrder, status } });
+
+      await router.push('/orders/42');
+      await router.isReady();
+
+      const wrapper = mount(OrderDetail, { global: { plugins: [router] } });
+      await flushPromises();
+
+      expect(wrapper.find('[data-testid="order-cancel-btn"]').exists()).toBe(false);
+    }
+  });
+
+  it('отменяет pending заказ по клику после подтверждения', async () => {
+    mockPatch.mockResolvedValue({
+      data: { ...mockOrder, status: 'cancelled', cancelled_at: '2026-05-18T11:00:00Z' },
+    });
+    window.confirm.mockReturnValue(true);
+
+    mockGet.mockResolvedValue({ data: { ...mockOrder, status: 'pending' } });
+
+    await router.push('/orders/42');
+    await router.isReady();
+
+    const wrapper = mount(OrderDetail, { global: { plugins: [router] } });
+    await flushPromises();
+
+    const cancelBtn = wrapper.find('[data-testid="order-cancel-btn"]');
+    expect(cancelBtn.exists()).toBe(true);
+
+    await cancelBtn.trigger('click');
+    await flushPromises();
+
+    expect(window.confirm).toHaveBeenCalledWith('Отменить заказ?');
+    expect(mockPatch).toHaveBeenCalledTimes(1);
+    expect(mockPatch).toHaveBeenCalledWith('/orders/42/cancel/');
+  });
+
+  it('показывает предупреждение о возврате при отмене paid заказа', async () => {
+    mockPatch.mockResolvedValue({
+      data: { ...mockOrder, status: 'cancelled', cancelled_at: '2026-05-18T11:00:00Z' },
+    });
+    window.confirm.mockReturnValue(true);
+
+    mockGet.mockResolvedValue({ data: { ...mockOrder, status: 'paid' } });
+
+    await router.push('/orders/42');
+    await router.isReady();
+
+    const wrapper = mount(OrderDetail, { global: { plugins: [router] } });
+    await flushPromises();
+
+    const cancelBtn = wrapper.find('[data-testid="order-cancel-btn"]');
+    await cancelBtn.trigger('click');
+    await flushPromises();
+
+    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining('возвращены'));
+    expect(mockPatch).toHaveBeenCalledTimes(1);
+    expect(mockPatch).toHaveBeenCalledWith('/orders/42/cancel/');
   });
 });

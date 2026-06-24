@@ -2,6 +2,7 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from sqlalchemy import select
 
 
 class TestPaymentsAPI:
@@ -200,3 +201,63 @@ class TestPaymentsAPI:
         """Без токена доступ к платежам запрещён."""
         response = await client.post("/api/v1/payments/1/")
         assert response.status_code in (401, 403)
+
+    @pytest.mark.asyncio
+    async def test_refund_on_cancel_paid_order(self, client, test_user, user_token, test_product, cdek_delivery_payload, test_session):
+        """При отмене оплаченного заказа вызывается YooKassa refund и обновляется Payment."""
+        from src.app.models.payment import Payment
+
+        await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
+        order_resp = await client.post(
+            "/api/v1/orders/create/",
+            json={
+                "cdek_delivery": cdek_delivery_payload,
+                "recipient_first_name": "Тест",
+                "recipient_last_name": "Пользователь",
+            },
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        order_id = order_resp.json()["id"]
+
+        mock_yookassa = AsyncMock(return_value={
+            "yookassa_payment_id": "test-yookassa-id",
+            "status": "pending",
+            "confirmation_url": "https://yoomoney.ru/checkout/test",
+            "amount": Decimal(str(test_product.price)),
+            "created_at": "2026-06-02T12:00:00.000Z",
+        })
+
+        with (
+            patch("src.app.services.payment_service.YooKassaService.is_configured", return_value=True),
+            patch("src.app.services.payment_service.YooKassaService.create_payment", mock_yookassa),
+        ):
+            await client.post(f"/api/v1/payments/{order_id}/", headers={"Authorization": f"Bearer {user_token}"})
+
+        webhook_payload = {
+            "event": "payment.succeeded",
+            "object": {
+                "id": "test-yookassa-id",
+                "status": "succeeded",
+                "amount": {"value": str(test_product.price), "currency": "RUB"},
+            },
+        }
+        await client.post("/api/v1/payments/yookassa/webhook/", json=webhook_payload)
+
+        mock_refund = AsyncMock(return_value={
+            "refund_id": "test-refund-id",
+            "status": "succeeded",
+            "amount": Decimal(str(test_product.price)),
+            "created_at": "2026-06-02T12:00:00.000Z",
+        })
+
+        with patch("src.app.services.order_service.YooKassaService.create_refund", mock_refund):
+            cancel_resp = await client.patch(f"/api/v1/orders/{order_id}/cancel/", headers={"Authorization": f"Bearer {user_token}"})
+
+        assert cancel_resp.status_code == 200
+        mock_refund.assert_awaited_once()
+
+        # Проверяем, что платёж обновился
+        payment_result = await test_session.execute(select(Payment).where(Payment.order_id == order_id))
+        payment = payment_result.scalars().first()
+        assert payment.status == "refunded"
+        assert float(payment.refunded_amount) == float(order_resp.json()["total_price"])

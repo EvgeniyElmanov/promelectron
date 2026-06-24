@@ -29,6 +29,8 @@ class Order(Base):
         index=True,
     )
     save_address = Column(Boolean, nullable=False, default=False)
+    cancelled_at = Column(DateTime(timezone=True), nullable=True)
+    cancellation_reason = Column(String, nullable=True)
 
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(

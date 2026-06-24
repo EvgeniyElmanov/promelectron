@@ -147,6 +147,12 @@ describe('Admin.vue', () => {
     vi.clearAllMocks();
     toastFn.mockClear();
     mockGet.mockImplementation(defaultMockGet);
+    mockPost.mockImplementation((url) => {
+      if (url === '/admin/orders/101/ship/') {
+        return Promise.resolve({ data: { ...mockOrders[0], status: 'shipped' } });
+      }
+      return Promise.resolve({ data: {} });
+    });
     mockPatch.mockImplementation((url) => {
       if (url === '/admin/feature-flags/google_oauth') {
         return Promise.resolve({ data: { name: 'google_oauth', enabled: false, source: 'redis' } });
@@ -454,5 +460,56 @@ describe('Admin.vue', () => {
     const trackingLink = wrapper.find('[data-testid="order-modal-cdek-tracking-link"]');
     expect(trackingLink.exists()).toBe(true);
     expect(trackingLink.attributes('href')).toBe(mockOrders[0].cdek_order.tracking_url);
+  });
+
+  it('показывает кнопку «Подтвердить отправку» для paid заказа', async () => {
+    const wrapper = mount(Admin, { global: { plugins: [router] } });
+    await flushPromises();
+
+    await switchSectionTab(wrapper, 'orders');
+
+    const shipBtn = wrapper.find('[data-testid="admin-order-ship-btn-101"]');
+    expect(shipBtn.exists()).toBe(true);
+    expect(shipBtn.text()).toContain('Подтвердить отправку');
+  });
+
+  it('не показывает кнопку «Подтвердить отправку» для других статусов', async () => {
+    const mixedOrders = [
+      { ...mockOrders[0], id: 201, status: 'pending' },
+      { ...mockOrders[0], id: 202, status: 'shipped' },
+      { ...mockOrders[0], id: 203, status: 'delivered' },
+      { ...mockOrders[0], id: 204, status: 'cancelled' },
+    ];
+    mockGet.mockImplementation((url, config) => {
+      if (url === '/admin/orders') return Promise.resolve({ data: mixedOrders });
+      return defaultMockGet(url, config);
+    });
+
+    const wrapper = mount(Admin, { global: { plugins: [router] } });
+    await flushPromises();
+
+    await switchSectionTab(wrapper, 'orders');
+
+    expect(wrapper.find('[data-testid="admin-order-ship-btn-201"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="admin-order-ship-btn-202"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="admin-order-ship-btn-203"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="admin-order-ship-btn-204"]').exists()).toBe(false);
+  });
+
+  it('подтверждает отправку paid заказа по клику', async () => {
+    const wrapper = mount(Admin, { global: { plugins: [router] } });
+    await flushPromises();
+
+    await switchSectionTab(wrapper, 'orders');
+
+    const shipBtn = wrapper.find('[data-testid="admin-order-ship-btn-101"]');
+    expect(shipBtn.exists()).toBe(true);
+
+    await shipBtn.trigger('click');
+    await flushPromises();
+
+    expect(mockPost).toHaveBeenCalledTimes(1);
+    expect(mockPost).toHaveBeenCalledWith('/admin/orders/101/ship/');
+    expect(toastFn).toHaveBeenCalledWith('Заказ отправлен', 'success');
   });
 });
