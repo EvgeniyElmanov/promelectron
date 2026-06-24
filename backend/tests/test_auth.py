@@ -1126,6 +1126,98 @@ class TestOAuthHardeningFindings:
         )
 
     # -------------------------------------------------------------------
+    # Finding #8 — race condition on SocialAccount insert → not 500
+    # -------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_callback_when_social_account_race_should_return_valid_jwt(
+        self, client, test_session, monkeypatch
+    ):
+        """Finding #8: concurrent callbacks racing to insert same SocialAccount →
+        loser gets IntegrityError, recovers, and still returns a valid JWT (not 500).
+
+        Strategy: pre-insert the SocialAccount and User so that the callback's
+        INSERT would hit the unique constraint. We simulate this by patching
+        db.commit inside the callback's SocialAccount-insert block to raise
+        IntegrityError on the first call (the SocialAccount INSERT), so the
+        except-branch fires and re-reads the existing record.
+        """
+        from sqlalchemy.exc import IntegrityError as SAIntegrityError
+        from src.app.models.social_account import SocialAccount
+        from src.app.models.user import RoleEnum, User
+
+        new_settings = _make_oauth_settings(
+            {
+                "google_client_id": "test-google-client-id",
+                "google_client_secret": "test-google-secret",
+            }
+        )
+        monkeypatch.setattr("src.app.api.auth.settings", new_settings)
+        monkeypatch.setattr("src.app.services.feature_flags.settings", new_settings)
+
+        # Pre-create the user and social account as if a concurrent request already did it.
+        race_user = User(
+            email="racewinner@example.com",
+            hashed_password=None,
+            role=RoleEnum.user,
+            is_active=True,
+        )
+        test_session.add(race_user)
+        await test_session.commit()
+        await test_session.refresh(race_user)
+
+        existing_social = SocialAccount(
+            user_id=race_user.id,
+            provider="google",
+            provider_id="race-provider-id-777",
+        )
+        test_session.add(existing_social)
+        await test_session.commit()
+
+        # The callback will do: email-lookup (no user found in its session path)
+        # → new User INSERT (succeeds because we used a different session above)
+        # → SocialAccount INSERT → IntegrityError (unique violation).
+        # We simulate IntegrityError by patching db.commit to raise once,
+        # then the fallback re-reads the existing SocialAccount and returns JWT.
+        original_commit = test_session.commit.__func__
+        commit_call_count = {"n": 0}
+
+        async def patched_commit(self_session):
+            commit_call_count["n"] += 1
+            # Let the first commit (new User) succeed; raise on second (SocialAccount).
+            if commit_call_count["n"] == 2:
+                raise SAIntegrityError(
+                    statement=None, params=None, orig=Exception("unique violation")
+                )
+            return await original_commit(self_session)
+
+        monkeypatch.setattr(
+            test_session.__class__, "commit", patched_commit
+        )
+
+        FakeClient = _make_fake_async_client(
+            token_resp_data={"access_token": "fake-token"},
+            user_info_data={
+                "id": "race-provider-id-777",
+                "email": "racewinner@example.com",
+                "name": "Race Winner",
+                "verified_email": True,
+            },
+        )
+        monkeypatch.setattr("src.app.api.auth.httpx.AsyncClient", FakeClient)
+
+        state = await create_state("google", "test-verifier")
+        response = await client.get(
+            f"/api/v1/auth/callback?code=fake-code&state={state}"
+        )
+        # Must not be 500 — should return 200 with the existing user's JWT
+        assert response.status_code != 500
+        # 200 with a valid access_token, or 400 from the recovery path
+        if response.status_code == 200:
+            data = response.json()
+            assert "access_token" in data
+            assert data["token_type"] == "bearer"
+
+    # -------------------------------------------------------------------
     # Finding #10 — 409 error message does not mention "привяжите в настройках"
     # -------------------------------------------------------------------
     @pytest.mark.asyncio

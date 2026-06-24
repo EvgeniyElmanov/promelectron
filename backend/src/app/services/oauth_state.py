@@ -46,6 +46,17 @@ async def peek_state(state: str) -> dict | None:
     After a *successful* exchange call :func:`delete_state` to enforce
     at-most-once semantics.
 
+    Design note (L-2): Redis GETDEL (Redis ≥ 6.2) would give a single atomic
+    read-and-delete, but we intentionally keep the two-step pattern here: the
+    ``code_verifier`` stored in the payload must be read *before* the token
+    exchange (it is sent to the provider), so we cannot atomically delete on
+    success without re-reading the payload a second time.  The chosen pattern
+    — peek → exchange → delete — is safe: even if delete never runs (process
+    crash after a successful exchange), the TTL expires within STATE_TTL
+    seconds and the one-time ``code`` issued by the provider is already spent,
+    so a replay attempt using the same state would fail at the provider's
+    token endpoint.
+
     Returns ``None`` if the state is unknown, expired, or malformed.
     """
     if not state:

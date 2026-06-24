@@ -23,7 +23,12 @@ def _token_for_user(user: User) -> str:
 class UserService:
     @staticmethod
     async def register_user(user_data: UserCreate, db: AsyncSession) -> dict:
-        result = await db.execute(select(User).where(User.email == user_data.email))
+        # M-2: normalise email to lowercase before duplicate-check and storage
+        # so "Alice@x.com" and "alice@x.com" are treated as one account.
+        email = user_data.email.lower()
+        result = await db.execute(
+            select(User).where(func.lower(User.email) == email)
+        )
         user = result.scalars().first()
         if user:
             raise HTTPException(status_code=400, detail="Email already registered")
@@ -35,7 +40,7 @@ class UserService:
 
         hashed_pw = hash_password(user_data.password)
         new_user = User(
-            email=user_data.email,
+            email=email,
             hashed_password=hashed_pw,
             full_name=user_data.full_name,
             role=role,
@@ -95,11 +100,15 @@ class UserService:
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
 
-        if user_data.email is not None and user_data.email != user.email:
-            existing = await db.execute(select(User).where(User.email == user_data.email))
+        if user_data.email is not None and user_data.email.lower() != user.email:
+            # M-2: normalise on write; duplicate-check is case-insensitive.
+            new_email = user_data.email.lower()
+            existing = await db.execute(
+                select(User).where(func.lower(User.email) == new_email)
+            )
             if existing.scalars().first():
                 raise HTTPException(status_code=400, detail="Email already in use")
-            user.email = user_data.email
+            user.email = new_email
 
         if user_data.full_name is not None:
             user.full_name = user_data.full_name

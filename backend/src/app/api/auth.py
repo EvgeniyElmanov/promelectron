@@ -207,9 +207,12 @@ async def oauth_callback(
             )
         user_info = user_resp.json()
 
-    # Fix #1: guard provider_id — str(None) == "None" causes account collisions.
-    raw_provider_id = user_info.get("id") or user_info.get("sub")
-    if not raw_provider_id:
+    # Fix #1: explicit None checks — `or` short-circuits on falsy 0/False, which are
+    # valid numeric IDs some providers return. str(None) == "None" collapses users.
+    raw_provider_id = user_info.get("id")
+    if raw_provider_id is None:
+        raw_provider_id = user_info.get("sub")
+    if raw_provider_id is None or raw_provider_id == "":
         logger.warning(
             "OAuth provider %s did not return id or sub in user_info keys: %s",
             provider,
@@ -273,16 +276,30 @@ async def oauth_callback(
                     ),
                 )
         else:
-            user = User(
-                email=email,
-                full_name=full_name,
-                avatar_url=avatar_url,
-                hashed_password=None,  # OAuth-пользователь без пароля (F-11)
-                is_active=True,
-            )
-            db.add(user)
-            await db.commit()
-            await db.refresh(user)
+            # Fix L-3: two concurrent first-time logins with the same email →
+            # IntegrityError on the unique email index. Rollback and re-read.
+            try:
+                user = User(
+                    email=email,
+                    full_name=full_name,
+                    avatar_url=avatar_url,
+                    hashed_password=None,  # OAuth-пользователь без пароля (F-11)
+                    is_active=True,
+                )
+                db.add(user)
+                await db.commit()
+                await db.refresh(user)
+            except IntegrityError:
+                await db.rollback()
+                result = await db.execute(
+                    select(User).where(func.lower(User.email) == email)
+                )
+                user = result.scalars().first()
+                if user is None:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Не удалось завершить авторизацию. Попробуйте снова.",
+                    )
 
         # Привязываем соц-аккаунт (токен провайдера не храним — F-04).
         # Fix #8: handle race on unique(provider, provider_id) with IntegrityError.
