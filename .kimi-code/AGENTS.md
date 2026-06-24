@@ -135,6 +135,9 @@ User: /implement "Add promo codes to cart"
 - **NEVER** commit without explicit user approval.
 - **ALWAYS** use trailing slash in FastAPI endpoints (`/items/`, not `/items`).
 - **ALWAYS** run tests before reporting done.
+- **ALWAYS** link a GitHub Issue before starting development in `/skill:implement`.
+- **ALWAYS** update the GitHub Project board status at phase boundaries: spec approved → In progress, PR open → In review, merged → Done.
+- **NEVER** create duplicate GitHub Issues for the same `task-id`; reuse existing `github_issue` from `task.md`.
 
 ---
 

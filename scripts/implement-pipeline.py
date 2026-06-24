@@ -2,17 +2,23 @@
 """
 Helper for the /implement pipeline in Promelectron.
 
-Manages task IDs, git worktrees, review-loop state, and context size
-estimation so that subagents do not need to remember long Bash sequences.
+Manages task IDs, git worktrees, review-loop state, context size
+estimation, and GitHub backlog automation so that subagents do not need
+to remember long Bash sequences.
 
 Usage:
     python scripts/implement-pipeline.py setup "Add promo codes to cart"
-    python scripts/implement-pipeline.py worktree-path <task-id>
+    python scripts/implement-pipeline.py create-worktree <task-id>
+    python scripts/implement-pipeline.py create-issue <task-id>
+    python scripts/implement-pipeline.py set-status <task-id> <status>
+    python scripts/implement-pipeline.py sync-backlog
     python scripts/implement-pipeline.py check-context <task-id>
     python scripts/implement-pipeline.py cleanup <task-id>
 """
 
 import argparse
+import json
+import os
 import re
 import subprocess
 import sys
@@ -27,12 +33,31 @@ WORKTREES_ROOT = PROJECT_ROOT / ".worktrees"
 # Transient per-task pipeline artifacts live under .agent/runs/ (gitignored),
 # separate from the committed .agent/ planning dir (BACKLOG.md, PLANNING_HANDOFF.md, ...).
 AGENT_RUNS_DIR = PROJECT_ROOT / ".agent" / "runs"
+BACKLOG_FILE = PROJECT_ROOT / ".agent" / "BACKLOG.md"
 
 # Context management thresholds for Kimi K2.7 (256K context window).
 # We use a conservative threshold to leave room for system prompt,
 # reasoning_content, and tool outputs.
 CONTEXT_THRESHOLD = 180_000
 CHARS_PER_TOKEN = 4
+
+# GitHub Project configuration for Promelectron.
+# Can be overridden via env vars for reuse in forks.
+GITHUB_ORG = os.environ.get("GITHUB_ORG", "AutonomaCo")
+GITHUB_REPO = os.environ.get("GITHUB_REPO", "promelectron")
+DEFAULT_PROJECT_OWNER = os.environ.get("GITHUB_PROJECT_OWNER", "AutonomaCo")
+DEFAULT_PROJECT_NUMBER = os.environ.get("GITHUB_PROJECT_NUMBER", "1")
+PROJECT_ID = os.environ.get("GITHUB_PROJECT_ID", "PVT_kwDOEOu5sM4BbRfc")
+STATUS_FIELD_ID = os.environ.get(
+    "GITHUB_STATUS_FIELD_ID", "PVTSSF_lADOEOu5sM4BbRfczhWDIWE"
+)
+STATUS_OPTIONS = {
+    "backlog": os.environ.get("GITHUB_STATUS_BACKLOG_ID", "f75ad846"),
+    "ready": os.environ.get("GITHUB_STATUS_READY_ID", "61e4505c"),
+    "in-progress": os.environ.get("GITHUB_STATUS_IN_PROGRESS_ID", "47fc9ee4"),
+    "in-review": os.environ.get("GITHUB_STATUS_IN_REVIEW_ID", "df73e18b"),
+    "done": os.environ.get("GITHUB_STATUS_DONE_ID", "98236657"),
+}
 
 
 def slugify(text: str) -> str:
@@ -53,6 +78,12 @@ def run(cmd: list[str], cwd: Path | None = None, check: bool = True) -> subproce
         capture_output=True,
         text=True,
     )
+
+
+def run_json(cmd: list[str], cwd: Path | None = None) -> dict:
+    """Run a command that returns JSON and parse it."""
+    result = run(cmd, cwd=cwd, check=True)
+    return json.loads(result.stdout or "{}")
 
 
 def cmd_setup(args: argparse.Namespace) -> int:
@@ -217,6 +248,303 @@ def cmd_cleanup(args: argparse.Namespace) -> int:
     return 0
 
 
+# ---------------------------------------------------------------------------
+# GitHub backlog automation
+# ---------------------------------------------------------------------------
+
+
+def parse_existing_issue(task_text: str) -> str | None:
+    """Return issue number if task.md already references a GitHub issue."""
+    match = re.search(r"github_issue:\s*#?(\d+)", task_text, re.IGNORECASE)
+    return match.group(1) if match else None
+
+
+def extract_spec_section(spec_text: str, section_name: str) -> str:
+    """Extract a section from spec.md by header name."""
+    pattern = rf"## {re.escape(section_name)}\s*\n(.*?)(?=\n## |\Z)"
+    match = re.search(pattern, spec_text, re.DOTALL | re.IGNORECASE)
+    return (match.group(1).strip() if match else "").strip()
+
+
+def build_issue_body(task_id: str, spec_text: str) -> str:
+    """Build a concise GitHub issue body from the approved spec."""
+    summary = extract_spec_section(spec_text, "Summary") or extract_spec_section(
+        spec_text, "Analysis"
+    )
+    must_haves = extract_spec_section(spec_text, "Must-haves")
+    acceptance = extract_spec_section(spec_text, "Acceptance Criteria")
+    out_of_scope = extract_spec_section(spec_text, "Out of Scope")
+
+    parts = [
+        f"**Task ID:** `{task_id}`",
+        "",
+        "## Summary",
+        summary or "See full spec below.",
+    ]
+
+    if must_haves:
+        parts.extend(["", "## Must-haves", must_haves])
+    if acceptance:
+        parts.extend(["", "## Acceptance Criteria", acceptance])
+    if out_of_scope:
+        parts.extend(["", "## Out of Scope", out_of_scope])
+
+    parts.extend(
+        [
+            "",
+            "---",
+            f"Full spec: `.agent/runs/{task_id}/spec.md`",
+        ]
+    )
+    return "\n".join(parts)
+
+
+def build_issue_title(spec_text: str, task_description: str) -> str:
+    """Build a short issue title from spec or task description."""
+    # Try to find a clear title in spec headers.
+    for pattern in (r"^# (.+)$", r"## Task Type\s*\n(.+)"):
+        match = re.search(pattern, spec_text, re.MULTILINE)
+        if match:
+            return match.group(1).strip()
+    # Fallback to first line of task description.
+    return task_description.strip().split("\n")[0][:120]
+
+
+def gh_issue_exists(issue_number: str) -> bool:
+    """Check whether a GitHub issue exists and is accessible."""
+    result = run(
+        ["gh", "issue", "view", issue_number, "--repo", f"{GITHUB_ORG}/{GITHUB_REPO}"],
+        check=False,
+    )
+    return result.returncode == 0
+
+
+def create_or_update_issue(title: str, body: str, issue_number: str | None = None) -> str:
+    """Create a new issue or update an existing one. Return issue URL."""
+    repo = f"{GITHUB_ORG}/{GITHUB_REPO}"
+    if issue_number and gh_issue_exists(issue_number):
+        run(
+            ["gh", "issue", "edit", issue_number, "--repo", repo, "--title", title, "--body", body],
+            check=True,
+        )
+        return f"https://github.com/{GITHUB_ORG}/{GITHUB_REPO}/issues/{issue_number}"
+
+    result = run(
+        ["gh", "issue", "create", "--repo", repo, "--title", title, "--body", body],
+        check=True,
+    )
+    return result.stdout.strip()
+
+
+def add_issue_to_project(issue_url: str) -> str:
+    """Add an issue to the GitHub Project. Return project item ID."""
+    run(
+        [
+            "gh",
+            "project",
+            "item-add",
+            DEFAULT_PROJECT_NUMBER,
+            "--owner",
+            DEFAULT_PROJECT_OWNER,
+            "--url",
+            issue_url,
+        ],
+        check=True,
+    )
+    return find_project_item_id(issue_url)
+
+
+def find_project_item_id(issue_url: str) -> str:
+    """Find the project item ID for a given issue URL."""
+    items = run_json(
+        [
+            "gh",
+            "project",
+            "item-list",
+            DEFAULT_PROJECT_NUMBER,
+            "--owner",
+            DEFAULT_PROJECT_OWNER,
+            "--format",
+            "json",
+        ]
+    ).get("items", [])
+    for item in items:
+        content = item.get("content", {})
+        if content.get("url") == issue_url:
+            return item["id"]
+    raise RuntimeError(f"Could not find project item ID for {issue_url}")
+
+
+def set_project_item_status(item_id: str, status: str) -> None:
+    """Set the Status field of a project item."""
+    option_id = STATUS_OPTIONS.get(status)
+    if not option_id:
+        raise ValueError(f"Unknown status: {status}. Use one of {list(STATUS_OPTIONS)}")
+
+    run(
+        [
+            "gh",
+            "project",
+            "item-edit",
+            "--id",
+            item_id,
+            "--field-id",
+            STATUS_FIELD_ID,
+            "--project-id",
+            PROJECT_ID,
+            "--single-select-option-id",
+            option_id,
+        ],
+        check=True,
+    )
+
+
+def persist_issue_metadata(task_file: Path, issue_number: str, issue_url: str) -> None:
+    """Write github_issue metadata back to task.md and spec.md."""
+    meta_block = f"\n## GitHub\n- github_issue: #{issue_number}\n- issue_url: {issue_url}\n"
+    text = task_file.read_text(encoding="utf-8")
+    if "## GitHub" in text:
+        text = re.sub(r"\n## GitHub\n.*?(?=\n## |\Z)", meta_block.rstrip(), text, flags=re.DOTALL)
+    else:
+        text = text.rstrip() + meta_block
+    task_file.write_text(text, encoding="utf-8")
+
+    spec_file = task_file.parent / "spec.md"
+    if spec_file.exists():
+        spec_text = spec_file.read_text(encoding="utf-8")
+        if "## GitHub" in spec_text:
+            spec_text = re.sub(
+                r"\n## GitHub\n.*?(?=\n## |\Z)",
+                meta_block.rstrip(),
+                spec_text,
+                flags=re.DOTALL,
+            )
+        else:
+            spec_text = spec_text.rstrip() + meta_block
+        spec_file.write_text(spec_text, encoding="utf-8")
+
+
+def append_backlog_entry(task_id: str, title: str, issue_number: str) -> None:
+    """Append a backlog entry with issue link if not already present."""
+    if not BACKLOG_FILE.exists():
+        return
+
+    text = BACKLOG_FILE.read_text(encoding="utf-8")
+    issue_link = f"https://github.com/{GITHUB_ORG}/{GITHUB_REPO}/issues/{issue_number}"
+    if issue_link in text or f"#{issue_number}" in text:
+        return
+
+    # Insert before the first section header after the current sprint table.
+    entry = (
+        f"\n| — | {title} | [#{issue_number}]({issue_link}) | — | P1 | **backlog** | — | — | — |\n"
+    )
+    BACKLOG_FILE.write_text(text.rstrip() + entry, encoding="utf-8")
+
+
+@retry_on_kimi_errors(max_attempts=3, backoff_seconds=2.0)
+def cmd_create_issue(args: argparse.Namespace) -> int:
+    task_id = args.task_id
+    task_dir = AGENT_RUNS_DIR / task_id
+    task_file = task_dir / "task.md"
+    spec_file = task_dir / "spec.md"
+
+    if not task_file.exists():
+        print(f"ERROR: task.md not found for {task_id}", file=sys.stderr)
+        return 1
+
+    task_text = task_file.read_text(encoding="utf-8")
+    existing_issue = parse_existing_issue(task_text) or args.issue
+
+    spec_text = spec_file.read_text(encoding="utf-8") if spec_file.exists() else ""
+    title = build_issue_title(spec_text, extract_spec_section(task_text, "Description"))
+    body = build_issue_body(task_id, spec_text)
+
+    issue_url = create_or_update_issue(title, body, existing_issue)
+    issue_number = issue_url.rstrip("/").split("/")[-1]
+
+    # Add to project and set status.
+    item_id = add_issue_to_project(issue_url)
+    set_project_item_status(item_id, args.status)
+
+    persist_issue_metadata(task_file, issue_number, issue_url)
+    append_backlog_entry(task_id, title, issue_number)
+
+    print(f"ISSUE_URL={issue_url}")
+    print(f"ISSUE_NUMBER={issue_number}")
+    print(f"PROJECT_ITEM_ID={item_id}")
+    print(f"STATUS={args.status}")
+    return 0
+
+
+@retry_on_kimi_errors(max_attempts=3, backoff_seconds=2.0)
+def cmd_set_status(args: argparse.Namespace) -> int:
+    task_id = args.task_id
+    task_file = AGENT_RUNS_DIR / task_id / "task.md"
+    if not task_file.exists():
+        print(f"ERROR: task.md not found for {task_id}", file=sys.stderr)
+        return 1
+
+    task_text = task_file.read_text(encoding="utf-8")
+    issue_number = parse_existing_issue(task_text)
+    if not issue_number:
+        print(f"ERROR: no github_issue found in task.md for {task_id}", file=sys.stderr)
+        return 1
+
+    issue_url = f"https://github.com/{GITHUB_ORG}/{GITHUB_REPO}/issues/{issue_number}"
+    item_id = find_project_item_id(issue_url)
+    set_project_item_status(item_id, args.status)
+
+    print(f"ISSUE_NUMBER={issue_number}")
+    print(f"STATUS={args.status}")
+    return 0
+
+
+@retry_on_kimi_errors(max_attempts=3, backoff_seconds=2.0)
+def cmd_sync_backlog(args: argparse.Namespace) -> int:
+    """One-way sync: update local BACKLOG.md with open issues from GitHub Project."""
+    items = run_json(
+        [
+            "gh",
+            "project",
+            "item-list",
+            DEFAULT_PROJECT_NUMBER,
+            "--owner",
+            DEFAULT_PROJECT_OWNER,
+            "--format",
+            "json",
+        ]
+    ).get("items", [])
+
+    if not BACKLOG_FILE.exists():
+        print(f"ERROR: {BACKLOG_FILE} not found", file=sys.stderr)
+        return 1
+
+    text = BACKLOG_FILE.read_text(encoding="utf-8")
+    new_entries = []
+    for item in items:
+        content = item.get("content", {})
+        if content.get("type") != "Issue":
+            continue
+        # Skip completed items; rely on the project board status.
+        if item.get("status") in {"Done", "Closed"}:
+            continue
+        issue_number = content.get("number")
+        title = content.get("title", "Untitled")
+        url = content.get("url", "")
+        if not issue_number or url in text or f"#{issue_number}" in text:
+            continue
+        new_entries.append(f"| — | [#{issue_number}]({url}) | {title} | — |")
+
+    if new_entries:
+        BACKLOG_FILE.write_text(
+            text.rstrip() + "\n" + "\n".join(new_entries) + "\n",
+            encoding="utf-8",
+        )
+
+    print(f"SYNCED={len(new_entries)}")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Promelectron /implement pipeline helper")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -238,6 +566,35 @@ def main() -> int:
     cleanup = sub.add_parser("cleanup", help="Remove worktree and feature branch")
     cleanup.add_argument("task_id", help="Task ID")
 
+    issue_create = sub.add_parser(
+        "create-issue",
+        help="Create or update a GitHub Issue for a task and add it to the project",
+    )
+    issue_create.add_argument("task_id", help="Task ID")
+    issue_create.add_argument("--issue", default=None, help="Existing issue number to link/update")
+    issue_create.add_argument(
+        "--status",
+        default="in-progress",
+        choices=list(STATUS_OPTIONS),
+        help="Project board status to set after adding the issue",
+    )
+
+    status_set = sub.add_parser(
+        "set-status",
+        help="Update the GitHub Project status for a task's linked issue",
+    )
+    status_set.add_argument("task_id", help="Task ID")
+    status_set.add_argument(
+        "status",
+        choices=list(STATUS_OPTIONS),
+        help="Target project board status",
+    )
+
+    sub.add_parser(
+        "sync-backlog",
+        help="Sync open GitHub Project issues into .agent/BACKLOG.md",
+    )
+
     args = parser.parse_args()
 
     handlers = {
@@ -246,6 +603,9 @@ def main() -> int:
         "check-context": cmd_check_context,
         "create-worktree": cmd_create_worktree,
         "cleanup": cmd_cleanup,
+        "create-issue": cmd_create_issue,
+        "set-status": cmd_set_status,
+        "sync-backlog": cmd_sync_backlog,
     }
 
     return handlers[args.command](args)

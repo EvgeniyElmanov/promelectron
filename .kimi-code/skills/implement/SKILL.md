@@ -31,6 +31,17 @@ Record the repo root once:
 PROJECT_ROOT="$(git rev-parse --show-toplevel)"
 ```
 
+### 0.1 Pre-flight checks
+
+Verify GitHub CLI access before starting — backlog automation depends on it:
+
+```bash
+gh auth status
+gh project view 1 --owner AutonomaCo
+```
+
+If either fails, stop and ask the user to run `gh auth login` or grant `project` scope.
+
 Generate `<task-id>`: short kebab-case slug, e.g. `add-promo-codes`, `fix-cart-stock`.
 
 Create the transient coordination plane and the worktree root:
@@ -163,6 +174,64 @@ REMEMBER / НАПОМИНАНИЕ: Continue ALL reasoning in Russian / Прод�
 After the user approves the plan, copy the plan file content to `$AGENT_DIR/spec.md`.
 
 If the user rejects or requests revisions, send the architect back to revise the plan.
+
+---
+
+## Step 4.5: Publish to GitHub backlog
+
+Every task entering development MUST have a linked GitHub Issue on the Promelectron project board. This step runs **after spec approval** and **before any developer subagent**.
+
+### 4.5.1 Check for existing issue
+
+Read `$AGENT_DIR/task.md`:
+
+- If it already contains `github_issue: #N` (e.g. user invoked `/skill:implement #5`) → skip creation, only ensure the issue status is **In progress**.
+- Otherwise → create a new issue.
+
+### 4.5.2 Build issue draft from spec
+
+Use `$AGENT_DIR/spec.md` to build a concise issue:
+
+- **Title:** max 120 chars, derived from the task description or spec heading.
+- **Body:** Summary, Must-haves, Acceptance Criteria, Out of Scope, plus link to `.agent/runs/<task-id>/spec.md`.
+
+### 4.5.3 Confirm with user
+
+Show the draft title/body via `AskUserQuestion`:
+
+> "Spec approved. I will create/link GitHub Issue and move it to **In progress** on the board. Proceed?"
+
+Wait for explicit approval before publishing.
+
+### 4.5.4 Create/link issue and project item
+
+Use the helper script:
+
+```bash
+python scripts/implement-pipeline.py create-issue <task-id> --status in-progress
+```
+
+This command:
+- Creates or updates the GitHub Issue via `gh issue create` / `gh issue edit`.
+- Adds the issue to the GitHub Project board.
+- Sets the project status to `In progress`.
+- Writes `github_issue` / `issue_url` back to `task.md` and `spec.md`.
+- Appends a linked row to `.agent/BACKLOG.md`.
+
+Capture the printed values:
+
+```text
+ISSUE_URL=https://github.com/AutonomaCo/promelectron/issues/N
+ISSUE_NUMBER=N
+STATUS=in-progress
+```
+
+### 4.5.5 On failure
+
+If `gh issue create` or project update fails:
+- Report the exact error to the user.
+- Do NOT start development until the issue is linked.
+- Escalate if `gh auth` scope is missing.
 
 ---
 
@@ -424,7 +493,11 @@ All git ops target the worktree.
    ```bash
    gh pr comment "$BRANCH" --body "[H-xxx] <the open human-decision item>"
    ```
-4. Capture the PR URL for the report.
+4. Move the linked GitHub Issue to **In review**:
+   ```bash
+   python scripts/implement-pipeline.py set-status <task-id> in-review
+   ```
+5. Capture the PR URL for the report.
 
 ---
 
@@ -445,6 +518,10 @@ After all phases:
    - Estimated tokens and iteration count
    - Open findings or H-items (if any)
 4. Ask: **"Merge `$BRANCH` into main?"** (do NOT merge or push main without explicit approval).
+5. If the user approves merge and the merge completes, move the linked GitHub Issue to **Done**:
+   ```bash
+   python scripts/implement-pipeline.py set-status <task-id> done
+   ```
 
 ---
 
@@ -458,3 +535,7 @@ After all phases:
 - Max 2 QA iterations, then escalate to user.
 - Update `.agent/SESSION_LOG.md` after every significant phase.
 - Always write transient pipeline files to `.agent/runs/<task-id>/`, never to the committed `.agent/` planning dir.
+- **Backlog automation:** every task entering development MUST have a linked GitHub Issue before Step 5.
+- **Status transitions:** In progress → In review → Done are updated automatically at phase boundaries.
+- **Idempotency:** never create a duplicate issue for the same `task-id`; reuse `github_issue` from `task.md`.
+- **No silent publish:** always ask the user before creating a GitHub Issue.

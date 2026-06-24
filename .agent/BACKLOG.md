@@ -8,58 +8,121 @@
 
 ## Текущий спринт: Sprint 1 (2026-06-01 — 2026-06-14)
 
-| # | Задача | Агент | Приоритет | Статус | Зависимости | Оценка | Блокер |
-|---|--------|-------|-----------|--------|-------------|--------|--------|
-| 1 | Интеграция ЮKassa (реальные платежи) | backend-dev | P0 | **in_progress** | — | 2 недели | — |
-| 1a | ЮKassa: SDK + конфиг + env vars | backend-dev | P0 | **done** ✅ | — | 1 день | — |
-| 1b | ЮKassa: Alembic миграция Payment | backend-dev | P0 | **done** ✅ | 1a | 1 день | — |
-| 1c | ЮKassa: YooKassaService (create/get payment) | backend-dev | P0 | **done** ✅ | 1a, 1b | 2 дня | — |
-| 1d | ЮKassa: Обновить create_payment endpoint | backend-dev | P0 | **done** ✅ | 1c | 1 день | — |
-| 1e | ЮKassa: Webhook endpoint + подпись | backend-dev | P0 | **done** ✅ | 1d | 2 дня | — |
-| 1f | ЮKassa: Frontend редирект + success page | frontend-dev | P0 | **done** ✅ | 1d | 2 дня | — |
-| 1g | ЮKassa: Backend тесты | backend-dev | P0 | **done** ✅ | 1e | 2 дня | — |
-| 1h | ЮKassa: E2E тест с тестовой картой | e2e-tester | P0 | **done** ✅ | 1f, 1e | 2 дня | — |
-| 2 | Webhook обработка платежей | backend-dev | P0 | **done** ✅ | #1 | 3 дня | — |
-| 3 | Гостевая корзина: backend API | backend-dev | P0 | **done** ✅ | — | 1 неделя | — |
-| 4 | Гостевая корзина: localStorage + merge при login | frontend-dev | P0 | **done** ✅ | #3 | 1 неделя | — |
-| 5 | Убрать hardcoded secrets (SECRET_KEY, SEED_SECRET, docker-compose, Helm placeholders) | backend-dev + devops | P0 | **in_progress** | — | 2 дня | — |
-| 6 | Исправить Helm worker templates (Celery command + enabled flag) | devops | P0 | **blocked** | — | 2 дня | BLK-001, BLK-002 |
-| 7 | Подключить Sentry (backend + frontend) | devops | P0 | **in_progress** | — | 3 дня | — |
-| 8 | Настроить backup БД (pg_dump → S3/MinIO) | devops | P0 | **in_progress** | — | 2 дня | — |
-| 9 | E2E тесты гостевой корзины | e2e-tester | P0 | **done** ✅ | #3, #4 | 2 дня | — |
-| 10 | Product.price → Numeric(10,2) + Alembic | backend-dev | P0 | todo | — | 2 дня | BLK-006 |
-| 11 | OAuth Google ID — production настройка (credentials, redirect URI, валидация) | backend-dev + devops | P0 | **done** ✅ | — | 2 дня | — |
-| 11a | Вписать GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET в `.env` и SOPS secrets | devops | P0 | **done** ✅ | #11 | 1 день | — |
-| 12 | OAuth Yandex ID — production настройка (credentials, redirect URI, валидация) | backend-dev + devops | P0 | **done** ✅ | — | 2 дня | — |
-| 13 | Исправить malformed revision ID в миграции `20260531_222559_guest_order_fields.py` | backend-dev | P0 | **in_progress** | — | 1 день | BLK-006 |
-| 14 | Добавить `.dockerignore` в `backend/` | devops | P1 | todo | — | 1 день | — |
-| 15 | Убрать `console.error` из production-кода фронтенда | frontend-dev | P2 | todo | — | 1 день | — |
-| 16 | Написать unit-тесты для `useCart` composable | frontend-dev | P2 | todo | — | 2 дня | — |
+| # | Задача | Issue | Агент | Приоритет | Статус | Зависимости | Оценка | Блокер |
+|---|--------|-------|-------|-----------|--------|-------------|--------|--------|--------|
+| 1 | Интеграция ЮKassa (реальные платежи) | | backend-dev | P0 | **in_progress** | — | 2 недели | — |
+| 1a | ЮKassa: SDK + конфиг + env vars | | backend-dev | P0 | **done** ✅ | — | 1 день | — |
+| 1b | ЮKassa: Alembic миграция Payment | | backend-dev | P0 | **done** ✅ | 1a | 1 день | — |
+| 1c | ЮKassa: YooKassaService (create/get payment) | | backend-dev | P0 | **done** ✅ | 1a, 1b | 2 дня | — |
+| 1d | ЮKassa: Обновить create_payment endpoint | | backend-dev | P0 | **done** ✅ | 1c | 1 день | — |
+| 1e | ЮKassa: Webhook endpoint + подпись | | backend-dev | P0 | **done** ✅ | 1d | 2 дня | — |
+| 1f | ЮKassa: Frontend редирект + success page | | frontend-dev | P0 | **done** ✅ | 1d | 2 дня | — |
+| 1g | ЮKassa: Backend тесты | | backend-dev | P0 | **done** ✅ | 1e | 2 дня | — |
+| 1h | ЮKassa: E2E тест с тестовой картой | | e2e-tester | P0 | **done** ✅ | 1f, 1e | 2 дня | — |
+| 2 | Webhook обработка платежей | | backend-dev | P0 | **done** ✅ | #1 | 3 дня | — |
+| 3 | Гостевая корзина: backend API | | backend-dev | P0 | **done** ✅ | — | 1 неделя | — |
+| 4 | Гостевая корзина: localStorage + merge при login | | frontend-dev | P0 | **done** ✅ | #3 | 1 неделя | — |
+| 5 | Убрать hardcoded secrets (SECRET_KEY, SEED_SECRET, docker-compose, Helm placeholders) | | backend-dev + devops | P0 | **in_progress** | — | 2 дня | — |
+| 6 | Исправить Helm worker templates (Celery command + enabled flag) | | devops | P0 | **blocked** | — | 2 дня | BLK-001, BLK-002 |
+| 7 | Подключить Sentry (backend + frontend) | | devops | P0 | **in_progress** | — | 3 дня | — |
+| 8 | Настроить backup БД (pg_dump → S3/MinIO) | | devops | P0 | **in_progress** | — | 2 дня | — |
+| 9 | E2E тесты гостевой корзины | | e2e-tester | P0 | **done** ✅ | #3, #4 | 2 дня | — |
+| 10 | Product.price → Numeric(10,2) + Alembic | | backend-dev | P0 | todo | — | 2 дня | BLK-006 |
+| 11 | OAuth Google ID — production настройка (credentials, redirect URI, валидация) | | backend-dev + devops | P0 | **done** ✅ | — | 2 дня | — |
+| 11a | Вписать GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET в `.env` и SOPS secrets | | devops | P0 | **done** ✅ | #11 | 1 день | — |
+| 12 | OAuth Yandex ID — production настройка (credentials, redirect URI, валидация) | | backend-dev + devops | P0 | **done** ✅ | — | 2 дня | — |
+| 13 | Исправить malformed revision ID в миграции `20260531_222559_guest_order_fields.py` | | backend-dev | P0 | **in_progress** | — | 1 день | BLK-006 |
+| 14 | Добавить `.dockerignore` в `backend/` | | devops | P1 | todo | — | 1 день | — |
+| 15 | Убрать `console.error` из production-кода фронтенда | | frontend-dev | P2 | todo | — | 1 день | — |
+| 16 | Написать unit-тесты для `useCart` composable | | frontend-dev | P2 | todo | — | 2 дня | — |
+| 43 | Подключить реальный SMTP и отправку email (BLK-005) | [#19](https://github.com/AutonomaCo/promelectron/issues/19) | backend-dev + devops | P1 | **blocked** | — | 2 дня | BLK-005 |
 
 **Цель спринта:** Реальные платежи работают, гостевая корзина в проде, OAuth production-ready, нет критичных security issues.
 
 **Статус цели:** Частично выполнена. Гостевая корзина ✅. OAuth Yandex ✅, Google ✅. Security issues (hardcoded secrets) 🔄. Реальные платежи в работе. Исправление Alembic 🔄.
 
+### Детальное описание задачи #43
+
+**Проблема:** В проекте реализована отправка email-уведомлений (`EmailService`), но в test/prod отсутствуют реальные SMTP-креды. Из-за этого все письма (welcome email после гостевого чекаута, сброс пароля, подтверждение заказа, обновление статуса) остаются в fallback-режиме: `EmailService` просто делает тихий `return`, письмо не отправляется и не логируется.
+
+**Цель:** Подключить реальный SMTP-провайдер к test- и (по возможности) prod-окружению, обеспечить корректную передачу кредов через env / SOPS / GitHub Secrets, поддержать разные режимы шифрования (STARTTLS / SSL-TLS) и оставить безопасный fallback на логирование при отсутствии конфигурации.
+
+**Окружения:**
+- **test** — обязательно (`promelectron-test.aidrivencode.ru`).
+- **prod** — желательно, если будут предоставлены отдельные креды (`promelectron.aidrivencode.ru`).
+
+**Что нужно сделать:**
+1. **Backend (`backend/src/app/core/config.py` + `backend/src/app/services/email_service.py`):**
+   - Добавить `SMTP_FROM_NAME` и `SMTP_STARTTLS` в `Settings`.
+   - Поддержать оба режима шифрования: `start_tls` (порт 587) и `use_tls` / SSL-TLS (порт 465).
+   - Сформировать поле `From:` как `"{SMTP_FROM_NAME} <{SMTP_FROM}>"`.
+   - Реализовать fallback: если `SMTP_USER` или `SMTP_PASSWORD` не заданы, логировать тему и получателя письма вместо тихого skip.
+2. **Env-шаблоны:**
+   - Обновить корневой `.env.example` и `backend/.env.example`: добавить `SMTP_FROM_NAME=` и `SMTP_STARTTLS=true` (по умолчанию), сохранить `SMTP_TLS=true` для обратной совместимости.
+3. **Helm:**
+   - Обновить `infra/helm/values.yaml`: в `env.open` добавить `SMTP_FROM_NAME` и `SMTP_STARTTLS`; оставить `SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM`, `SMTP_TLS`.
+   - Обновить `infra/helm/stage/test/values.yaml` и `infra/helm/stage/prod/values.yaml` при необходимости.
+   - Добавить `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM_NAME` (если чувствительно) в SOPS-encrypted `infra/helm/stage/test/secrets.yaml` и `infra/helm/stage/prod/secrets.yaml`.
+4. **CI/CD:**
+   - Обновить `.github/workflows/deploy.yml`: добавить `OVR_SMTP_USER`, `OVR_SMTP_PASSWORD`, `OVR_SMTP_FROM_NAME` (опционально) в список `--set-string env.secrets.*` overrides для test и prod.
+5. **Тесты:**
+   - Добавить/обновить unit-тесты `EmailService` с моком `aiosmtplib.send` для STARTTLS и SSL-TLS.
+   - Проверить fallback-логирование при отсутствии кредов.
+6. **Ручная проверка на test (после получения кредов):**
+   - Гостевой чекаут с реальным email → после оплаты должен прийти welcome email с темой «Спасибо за заказ / ваш аккаунт создан».
+   - Проверить логи backend: `SMTPSenderRefused` / `Timeout` не должно быть.
+   - Убедиться, что письмо не в спаме.
+7. **DNS (отложено до появления доступа):**
+   - Настроить SPF, DKIM, DMARC для домена отправителя.
+
+**Acceptance Criteria:**
+- В `backend/src/app/core/config.py` есть `SMTP_FROM_NAME` и `SMTP_STARTTLS`.
+- `EmailService` поддерживает STARTTLS (587) и SSL-TLS (465) в зависимости от `SMTP_TLS`/`SMTP_STARTTLS`.
+- `.env.example` и Helm values содержат все SMTP-переменные (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM_EMAIL`, `SMTP_FROM_NAME`, `SMTP_TLS`, `SMTP_STARTTLS`).
+- Креды test-окружения записаны в SOPS-encrypted `infra/helm/stage/test/secrets.yaml` (и/или GitHub Secrets).
+- Креды prod-окружения записаны в SOPS-encrypted `infra/helm/stage/prod/secrets.yaml` (и/или GitHub Secrets), если креды предоставлены.
+- `.github/workflows/deploy.yml` прокидывает SMTP-переменные в Helm.
+- При отсутствии `SMTP_USER`/`SMTP_PASSWORD` письмо не падает с ошибкой, а логируется (fallback).
+- На test-окружении после гостевого чекаута приходит welcome email.
+- Backend- и frontend-тесты проходят.
+
+**Out of Scope:**
+- Полный отказ от fallback-режима (fallback на логирование остаётся для dev/local).
+- Перенос отправки email в Celery / job-worker (это задача #26 Sprint 2).
+- Настройка SPF/DKIM/DMARC (выполняется отдельно при появлении доступа к DNS).
+- Смена SMTP-провайдера после внедрения (будет отдельной задачей при необходимости).
+
+**Риски:**
+- Для Gmail/Yandex нужен app password, а не основной пароль — важно не скомпрометировать основную учётную запись.
+- Без SPF/DKIM/DMARC письма могут попадать в спам.
+- Если креды для prod не будут предоставлены, prod останется в fallback-режиме.
+- Изменения в `EmailService` могут затронуть существующие тесты (mock `aiosmtplib.send`).
+
+**Зависимости:**
+- BLK-005 — получение реальных SMTP-кредов от пользователя.
+- Доступ к SOPS/GPG для перешифрования `secrets.yaml`.
+- Доступ к GitHub Secrets для добавления `SMTP_USER`, `SMTP_PASSWORD`.
+
 ---
 
 ## Следующий спринт: Sprint 2 (2026-06-15 — 2026-06-28)
 
-| # | Задача | Агент | Приоритет | Зависимости | Оценка |
-|---|--------|-------|-----------|-------------|--------|
-| 17 | Distributed rate limiting (Redis-backed SlowAPI) | backend-dev | P0 | — | 3 дня |
-| 18 | Убрать Alembic из lifespan → только Helm hook | backend-dev | P0 | #6 | 1 день |
-| 19 | Добавить Celery Beat в Helm (CronJob) | devops | P0 | #6 | 2 дня |
-| 20 | PodSecurityContext + non-root в Helm | devops | P0 | #6 | 2 дня |
-| 21 | Self-service onboarding продавцов (backend) | backend-dev | P1 | — | 2 недели |
-| 22 | Self-service onboarding UI | frontend-dev | P1 | #21 | 1 неделя |
-| 23 | Product variants (size/color/SKU matrix) backend | backend-dev | P1 | #10 | 2 недели |
-| 24 | Product variants UI | frontend-dev | P1 | #23 | 1 неделя |
-| 25 | E2E self-service onboarding | e2e-tester | P1 | #21, #22 | 2 дня |
-| 26 | Перенести email/notification в Celery (async) | backend-dev | P1 | #6, #19 | 1 неделя |
-| 27 | Добавить `state` nonce в OAuth flow | backend-dev | P2 | #11, #12 | 2 дня |
-| 28 | Lazy loading для admin/supplier views | frontend-dev | P2 | — | 3 дня |
-| 40 | Унифицировать хранение OAuth секретов: перенести Google/Yandex из GitHub Secrets в SOPS | devops | P2 | — | 1 день |
-| 41 | [#15] Расширенные данные получателя: отчество для резидентов РФ, телефон и сохранение получателей | backend-dev + frontend-dev | P1 | — | 4 недели |
+| # | Задача | Issue | Агент | Приоритет | Зависимости | Оценка |
+|---|--------|-------|-------|-----------|-------------|--------|
+| 17 | Distributed rate limiting (Redis-backed SlowAPI) | | backend-dev | P0 | — | 3 дня |
+| 18 | Убрать Alembic из lifespan → только Helm hook | | backend-dev | P0 | #6 | 1 день |
+| 19 | Добавить Celery Beat в Helm (CronJob) | | devops | P0 | #6 | 2 дня |
+| 20 | PodSecurityContext + non-root в Helm | | devops | P0 | #6 | 2 дня |
+| 21 | Self-service onboarding продавцов (backend) | | backend-dev | P1 | — | 2 недели |
+| 22 | Self-service onboarding UI | | frontend-dev | P1 | #21 | 1 неделя |
+| 23 | Product variants (size/color/SKU matrix) backend | | backend-dev | P1 | #10 | 2 недели |
+| 24 | Product variants UI | | frontend-dev | P1 | #23 | 1 неделя |
+| 25 | E2E self-service onboarding | | e2e-tester | P1 | #21, #22 | 2 дня |
+| 26 | Перенести email/notification в Celery (async) | | backend-dev | P1 | #6, #19 | 1 неделя |
+| 27 | Добавить `state` nonce в OAuth flow | | backend-dev | P2 | #11, #12 | 2 дня |
+| 28 | Lazy loading для admin/supplier views | | frontend-dev | P2 | — | 3 дня |
+| 40 | Унифицировать хранение OAuth секретов: перенести Google/Yandex из GitHub Secrets в SOPS | | devops | P2 | — | 1 день |
+| 41 | [#15] Расширенные данные получателя: отчество для резидентов РФ, телефон и сохранение получателей | | backend-dev + frontend-dev | P1 | — | 4 недели |
 
 ### Детальное описание задачи #15
 
@@ -96,19 +159,19 @@
 
 ## Бэклог Фазы 2 (Q3 2026)
 
-| # | Задача | Агент | Приоритет | Зависимости | Оценка |
-|---|--------|-------|-----------|-------------|--------|
-| 29 | Sub-orders (разделение заказа по поставщикам) | backend-dev | P1 | #1 (платежи) | 4 недели |
-| 30 | Комиссионная система + выплаты | backend-dev | P1 | #29 | 4 недели |
-| 31 | Интеграция СДЭК / Почта России | backend-dev | P1 | — | 4 недели |
-| 32 | Промо-система (купоны, акции, баннеры) backend | backend-dev | P1 | — | 3 недели |
-| 33 | Промо-система UI | frontend-dev | P1 | #32 | 2 недели |
-| 34 | Full-text search (PostgreSQL tsvector) | backend-dev | P1 | — | 3 недели |
-| 35 | Возвраты и возмещения | backend-dev | P1 | #1 (платежи) | 3 недели |
-| 36 | Pinia полный переход | frontend-dev | P1 | — | 2 недели |
-| 37 | Модерация товаров и отзывов | backend-dev | P1 | — | 2 недели |
-| 38 | Модерация UI | frontend-dev | P1 | #37 | 1 неделя |
-| 39 | JWT refresh tokens + HttpOnly cookies | backend-dev + frontend-dev | P1 | — | 1 неделя |
+| # | Задача | Issue | Агент | Приоритет | Зависимости | Оценка |
+|---|--------|-------|-------|-----------|-------------|--------|
+| 29 | Sub-orders (разделение заказа по поставщикам) | | backend-dev | P1 | #1 (платежи) | 4 недели |
+| 30 | Комиссионная система + выплаты | | backend-dev | P1 | #29 | 4 недели |
+| 31 | Интеграция СДЭК / Почта России | | backend-dev | P1 | — | 4 недели |
+| 32 | Промо-система (купоны, акции, баннеры) backend | | backend-dev | P1 | — | 3 недели |
+| 33 | Промо-система UI | | frontend-dev | P1 | #32 | 2 недели |
+| 34 | Full-text search (PostgreSQL tsvector) | | backend-dev | P1 | — | 3 недели |
+| 35 | Возвраты и возмещения | | backend-dev | P1 | #1 (платежи) | 3 недели |
+| 36 | Pinia полный переход | | frontend-dev | P1 | — | 2 недели |
+| 37 | Модерация товаров и отзывов | | backend-dev | P1 | — | 2 недели |
+| 38 | Модерация UI | | frontend-dev | P1 | #37 | 1 неделя |
+| 39 | JWT refresh tokens + HttpOnly cookies | | backend-dev + frontend-dev | P1 | — | 1 неделя |
 
 ---
 
@@ -148,3 +211,13 @@
 | 5 | E2E тесты гостевой корзины | 2026-05-31 | Обновлён `auth.spec.js`, CI/CD зелёный ✅ |
 | 6 | OAuth Yandex ID — production настройка | 2026-05-31 | Backend endpoints + frontend UI, credentials из env |
 | 7 | OAuth Google ID — production настройка | 2026-06-01 | Backend endpoints + frontend UI, credentials получены из env ✅ |
+
+---
+
+## GitHub Issues (agent intake)
+
+Задачи, созданные агентом через `/skill:implement` и автоматически опубликованные в GitHub backlog.
+
+| task-id | Issue | Title | Date |
+|---------|-------|-------|------|
+| — | [#5](https://github.com/AutonomaCo/promelectron/issues/5) | Кнопка «Отменить заказ» для пользователя | — |

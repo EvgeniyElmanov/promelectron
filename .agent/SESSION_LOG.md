@@ -1,3 +1,20 @@
+### 2026-06-24 21:30 | orchestrator | user-cancel-order-admin-ship-confirm — реализована отмена заказа и кнопка «Подтвердить отправку» в админке
+  Роль: orchestrator / backend-dev / frontend-dev / code-reviewer / security-reviewer.
+  Запрос пользователя: реализовать отмену заказа пользователем до отправки + кнопку «Подтвердить отправку» в админке (issue #6).
+  Выполнено:
+  - Создан coordination plane `.agent/runs/user-cancel-order-admin-ship-confirm/` и worktree `.worktrees/user-cancel-order-admin-ship-confirm/` (ветка `feature/user-cancel-order-admin-ship-confirm`).
+  - Architect: написана и согласована спецификация `spec.md`.
+  - Backend-dev: модель `Order` + миграция `db0971c05386_add_order_cancellation_fields.py`, `OrderService.cancel_order` (pending/paid + YooKassa refund + stock), `OrderService.ship_order_by_admin`, `POST /admin/orders/{id}/ship/`, guards в `PaymentService`, state-machine для админских обновлений.
+  - Frontend-dev: `OrderDetail.vue` (кнопка отмены, блок «Отменён»), `Admin.vue` (кнопка «Подтвердить отправку»), `api/orders.js`, unit-тесты.
+  - Code review: 3 итерации, все findings (F001–F019) исправлены, статус APPROVED.
+  - QA: backend 281/281 ✅, frontend 187/187 ✅, E2E 108/108 ✅, lint чисто ✅.
+  - Открыт PR #21: https://github.com/AutonomaCo/promelectron/pull/21.
+  - Смержено в `main` по explicit user approval.
+  - Обновлены `PROJECT_CONTEXT.md` (API inventory, счётчики тестов, история) и `.agent/SESSION_LOG.md`.
+  Результат:
+  - Задача #6 завершена и доступна в `main`.
+  Блокер: Нет.
+
 ### 2026-06-24 12:20 | backend-dev | user-cancel-order-admin-ship-confirm — реализован backend
   Роль: backend-dev.
   Запрос пользователя: реализовать backend часть задачи user-cancel-order-admin-ship-confirm согласно спецификации.
