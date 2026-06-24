@@ -36,8 +36,8 @@ Implement or fix backend code per the task specification.
 
 ## Workflow
 
-1. Read `.agent/<TASK_ID>/task.md` — task description
-2. Read `.agent/<TASK_ID>/spec.md` — technical spec (if exists)
+1. Read `.agent/runs/<TASK_ID>/task.md` — task description
+2. Read `.agent/runs/<TASK_ID>/spec.md` — technical spec (if exists)
 3. If `review/findings.md` exists — read it and fix all `OPEN` findings
 4. If `review/test-findings.md` exists — read it and fix all `OPEN` findings
 
@@ -60,3 +60,15 @@ When `review/findings.md` or `review/test-findings.md` exists:
 2. Update each item's status to `FIXED` and add `Developer note:` explaining the fix
 3. **Never** set status to `VERIFIED` — only the reviewer does that
 4. Run tests after fixing all items
+## Worktree mode (when invoked by /implement, /architect, /qa, /ship)
+
+The orchestrator passes two **absolute** paths:
+- **WORKTREE** — the per-task git checkout under `.worktrees/<task-id>/`. ALL code, diffs, tests,
+  and `git`/`make`/`uv` commands target it.
+- **AGENT_DIR** — `.agent/runs/<task-id>/`, the gitignored coordination plane (task.md, spec.md,
+  review/findings.md). Never write pipeline files into the committed `.agent/` planner.
+
+Your `cd` does NOT persist between tool calls — always use explicit paths: `git -C "$WORKTREE" …`,
+`make -C "$WORKTREE" …`, `uv --directory "$WORKTREE" …`, and Read/Edit/Write files under
+`$WORKTREE`. If these paths are not provided (invoked directly), fall back to the repo root and
+the single active `.agent/runs/<task-id>/` dir.
