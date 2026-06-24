@@ -126,24 +126,51 @@ jobs:
       - name: Deploy to test
         env:
           KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
+          # Optional GitHub Secrets overrides. Each is applied only when non-empty;
+          # otherwise the SOPS-encrypted baseline (stage/test/secrets.yaml) is used.
+          OVR_POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          OVR_POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          OVR_POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+          OVR_DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          OVR_REDIS_URL: ${{ secrets.REDIS_URL }}
+          OVR_SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          OVR_ONEC_API_URL: ${{ secrets.ONEC_API_URL }}
+          OVR_ONEC_API_KEY: ${{ secrets.ONEC_API_KEY }}
+          OVR_YOOKASSA_SHOP_ID: ${{ secrets.YOOKASSA_SHOP_ID }}
+          OVR_YOOKASSA_SECRET_KEY: ${{ secrets.YOOKASSA_SECRET_KEY }}
+          OVR_CDEK_ACCOUNT: ${{ secrets.CDEK_ACCOUNT }}
+          OVR_CDEK_SECURE: ${{ secrets.CDEK_SECURE }}
+          OVR_YANDEX_CLIENT_ID: ${{ secrets.YANDEX_CLIENT_ID }}
+          OVR_YANDEX_CLIENT_SECRET: ${{ secrets.YANDEX_CLIENT_SECRET }}
+          OVR_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          OVR_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          OVR_MINIO_ACCESS_KEY: ${{ secrets.MINIO_ACCESS_KEY }}
+          OVR_MINIO_SECRET_KEY: ${{ secrets.MINIO_SECRET_KEY }}
+          OVR_MINIO_ROOT_USER: ${{ secrets.MINIO_ROOT_USER }}
+          OVR_MINIO_ROOT_PASSWORD: ${{ secrets.MINIO_ROOT_PASSWORD }}
         run: |
+          set -euo pipefail
+          # Build --set-string overrides for every secret whose GitHub Secret is non-empty.
+          # SOPS provides the committed baseline; GitHub Secrets take precedence when present.
+          OVERRIDES=()
+          for key in POSTGRES_USER POSTGRES_PASSWORD POSTGRES_DB DATABASE_URL REDIS_URL \
+                     SECRET_KEY ONEC_API_URL ONEC_API_KEY \
+                     YOOKASSA_SHOP_ID YOOKASSA_SECRET_KEY CDEK_ACCOUNT CDEK_SECURE \
+                     YANDEX_CLIENT_ID YANDEX_CLIENT_SECRET GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET \
+                     MINIO_ACCESS_KEY MINIO_SECRET_KEY MINIO_ROOT_USER MINIO_ROOT_PASSWORD; do
+            var="OVR_${key}"
+            val="${!var:-}"
+            [ -n "$val" ] || continue
+            val="${val//\\/\\\\}"   # escape backslashes for helm strvals
+            val="${val//,/\\,}"     # escape commas so they aren't treated as separators
+            OVERRIDES+=(--set-string "env.secrets.${key}=${val}")
+          done
           helm upgrade --install promelectron-test ./infra/helm \
             -f infra/helm/stage/test/values.yaml \
             -f <(sops -d infra/helm/stage/test/secrets.yaml) \
             --set api.image=${{ env.API_IMAGE }}:${{ github.sha }} \
             --set frontend.image=${{ env.FRONTEND_IMAGE }}-test:${{ github.sha }} \
-            --set env.secrets.YANDEX_CLIENT_ID=${{ secrets.YANDEX_CLIENT_ID }} \
-            --set env.secrets.YANDEX_CLIENT_SECRET=${{ secrets.YANDEX_CLIENT_SECRET }} \
-            --set env.secrets.GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }} \
-            --set env.secrets.GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }} \
-            --set env.secrets.MINIO_ACCESS_KEY=${{ secrets.MINIO_ACCESS_KEY }} \
-            --set env.secrets.MINIO_SECRET_KEY=${{ secrets.MINIO_SECRET_KEY }} \
-            --set env.secrets.MINIO_ROOT_USER=${{ secrets.MINIO_ROOT_USER }} \
-            --set env.secrets.MINIO_ROOT_PASSWORD=${{ secrets.MINIO_ROOT_PASSWORD }} \
-            --set env.secrets.YOOKASSA_SHOP_ID=54401 \
-            --set env.secrets.YOOKASSA_SECRET_KEY=test_Fh8hUAVVBGUGbjmlzba6TB0iyUbos_lueTHE-axOwM0 \
-            --set env.secrets.CDEK_ACCOUNT=wqGwiQx0gg8mLtiEKsUinjVSICCjtTEP \
-            --set env.secrets.CDEK_SECURE=RmAmgvSgSl1yirlz9QupbzOJVqhCxcP5 \
+            "${OVERRIDES[@]}" \
             --namespace promelectron-test \
             --create-namespace \
             --wait \
@@ -215,24 +242,51 @@ jobs:
       - name: Deploy to prod
         env:
           KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
+          # Optional GitHub Secrets overrides. Each is applied only when non-empty;
+          # otherwise the SOPS-encrypted baseline (stage/prod/secrets.yaml) is used.
+          OVR_POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          OVR_POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          OVR_POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+          OVR_DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          OVR_REDIS_URL: ${{ secrets.REDIS_URL }}
+          OVR_SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          OVR_ONEC_API_URL: ${{ secrets.ONEC_API_URL }}
+          OVR_ONEC_API_KEY: ${{ secrets.ONEC_API_KEY }}
+          OVR_YOOKASSA_SHOP_ID: ${{ secrets.YOOKASSA_SHOP_ID }}
+          OVR_YOOKASSA_SECRET_KEY: ${{ secrets.YOOKASSA_SECRET_KEY }}
+          OVR_CDEK_ACCOUNT: ${{ secrets.CDEK_ACCOUNT }}
+          OVR_CDEK_SECURE: ${{ secrets.CDEK_SECURE }}
+          OVR_YANDEX_CLIENT_ID: ${{ secrets.YANDEX_CLIENT_ID }}
+          OVR_YANDEX_CLIENT_SECRET: ${{ secrets.YANDEX_CLIENT_SECRET }}
+          OVR_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          OVR_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          OVR_MINIO_ACCESS_KEY: ${{ secrets.MINIO_ACCESS_KEY }}
+          OVR_MINIO_SECRET_KEY: ${{ secrets.MINIO_SECRET_KEY }}
+          OVR_MINIO_ROOT_USER: ${{ secrets.MINIO_ROOT_USER }}
+          OVR_MINIO_ROOT_PASSWORD: ${{ secrets.MINIO_ROOT_PASSWORD }}
         run: |
+          set -euo pipefail
+          # Build --set-string overrides for every secret whose GitHub Secret is non-empty.
+          # SOPS provides the committed baseline; GitHub Secrets take precedence when present.
+          OVERRIDES=()
+          for key in POSTGRES_USER POSTGRES_PASSWORD POSTGRES_DB DATABASE_URL REDIS_URL \
+                     SECRET_KEY ONEC_API_URL ONEC_API_KEY \
+                     YOOKASSA_SHOP_ID YOOKASSA_SECRET_KEY CDEK_ACCOUNT CDEK_SECURE \
+                     YANDEX_CLIENT_ID YANDEX_CLIENT_SECRET GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET \
+                     MINIO_ACCESS_KEY MINIO_SECRET_KEY MINIO_ROOT_USER MINIO_ROOT_PASSWORD; do
+            var="OVR_${key}"
+            val="${!var:-}"
+            [ -n "$val" ] || continue
+            val="${val//\\/\\\\}"   # escape backslashes for helm strvals
+            val="${val//,/\\,}"     # escape commas so they aren't treated as separators
+            OVERRIDES+=(--set-string "env.secrets.${key}=${val}")
+          done
           helm upgrade --install promelectron ./infra/helm \
             -f infra/helm/stage/prod/values.yaml \
             -f <(sops -d infra/helm/stage/prod/secrets.yaml) \
             --set api.image=${{ env.API_IMAGE }}:${{ github.sha }} \
             --set frontend.image=${{ env.FRONTEND_IMAGE }}:${{ github.sha }} \
-            --set env.secrets.YANDEX_CLIENT_ID=${{ secrets.YANDEX_CLIENT_ID }} \
-            --set env.secrets.YANDEX_CLIENT_SECRET=${{ secrets.YANDEX_CLIENT_SECRET }} \
-            --set env.secrets.GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }} \
-            --set env.secrets.GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }} \
-            --set env.secrets.MINIO_ACCESS_KEY=${{ secrets.MINIO_ACCESS_KEY }} \
-            --set env.secrets.MINIO_SECRET_KEY=${{ secrets.MINIO_SECRET_KEY }} \
-            --set env.secrets.MINIO_ROOT_USER=${{ secrets.MINIO_ROOT_USER }} \
-            --set env.secrets.MINIO_ROOT_PASSWORD=${{ secrets.MINIO_ROOT_PASSWORD }} \
-            --set env.secrets.YOOKASSA_SHOP_ID=${{ secrets.YOOKASSA_SHOP_ID }} \
-            --set env.secrets.YOOKASSA_SECRET_KEY=${{ secrets.YOOKASSA_SECRET_KEY }} \
-            --set env.secrets.CDEK_ACCOUNT=${{ secrets.CDEK_ACCOUNT }} \
-            --set env.secrets.CDEK_SECURE=${{ secrets.CDEK_SECURE }} \
+            "${OVERRIDES[@]}" \
             --namespace promelectron \
             --create-namespace \
             --wait \
