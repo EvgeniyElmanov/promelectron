@@ -60,7 +60,6 @@
 | 28 | Lazy loading для admin/supplier views | frontend-dev | P2 | — | 3 дня |
 | 40 | Унифицировать хранение OAuth секретов: перенести Google/Yandex из GitHub Secrets в SOPS | devops | P2 | — | 1 день |
 | 41 | [#15] Расширенные данные получателя: отчество для резидентов РФ, телефон и сохранение получателей | backend-dev + frontend-dev | P1 | — | 4 недели |
-| 42 | Отмена заказа пользователем до отправки + возврат средств | backend-dev + frontend-dev | P1 | todo | #1 (платежи), CDEK cancel helper | 1 неделя |
 
 ### Детальное описание задачи #15
 
