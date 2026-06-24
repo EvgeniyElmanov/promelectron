@@ -1,3 +1,34 @@
+### 2026-06-24 02:00 | architect | Пересмотр планов под отказ от Celery и универсальную таблицу jobs
+  Изменено:
+  - Получены новые требования от Александра: убрать Celery из проекта, использовать универсальную таблицу `jobs` в PostgreSQL и worker в бесконечном цикле; есть cronjobs для запуска задач по расписанию.
+  - Проверено текущее состояние worktree `.worktrees/implement-cdek-status-sync-and-cancel`: реализован Celery-вариант (`cdek_tasks.py`, `celery_app.py`, `payment_service.py` вызывает `.delay()`).
+  - Переписан `.agent/cdek-status-sync-and-cancel/spec.md`:
+    - Отказ от Celery, переход на `jobs` + `job_worker.py`.
+    - Job types: `CDEK_CREATE_ORDER`, `CDEK_SYNC_ORDER_STATUS`.
+    - Cronjobs создают job'ы, worker их выполняет.
+    - `payment_service.py` создаёт job вместо Celery task.
+    - Обновлены Components Affected, Execution Plan, Must-haves, Risks.
+    - Добавлен раздел "Варианты миграции Celery" (вариант 1 — только CDEK, вариант 2 — полный отказ).
+  - Восстановлены `.agent/order-cancellation/task.md` и `spec.md` (были утеряны) с уточнением зависимости от helper'а `CdekService.cancel_cdek_order()`.
+  Результат:
+  - Планы адаптированы под требования Александра.
+  - Требуется решение пользователя по варианту миграции Celery (CDEK-only vs полный отказ) и дальнейшие действия с worktree.
+  Блокер: Нет.
+
+### 2026-06-24 04:05 | devops / frontend-dev | fix frontend Node.js engine mismatch
+  Роль: frontend-dev / devops.
+  Запрос пользователя: «выполни рекомендуемое решение» для предупреждений EBADENGINE при `npm install`.
+  Выполнено:
+  - Диагностика: `vue-router@5.1.0` (разрешённый через `^5.0.4`) тянет `@babel/generator@^8.0.0-rc.4`, который требует Node.js `^22.18.0 || >=24.11.0`. Текущий Node v20.20.2 не удовлетворяет требованию.
+  - Создан `frontend/.nvmrc` со значением `24`.
+  - Обновлён `frontend/package.json` > `engines.node` с `^20.19.0 || >=22.12.0` на `^22.18.0 || >=24.11.0`.
+  - Пересоздан `frontend/package-lock.json` под Node v24.15.0 / npm v11.12.1 (`rm -rf node_modules package-lock.json && npm install`).
+  - Проверка: `npm install` — чисто, без EBADENGINE; `npm run build` — успешно.
+  Результат:
+  - Предупреждения `EBADENGINE` устранены. Frontend теперь официально требует Node.js 22.18+ или 24.x.
+  - Файлы изменены: `frontend/.nvmrc`, `frontend/package.json`, `frontend/package-lock.json`.
+  - Коммит не создан (требуется explicit user approval).
+
 ### 2026-06-22 21:40 | qa / backend-dev | guest-checkout-auto-account — manual test env verification & bugfix
   Роль: qa engineer + backend-dev.
   Запрос пользователя: «сделай полную проверку по всем пунктам» на test-окружении после merge в main.
