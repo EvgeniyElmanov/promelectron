@@ -24,7 +24,9 @@ sys.path.insert(0, str(PROJECT_ROOT / "scripts"))
 from agent_retry import retry_on_kimi_errors  # noqa: E402
 
 WORKTREES_ROOT = PROJECT_ROOT / ".worktrees"
-AGENT_DIR = PROJECT_ROOT / ".agent"
+# Transient per-task pipeline artifacts live under .agent/runs/ (gitignored),
+# separate from the committed .agent/ planning dir (BACKLOG.md, PLANNING_HANDOFF.md, ...).
+AGENT_RUNS_DIR = PROJECT_ROOT / ".agent" / "runs"
 
 # Context management thresholds for Kimi K2.7 (256K context window).
 # We use a conservative threshold to leave room for system prompt,
@@ -56,9 +58,10 @@ def run(cmd: list[str], cwd: Path | None = None, check: bool = True) -> subproce
 def cmd_setup(args: argparse.Namespace) -> int:
     description = " ".join(args.description)
     task_id = slugify(description)
-    task_dir = AGENT_DIR / task_id
+    task_dir = AGENT_RUNS_DIR / task_id
     review_dir = task_dir / "review"
-    worktree = WORKTREES_ROOT / f"implement-{task_id}"
+    # Worktree path is just <task-id>, aligned with the .claude pipeline convention.
+    worktree = WORKTREES_ROOT / task_id
     branch = f"feature/{task_id}"
 
     task_dir.mkdir(parents=True, exist_ok=True)
@@ -158,7 +161,7 @@ def write_context_summary(task_dir: Path) -> Path | None:
 
 
 def cmd_check_context(args: argparse.Namespace) -> int:
-    task_dir = AGENT_DIR / args.task_id
+    task_dir = AGENT_RUNS_DIR / args.task_id
     tokens = estimate_context_tokens(task_dir)
     print(f"ESTIMATED_TOKENS={tokens}")
     print(f"THRESHOLD={CONTEXT_THRESHOLD}")
@@ -170,7 +173,7 @@ def cmd_check_context(args: argparse.Namespace) -> int:
 
 
 def cmd_worktree_path(args: argparse.Namespace) -> int:
-    worktree = WORKTREES_ROOT / f"implement-{args.task_id}"
+    worktree = WORKTREES_ROOT / args.task_id
     print(worktree)
     return 0
 
@@ -178,9 +181,10 @@ def cmd_worktree_path(args: argparse.Namespace) -> int:
 @retry_on_kimi_errors(max_attempts=3, backoff_seconds=2.0)
 def cmd_create_worktree(args: argparse.Namespace) -> int:
     task_id = args.task_id
-    worktree = WORKTREES_ROOT / f"implement-{task_id}"
+    worktree = WORKTREES_ROOT / task_id
     branch = f"feature/{task_id}"
-    base_ref = args.base_ref or "HEAD"
+    # Always branch from origin/main unless explicitly overridden.
+    base_ref = args.base_ref or "origin/main"
 
     WORKTREES_ROOT.mkdir(parents=True, exist_ok=True)
 
@@ -199,7 +203,7 @@ def cmd_create_worktree(args: argparse.Namespace) -> int:
 @retry_on_kimi_errors(max_attempts=3, backoff_seconds=2.0)
 def cmd_cleanup(args: argparse.Namespace) -> int:
     task_id = args.task_id
-    worktree = WORKTREES_ROOT / f"implement-{task_id}"
+    worktree = WORKTREES_ROOT / task_id
     branch = f"feature/{task_id}"
 
     if worktree.exists():
@@ -229,7 +233,7 @@ def main() -> int:
 
     wt_create = sub.add_parser("create-worktree", help="Create git worktree for task-id")
     wt_create.add_argument("task_id", help="Task ID")
-    wt_create.add_argument("--base-ref", default="HEAD", help="Base ref to branch from")
+    wt_create.add_argument("--base-ref", default="origin/main", help="Base ref to branch from (default: origin/main)")
 
     cleanup = sub.add_parser("cleanup", help="Remove worktree and feature branch")
     cleanup.add_argument("task_id", help="Task ID")

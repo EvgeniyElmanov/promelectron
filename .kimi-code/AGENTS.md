@@ -44,11 +44,20 @@ For the exact subagent preambles, see [Rule: Agent Commons](.kimi-code/rules/age
 # Implement a new feature (full cycle)
 /skill:implement "Add promo codes to cart"
 
+# Write a spec without coding
+/skill:spec "Add promo codes to cart"
+
 # Fix a bug or failing tests
 /skill:fix "Race condition in cart add"
 
 # Review current changes
 /skill:review
+
+# Re-run QA for an existing task
+/skill:qa-gate add-promo-codes-to-cart-0624
+
+# Open a PR for the current branch
+/skill:ship
 
 # Deploy to test or prod
 /skill:deploy test
@@ -72,8 +81,8 @@ For the exact subagent preambles, see [Rule: Agent Commons](.kimi-code/rules/age
 | `.kimi-code/mcp.json` | MCP server configuration |
 | `.kimi-code/config.example.toml` | Example user-level config |
 | `scripts/implement-pipeline.py` | Helper for task IDs, git worktrees, review loops |
-| `.agent/<task-id>/` | Per-task artifacts (`task.md`, `spec.md`, `review/findings.md`, `review/test-findings.md`) |
-| `.worktrees/implement-<task-id>/` | Isolated git worktree for the feature branch |
+| `.agent/runs/<task-id>/` | Gitignored per-task coordination plane (`task.md`, `spec.md`, `review/findings.md`, `review/test-findings.md`) |
+| `.worktrees/<task-id>/` | Isolated git worktree for the feature branch |
 
 ---
 
@@ -83,13 +92,13 @@ For the exact subagent preambles, see [Rule: Agent Commons](.kimi-code/rules/age
 User: /implement "Add promo codes to cart"
         │
         ▼
-   Create .agent/<task-id>/
+   Create .agent/runs/<task-id>/
+        │
+        ▼
+   git worktree add .worktrees/<task-id> -b feature/<task-id>
         │
         ▼
    Architect subagent (plan mode) → spec.md → user approves
-        │
-        ▼
-   git worktree add .worktrees/implement-<task-id> -b feature/<task-id>
         │
         ▼
    Developer subagent(s) in the worktree (backend-dev / frontend-dev / devops)
@@ -101,6 +110,9 @@ User: /implement "Add promo codes to cart"
    QA subagent (pytest + vitest + Playwright, verifies Acceptance Criteria)
         │
         ▼
+   Open PR via gh pr create → post [H-xxx] comments
+        │
+        ▼
    Report to user → merge only with explicit approval
 ```
 
@@ -109,6 +121,8 @@ User: /implement "Add promo codes to cart"
 - `--quick` — skip the architect/spec phase.
 - `--backend-only` — only backend development.
 - `--frontend-only` — only frontend development.
+- `--serial` — run backend then frontend sequentially (default is parallel).
+- `--qa` — run the dedicated QA gate before opening the PR.
 
 ---
 

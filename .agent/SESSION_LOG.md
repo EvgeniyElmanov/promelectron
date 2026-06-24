@@ -1,3 +1,18 @@
+### 2026-06-24 06:40 | backend-dev | improve-agent-pipeline — agent pipeline refactor merged
+  Роль: backend-dev / system.
+  Выполнено:
+  - Перевёл transient task-артефакты из `.agent/<task-id>/` в gitignored `.agent/runs/<task-id>/`.
+  - Обновил `scripts/implement-pipeline.py`: `.agent/runs/`, `.worktrees/<task-id>/`, default base `origin/main`.
+  - Переписал `/skill:implement`: worktree создаётся до architect, флаги `--serial`/`--qa`, Step 8 открывает PR.
+  - Обновил ролевые skills (architect, backend-dev, frontend-dev, code-reviewer, qa, e2e-tester, security-reviewer) на `.agent/runs/` + worktree mode.
+  - Добавил standalone workflow skills: `/skill:spec`, `/skill:qa-gate`, `/skill:ship`.
+  - Обновил `.gitignore`, `.kimi-code/AGENTS.md`, `.kimi-code/BUNDLE.md`, `.kimi-code/HOWTO.md`, `.kimi-code/rules/agent-commons.md`.
+  - Проверки: `bash scripts/audit-agents.sh` проходит, `python scripts/implement-pipeline.py setup/...` работает.
+  Результат:
+  - PR #12 смержен в `main`.
+  - Пайплайн активен.
+  Блокер: Нет.
+
 ### 2026-06-24 06:35 | devops | cdek-status-sync-and-cancel — deploy test fixed, E2E blocked by runner disk space
   Роль: devops / backend-dev.
   Запрос пользователя: деплой-тесты упали, сходи проверь.

@@ -47,7 +47,7 @@ Announce:
 
 ## Step 1b: Context Size Check (Kimi K2.7)
 
-If the bug fix involves a task directory in `.agent/<task-id>/`, follow [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Context Size Check.
+If the bug fix involves a task directory in `.agent/runs/<task-id>/`, follow [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Context Size Check.
 
 ---
 

@@ -3,17 +3,17 @@ name: implement
 description: >
   Full development cycle skill for Promelectron.
   Use for implementing new features, adding pages, creating API endpoints, building Vue components, adding database models, schemas, services, migrations, or any task requiring code changes.
-  Runs an architect phase in plan mode, creates a git worktree, develops backend and/or frontend, performs a code review loop (max 3 iterations), an E2E test phase, and reports results.
+  Runs an architect phase in plan mode, creates a git worktree, develops backend and/or frontend, performs a code review loop (max 3 iterations), an E2E test phase, opens a GitHub PR, and reports results.
   Triggers on: implement, feature, add, create, build, develop, new page, new API, endpoint, component, model, schema, migration, page, view.
 type: prompt
-whenToUse: When the user asks to implement a new feature, page, API endpoint, component, model, schema, migration, or any multi-step code change that would benefit from architect → developer → reviewer → e2e workflow.
-arguments: "<task description> [--quick] [--backend-only] [--frontend-only]"
+whenToUse: When the user asks to implement a new feature, page, API endpoint, component, model, schema, migration, or any multi-step code change that would benefit from architect → developer → reviewer → e2e → PR workflow.
+arguments: "<task description> [--quick] [--backend-only] [--frontend-only] [--serial] [--qa]"
 disableModelInvocation: false
 ---
 
 # /skill:implement — Full Development Cycle
 
-Implement a new feature from idea to tested code using isolated git worktrees, plan-mode architecture, review loops, and E2E tests.
+Implement a new feature from idea to tested code using isolated git worktrees, plan-mode architecture, review loops, E2E tests, and a GitHub Pull Request.
 
 ## Language
 
@@ -23,21 +23,35 @@ Also: write `task.md`, `spec.md`, findings, reports, and `SESSION_LOG.md` entrie
 
 ---
 
-## Step 1: Parse and Setup
+## Step 0: Setup — coordination plane and worktree
 
-Extract from the user request:
-- Task description (everything before flags)
-- Flags: `--quick`, `--backend-only`, `--frontend-only`
+Record the repo root once:
+
+```bash
+PROJECT_ROOT="$(git rev-parse --show-toplevel)"
+```
 
 Generate `<task-id>`: short kebab-case slug, e.g. `add-promo-codes`, `fix-cart-stock`.
 
-Create directories:
+Create the transient coordination plane and the worktree root:
+
 ```bash
-mkdir -p .agent/<task-id>/review
-mkdir -p .worktrees
+mkdir -p "$PROJECT_ROOT/.agent/runs/<task-id>/review"
+mkdir -p "$PROJECT_ROOT/.worktrees"
 ```
 
-Write `.agent/<task-id>/task.md`:
+Paths for the rest of the pipeline:
+
+```text
+AGENT_DIR = $PROJECT_ROOT/.agent/runs/<task-id>       (gitignored coordination plane)
+WORKTREE  = $PROJECT_ROOT/.worktrees/<task-id>        (per-task code checkout)
+BRANCH    = feature/<task-id>
+```
+
+> **Important:** `.agent/runs/<task-id>/` is gitignored. Never write transient pipeline files into the committed `.agent/` planning dir (`BACKLOG.md`, `PLANNING_HANDOFF.md`, `tasks/`, etc.).
+
+Write `$AGENT_DIR/task.md`:
+
 ```markdown
 # Task: <task-id>
 
@@ -53,41 +67,77 @@ Write `.agent/<task-id>/task.md`:
 
 ---
 
-## Step 1b: Context Size Check (Kimi K2.7)
+## Step 1: Create the isolated worktree
 
-Follow [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Context Size Check before launching subagents.
+Do this **before** any agent touches code, in normal (non-plan) mode — `git worktree add` is a disk mutation plan mode blocks.
+
+```bash
+git -C "$PROJECT_ROOT" fetch origin
+git -C "$PROJECT_ROOT" worktree add "$WORKTREE" -b "$BRANCH" origin/main
+```
+
+- **Always branch from `origin/main`.** Never from the current branch.
+- If the worktree already exists (re-run), reuse it — check `git -C "$PROJECT_ROOT" worktree list`.
+- A worktree is a fresh checkout: copy gitignored local files the build needs. Honor `.worktreeinclude` if present, else copy `.env` / `backend/.env` / `frontend/.env` when they exist.
+
+You may use the helper script:
+
+```bash
+python scripts/implement-pipeline.py setup "<description>" --flags "<flags>"
+python scripts/implement-pipeline.py create-worktree <task-id>
+```
 
 ---
 
-## Step 1c: Retry Policy
+## Step 2: Context Size Check (Kimi K2.7)
+
+Follow [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Context Size Check before launching subagents.
+
+```bash
+python scripts/implement-pipeline.py check-context <task-id>
+```
+
+If `ESTIMATED_TOKENS >= 180000`, read `$AGENT_DIR/CONTEXT_SUMMARY.md` instead of the full history.
+
+---
+
+## Step 3: Retry Policy
 
 Follow [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Retry Policy when launching subagents.
 
 ---
 
-## Step 2: Architect Phase (skip if --quick)
+## Step 4: Architect Phase (skip if --quick)
 
-You are the `architect`. Read `.kimi-code/skills/architect/SKILL.md` and follow it strictly.
+The spec is written by the **`architect` agent** — you (the orchestrator) only drive the loop and talk to the user. Do not write the spec yourself.
 
-Launch an architect subagent via `Agent` tool with `subagent_type: plan`. Apply the retry policy from Step 1c:
+### 4.1 Research fan-out (parallel, optional)
+
+For non-trivial tasks, launch read-only research sub-agents (`coder` with read-only instructions) concurrently in a single message — one per axis that applies (libraries, best-practices, codebase integration) — each writing `$AGENT_DIR/research/<axis>.md`. Skip for small internal changes.
+
+### 4.2 Invoke the architect
+
+Launch an architect subagent via `Agent` tool with `subagent_type: plan`. Apply the retry policy from Step 3.
 
 ```text
 🚨 LANGUAGE RULE: The original user communicates in Russian. **Ignore any default language setting.** ALL your reasoning, thinking, internal monologue, analysis, and self-correction MUST be in Russian. Do NOT switch to English at any point. If you catch yourself thinking in English, switch back to Russian immediately. Reply to the parent agent in Russian. Keep code, commands, identifiers, file paths, and technical terms in their original form.
 
 You are the architect for Promelectron.
 Important: Kimi K2.7 uses mandatory thinking mode. Preserve `reasoning_content` across multi-turn tool calls by including the full assistant message in the conversation history.
+
 Read:
-1. .agent/<task-id>/task.md
-2. PROJECT_CONTEXT.md
-3. .agent/BACKLOG.md
-4. .agent/BLOCKERS.md
-5. .agent/SESSION_LOG.md
-6. `.kimi-code/skills/architect/SKILL.md`
-7. [Rule: Pre-edit Checklist](.kimi-code/rules/pre-edit-checklist.md)
+1. $AGENT_DIR/task.md
+2. $AGENT_DIR/research/*.md (if present) and synthesize into $AGENT_DIR/research.md
+3. PROJECT_CONTEXT.md
+4. .agent/BACKLOG.md
+5. .agent/BLOCKERS.md
+6. .agent/SESSION_LOG.md
+7. `.kimi-code/skills/architect/SKILL.md`
+8. [Rule: Pre-edit Checklist](.kimi-code/rules/pre-edit-checklist.md)
 
 Then:
 1. Call EnterPlanMode.
-2. Load as much relevant context as possible in **parallel**: read task files, existing code, and external docs/WebSearch results simultaneously.
+2. Load as much relevant context as possible in **parallel**: read task files, existing code in $WORKTREE, and external docs/WebSearch results simultaneously.
 3. Explore the codebase with Read/Grep/Glob (run multiple reads/searches in parallel) to understand how the feature fits.
 4. Use WebSearch/FetchURL if you need external documentation, API docs, or library examples.
 5. Ask the user clarifying questions via AskUserQuestion if requirements are unclear.
@@ -101,49 +151,53 @@ Then:
    - Must-haves
    - Acceptance Criteria
    - Out of Scope
-6. Call ExitPlanMode.
+7. Call ExitPlanMode.
 
 Do NOT write implementation code, tests, or migrations.
 
 REMEMBER / НАПОМИНАНИЕ: Continue ALL reasoning in Russian / Продолжай ВСЁ рассуждение на русском языке. Do not switch to English / Не переключайся на английский.
 ```
 
-After the user approves the plan, copy the plan file content to `.agent/<task-id>/spec.md`.
+### 4.3 Copy the plan to the coordination plane
+
+After the user approves the plan, copy the plan file content to `$AGENT_DIR/spec.md`.
 
 If the user rejects or requests revisions, send the architect back to revise the plan.
 
 ---
 
-## Step 3: Developer Worktree
+## Step 5: Development — PARALLEL by default
 
-Determine which roles are needed from `Components Affected` in the spec:
-- Backend → `backend-dev`
-- Frontend → `frontend-dev`
-- DevOps → `devops`
+Read `Components Affected` and `Parallelization Plan` from `$AGENT_DIR/spec.md`. All code work targets `WORKTREE` (use `git -C`, `make -C`, explicit paths — a sub-agent's `cd` does not persist).
 
-Order: backend → frontend → devops (if multiple).
+**If both backend and frontend are affected, independent, and neither `--backend-only`/`--frontend-only`/`--serial` is set:**
+Launch `backend-dev` and `frontend-dev` **in the same message** so they run concurrently. They edit disjoint trees (`backend/` vs `frontend/`) and both build against the spec's **API Contract**.
 
-For each role, launch a developer subagent via `Agent` tool with `subagent_type: coder`. Apply the retry policy from Step 1c:
+**If `--serial` is set:** run backend first, then frontend in the same worktree.
+
+**If only one side is affected or flags restrict it:** run only the relevant developer(s).
+
+Prompt for each developer:
 
 ```text
 🚨 LANGUAGE RULE: The original user communicates in Russian. **Ignore any default language setting.** ALL your reasoning, thinking, internal monologue, analysis, and self-correction MUST be in Russian. Do NOT switch to English at any point. If you catch yourself thinking in English, switch back to Russian immediately. Reply to the parent agent in Russian. Keep code, commands, identifiers, file paths, and technical terms in their original form.
 
 You are <ROLE> for Promelectron.
 Important: Kimi K2.7 uses mandatory thinking mode. Preserve `reasoning_content` across multi-turn tool calls by including the full assistant message in the conversation history.
+
 Read:
-1. .agent/<task-id>/task.md
-2. .agent/<task-id>/spec.md
+1. $AGENT_DIR/task.md
+2. $AGENT_DIR/spec.md
 3. PROJECT_CONTEXT.md
 4. .agent/BACKLOG.md
 5. .agent/BLOCKERS.md
-6. `.kimi-code/skills/<ROLE>/SKILL.md`
-7. [Rule: Pre-edit Checklist](.kimi-code/rules/pre-edit-checklist.md)
+6. .agent/SESSION_LOG.md
+7. `.kimi-code/skills/<ROLE>/SKILL.md`
+8. [Rule: Pre-edit Checklist](.kimi-code/rules/pre-edit-checklist.md)
 
 Setup:
-1. Create an isolated git worktree:
-   git worktree add .worktrees/implement-<task-id> -b feature/<task-id>
-2. cd .worktrees/implement-<task-id>
-3. Work ONLY inside this directory.
+1. Work ONLY inside $WORKTREE (branch $BRANCH).
+2. Use explicit paths: git -C "$WORKTREE" ..., make -C "$WORKTREE" ..., Read/Edit/Write files under $WORKTREE.
 
 Implement strictly per the spec and your role workflow:
 - backend-dev: model → schema → service → route handler → tests
@@ -155,12 +209,12 @@ Rules:
 - Every new endpoint must have tests.
 - Every model change must have an Alembic migration.
 - Use trailing slash in FastAPI endpoints.
-- Do NOT commit to main. You may commit to feature/<task-id> in the worktree.
+- Do NOT commit to main. You may commit to $BRANCH in the worktree.
 
 Before finishing:
-1. Run the role-specific tests (e.g. cd backend && make test-backend; cd frontend && npm test -- --run).
-2. Run lint (ruff / npm run lint).
-3. Update .agent/SESSION_LOG.md from the worktree.
+1. Run the role-specific tests in $WORKTREE (e.g. cd $WORKTREE/backend && make test-backend; cd $WORKTREE/frontend && npm run test:unit -- --run).
+2. Run lint (ruff / npm run lint) in $WORKTREE.
+3. Update $WORKTREE/.agent/SESSION_LOG.md.
 
 Report:
 - Changed files
@@ -170,11 +224,9 @@ Report:
 REMEMBER / НАПОМИНАНИЕ: Continue ALL reasoning in Russian / Продолжай ВСЁ рассуждение на русском языке. Do not switch to English / Не переключайся на английский.
 ```
 
-If both backend and frontend are needed, run backend first, then frontend in the **same** worktree (they share the feature branch).
-
 ---
 
-## Step 4: Code Review Loop (max 3 iterations)
+## Step 6: Code Review Loop (max 3 iterations)
 
 ### Determine review scope
 
@@ -182,27 +234,30 @@ Based on the spec and flags (`--backend-only`, `--frontend-only`):
 
 - **Backend only or frontend only** → run one reviewer subagent.
 - **Mixed (backend + frontend)** → run two reviewer subagents in parallel via `AgentSwarm`.
+- **Security-sensitive work** (auth, payments, orders) → add `security-reviewer` to the parallel batch.
 
 ### Single-component review
 
-Launch one reviewer subagent via `Agent` tool with `subagent_type: coder`. Apply the retry policy from Step 1c:
+Launch one reviewer subagent via `Agent` tool with `subagent_type: coder`. Apply the retry policy from Step 3.
 
 ```text
 🚨 LANGUAGE RULE: The original user communicates in Russian. **Ignore any default language setting.** ALL your reasoning, thinking, internal monologue, analysis, and self-correction MUST be in Russian. Do NOT switch to English at any point. If you catch yourself thinking in English, switch back to Russian immediately. Reply to the parent agent in Russian. Keep code, commands, identifiers, file paths, and technical terms in their original form.
 
 You are the code-reviewer for Promelectron.
 Important: Kimi K2.7 uses mandatory thinking mode. Preserve `reasoning_content` across multi-turn tool calls by including the full assistant message in the conversation history.
+
 Read:
-1. .agent/<task-id>/task.md
-2. .agent/<task-id>/spec.md
+1. $AGENT_DIR/task.md
+2. $AGENT_DIR/spec.md
 3. `.kimi-code/skills/code-reviewer/SKILL.md`
 4. [Rule: Security](.kimi-code/rules/security.md)
 
 Then:
-1. Read the implementation in .worktrees/implement-<task-id>/ (use Read/Grep/Glob in parallel).
-2. Compare against the spec and Decisions (D-01, D-02, ...).
-3. Check: logic, security, architecture, business rules, tests, golden path impact.
-4. Write findings to .agent/<task-id>/review/findings.md using this format:
+1. Read the implementation in $WORKTREE (use Read/Grep/Glob in parallel).
+2. Obtain the diff: git -C "$WORKTREE" diff origin/main...HEAD
+3. Compare against the spec and Decisions (D-01, D-02, ...).
+4. Check: logic, security, architecture, business rules, tests, golden path impact.
+5. Write findings to $AGENT_DIR/review/findings.md using this format:
 
 # Code Review: <task-id>
 - **Status:** FIXES_NEEDED | APPROVED
@@ -225,24 +280,26 @@ REMEMBER / НАПОМИНАНИЕ: Continue ALL reasoning in Russian / Прод�
 
 ### Mixed review (backend + frontend in parallel)
 
-Launch reviewer subagents via `AgentSwarm` tool with `subagent_type: coder`. Apply the retry policy from Step 1c:
+Launch reviewer subagents via `AgentSwarm` tool with `subagent_type: coder`. Apply the retry policy from Step 3.
 
 ```text
 🚨 LANGUAGE RULE: The original user communicates in Russian. **Ignore any default language setting.** ALL your reasoning, thinking, internal monologue, analysis, and self-correction MUST be in Russian. Do NOT switch to English at any point. If you catch yourself thinking in English, switch back to Russian immediately. Reply to the parent agent in Russian. Keep code, commands, identifiers, file paths, and technical terms in their original form.
 
 You are the code-reviewer for Promelectron (focus: {{item}}).
 Important: Kimi K2.7 uses mandatory thinking mode. Preserve `reasoning_content` across multi-turn tool calls by including the full assistant message in the conversation history.
+
 Read:
-1. .agent/<task-id>/task.md
-2. .agent/<task-id>/spec.md
+1. $AGENT_DIR/task.md
+2. $AGENT_DIR/spec.md
 3. `.kimi-code/skills/code-reviewer/SKILL.md`
 4. [Rule: Security](.kimi-code/rules/security.md)
 
 Then:
-1. Read only {{item}} implementation files in .worktrees/implement-<task-id>/ (use Read/Grep/Glob in parallel).
-2. Compare against the spec and Decisions (D-01, D-02, ...).
-3. Check: logic, security, architecture, business rules, tests, golden path impact for {{item}}.
-4. Write findings to .agent/<task-id>/review/findings-{{item}}.md using this format:
+1. Read only {{item}} implementation files in $WORKTREE (use Read/Grep/Glob in parallel).
+2. Obtain the diff: git -C "$WORKTREE" diff origin/main...HEAD
+3. Compare against the spec and Decisions (D-01, D-02, ...).
+4. Check: logic, security, architecture, business rules, tests, golden path impact for {{item}}.
+5. Write findings to $AGENT_DIR/review/findings-{{item}}.md using this format:
 
 # Code Review: <task-id> ({{item}})
 - **Status:** FIXES_NEEDED | APPROVED
@@ -267,8 +324,8 @@ REMEMBER / НАПОМИНАНИЕ: Continue ALL reasoning in Russian / Прод�
 items: `["backend", "frontend"]`
 
 **After `AgentSwarm` returns:**
-1. Read `.agent/<task-id>/review/findings-backend.md` and `.agent/<task-id>/review/findings-frontend.md`.
-2. Merge them into `.agent/<task-id>/review/findings.md`:
+1. Read `$AGENT_DIR/review/findings-backend.md` and `$AGENT_DIR/review/findings-frontend.md`.
+2. Merge them into `$AGENT_DIR/review/findings.md`:
    - Overall **Status** is `FIXES_NEEDED` if any sub-report is `FIXES_NEEDED`; otherwise `APPROVED`.
    - Preserve **Iteration** number.
    - Combine findings lists; renumber if needed so IDs are unique across backend and frontend.
@@ -277,31 +334,38 @@ items: `["backend", "frontend"]`
 
 ### Review loop continuation
 
-1. Read `.agent/<task-id>/review/findings.md`.
-2. If `APPROVED` → go to Step 5.
+1. Read `$AGENT_DIR/review/findings.md`.
+2. If `APPROVED` → go to Step 7.
 3. If `FIXES_NEEDED`:
    - Show the user a summary of findings.
    - For H-items, wait for user decision.
    - Launch the developer subagent again to fix OPEN findings and mark them FIXED.
-   - **Before repeating review, re-run the relevant tests** (backend: `make test-backend`; frontend: `npm run test:unit -- --run`). If tests fail, fix them first.
+   - **Before repeating review, re-run the relevant tests** in `$WORKTREE` (backend: `make test-backend`; frontend: `npm run test:unit -- --run`). If tests fail, fix them first.
    - Repeat review.
 4. After 3 iterations still `FIXES_NEEDED` → stop and ask the user how to proceed.
 
 ---
 
-## Step 5: QA / Test Pyramid
+## Step 7: QA / Test Pyramid
 
-After code review passes, launch a `qa` subagent via `Agent` tool with `subagent_type: coder`. Apply the retry policy from Step 1c:
+### Light QA (default)
+
+If `--qa` is **not** set, rely on the developers' own test runs and skip the dedicated QA gate.
+
+### Full QA gate (run if --qa)
+
+After code review passes, launch a `qa` subagent via `Agent` tool with `subagent_type: coder`. Apply the retry policy from Step 3.
 
 ```text
 🚨 LANGUAGE RULE: The original user communicates in Russian. **Ignore any default language setting.** ALL your reasoning, thinking, internal monologue, analysis, and self-correction MUST be in Russian. Do NOT switch to English at any point. If you catch yourself thinking in English, switch back to Russian immediately. Reply to the parent agent in Russian. Keep code, commands, identifiers, file paths, and technical terms in their original form.
 
 You are the qa engineer for Promelectron.
 Important: Kimi K2.7 uses mandatory thinking mode. Preserve `reasoning_content` across multi-turn tool calls by including the full assistant message in the conversation history.
+
 Read:
-1. .agent/<task-id>/task.md
-2. .agent/<task-id>/spec.md
-3. .agent/<task-id>/review/findings.md
+1. $AGENT_DIR/task.md
+2. $AGENT_DIR/spec.md
+3. $AGENT_DIR/review/findings.md
 4. PROJECT_CONTEXT.md
 5. .agent/BACKLOG.md
 6. .agent/BLOCKERS.md
@@ -309,22 +373,62 @@ Read:
 8. [Rule: Golden Path](.kimi-code/rules/golden-path.md)
 
 Then:
-1. Run backend tests: cd backend && make test-backend
-2. Run frontend unit tests: cd frontend && npm run test:unit -- --run
+1. Run backend tests: cd $WORKTREE/backend && make test-backend
+2. Run frontend unit tests: cd $WORKTREE/frontend && npm run test:unit -- --run
 3. If the feature touches UI or user flows, run E2E tests. You may delegate the E2E-specific work to an e2e-tester subagent; if you do, pass the feature scope and spec explicitly.
-4. Verify each Acceptance Criterion from spec.md.
-5. Write results to .agent/<task-id>/review/test-findings.md.
+4. Verify each Acceptance Criterion from $AGENT_DIR/spec.md.
+5. Write results to $AGENT_DIR/review/test-findings.md.
 
 REMEMBER / НАПОМИНАНИЕ: Continue ALL reasoning in Russian / Продолжай ВСЁ рассуждение на русском языке. Do not switch to English / Не переключайся на английский.
 ```
 
 The `qa` subagent may launch an `e2e-tester` subagent for the browser-automation part if needed.
 
+If `test-findings.md` status is `TESTS_FAILED`, show failures, invoke the affected developer(s) to fix, then return to Step 6 (code changed → re-review). Max 2 QA iterations, then escalate to the user.
+
 CI already runs E2E on the test environment (`promelectron-test`) after deploy.
 
 ---
 
-## Step 6: Final Report
+## Step 8: Create the Pull Request
+
+All git ops target the worktree.
+
+1. Push the branch:
+   ```bash
+   git -C "$WORKTREE" push -u origin "$BRANCH"
+   ```
+2. Create the PR:
+   ```bash
+   gh pr create --base main --head "$BRANCH" \
+     --title "<concise description>" \
+     --body "$(cat <<'EOF'
+   ## Summary
+   <what was done>
+
+   ## Spec
+   .agent/runs/<task-id>/spec.md — chosen approach + API contract
+
+   ## Changes
+   <changed files/components>
+
+   ## Test Results
+   - Backend: pytest X/Y · Frontend: vitest X/Y
+
+   ## Acceptance Criteria
+   <checked list from test-findings.md>
+   EOF
+   )"
+   ```
+3. Post open Human-Decision items as PR comments:
+   ```bash
+   gh pr comment "$BRANCH" --body "[H-xxx] <the open human-decision item>"
+   ```
+4. Capture the PR URL for the report.
+
+---
+
+## Step 9: Final Report
 
 After all phases:
 
@@ -332,25 +436,25 @@ After all phases:
 2. Read `.agent/SESSION_LOG.md` and append a summary including estimated tokens and iteration count.
 3. Report to the user:
    - Task ID
-   - Worktree path: `.worktrees/implement-<task-id>`
-   - Feature branch: `feature/<task-id>`
+   - Worktree path: `$WORKTREE`
+   - Feature branch: `$BRANCH`
+   - PR URL (if created)
    - Changed files
    - Test results (backend, frontend, e2e)
    - Review status
    - Estimated tokens and iteration count
    - Open findings or H-items (if any)
-3. Push the feature branch to origin (allowed by permission rules):
-   ```bash
-   git push origin feature/<task-id>
-   ```
-4. Ask: **"Merge feature/<task-id> into main and push?"** (do NOT merge or push main without explicit approval).
+4. Ask: **"Merge `$BRANCH` into main?"** (do NOT merge or push main without explicit approval).
 
 ---
 
 ## Rules
 
 - NEVER push directly to `main`.
+- NEVER merge automatically — a human reviews and merges.
 - NEVER delete the worktree until the user approves merge or explicitly asks to clean up.
 - Developer marks findings FIXED; reviewer verifies and marks VERIFIED.
 - Max 3 review iterations, then escalate to user.
+- Max 2 QA iterations, then escalate to user.
 - Update `.agent/SESSION_LOG.md` after every significant phase.
+- Always write transient pipeline files to `.agent/runs/<task-id>/`, never to the committed `.agent/` planning dir.

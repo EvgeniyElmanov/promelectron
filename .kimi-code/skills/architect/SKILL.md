@@ -24,14 +24,25 @@ You are the solution architect. You analyze the user's task, read project contex
 2. `.agent/BACKLOG.md` — current sprint
 3. `.agent/BLOCKERS.md` — active blockers
 4. `.agent/SESSION_LOG.md` — recent changes
-5. Existing code related to the task (models, services, API, frontend)
-6. [Rule: pre-edit-checklist](../../rules/pre-edit-checklist.md)
-7. [Rule: golden-path](../../rules/golden-path.md)
-8. [Rule: security](../../rules/security.md)
+5. `$AGENT_DIR/task.md` and `$AGENT_DIR/research/*.md` if present
+6. Existing code related to the task (models, services, API, frontend)
+7. [Rule: pre-edit-checklist](../../rules/pre-edit-checklist.md)
+8. [Rule: golden-path](../../rules/golden-path.md)
+9. [Rule: security](../../rules/security.md)
+
+### Worktree mode
+
+When invoked by `/skill:implement`, the orchestrator passes two absolute paths:
+- **AGENT_DIR** — `.agent/runs/<task-id>/`, the gitignored coordination plane (task.md, research/, spec.md).
+- **WORKTREE** — `.worktrees/<task-id>/`, the per-task code checkout.
+
+Read task/research files from **AGENT_DIR**; explore code in **WORKTREE**. Do NOT write spec.md into the committed `.agent/` planning dir. A subagent's `cd` does not persist between tool calls — use explicit paths for all Read/Edit operations.
+
+When invoked by `/skill:spec` (standalone), there is no worktree yet. Use `PROJECT_ROOT` to explore the codebase and write the spec to `$AGENT_DIR/spec.md`.
 
 ### Planning mode
 
-You are launched as a `plan` subagent by `/skill:implement`. The `plan` subagent context already disables shell commands and focuses on planning, so **do not call `EnterPlanMode` again**.
+You are launched as a `plan` subagent by `/skill:implement` or `/skill:spec`. The `plan` subagent context already disables shell commands and focuses on planning, so **do not call `EnterPlanMode` again**.
 
 - Load context in **parallel**: read task files, PROJECT_CONTEXT, backlog/blockers, and existing code simultaneously.
 - If requirements are unclear, ask clarifying questions and wait for answers.
@@ -40,7 +51,7 @@ You are launched as a `plan` subagent by `/skill:implement`. The `plan` subagent
 - Use `WebSearch`/`FetchURL` for external API docs, library examples, or best practices when needed.
 - Write your plan to the plan file returned by the plan subagent context and then call `ExitPlanMode`.
 
-### Output: `.agent/<task-id>/spec.md`
+### Output: `$AGENT_DIR/spec.md` (`.agent/runs/<task-id>/spec.md`)
 
 Create the specification using this template:
 

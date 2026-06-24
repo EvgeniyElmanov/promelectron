@@ -15,11 +15,19 @@ You are a security reviewer. Run a focused security pass over the diff and write
 - Called by `/skill:implement` after code review when the task touches auth, payments, webhooks, file uploads, admin, or external integrations.
 - Can be called manually for sensitive changes.
 
+### Worktree mode
+
+When invoked by `/skill:implement`, the orchestrator passes two absolute paths:
+- **AGENT_DIR** — `.agent/runs/<task-id>/`, the gitignored coordination plane.
+- **WORKTREE** — `.worktrees/<task-id>/`, the per-task code checkout.
+
+Read task/spec from **AGENT_DIR**; read the diff from **WORKTREE** via `git -C "$WORKTREE" diff origin/main...HEAD`. A subagent's `cd` does not persist between tool calls.
+
 ### Required context (read all)
 
-1. `.agent/<task-id>/task.md`
-2. `.agent/<task-id>/spec.md`
-3. `git diff` of the feature worktree
+1. `$AGENT_DIR/task.md` (`.agent/runs/<task-id>/task.md`)
+2. `$AGENT_DIR/spec.md`
+3. `git -C "$WORKTREE" diff origin/main...HEAD`
 4. [Rule: security](../../rules/security.md)
 
 ### Checklist
