@@ -1,3 +1,13 @@
+### 2026-06-24 10:45 | project-manager | order-cancellation-v2 — обновлён GitHub issue #6
+  Роль: project-manager.
+  Запрос пользователя: обновить issue #6 нашим планом, issue #5 будет удалён вручную.
+  Выполнено:
+  - Обновлён body GitHub issue #6: объединены пользовательская отмена и админская кнопка «Подтвердить отправку», добавлены acceptance criteria, out of scope (CDEK, гости), ссылка на удаляемый issue #5.
+  - Обновлён `.agent/runs/order-cancellation-v2/task.md` — указано, что основная задача теперь issue #6, issue #5 удаляется.
+  Результат:
+  - GitHub Projects теперь содержит одну актуальную задачу #6.
+  Блокер: Нет.
+
 ### 2026-06-24 10:30 | project-manager | order-cancellation-v2 — финальное выравнивание с issue #5
   Роль: project-manager.
   Запрос пользователя: выбрать вариант без отмены CDEK и исключить гостей.
