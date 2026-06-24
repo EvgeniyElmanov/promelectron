@@ -8,7 +8,7 @@ blockers_count: 2
 blockers_p0: 0
 blockers_p1: 2
 backend_tests: "213/213 (not runnable locally on SQLite)"
-frontend_tests: "175/175"
+frontend_tests: "177/177"
 e2e_tests: "not run locally (requires dev stack + permissions)"
 ---
 
@@ -239,6 +239,7 @@ make test-e2e      # Playwright
 ## История изменений (кратко)
 
 | Дата | Что изменилось | Кто |
+| 2026-06-24 | **cdek-status-sync-and-cancel (frontend)**: в `OrderDetail.vue` добавлен CDEK-блок со статусом, трек-номером, ссылкой на отслеживание и timeline истории статусов; в `Admin.vue` в модалке заказа добавлена вкладка CDEK с техническими полями (`cdek_uuid`, `cdek_number`, `tracking_number`, `cdek_status`, `status_date_time`, `status_city`), ссылкой и историей; обновлены unit-тесты (`OrderDetail.spec.js`, `Admin.spec.js`). Frontend-тесты: 177/177 ✅, линтер чисто ✅. | frontend-dev |
 |------|---------------|-----|
 | 2026-06-22 | **bugfix/guest-checkout-polish-v2**: исправлены два дефекта гостевого чекаута. (1) `YooKassaService._build_return_url` теперь включает `guest_email` в return URL — success page может загружать заказ без авторизации после редиректа от YooKassa (`backend/src/app/services/yookassa_service.py`, `payment_service.py`). (2) Добавлены страницы сброса пароля `ForgotPassword.vue` и `ResetPassword.vue`, роуты `/forgot-password` и `/reset-password`, ссылка «Забыли пароль?» на `/login`, unit-тесты (175/175 ✅). Ветка `bugfix/guest-checkout-polish-v2` запушена. BLK-011 закрыт. BLK-005 (SMTP) остаётся на следующую сессию. | backend-dev / frontend-dev |
 | 2026-06-22 | **Agent pipeline health & worktree hygiene**: расширен `scripts/implement-pipeline.py` — добавлены `check-health`, `create-worktree --shared-node-modules`, `fix-permissions`, `archive-session-log`. Добавлены `Makefile` target'ы `worktree-health`, `fix-permissions`, `archive-session-log`. В `.kimi-code/skills/implement/SKILL.md` интегрированы health-check и shared `node_modules` в workflow. В `.kimi-code/rules/agent-commons.md` добавлены правила `Environment Health Check` и `Worktree Hygiene`. Архивировано 519 строк из `SESSION_LOG.md` (96.5 → 56.8 KB). Auto-cleanup worktree не добавлен — lifecycle остаётся под контролем пользователя. | backend-dev |

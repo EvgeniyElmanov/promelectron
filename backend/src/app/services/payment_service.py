@@ -11,6 +11,8 @@ from sqlalchemy.orm import selectinload
 
 from src.app.core.config import settings
 from src.app.models.cart import Cart, CartItem
+from src.app.models.cdek_order import CdekOrder
+from src.app.models.job import Job
 from src.app.models.order import Order, OrderItem
 from src.app.models.payment import Payment
 from src.app.models.user import User
@@ -254,12 +256,16 @@ class PaymentService:
                 await db.execute(delete(CartItem).where(CartItem.cart_id == cart.id))
                 await db.commit()
 
-        # Запускаем создание заказа в CDEK (если выбрана CDEK-доставка)
+        # Создаём job для заказа в CDEK (если выбрана CDEK-доставка)
         try:
-            if payment.order.cdek_tariff_code and not payment.order.cdek_uuid:
-                from src.app.workers.cdek_tasks import create_cdek_order_task
-                create_cdek_order_task.delay(order_id)
-                logger.info("Queued CDEK order creation for order %s", order_id)
+            cdek_order_result = await db.execute(
+                select(CdekOrder).where(CdekOrder.order_id == order_id)
+            )
+            cdek_order = cdek_order_result.scalars().first()
+            if cdek_order and not cdek_order.cdek_uuid:
+                db.add(Job(job_type="CDEK_CREATE_ORDER", payload={"order_id": order_id}))
+                await db.commit()
+                logger.info("Queued CDEK order creation job for order %s", order_id)
         except Exception:
             logger.exception("Failed to queue CDEK order creation for order %s", order_id)
 
@@ -328,16 +334,19 @@ class PaymentService:
         apartment = None
         postal_code = None
         cdek_location_code = None
-        cdek_delivery_point = order.cdek_delivery_point
+        cdek_delivery_point = None
 
-        to_location = order.cdek_to_location
-        if isinstance(to_location, dict):
-            city = to_location.get("city") or city
-            cdek_location_code = to_location.get("code") or cdek_location_code
-            postal_code = to_location.get("postal_code") or postal_code
-            address_str = to_location.get("address")
-            if address_str and isinstance(address_str, str):
-                street, house, apartment = PaymentService._parse_address_string(address_str, city)
+        cdek_order = order.cdek_order
+        if cdek_order:
+            cdek_delivery_point = cdek_order.delivery_point
+            to_location = cdek_order.to_location
+            if isinstance(to_location, dict):
+                city = to_location.get("city") or city
+                cdek_location_code = to_location.get("code") or cdek_location_code
+                postal_code = to_location.get("postal_code") or postal_code
+                address_str = to_location.get("address")
+                if address_str and isinstance(address_str, str):
+                    street, house, apartment = PaymentService._parse_address_string(address_str, city)
 
         if not city and order.shipping_address:
             shipping = order.shipping_address
@@ -399,7 +408,7 @@ class PaymentService:
         result = await db.execute(
             select(Payment)
             .where(Payment.yookassa_payment_id == yookassa_payment_id)
-            .options(selectinload(Payment.order).selectinload(Order.items))
+            .options(selectinload(Payment.order).selectinload(Order.items), selectinload(Payment.order).selectinload(Order.cdek_order))
         )
         payment = result.scalars().first()
 
@@ -442,7 +451,7 @@ class PaymentService:
         result = await db.execute(
             select(Payment)
             .where(Payment.id == payment_id)
-            .options(selectinload(Payment.order).selectinload(Order.items))
+            .options(selectinload(Payment.order).selectinload(Order.items), selectinload(Payment.order).selectinload(Order.cdek_order))
         )
         payment = result.scalars().first()
 
@@ -487,7 +496,7 @@ class PaymentService:
             result = await db.execute(
                 select(Payment)
                 .where(Payment.order_id == order_id)
-                .options(selectinload(Payment.order).selectinload(Order.items))
+                .options(selectinload(Payment.order).selectinload(Order.items), selectinload(Payment.order).selectinload(Order.cdek_order))
             )
             payment = result.scalars().first()
 
@@ -603,7 +612,7 @@ class PaymentService:
         result = await db.execute(
             select(Payment)
             .where(Payment.order_id == order_id)
-            .options(selectinload(Payment.order).selectinload(Order.items))
+            .options(selectinload(Payment.order).selectinload(Order.items), selectinload(Payment.order).selectinload(Order.cdek_order))
         )
         payment = result.scalars().first()
 
@@ -635,7 +644,7 @@ class PaymentService:
         result = await db.execute(
             select(Payment)
             .where(Payment.order_id == order_id)
-            .options(selectinload(Payment.order).selectinload(Order.items))
+            .options(selectinload(Payment.order).selectinload(Order.items), selectinload(Payment.order).selectinload(Order.cdek_order))
         )
         payment = result.scalars().first()
 

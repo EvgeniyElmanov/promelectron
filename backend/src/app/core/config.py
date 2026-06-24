@@ -41,6 +41,19 @@ class Settings:
     cdek_secure: str
     cdek_api_url: str
     cdek_test_mode: bool
+    cdek_sync_cron_interval_seconds: int
+    cdek_terminal_statuses: frozenset[str]
+    job_worker_sleep_seconds: int
+    job_max_attempts: int
+
+
+def _parse_int_env(name: str, default: int) -> int:
+    return int(os.getenv(name, str(default)))
+
+
+def _parse_csv_env(name: str, default: str) -> frozenset[str]:
+    value = os.getenv(name, default)
+    return frozenset(item.strip() for item in value.split(",") if item.strip())
 
 
 settings = Settings(
@@ -84,6 +97,12 @@ settings = Settings(
     cdek_secure=os.getenv("CDEK_SECURE", ""),
     cdek_api_url=os.getenv("CDEK_API_URL", "https://api.edu.cdek.ru"),
     cdek_test_mode=os.getenv("CDEK_TEST_MODE", "true").lower() == "true",
+    cdek_sync_cron_interval_seconds=_parse_int_env("CDEK_SYNC_CRON_INTERVAL_SECONDS", 900),
+    cdek_terminal_statuses=_parse_csv_env(
+        "CDEK_TERMINAL_STATUSES", "DELIVERED,NOT_DELIVERED,RETURNED,CANCELLED"
+    ),
+    job_worker_sleep_seconds=_parse_int_env("JOB_WORKER_SLEEP_SECONDS", 60),
+    job_max_attempts=_parse_int_env("JOB_MAX_ATTEMPTS", 5),
 )
 
 SECRET_KEY = settings.secret_key

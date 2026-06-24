@@ -10,7 +10,7 @@ celery_app = Celery(
     "promelectron_workers",
     broker=settings.redis_url,
     backend=settings.redis_url,
-    include=["src.app.workers.tasks", "src.app.workers.cdek_tasks"],
+    include=["src.app.workers.tasks"],
 )
 
 celery_app.conf.update(
@@ -24,14 +24,11 @@ celery_app.conf.update(
     worker_prefetch_multiplier=1,
 )
 
-# Schedule periodic tasks via beat
+# Schedule periodic tasks via beat. CDEK tasks are handled by the job_worker;
+# only 1C sync remains on Celery.
 celery_app.conf.beat_schedule = {
     "sync-products-from-onec": {
         "task": "src.app.workers.tasks.sync_products_from_onec",
         "schedule": 300.0,  # every 5 minutes (override via env)
-    },
-    "sync-cdek-order-statuses": {
-        "task": "src.app.workers.cdek_tasks.sync_cdek_order_statuses",
-        "schedule": 900.0,  # every 15 minutes
     },
 }

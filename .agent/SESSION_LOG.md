@@ -1,3 +1,40 @@
+### 2026-06-24 05:15 | frontend-dev | cdek-status-sync-and-cancel — frontend UI for CDEK status, tracking and history
+  Роль: frontend-dev.
+  Запрос пользователя: отобразить CDEK-информацию в личном кабинете и админке, не реализовывать отмену CDEK здесь.
+  Выполнено:
+  - `frontend/src/views/OrderDetail.vue` — добавлен блок «Доставка CDEK»: текущий статус (`cdek_status_name`/`cdek_status`), трек-номер, ссылка на отслеживание (`tracking_url`), timeline истории статусов (`status_history`); добавлен computed `cdekStatusHistory` с сортировкой по убыванию даты; используются `data-testid="cdek-order-card"`, `cdek-tracking-link`, `cdek-status-history`.
+  - `frontend/src/views/Admin.vue` — в модалке редактирования заказа добавлены табы «Заказ» / «CDEK»; вкладка CDEK показывает технические поля (`cdek_uuid`, `cdek_number`, `tracking_number`, `cdek_status`, `status_date_time`, `status_city`), ссылку на отслеживание и историю статусов; добавлен `activeOrderModalTab`, сброс таба при открытии/закрытии модалки; `data-testid` для табов, панели, ссылки и истории.
+  - `frontend/src/__tests__/OrderDetail.spec.js` — добавлен `mockOrderWithCdek` и тест отображения CDEK-блока, ссылки и истории.
+  - `frontend/src/__tests__/Admin.spec.js` — добавлен `mockOrders` с `cdek_order` и тест открытия модалки с переключением на вкладку CDEK.
+  - Существующая кнопка и логика отмены заказа в `OrderDetail.vue` оставлены без изменений; новые endpoint'ы отмены CDEK не добавлены.
+  Результат:
+  - `make test-frontend` — 177/177 ✅.
+  - `make lint-frontend` — чисто ✅.
+  - Изменённые файлы: `frontend/src/views/OrderDetail.vue`, `frontend/src/views/Admin.vue`, `frontend/src/__tests__/OrderDetail.spec.js`, `frontend/src/__tests__/Admin.spec.js`.
+  Блокер: Нет.
+
+### 2026-06-24 04:20 | backend-dev | cdek-status-sync-and-cancel — Variant A (jobs + job_worker) ready, tests green
+  Роль: backend-dev.
+  Запрос пользователя: продолжить реализацию Variant A, довести backend-тесты до зелёного состояния, запустить `ruff check src/`, не трогать 1C Celery sync.
+  Выполнено:
+  - Реализована универсальная модель `Job` (`backend/src/app/models/job.py`) с `JSONB` payload и `ARRAY(String)` processing_log через `MutableDict`/`MutableList`.
+  - Созданы модели `CdekOrder` и `CdekStatusHistory` (`backend/src/app/models/cdek_order.py`); `Order.cdek_order_id` заменил плоские CDEK-поля.
+  - `OrderService` создаёт `CdekOrder` при создании заказа; `PaymentService` ставит `CDEK_CREATE_ORDER` job вместо Celery task.
+  - `CdekService` получил `create_cdek_order`, `apply_cdek_status`, `cancel_cdek_order`, `build_tracking_url`.
+  - `CdekClient` получил `delete_order`, `get_order`.
+  - Создан собственный polling worker `backend/src/app/workers/job_worker.py` с `SELECT FOR UPDATE SKIP LOCKED`, graceful shutdown и обработчиками `CDEK_CREATE_ORDER` / `CDEK_SYNC_ORDER_STATUS`.
+  - Celery-путь CDEK удалён (`cdek_tasks.py`); `celery_app.py` очищен от CDEK beat schedule. 1C-sync (`tasks.py`) и инфраструктура Celery сохранены.
+  - Cronjob-скрипты `cron_cdek_create_orders.py` и `cron_cdek_sync_statuses.py` создают/дополняют job'ы.
+  - Webhook и resync endpoint (`backend/src/app/api/cdek.py`) обновлены под новые модели.
+  - Миграция `9a1b2c3d4e5f_cdek_orders_and_jobs.py` создаёт таблицы, мигрирует данные, удаляет старые колонки.
+  - Обновлены Helm cronjob-шаблоны, `docker-compose.yml`, `.env.example`.
+  - Исправлены падавшие тесты: `MutableList`/`MutableDict` для отслеживания изменений `processing_log`/`payload`; безусловный `commit` для unknown job; `job.status = "running"` в CDEK-обработчиках.
+  Результат:
+  - `make test-backend` — 221/221 ✅.
+  - `ruff check src/` — чисто ✅.
+  - Изменённые/новые файлы: см. `git status` в ветке `feature/cdek-status-sync-and-cancel`.
+  Блокер: Нет. Требуется user approval для merge.
+
 ### 2026-06-24 02:00 | architect | Пересмотр планов под отказ от Celery и универсальную таблицу jobs
   Изменено:
   - Получены новые требования от Александра: убрать Celery из проекта, использовать универсальную таблицу `jobs` в PostgreSQL и worker в бесконечном цикле; есть cronjobs для запуска задач по расписанию.

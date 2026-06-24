@@ -1,15 +1,18 @@
 import json
 import logging
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any
 
 from fastapi import HTTPException
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.app.core.constants import PVZ_TYPE_WHITELIST
 from src.app.core.redis_client import RedisClient
+from src.app.models.cdek_order import CdekOrder, CdekStatusHistory
 from src.app.models.order import Order, OrderItem
 from src.app.models.product import Product
 from src.app.models.supplier import Supplier
@@ -25,6 +28,14 @@ class CdekService:
     DEFAULT_WEIGHT_GRAMS = 1000
     DEFAULT_DIMENSION_CM = 10
 
+    # CDEK statuses considered "shipped" for order mapping
+    _SHIPPED_CDEK_STATUSES = {
+        "ACCEPTED_AT_SHIPMENT_WAREHOUSE",
+        "TAKEN_BY_TRANSPORT",
+        "ACCEPTED_AT_DELIVERY_WAREHOUSE",
+        "OUT_FOR_DELIVERY",
+    }
+
     @staticmethod
     def _phone(phone: str | None) -> str:
         if not phone:
@@ -37,11 +48,11 @@ class CdekService:
         return cleaned
 
     @staticmethod
-    def _format_address_string(order: Order) -> str:
-        if order.cdek_delivery_point:
-            return f"ПВЗ {order.cdek_delivery_point}"
-        if order.cdek_to_location:
-            return order.cdek_to_location.get("address", "")
+    def _format_address_string(cdek_order: CdekOrder) -> str:
+        if cdek_order.delivery_point:
+            return f"ПВЗ {cdek_order.delivery_point}"
+        if cdek_order.to_location:
+            return cdek_order.to_location.get("address", "")
         return ""
 
     @staticmethod
@@ -115,6 +126,7 @@ class CdekService:
         }
 
         from_location = None
+        cdek_order = order.cdek_order
         if supplier.cdek_shipment_point:
             shipment_point = supplier.cdek_shipment_point
             if shipment_point.isdigit():
@@ -125,8 +137,8 @@ class CdekService:
                     from_location = {"code": city_code}
                 else:
                     from_location = {"code": shipment_point}
-        elif order.cdek_from_location:
-            from_location = order.cdek_from_location
+        elif cdek_order and cdek_order.from_location:
+            from_location = cdek_order.from_location
 
         return sender, from_location
 
@@ -310,24 +322,34 @@ class CdekService:
         ]
 
     @staticmethod
-    async def create_cdek_order(order: Order, db: AsyncSession) -> dict[str, Any]:
-        """Create order in CDEK and return raw API response."""
-        if order.cdek_uuid:
-            logger.info("Order %s already has CDEK uuid %s, skipping", order.id, order.cdek_uuid)
-            return {"entity": {"uuid": order.cdek_uuid}}
+    async def create_cdek_order(order: Order, db: AsyncSession) -> CdekOrder:
+        """Create order in CDEK and persist the result on the CdekOrder record.
 
-        if not order.cdek_tariff_code:
-            raise HTTPException(status_code=400, detail="Order has no CDEK tariff code")
+        If the order already has a CDEK uuid, the existing CdekOrder is returned.
+        """
+        if order.cdek_order_id is None:
+            raise HTTPException(status_code=400, detail="Order has no CDEK delivery record")
 
-        # Reload order with items to avoid lazy load issues in async context
+        # Reload with items, cdek_order and user to avoid lazy load issues
         result = await db.execute(
             select(Order)
             .where(Order.id == order.id)
-            .options(selectinload(Order.items))
+            .options(selectinload(Order.items), selectinload(Order.cdek_order), selectinload(Order.user))
         )
         order = result.scalars().first()
         if not order:
             raise HTTPException(status_code=404, detail="Order not found")
+
+        cdek_order = order.cdek_order
+        if cdek_order is None:
+            raise HTTPException(status_code=400, detail="Order has no CDEK delivery record")
+
+        if cdek_order.cdek_uuid:
+            logger.info("Order %s already has CDEK uuid %s, skipping", order.id, cdek_order.cdek_uuid)
+            return cdek_order
+
+        if not cdek_order.tariff_code:
+            raise HTTPException(status_code=400, detail="Order has no CDEK tariff code")
 
         packages = await CdekService._build_packages(order, db)
         sender, from_location = await CdekService._build_sender(order, db)
@@ -336,7 +358,7 @@ class CdekService:
         payload: dict[str, Any] = {
             "type": 1,
             "number": str(order.id),
-            "tariff_code": order.cdek_tariff_code,
+            "tariff_code": cdek_order.tariff_code,
             "recipient": recipient,
             "packages": packages,
         }
@@ -347,10 +369,10 @@ class CdekService:
         if from_location:
             payload["from_location"] = from_location
 
-        if order.cdek_delivery_mode == "PVZ" and order.cdek_delivery_point:
-            payload["delivery_point"] = order.cdek_delivery_point
-        elif order.cdek_to_location:
-            payload["to_location"] = order.cdek_to_location
+        if cdek_order.delivery_mode == "PVZ" and cdek_order.delivery_point:
+            payload["delivery_point"] = cdek_order.delivery_point
+        elif cdek_order.to_location:
+            payload["to_location"] = cdek_order.to_location
         else:
             raise HTTPException(status_code=400, detail="Order has no delivery address")
 
@@ -361,118 +383,246 @@ class CdekService:
             await client.close()
 
         logger.info("CDEK create order response for order %s: %s", order.id, result)
-        return result
 
-    # CDEK statuses considered final for polling purposes
-    _FINAL_CDEK_STATUSES = {"DELIVERED", "NOT_DELIVERED", "RETURNED"}
-    _SHIPPED_CDEK_STATUSES = {
-        "ACCEPTED_AT_SHIPMENT_WAREHOUSE",
-        "TAKEN_BY_TRANSPORT",
-        "ACCEPTED_AT_DELIVERY_WAREHOUSE",
-        "OUT_FOR_DELIVERY",
-    }
+        entity = result.get("entity", {})
+        cdek_uuid = entity.get("uuid")
+        if cdek_uuid:
+            cdek_order.cdek_uuid = cdek_uuid
+            cdek_order.sync_failed = False
+            cdek_order.sync_attempts = 0
+        else:
+            cdek_order.sync_attempts += 1
+            cdek_order.sync_failed = True
+
+        await db.commit()
+        await db.refresh(cdek_order)
+        return cdek_order
 
     @staticmethod
-    def _apply_cdek_status_to_order(order: Order, status_code: str | None, cdek_number: str | None) -> bool:
-        """Update order fields from a CDEK status. Returns True if anything changed."""
+    def build_tracking_url(cdek_order: CdekOrder | None) -> str | None:
+        """Build public CDEK tracking URL.
+
+        Fallback chain: cdek_number -> tracking_number -> cdek_uuid.
+        """
+        if cdek_order is None:
+            return None
+        identifier = cdek_order.cdek_number or cdek_order.tracking_number or cdek_order.cdek_uuid
+        if not identifier:
+            return None
+        return f"https://www.cdek.ru/ru/tracking?order_id={identifier}"
+
+    @staticmethod
+    def _map_cdek_status_to_order(status_code: str | None) -> str | None:
+        if not status_code:
+            return None
+        if status_code in CdekService._SHIPPED_CDEK_STATUSES:
+            return "shipped"
+        if status_code == "DELIVERED":
+            return "delivered"
+        if status_code in ("NOT_DELIVERED", "RETURNED", "CANCELLED"):
+            return "cancelled"
+        return None
+
+    @staticmethod
+    async def apply_cdek_status(
+        cdek_order: CdekOrder,
+        payload: dict[str, Any],
+        db: AsyncSession,
+        source: str = "webhook",
+    ) -> bool:
+        """Apply a CDEK status payload to a CdekOrder and its Order.
+
+        Writes status history idempotently and maps the CDEK status to
+        Order.status. Returns True if the CdekOrder was changed.
+        """
+        # Lock CdekOrder and related Order to prevent race conditions between
+        # webhook and polling (D-13).
+        result = await db.execute(
+            select(CdekOrder)
+            .where(CdekOrder.id == cdek_order.id)
+            .options(selectinload(CdekOrder.order))
+            .with_for_update()
+        )
+        cdek_order = result.scalars().one()
+
+        order: Order | None = None
+        if cdek_order.order_id is not None:
+            order_result = await db.execute(
+                select(Order).where(Order.id == cdek_order.order_id).with_for_update()
+            )
+            order = order_result.scalars().one()
+
+        entity = payload.get("entity", payload) if isinstance(payload, dict) else {}
+        statuses = entity.get("statuses", []) if isinstance(entity, dict) else []
+
+        # Prefer statuses list, fallback to status_code / code at entity level
+        latest_status: dict[str, Any] = {}
+        status_code: str | None = None
+        status_date_time: datetime | None = None
+        city_name: str | None = None
+
+        if isinstance(statuses, list) and statuses:
+            latest_status = statuses[0]
+        elif isinstance(entity, dict):
+            latest_status = {
+                "code": entity.get("status_code") or entity.get("code"),
+                "date_time": entity.get("status_date_time") or entity.get("date_time"),
+                "city_name": entity.get("city_name"),
+            }
+
+        if isinstance(latest_status, dict):
+            status_code = latest_status.get("code")
+            raw_dt = latest_status.get("date_time") or latest_status.get("status_date_time")
+            status_date_time = CdekService._parse_status_datetime(raw_dt)
+            city_name = latest_status.get("city_name")
+
+        cdek_number = entity.get("cdek_number") if isinstance(entity, dict) else None
+
         changed = False
-        if cdek_number and order.cdek_number != cdek_number:
-            order.cdek_number = cdek_number
-            changed = True
-        if cdek_number and not order.tracking_number:
-            order.tracking_number = cdek_number
-            changed = True
-        if status_code and order.cdek_status != status_code:
-            order.cdek_status = status_code
+        if cdek_number and cdek_order.cdek_number != cdek_number:
+            cdek_order.cdek_number = cdek_number
             changed = True
 
-        if status_code in CdekService._SHIPPED_CDEK_STATUSES and order.status in ("pending", "paid"):
-            order.status = "shipped"
+        if cdek_number and not cdek_order.tracking_number:
+            cdek_order.tracking_number = cdek_number
             changed = True
-        elif status_code == "DELIVERED" and order.status != "delivered":
-            order.status = "delivered"
+
+        if status_code and cdek_order.cdek_status != status_code:
+            cdek_order.cdek_status = status_code
             changed = True
-        elif status_code in ("NOT_DELIVERED", "RETURNED") and order.status not in ("cancelled", "delivered"):
-            order.status = "cancelled"
-            changed = True
+
+        # Upsert status history idempotently
+        if status_code and status_date_time:
+            history_stmt = pg_insert(CdekStatusHistory).values(
+                cdek_order_id=cdek_order.id,
+                cdek_status=status_code,
+                status_date_time=status_date_time,
+                city_name=city_name,
+            ).on_conflict_do_nothing(
+                index_elements=["cdek_order_id", "cdek_status", "status_date_time"]
+            )
+            await db.execute(history_stmt)
+
+        # Map to order status
+        mapped_status = CdekService._map_cdek_status_to_order(status_code)
+        if mapped_status and order:
+            if mapped_status == "shipped" and order.status in ("pending", "paid"):
+                order.status = "shipped"
+                changed = True
+            elif mapped_status == "delivered" and order.status != "delivered":
+                order.status = "delivered"
+                changed = True
+            elif mapped_status == "cancelled" and order.status not in ("cancelled", "delivered"):
+                order.status = "cancelled"
+                changed = True
+
+        if changed:
+            await db.commit()
+            await db.refresh(cdek_order)
+            logger.info(
+                "Applied CDEK status to cdek_order=%s source=%s status=%s",
+                cdek_order.id,
+                source,
+                status_code,
+            )
+        else:
+            logger.debug(
+                "No CDEK status change for cdek_order=%s source=%s status=%s",
+                cdek_order.id,
+                source,
+                status_code,
+            )
 
         return changed
 
     @staticmethod
-    async def handle_order_status_webhook(payload: dict[str, Any], db: AsyncSession) -> None:
-        """Process CDEK ORDER_STATUS webhook."""
+    def _parse_status_datetime(raw: Any) -> datetime | None:
+        if raw is None:
+            return None
+        if isinstance(raw, datetime):
+            if raw.tzinfo is None:
+                return raw.replace(tzinfo=timezone.utc)
+            return raw
+        if isinstance(raw, str):
+            # CDEK returns ISO 8601; handle trailing Z
+            try:
+                normalized = raw.replace("Z", "+00:00")
+                return datetime.fromisoformat(normalized)
+            except ValueError:
+                return None
+        return None
+
+    @staticmethod
+    async def handle_order_status_webhook(payload: dict[str, Any], db: AsyncSession) -> CdekOrder | None:
+        """Process CDEK ORDER_STATUS webhook by normalizing payload and applying status."""
         attributes = payload.get("attributes", {})
         cdek_number = attributes.get("cdek_number")
         im_number = attributes.get("number")
-        status_code = attributes.get("code")
+        cdek_uuid = attributes.get("uuid")
 
-        if not cdek_number and not im_number:
-            logger.warning("CDEK webhook missing cdek_number and number: %s", payload)
-            return
+        cdek_order: CdekOrder | None = None
 
-        query = select(Order)
-        if im_number and im_number.startswith("order-"):
-            order_id = int(im_number.replace("order-", ""))
-            query = query.where(Order.id == order_id)
-        elif cdek_number:
-            query = query.where(Order.cdek_number == cdek_number)
-        else:
-            logger.warning("Cannot identify order from CDEK webhook: %s", payload)
-            return
+        if cdek_uuid:
+            result = await db.execute(
+                select(CdekOrder)
+                .where(CdekOrder.cdek_uuid == cdek_uuid)
+                .options(selectinload(CdekOrder.order))
+            )
+            cdek_order = result.scalars().first()
 
-        result = await db.execute(query)
-        order = result.scalars().first()
-        if not order:
-            logger.warning("Order not found for CDEK webhook: cdek_number=%s im_number=%s", cdek_number, im_number)
-            return
+        if cdek_order is None and cdek_number:
+            result = await db.execute(
+                select(CdekOrder)
+                .where(CdekOrder.cdek_number == cdek_number)
+                .options(selectinload(CdekOrder.order))
+            )
+            cdek_order = result.scalars().first()
 
-        changed = CdekService._apply_cdek_status_to_order(order, status_code, cdek_number)
-        if changed:
-            await db.commit()
-            logger.info("Updated order %s from CDEK webhook status=%s", order.id, status_code)
-        else:
-            logger.debug("No changes for order %s from CDEK webhook", order.id)
+        if cdek_order is None and im_number:
+            # CDEK may send our internal order id as number
+            try:
+                order_id = int(im_number)
+            except (TypeError, ValueError):
+                # Handle "order-{id}" legacy format
+                if isinstance(im_number, str) and im_number.startswith("order-"):
+                    order_id = int(im_number.replace("order-", ""))
+                else:
+                    order_id = None
+
+            if order_id is not None:
+                result = await db.execute(
+                    select(CdekOrder)
+                    .where(CdekOrder.order_id == order_id)
+                    .options(selectinload(CdekOrder.order))
+                )
+                cdek_order = result.scalars().first()
+
+        if not cdek_order:
+            logger.warning(
+                "CdekOrder not found for webhook: cdek_number=%s im_number=%s uuid=%s",
+                cdek_number,
+                im_number,
+                cdek_uuid,
+            )
+            return None
+
+        # Build entity-shaped payload for apply_cdek_status
+        entity_payload = {"entity": attributes}
+        await CdekService.apply_cdek_status(cdek_order, entity_payload, db, source="webhook")
+        return cdek_order
 
     @staticmethod
-    async def sync_order_statuses(db: AsyncSession) -> dict[str, int]:
-        """Poll CDEK for statuses of orders that are not in a final state.
+    async def cancel_cdek_order(cdek_uuid: str) -> dict[str, Any]:
+        """Cancel (delete) a CDEK order by uuid.
 
-        This is a fallback for environments/environments where webhooks are not sent
-        or are lost.
+        This is an internal helper for the order-cancellation task. It raises
+        CdekAPIError if CDEK refuses the cancellation.
         """
-        result = await db.execute(
-            select(Order).where(
-                Order.cdek_uuid.isnot(None),
-                Order.cdek_status.not_in(CdekService._FINAL_CDEK_STATUSES) | Order.cdek_status.is_(None),
-            )
-        )
-        orders = result.scalars().all()
-        if not orders:
-            return {"checked": 0, "updated": 0}
-
         client = CdekClient()
-        updated = 0
         try:
-            for order in orders:
-                try:
-                    data = await client.get_order(order.cdek_uuid)
-                except CdekAPIError as exc:
-                    logger.warning("CDEK API error polling order %s: %s", order.id, exc)
-                    continue
-
-                entity = data.get("entity", {})
-                # Prefer the latest status from the statuses list
-                statuses = entity.get("statuses", [])
-                latest_status = statuses[0] if statuses else {}
-                status_code = latest_status.get("code") if isinstance(latest_status, dict) else None
-                cdek_number = entity.get("cdek_number")
-
-                if CdekService._apply_cdek_status_to_order(order, status_code, cdek_number):
-                    updated += 1
-
-            await db.commit()
+            result = await client.delete_order(cdek_uuid)
         finally:
             await client.close()
 
-        logger.info("CDEK status sync finished: checked=%s updated=%s", len(orders), updated)
-        return {"checked": len(orders), "updated": updated}
+        logger.info("CDEK cancel order response for uuid=%s: %s", cdek_uuid, result)
+        return result

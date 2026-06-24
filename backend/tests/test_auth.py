@@ -260,6 +260,10 @@ def _make_oauth_settings(overrides: dict):
         "cdek_secure": original.cdek_secure,
         "cdek_api_url": original.cdek_api_url,
         "cdek_test_mode": original.cdek_test_mode,
+        "cdek_sync_cron_interval_seconds": original.cdek_sync_cron_interval_seconds,
+        "cdek_terminal_statuses": original.cdek_terminal_statuses,
+        "job_worker_sleep_seconds": original.job_worker_sleep_seconds,
+        "job_max_attempts": original.job_max_attempts,
     }
     kwargs.update(overrides)
     return Settings(**kwargs)

@@ -310,6 +310,7 @@ async def test_product(test_session, test_supplier, test_category):
 
 @pytest.fixture
 async def test_order(test_session, test_user, test_product):
+    from src.app.models.cdek_order import CdekOrder
     from src.app.models.order import Order, OrderItem
 
     order = Order(
@@ -319,6 +320,22 @@ async def test_order(test_session, test_user, test_product):
         shipping_address="Москва, ул. Ленина, д. 1",
     )
     test_session.add(order)
+    await test_session.flush()
+
+    cdek_order = CdekOrder(
+        order_id=order.id,
+        tariff_code=136,
+        delivery_mode="PVZ",
+        delivery_point="MSK123",
+        to_location={"code": 44, "city": "Москва", "address": "Москва, ул. Ленина, д. 1"},
+        price=350.00,
+        period_min=2,
+        period_max=4,
+    )
+    test_session.add(cdek_order)
+    await test_session.flush()
+
+    order.cdek_order_id = cdek_order.id
     await test_session.commit()
     await test_session.refresh(order)
 
@@ -330,4 +347,5 @@ async def test_order(test_session, test_user, test_product):
     )
     test_session.add(order_item)
     await test_session.commit()
+    await test_session.refresh(order)
     return order
