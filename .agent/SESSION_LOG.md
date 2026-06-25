@@ -57,7 +57,18 @@
   - Branch: `bugfix/revert-e2e-setup-node`
   - Commit: `085c550`
   - PR: https://github.com/AutonomaCo/promelectron/pull/34
-  Блокер: Нет. Ожидает merge PR #34 в `main`.
+  Блокер: Нет. PR #34 смержен в `main`.
+
+### 2026-06-25 23:10 | orchestrator / developer | e2e-setup-node-return — возврат setup-node в e2e.yml
+  Роль: orchestrator / developer.
+  Запрос пользователя: CI после revert #34 снова падает; по скриншотам видно, что run с setup-node (#18) — success, без setup-node (#256) — failure.
+  Выполнено:
+  - Возвращён `actions/setup-node@v4` в `.github/workflows/e2e.yml` с `node-version-file: frontend/.nvmrc` и кэшем `frontend/package-lock.json`.
+  Git:
+  - Branch: `bugfix/e2e-setup-node-return`
+  - Commit: `9525224`
+  - PR: https://github.com/AutonomaCo/promelectron/pull/35
+  Блокер: Нет. PR #35 смержен в `main`.
 
 ### 2026-06-25 17:25 | orchestrator / audit | extended-recipient-data — аудит сессии и финальный статус задачи #15
   Роль: orchestrator / auditor.
