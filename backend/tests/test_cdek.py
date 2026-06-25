@@ -208,17 +208,19 @@ class TestCdekService:
         assert recipient["name"] == "Анна Авторизованная"
         assert recipient["phones"][0]["number"] == "+79990001122"
 
-    def test_build_recipient_fallback_to_guest_name(self):
-        """При отсутствии раздельных имён и пользователя используется guest_name."""
-        order = Order(guest_name="Петр Получатель", guest_phone="+79990001122")
-        recipient = CdekService._build_recipient(order)
-        assert recipient["name"] == "Петр Получатель"
-
-    def test_build_recipient_default_name(self):
-        """Если ничего не указано, подставляется дефолтное имя."""
-        order = Order()
+    def test_build_recipient_fallback_to_default_name_for_guest(self):
+        """При отсутствии раздельных имён у гостевого заказа подставляется дефолтное имя."""
+        order = Order(guest_phone="+79990001122")
         recipient = CdekService._build_recipient(order)
         assert recipient["name"] == "Получатель"
+        assert recipient["phones"][0]["number"] == "+79990001122"
+
+    def test_build_recipient_default_name(self):
+        """Если имя не указано, подставляется дефолтное имя; телефон обязателен."""
+        order = Order(guest_phone="+79990001122")
+        recipient = CdekService._build_recipient(order)
+        assert recipient["name"] == "Получатель"
+        assert recipient["phones"][0]["number"] == "+79990001122"
 
     def test_build_recipient_from_order_recipient(self):
         """Имя получателя собирается из order.recipient с отчеством."""
@@ -292,11 +294,13 @@ class TestCdekService:
 
         test_order.recipient_first_name = "Иван"
         test_order.recipient_last_name = "Гость"
+        test_order.user.phone = "+79990001122"
         await test_session.commit()
 
         result = await test_session.execute(select(Supplier).where(Supplier.user_id == test_supplier.id))
         supplier = result.scalars().first()
         supplier.cdek_shipment_point = "MSK123"
+        supplier.sender_phone = "+79990001122"
         await test_session.commit()
 
         captured_payload = {}
@@ -344,6 +348,7 @@ class TestCdekService:
         result = await test_session.execute(select(Supplier).where(Supplier.user_id == test_supplier.id))
         supplier = result.scalars().first()
         supplier.cdek_shipment_point = "MSK123"
+        supplier.sender_phone = "+79990001122"
         await test_session.commit()
 
         captured_payload = {}

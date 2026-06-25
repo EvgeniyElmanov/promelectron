@@ -245,6 +245,18 @@ describe('Cart.vue', () => {
     expect(select.exists()).toBe(true);
     expect(select.html()).toContain('Иванов Иван Иванович');
     expect(select.html()).toContain('Петров Пётр');
+    expect(select.html()).not.toContain('Новый получатель');
+    expect(wrapper.find('[data-testid="recipient-new-button"]').exists()).toBe(true);
+  });
+
+  it('не показывает селект, если нет сохранённых получателей', async () => {
+    mockRecipients.value = [];
+    const wrapper = mount(Cart, { global: { plugins: [router] } });
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="recipient-select"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="recipient-new-button"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="recipient-first-name"]').exists()).toBe(true);
   });
 
   it('подставляет данные выбранного получателя', async () => {

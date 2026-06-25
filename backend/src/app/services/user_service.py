@@ -268,13 +268,16 @@ class UserService:
                 return existing_user, False, ""
             raise
 
+        if not phone:
+            raise HTTPException(status_code=400, detail="Phone is required to create user from guest order")
+
         # Создаём получателя по умолчанию из данных заказа
         default_recipient = Recipient(
             user_id=new_user.id,
             first_name=first_name,
             last_name=last_name,
             patronymic=patronymic,
-            phone=phone or "+70000000000",
+            phone=phone,
             country_code=country_code or "RU",
             is_default=True,
         )
