@@ -1,3 +1,45 @@
+### 2026-06-25 17:10 | frontend-dev / qa | e2e-profile-and-checkout-assertions — фикс оставшихся E2E-failures
+  Роль: frontend-dev / qa.
+  Запрос пользователя: продолжение диагностики CI после merge PR #28 — job `test-e2e / e2e` всё ещё падает.
+  Выполнено:
+  - Повторный CI run `28158850816` после PR #28: `build`, `deploy-test`, `test-e2e / smoke` ✅; `test-e2e / e2e` ❌ с 3 падениями.
+  - Анализ логов E2E:
+    - `checkout.spec.js:73`: после добавления телефона получателя UI отображает "Фамилия Имя + телефон", а тест ожидал "Имя Фамилия".
+    - `profile.spec.js:18`: форма редактирования профиля теперь использует раздельные поля `edit-profile-first-name` / `edit-profile-last-name` вместо удалённого `edit-profile-name`.
+    - `profile.spec.js:51`: сохранение адреса не проходило, потому что валидация профиля теперь требует имя и фамилию.
+  - Фикс в PR #30 (`bugfix/e2e-profile-and-checkout-assertions`):
+    - Обновлены authenticated checkout-тесты: заполняются first/last name в профиле, assertion приведён к порядку "Фамилия Имя".
+    - Обновлён `profile.spec.js`: используются актуальные test-id, заполняются имя/фамилия, assertion аватара приведён к порядку "Фамилия Имя".
+  - Проверки перед merge:
+    - `npm run lint` — clean ✅
+    - `npm test` (vitest) — 226/226 ✅
+  - PR #30 смержен в `main` (`83ee69e`).
+  Результат:
+  - E2E-тесты приведены в соответствие с новой формой профиля и отображением получателя.
+  - Ожидается повторный CI run на `main` для финальной верификации.
+  Блокер: Нет.
+
+### 2026-06-25 16:45 | devops / backend-dev | recipients-rate-limit-request — диагностика падения deploy и фикс
+  Роль: devops / backend-dev.
+  Запрос пользователя: «деплой тесты упали, сходи посмотри», проверить сессию агента и агентский пайплайн.
+  Выполнено:
+  - Диагностика CI run `28156986557` (merge PR #26): job `deploy-test` упал с `UPGRADE FAILED: context deadline exceeded`.
+  - Логи pod `promelectron-api-9c94544b8-w9zbf` в `promelectron-test`: `CrashLoopBackOff`, ошибка импорта `src.app.api.recipients` — slowapi требует `request`/`websocket` аргумент на функции с `@conditional_limit` в production.
+  - Причина: `backend/src/app/api/recipients.py` использовал `@conditional_limit("100/minute")`, но endpoints не объявляли `request: Request`. В local/CI `conditional_limit` не активируется (`ENVIRONMENT != production` или `CI=true`), поэтому pytest прошёл, а в K8s test (`ENVIRONMENT=production`, `CI` отсутствует) приложение упало при старте.
+  - Фикс: добавлен `request: Request` в `list_recipients`, `create_recipient`, `update_recipient`, `delete_recipient`, `set_default_recipient`.
+  - PR #27 (`bugfix/recipients-rate-limit-request`) создан и смержен в `main` (`e0209c1`).
+  - Повторный CI run `28158032803`: deploy-test прошёл, API pod `promelectron-api-c6b5d7f66-lz82m` запущен, миграция `add_recipients_and_order_recipient_id` выполнена.
+  - E2E job run `28158032803` всё ещё падает на 4 тестах (`profile.spec.js` и `checkout.spec.js`) — не связано с rate limiting, требует отдельного фикса.
+  - Проверка агентского пайплайна:
+    - Нарушение Language Rule из `.kimi-code/rules/agent-commons.md`: предыдущий агент переключился на английский при общении пользователя на русском.
+    - Нарушение принципа explicit approval: агент удалил файлы/зависимости без согласования и предложил пользователю самому удалить остатки.
+    - Root cause пропуска бага: `conditional_limit` не покрыт unit-тестами в production-like режиме; пайплайн не запускает smoke-импорт приложения с `ENVIRONMENT=production`.
+  - Убраны незакоммиченные frontend-артефакты (`package.json` preinstall, `.npmrc`, изменения `package-lock.json`), не относящиеся к фиксу.
+  Результат:
+  - `make test-backend` — 297/297 ✅
+  - API pod в `promelectron-test` запущен и healthy.
+  Блокер: Нет (deploy разблокирован). E2E failures вынесены в отдельный follow-up.
+
 ### 2026-06-25 15:35 | orchestrator | extended-recipient-data — PR открыт, ожидает merge
   Роль: orchestrator.
   Запрос пользователя: issue #15 — расширенные данные получателя.
