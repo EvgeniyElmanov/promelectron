@@ -1,3 +1,20 @@
+### 2026-06-25 13:50 | orchestrator | yandex-smtp-and-email-verification — обновление задачи #19
+  Роль: orchestrator.
+  Запрос пользователя: объединить требования из файла (Yandex SMTP + email verification) с задачей #19 и обновить GitHub/backlog.
+  Выполнено:
+  - Изучен файл `/home/evgeniy/Загрузки/email_verification_yandex_smtp.md`.
+  - Проанализирована текущая задача #19, `EmailService`, `config.py`, модель `User`.
+  - Сформирована объединённая архитектура: Story #19 с Phase 1 (SMTP-инфраструктура) и Phase 2 (Email-верификация), 15 sub-tasks, каждая с коммитом.
+  - Обновлён GitHub Issue #19: новый title, body с фазами, sub-tasks, acceptance criteria, рисками.
+  - Issue #19 переведён в статус **In progress** на GitHub Project board.
+  - Обновлён `.agent/BACKLOG.md`: задача #43 переименована, поднята до P0, статус `in_progress`, добавлено детальное описание с sub-tasks.
+  - Обновлён `PROJECT_CONTEXT.md`: BLK-005 снят (креды получены).
+  - Обновлён `.agent/BLOCKERS.md`: BLK-005 перенесён в решённые.
+  Git:
+  - Issue: https://github.com/AutonomaCo/promelectron/issues/19
+  - Изменённые файлы: `.agent/BACKLOG.md`, `.agent/BLOCKERS.md`, `PROJECT_CONTEXT.md`.
+  Блокер: Нет. Готово к запуску `/skill:implement` Phase 1.
+
 ### 2026-06-25 22:05 | orchestrator / developer | extended-recipient-data — фиксы по замечаниям аудита #15
   Роль: orchestrator / developer.
   Запрос пользователя: пофиксить 4 риска из аудита + убрать пункт "Новый получатель" из селекта в корзине.
@@ -28,7 +45,19 @@
   - Branch: `bugfix/e2e-node-version`
   - Commit: `0279062`
   - PR: https://github.com/AutonomaCo/promelectron/pull/33
-  Блокер: Нет. Ожидает merge PR #33 в `main`.
+  Блокер: Нет. PR #33 смержен в `main`.
+
+### 2026-06-25 22:38 | orchestrator / developer | revert-e2e-setup-node — откат setup-node из e2e.yml
+  Роль: orchestrator / developer.
+  Запрос пользователя: вернуть CI тесты на место какие были до этого; исправить локально Node на нужную версию.
+  Выполнено:
+  - Откачен `actions/setup-node@v4` из `.github/workflows/e2e.yml` (revert PR #34).
+  - Проверена локальная версия Node: `v24.15.0` (соответствует `frontend/package.json` engines `>=24.11.0`).
+  Git:
+  - Branch: `bugfix/revert-e2e-setup-node`
+  - Commit: `085c550`
+  - PR: https://github.com/AutonomaCo/promelectron/pull/34
+  Блокер: Нет. Ожидает merge PR #34 в `main`.
 
 ### 2026-06-25 17:25 | orchestrator / audit | extended-recipient-data — аудит сессии и финальный статус задачи #15
   Роль: orchestrator / auditor.
