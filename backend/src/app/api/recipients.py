@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.app.db.database import get_db
@@ -14,6 +14,7 @@ router = APIRouter(prefix="/me/recipients", tags=["recipients"])
 @router.get("/", response_model=list[RecipientOut])
 @conditional_limit("100/minute")
 async def list_recipients(
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -24,6 +25,7 @@ async def list_recipients(
 @router.post("/", response_model=RecipientOut)
 @conditional_limit("100/minute")
 async def create_recipient(
+    request: Request,
     data: RecipientCreate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -44,6 +46,7 @@ async def create_recipient(
 @router.patch("/{recipient_id}/", response_model=RecipientOut)
 @conditional_limit("100/minute")
 async def update_recipient(
+    request: Request,
     recipient_id: int,
     data: RecipientUpdate,
     current_user: User = Depends(get_current_user),
@@ -66,6 +69,7 @@ async def update_recipient(
 @router.delete("/{recipient_id}/")
 @conditional_limit("100/minute")
 async def delete_recipient(
+    request: Request,
     recipient_id: int,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -78,6 +82,7 @@ async def delete_recipient(
 @router.post("/{recipient_id}/set-default/", response_model=RecipientOut)
 @conditional_limit("100/minute")
 async def set_default_recipient(
+    request: Request,
     recipient_id: int,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
