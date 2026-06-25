@@ -93,7 +93,7 @@ describe('PaymentSuccess.vue — гостевой режим', () => {
     });
   });
 
-  const mountGuestComponent = async (query = { order_id: '42', guest_email: 'guest@example.com' }) => {
+  const mountGuestComponent = async (query = { order_id: '42' }) => {
     const queryString = new URLSearchParams(query).toString();
     await router.push(`/payment/success?${queryString}`);
     await router.isReady();

@@ -39,7 +39,7 @@ class CdekService:
     @staticmethod
     def _phone(phone: str | None) -> str:
         if not phone:
-            return "+70000000000"
+            raise HTTPException(status_code=400, detail="Recipient phone is required")
         cleaned = "".join(c for c in phone if c.isdigit())
         if cleaned.startswith("8") and len(cleaned) == 11:
             cleaned = "7" + cleaned[1:]
@@ -156,7 +156,7 @@ class CdekService:
         else:
             name = " ".join(filter(None, [order.recipient_first_name, order.recipient_last_name]))
             if not name:
-                name = order.user.full_name if order.user else (order.guest_name or "Получатель")
+                name = order.user.full_name if order.user else "Получатель"
             phone = order.user.phone if order.user and order.user.phone else order.guest_phone
         return {
             "name": name or "Получатель",

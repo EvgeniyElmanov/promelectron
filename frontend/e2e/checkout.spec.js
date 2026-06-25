@@ -183,8 +183,8 @@ test.describe('Checkout Flow', () => {
     expect(order).toHaveProperty('recipient_last_name', 'Петров');
     expect(order).toHaveProperty('guest_email', email);
 
-    // Verify redirect to checkout page with guest email
-    await expect(page).toHaveURL(new RegExp(`/checkout/${order.id}\\?guest_email=`), { timeout: 30000 });
+    // Verify redirect to checkout page (guest email stored in sessionStorage, not URL)
+    await expect(page).toHaveURL(`/checkout/${order.id}`, { timeout: 30000 });
     await expect(page.locator('[data-testid="checkout-page"]')).toBeVisible();
 
     // Click pay button to create guest payment

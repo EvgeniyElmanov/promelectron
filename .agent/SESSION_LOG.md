@@ -1,3 +1,42 @@
+### 2026-06-25 22:05 | orchestrator / developer | extended-recipient-data — фиксы по замечаниям аудита #15
+  Роль: orchestrator / developer.
+  Запрос пользователя: пофиксить 4 риска из аудита + убрать пункт "Новый получатель" из селекта в корзине.
+  Выполнено:
+  - Убран `guest_email` из всех frontend URL (`GuestCheckout.vue`, `Checkout.vue`, `PaymentSuccess.vue`, `PaymentFailed.vue`) и из backend `return_url` YooKassa / mock `confirmation_url`.
+  - Сделан телефон обязательным на уровне бизнес-логики: `CdekService._phone(None)` и `UserService.get_or_create_from_guest(..., phone=None)` теперь выбрасывают `HTTPException 400`.
+  - Убран PII из debug-лога YooKassa: `receipt.customer` заменён на `<redacted>` перед логированием params.
+  - Удалён deprecated `guest_name` из `GuestOrderCreate` и `OrderOut`; `CdekService._build_recipient` больше не использует `guest_name`.
+  - Переделан UI выбора получателя в `Cart.vue`: убрана опция "Новый получатель" из `<select>`; добавлена отдельная кнопка "Новый получатель"; при отсутствии сохранённых получателей селект не отображается, сразу показывается inline-форма.
+  - Обновлены unit/E2E тесты под изменения.
+  Проверки:
+  - `make test-backend` — 297/297 ✅
+  - `cd frontend && npm run test -- --run` — 227/227 ✅
+  - `cd backend && ruff check src/ tests/` — чисто ✅
+  - `cd frontend && npx eslint src/ --max-warnings=0` — чисто ✅
+  Блокер: Нет.
+
+### 2026-06-25 17:25 | orchestrator / audit | extended-recipient-data — аудит сессии и финальный статус задачи #15
+  Роль: orchestrator / auditor.
+  Запрос пользователя: изучить сессию `session_958104cd-a7b0-4fbe-8c49-ec2fde2033d3`, проверить работу агентов, логику, баги; дать подробный отчет по задаче #15 (extended-recipient-data).
+  Выполнено:
+  - Изучены `.agent/runs/extended-recipient-data/task.md`, `spec.md`, все файлы review (`findings.md`, `findings-backend-final.md`, `findings-frontend-final.md`, `findings-security-final.md`).
+  - Проверен git log и CI/CD: PR #26 (feature), PR #27 (rate-limit fix), PR #28 (E2E recipient phone), PR #29 (SMTP_PASSWORD test secrets), PR #30 (E2E profile/checkout assertions).
+  - Последний CI run `28159593501` (merge PR #30 → main): `build` ✅, `deploy-test` ✅, `test-e2e / smoke` ✅, `test-e2e / e2e` ✅ (1m25s). Деплой и E2E на test-окружении теперь зелёные.
+  - Локальные проверки в `main`:
+    - `make test-backend` — 297/297 ✅
+    - `cd frontend && npm run test -- --run` — 226/226 ✅
+    - `cd backend && ruff check src/ tests/` — чисто ✅
+    - `cd frontend && npx eslint src/ --max-warnings=0` — чисто ✅
+  - Обнаружены незакоммиченные изменения в рабочей директории `main` (вероятно, артефакты другой сессии): `Makefile`, `README.md`, `frontend/Dockerfile`, `frontend/docker-compose.yml`, `frontend/package.json`, `frontend/.npmrc`, `.devcontainer/`, `frontend/Dockerfile.devcontainer` — конфигурация devcontainer / Node 24.
+  - Выявленные замечания (не блокирующие):
+    - Frontend: дублирование логики выбора default-получателя в `Cart.vue` (watch + fetchCart); module-level state в `useRecipients.js`; `buildGuestOrderPayload` передаёт deprecated `guest_phone` (игнорируется бэкендом).
+    - Backend: `CdekService._build_recipient` допускает `phone=None` (fallback на `+70000000000`); `UserService.get_or_create_from_guest` и `RecipientService.create` принимают имена как есть (защита только на уровне схемы); `OrderService.create_order` удаляет корзину после commit (best-effort, согласовано с задачей clear-cart).
+    - Security: присутствие `guest_email` в URL-query и return_url (PII в browser history / прокси-логах); debug-лог YooKassa params содержит `receipt.customer.email`; deprecated `GuestOrderCreate.guest_name` без валидации.
+  Результат:
+  - Задача #15 реализована и смержена в `main`. Все critical/high findings из review исправлены и верифицированы. CI/CD зелёный. Критических багов не выявлено.
+  - Требуется решение пользователя по незакоммиченным devcontainer-артефактам: оформить отдельным коммитом/PR или откатить.
+  Блокер: Нет.
+
 ### 2026-06-25 17:10 | frontend-dev / qa | e2e-profile-and-checkout-assertions — фикс оставшихся E2E-failures
   Роль: frontend-dev / qa.
   Запрос пользователя: продолжение диагностики CI после merge PR #28 — job `test-e2e / e2e` всё ещё падает.

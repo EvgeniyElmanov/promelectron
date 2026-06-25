@@ -1,4 +1,5 @@
 import asyncio
+import copy
 import logging
 import uuid
 from decimal import Decimal
@@ -40,12 +41,9 @@ class YooKassaService:
         return bool(settings.yookassa_shop_id and settings.yookassa_secret_key)
 
     @staticmethod
-    def _build_return_url(order_id: int, guest_email: str | None = None) -> str:
+    def _build_return_url(order_id: int) -> str:
         base = settings.frontend_url.rstrip("/")
-        params = f"order_id={order_id}"
-        if guest_email:
-            params += f"&guest_email={guest_email.lower()}"
-        return f"{base}/payment/success?{params}"
+        return f"{base}/payment/success?order_id={order_id}"
 
     @staticmethod
     def _ensure_configured() -> None:
@@ -107,7 +105,7 @@ class YooKassaService:
             "capture": settings.yookassa_capture_auto,
             "confirmation": {
                 "type": "redirect",
-                "return_url": cls._build_return_url(order_id, guest_email=guest_email),
+                "return_url": cls._build_return_url(order_id),
             },
             "description": description[:128],
             "metadata": {
@@ -124,7 +122,14 @@ class YooKassaService:
             order_id,
             amount,
         )
-        logger.debug("YooKassa create_payment request params: %s", params)
+        # Log a redacted copy: remove receipt.customer to avoid PII (email/phone).
+        debug_params = copy.deepcopy(params)
+        if debug_params.get("receipt") and "customer" in debug_params["receipt"]:
+            debug_params["receipt"] = {
+                **debug_params["receipt"],
+                "customer": "<redacted>",
+            }
+        logger.debug("YooKassa create_payment request params: %s", debug_params)
 
         try:
             response = await asyncio.to_thread(

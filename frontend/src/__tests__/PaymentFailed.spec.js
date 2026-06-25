@@ -121,7 +121,7 @@ describe('PaymentFailed.vue — гостевой режим', () => {
     expect(wrapper.text()).toContain('В каталог');
   });
 
-  it('редиректит на checkout с guest_email для гостя', async () => {
+  it('редиректит на checkout без guest_email для гостя', async () => {
     const wrapper = await mountGuestComponent();
 
     const retryButton = wrapper.findAll('button').find((b) => b.text().includes('Попробовать'));
@@ -130,6 +130,6 @@ describe('PaymentFailed.vue — гостевой режим', () => {
     await flushPromises();
 
     expect(router.currentRoute.value.path).toBe('/checkout/42');
-    expect(router.currentRoute.value.query.guest_email).toBe('guest@example.com');
+    expect(router.currentRoute.value.query).toEqual({});
   });
 });

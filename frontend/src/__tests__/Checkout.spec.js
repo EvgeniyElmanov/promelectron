@@ -173,7 +173,7 @@ describe('Checkout.vue — гостевой режим', () => {
   });
 
   const mountGuestComponent = async () => {
-    await router.push('/checkout/42?guest_email=guest@example.com');
+    await router.push('/checkout/42');
     await router.isReady();
     const wrapper = mount(Checkout, { global: { plugins: [router] } });
     await flushPromises();
@@ -209,6 +209,6 @@ describe('Checkout.vue — гостевой режим', () => {
 
     expect(router.currentRoute.value.path).toBe('/payment/success');
     expect(router.currentRoute.value.query.order_id).toBe('42');
-    expect(router.currentRoute.value.query.guest_email).toBe('guest@example.com');
+    expect(router.currentRoute.value.query.guest_email).toBeUndefined();
   });
 });

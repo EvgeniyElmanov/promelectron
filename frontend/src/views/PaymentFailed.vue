@@ -78,7 +78,7 @@ const route = useRoute();
 const router = useRouter();
 const { isAuthenticated } = useAuth();
 const orderId = ref(route.query.order_id || route.params.id);
-const guestEmail = ref(route.query.guest_email || sessionStorage.getItem('guest_checkout_email') || '');
+const guestEmail = ref(sessionStorage.getItem('guest_checkout_email') || '');
 const isGuest = computed(() => !isAuthenticated.value && Boolean(guestEmail.value));
 const order = ref(null);
 const loading = ref(true);
@@ -131,9 +131,7 @@ const fetchOrder = async () => {
 };
 
 const retryPayment = () => {
-  const target = isGuest.value
-    ? `/checkout/${orderId.value}?guest_email=${encodeURIComponent(guestEmail.value)}`
-    : `/checkout/${orderId.value}`;
+  const target = `/checkout/${orderId.value}`;
   router.push(target);
 };
 

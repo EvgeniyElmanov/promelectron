@@ -92,11 +92,10 @@ class PaymentService:
         else:
             log_suffix = "guest order" if is_guest else "order"
             logger.info("YooKassa not configured — creating mock payment for %s %s", log_suffix, order.id)
-            guest_email_param = f"&guest_email={customer_email.lower()}" if is_guest and customer_email else ""
             yookassa_result = {
                 "yookassa_payment_id": f"mock-{uuid.uuid4()}",
                 "status": "pending",
-                "confirmation_url": f"{settings.frontend_url.rstrip('/')}/payment/success?order_id={order.id}&mock=1{guest_email_param}",
+                "confirmation_url": f"{settings.frontend_url.rstrip('/')}/payment/success?order_id={order.id}&mock=1",
                 "amount": order.total_price,
                 "created_at": datetime.now(timezone.utc).isoformat(),
                 "test": True,

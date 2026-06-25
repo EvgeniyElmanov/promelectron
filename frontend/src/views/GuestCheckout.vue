@@ -268,7 +268,7 @@ const submitOrder = async () => {
     clearGuestCart();
     toast('Заказ создан. Переходим к оплате...', 'success');
 
-    await router.push(`/checkout/${order.id}?guest_email=${encodeURIComponent(email)}`);
+    await router.push(`/checkout/${order.id}`);
   } catch (err) {
     if (err.field && err.message) {
       validationErrors.value = { [err.field]: err.message };

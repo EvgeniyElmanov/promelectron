@@ -150,7 +150,6 @@
                 class="field__input"
                 data-testid="recipient-select"
               >
-                <option :value="null">Новый получатель</option>
                 <option
                   v-for="recipient in recipients"
                   :key="recipient.id"
@@ -162,6 +161,15 @@
                   <template v-if="recipient.is_default">(по умолчанию)</template>
                 </option>
               </select>
+              <button
+                v-if="isSelectedRecipient"
+                type="button"
+                class="cart__recipient-new-button"
+                data-testid="recipient-new-button"
+                @click="selectedRecipientId = null; applyRecipient(null)"
+              >
+                Новый получатель
+              </button>
             </div>
 
             <div class="cart__recipient-fields">
@@ -270,6 +278,7 @@ const creatingOrder = ref(false);
 const updatingId = ref(null);
 const selectedDelivery = ref(null);
 const selectedRecipientId = ref(null);
+const hasUserSelectedRecipient = ref(false);
 const recipientFirstName = ref('');
 const recipientLastName = ref('');
 const recipientPatronymic = ref('');
@@ -368,6 +377,7 @@ const applyRecipient = (recipient) => {
 
 watch(selectedRecipientId, (id) => {
   recipientError.value = '';
+  hasUserSelectedRecipient.value = true;
   if (id === null) {
     applyRecipient(null);
     return;
@@ -377,7 +387,12 @@ watch(selectedRecipientId, (id) => {
 });
 
 watch(defaultRecipient, (recipient) => {
-  if (recipient && selectedRecipientId.value === null && recipients.value.length > 0) {
+  if (
+    recipient &&
+    selectedRecipientId.value === null &&
+    recipients.value.length > 0 &&
+    !hasUserSelectedRecipient.value
+  ) {
     selectedRecipientId.value = recipient.id;
     applyRecipient(recipient);
   }
@@ -390,7 +405,7 @@ const fetchCart = async () => {
       const { data } = await api.get('/cart/');
       cart.value = data;
       await loadRecipients();
-      if (defaultRecipient.value) {
+      if (defaultRecipient.value && !hasUserSelectedRecipient.value) {
         selectedRecipientId.value = defaultRecipient.value.id;
         applyRecipient(defaultRecipient.value);
       }
@@ -950,6 +965,21 @@ watch(supplierId, () => {
 
 .cart__recipient-select {
   margin-bottom: 10px;
+}
+
+.cart__recipient-new-button {
+  margin-top: 8px;
+  padding: 8px 12px;
+  font-size: 14px;
+  color: var(--color-primary);
+  background: transparent;
+  border: 1px solid var(--color-primary);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.cart__recipient-new-button:hover {
+  background: var(--color-primary-light, rgba(0, 123, 255, 0.1));
 }
 
 .cart__recipient-fields {

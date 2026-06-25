@@ -97,7 +97,6 @@ class GuestOrderCreate(BaseModel):
     items: List[GuestOrderItemCreate]
     cdek_delivery: CdekDeliveryIn
     guest_email: str = Field(..., pattern=r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
-    guest_name: Optional[str] = None
     recipient_first_name: str = Field(
         ...,
         min_length=1,
@@ -164,7 +163,6 @@ class OrderOut(BaseModel):
     total_price: Decimal
     shipping_address: Optional[str] = None
     guest_email: Optional[str] = None
-    guest_name: Optional[str] = None
     recipient_first_name: Optional[str] = None
     recipient_last_name: Optional[str] = None
     guest_phone: Optional[str] = None

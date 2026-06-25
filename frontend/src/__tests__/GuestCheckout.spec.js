@@ -282,7 +282,7 @@ describe('GuestCheckout.vue', () => {
     expect(mockCleared).toBe(true);
     expect(storedGuestEmail).toBe('test@example.com');
     expect(router.currentRoute.value.path).toBe('/checkout/42');
-    expect(router.currentRoute.value.query.guest_email).toBe('test@example.com');
+    expect(router.currentRoute.value.query).toEqual({});
   });
 
   it('показывает ошибку при неудачном создании заказа', async () => {

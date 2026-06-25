@@ -22,7 +22,6 @@ class TestGuestOrdersAPI:
         data = response.json()
         assert data["user_id"] is None
         assert data["guest_email"] == "guest@example.com"
-        assert data["guest_name"] is None
         assert data["recipient_first_name"] == "Иван"
         assert data["recipient_last_name"] == "Гость"
         assert data["guest_phone"] == "+79990001122"

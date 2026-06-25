@@ -97,7 +97,7 @@ const { add: toast } = useToast();
 const { isAuthenticated } = useAuth();
 
 const orderId = computed(() => route.params.id);
-const guestEmail = computed(() => route.query.guest_email || sessionStorage.getItem('guest_checkout_email') || '');
+const guestEmail = computed(() => sessionStorage.getItem('guest_checkout_email') || '');
 const isGuest = computed(() => !isAuthenticated.value && Boolean(guestEmail.value));
 
 const order = ref(null);
@@ -129,7 +129,7 @@ const fetchOrder = async () => {
     order.value = data;
     if (data.status !== 'pending') {
       const target = isGuest.value
-        ? `/payment/success?order_id=${orderId.value}&guest_email=${encodeURIComponent(guestEmail.value)}`
+        ? `/payment/success?order_id=${orderId.value}`
         : `/orders/${orderId.value}`;
       await router.replace(target);
       return;
@@ -169,7 +169,7 @@ const processPayment = async () => {
 const cancelPayment = () => {
   if (confirm('Отменить оплату? Заказ останется в ожидании.')) {
     const target = isGuest.value
-      ? `/payment/failed?order_id=${orderId.value}&guest_email=${encodeURIComponent(guestEmail.value)}`
+      ? `/payment/failed?order_id=${orderId.value}`
       : `/orders/${orderId.value}`;
     router.push(target);
   }
