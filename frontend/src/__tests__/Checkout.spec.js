@@ -52,13 +52,25 @@ const mockOrder = {
   ],
 };
 
+const mockOrderWithRecipient = {
+  ...mockOrder,
+  recipient: {
+    id: 1,
+    first_name: 'Иван',
+    last_name: 'Иванов',
+    patronymic: 'Иванович',
+    phone: '+79990001122',
+    country_code: 'RU',
+  },
+};
+
 describe('Checkout.vue — авторизованный пользователь', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     toastFn.mockClear();
     mockIsAuthenticated.value = true;
     mockGet.mockImplementation((url) => {
-      if (url === '/orders/42/') return Promise.resolve({ data: mockOrder });
+      if (url === '/orders/42/') return Promise.resolve({ data: mockOrderWithRecipient });
       return Promise.resolve({ data: {} });
     });
     mockPost.mockImplementation((url) => {
@@ -89,12 +101,20 @@ describe('Checkout.vue — авторизованный пользователь
     expect(wrapper.text()).toContain('1 товаров');
   });
 
-  it('показывает имя получателя', async () => {
+  it('показывает имя получателя из nested recipient', async () => {
     const wrapper = await mountComponent();
     const recipient = wrapper.find('[data-testid="checkout-recipient"]');
     expect(recipient.exists()).toBe(true);
-    expect(recipient.text()).toContain('Иван');
     expect(recipient.text()).toContain('Иванов');
+    expect(recipient.text()).toContain('Иван');
+    expect(recipient.text()).toContain('Иванович');
+  });
+
+  it('показывает телефон получателя из nested recipient', async () => {
+    const wrapper = await mountComponent();
+    const phone = wrapper.find('[data-testid="checkout-recipient-phone"]');
+    expect(phone.exists()).toBe(true);
+    expect(phone.text()).toBe('+79990001122');
   });
 
   it('кнопка оплаты активна', async () => {
@@ -115,7 +135,7 @@ describe('Checkout.vue — авторизованный пользователь
 
   it('редиректит если заказ уже оплачен', async () => {
     mockGet.mockImplementation((url) => {
-      if (url === '/orders/42/') return Promise.resolve({ data: { ...mockOrder, status: 'paid' } });
+      if (url === '/orders/42/') return Promise.resolve({ data: { ...mockOrderWithRecipient, status: 'paid' } });
       return Promise.resolve({ data: {} });
     });
 

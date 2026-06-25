@@ -1,3 +1,26 @@
+### 2026-06-25 05:46 | frontend-dev | extended-recipient-data — реализована frontend-часть Recipient v1
+  Роль: frontend-dev.
+  Запрос: реализовать frontend-часть задачи extended-recipient-data (Recipient v1) по spec.md: API получателей, управление сохранёнными получателями, выбор/inline-форма получателя в корзине, отчество для резидентов РФ, телефон, отображение в заказе/админке, тесты.
+  Выполнено:
+  - `frontend/src/api/recipients.js`: CRUD + set-default endpoint'ы для получателей (trailing slash).
+  - `frontend/src/composables/useRecipients.js`: module-level state, load/create/edit/delete/set-default.
+  - `frontend/src/composables/useGuestCheckout.js`: `country_code`, `patronymic`, нормализация телефона `+7XXXXXXXXXX`, валидация.
+  - `frontend/src/views/GuestCheckout.vue`: селектор страны, отчество для RU, телефон, inline-форма получателя.
+  - `frontend/src/views/Cart.vue`: выбор сохранённого получателя, создание нового, подстановка данных, отправка `recipient_id` или inline-полей.
+  - `frontend/src/views/Checkout.vue`: отображение ФИО и телефона получателя из `order.recipient`.
+  - `frontend/src/views/Admin.vue`: отображение ФИО/телефона получателя в модалке заказа.
+  - `frontend/src/views/ProfileRecipients.vue`: управление сохранёнными получателями (список, модалка create/edit).
+  - `frontend/src/views/Profile.vue`: ссылка "Получатели".
+  - `frontend/src/views/ProfileEdit.vue`: расширены поля профиля (`first_name`, `last_name`, `patronymic`, `country_code`).
+  - `frontend/src/router/index.js`: маршрут `/profile/recipients`.
+  - Тесты: `ProfileRecipients.spec.js`, `useRecipients.spec.js`, `useGuestCheckout.spec.js`, обновлены `Cart.spec.js`, `GuestCheckout.spec.js`, `Checkout.spec.js`, `Admin.spec.js`, `ProfileEdit.spec.js`.
+  Результат:
+  - `cd frontend && npm run test -- --run` — 216/216 ✅
+  - `cd frontend && npm run lint` — чисто ✅
+  Риск/Техдолг:
+  - В `ProfileRecipients.spec.js` пришлось триггерить submit через `wrapper.find('form').trigger('submit')`, т.к. click по кнопке не вызывал submit в VTU; компонент и тесты работают корректно.
+  Блокер: Нет.
+
 ### 2026-06-24 23:45 | orchestrator | clear-cart-after-order — открыт PR #25
   Роль: orchestrator / architect / backend-dev / frontend-dev / code-reviewer.
   Запрос пользователя: после оформления заказа из корзины должны исчезнуть только оформленные товары (issue #23).

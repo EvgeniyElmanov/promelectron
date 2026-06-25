@@ -135,29 +135,95 @@
           />
 
           <div class="cart__recipient">
-            <h4 class="cart__recipient-title">Получатель</h4>
+            <div class="cart__recipient-header">
+              <h4 class="cart__recipient-title">Получатель</h4>
+              <router-link to="/profile/recipients" class="cart__recipient-manage">
+                Управлять
+              </router-link>
+            </div>
+
+            <div v-if="recipientsLoading" class="cart__recipient-loading">Загрузка...</div>
+
+            <div v-else-if="recipients.length > 0" class="cart__recipient-select">
+              <select
+                v-model="selectedRecipientId"
+                class="field__input"
+                data-testid="recipient-select"
+              >
+                <option :value="null">Новый получатель</option>
+                <option
+                  v-for="recipient in recipients"
+                  :key="recipient.id"
+                  :value="recipient.id"
+                >
+                  {{ recipient.last_name }} {{ recipient.first_name }}
+                  <template v-if="recipient.patronymic">{{ recipient.patronymic }}</template>
+                  {{ recipient.phone }}
+                  <template v-if="recipient.is_default">(по умолчанию)</template>
+                </option>
+              </select>
+            </div>
+
             <div class="cart__recipient-fields">
               <div class="cart__recipient-field">
-                <label for="recipient-first-name">Имя</label>
+                <label for="recipient-first-name">Имя <span class="field__required">*</span></label>
                 <input
                   id="recipient-first-name"
                   v-model="recipientFirstName"
                   type="text"
                   placeholder="Иван"
+                  :disabled="isSelectedRecipient"
                   data-testid="recipient-first-name"
                 />
               </div>
               <div class="cart__recipient-field">
-                <label for="recipient-last-name">Фамилия</label>
+                <label for="recipient-last-name">Фамилия <span class="field__required">*</span></label>
                 <input
                   id="recipient-last-name"
                   v-model="recipientLastName"
                   type="text"
                   placeholder="Иванов"
+                  :disabled="isSelectedRecipient"
                   data-testid="recipient-last-name"
                 />
               </div>
+              <div class="cart__recipient-field">
+                <label for="recipient-country-code">Страна <span class="field__required">*</span></label>
+                <select
+                  id="recipient-country-code"
+                  v-model="recipientCountryCode"
+                  :disabled="isSelectedRecipient"
+                  data-testid="recipient-country-code"
+                >
+                  <option value="RU">Россия</option>
+                  <option value="KZ">Казахстан</option>
+                  <option value="BY">Беларусь</option>
+                </select>
+              </div>
+              <div v-if="recipientCountryCode === 'RU'" class="cart__recipient-field">
+                <label for="recipient-patronymic">Отчество</label>
+                <input
+                  id="recipient-patronymic"
+                  v-model="recipientPatronymic"
+                  type="text"
+                  placeholder="Иванович"
+                  :disabled="isSelectedRecipient"
+                  data-testid="recipient-patronymic"
+                />
+              </div>
+              <div class="cart__recipient-field cart__recipient-field--wide">
+                <label for="recipient-phone">Телефон <span class="field__required">*</span></label>
+                <input
+                  id="recipient-phone"
+                  v-model="recipientPhone"
+                  type="tel"
+                  placeholder="+7 (999) 000-00-00"
+                  :disabled="isSelectedRecipient"
+                  data-testid="recipient-phone"
+                />
+              </div>
             </div>
+            <div v-if="recipientError" class="cart__recipient-error">{{ recipientError }}</div>
           </div>
         </div>
       </div>
@@ -188,24 +254,35 @@ import api from '@/services/api';
 import { useAuth } from '@/composables/useAuth';
 import { useCart } from '@/composables/useCart';
 import { useToast } from '@/composables/useToast';
+import { useRecipients } from '@/composables/useRecipients';
 import { getSupplierCityCode } from '@/api/cdek';
+import { normalizePhone } from '@/composables/useGuestCheckout';
 import { formatPrice } from '@/utils/price';
 import CdekDeliveryWidget from '@/components/CdekDeliveryWidget.vue';
 import SkeletonCartItem from '@/components/SkeletonCartItem.vue';
+
+const PHONE_REGEX = /^\+7\d{10}$/;
+const NAME_REGEX = /^[A-Za-zА-Яа-яЁё\- ]+$/;
 
 const cart = ref({ items: [] });
 const loading = ref(true);
 const creatingOrder = ref(false);
 const updatingId = ref(null);
 const selectedDelivery = ref(null);
+const selectedRecipientId = ref(null);
 const recipientFirstName = ref('');
 const recipientLastName = ref('');
+const recipientPatronymic = ref('');
+const recipientPhone = ref('');
+const recipientCountryCode = ref('RU');
+const recipientError = ref('');
 const supplierCityCode = ref(44);
 const isFallback = ref(false);
 const router = useRouter();
 const { add: toast } = useToast();
 const { isAuthenticated } = useAuth();
 const { getGuestCartItems, updateQuantity: updateGuestQuantity, removeFromCart: removeGuestItem, syncCartCount } = useCart();
+const { recipients, loading: recipientsLoading, loadRecipients, defaultRecipient } = useRecipients();
 
 // Swipe state
 const touchStartX = ref(0);
@@ -215,8 +292,20 @@ const isDeliveryValid = computed(() => {
   return selectedDelivery.value && selectedDelivery.value.tariff_code;
 });
 
+const isSelectedRecipient = computed(() => selectedRecipientId.value !== null);
+
 const isRecipientValid = computed(() => {
-  return recipientFirstName.value.trim().length > 0 && recipientLastName.value.trim().length > 0;
+  if (isSelectedRecipient.value) {
+    return true;
+  }
+  const firstName = recipientFirstName.value.trim();
+  const lastName = recipientLastName.value.trim();
+  const phone = normalizePhone(recipientPhone.value);
+  const patronymic = recipientPatronymic.value.trim();
+  if (!firstName || !NAME_REGEX.test(firstName)) return false;
+  if (!lastName || !NAME_REGEX.test(lastName)) return false;
+  if (recipientCountryCode.value === 'RU' && patronymic && !NAME_REGEX.test(patronymic)) return false;
+  return PHONE_REGEX.test(phone);
 });
 
 const supplierId = computed(() => {
@@ -261,12 +350,50 @@ const deliveryPrice = computed(() => {
 
 const orderTotal = computed(() => itemsTotal.value + deliveryPrice.value);
 
+const applyRecipient = (recipient) => {
+  if (!recipient) {
+    recipientFirstName.value = '';
+    recipientLastName.value = '';
+    recipientPatronymic.value = '';
+    recipientPhone.value = '';
+    recipientCountryCode.value = 'RU';
+    return;
+  }
+  recipientFirstName.value = recipient.first_name || '';
+  recipientLastName.value = recipient.last_name || '';
+  recipientPatronymic.value = recipient.patronymic || '';
+  recipientPhone.value = recipient.phone || '';
+  recipientCountryCode.value = recipient.country_code || 'RU';
+};
+
+watch(selectedRecipientId, (id) => {
+  recipientError.value = '';
+  if (id === null) {
+    applyRecipient(null);
+    return;
+  }
+  const recipient = recipients.value.find((r) => r.id === id);
+  applyRecipient(recipient);
+});
+
+watch(defaultRecipient, (recipient) => {
+  if (recipient && selectedRecipientId.value === null && recipients.value.length > 0) {
+    selectedRecipientId.value = recipient.id;
+    applyRecipient(recipient);
+  }
+}, { immediate: false });
+
 const fetchCart = async () => {
   loading.value = true;
   try {
     if (isAuthenticated.value) {
       const { data } = await api.get('/cart/');
       cart.value = data;
+      await loadRecipients();
+      if (defaultRecipient.value) {
+        selectedRecipientId.value = defaultRecipient.value.id;
+        applyRecipient(defaultRecipient.value);
+      }
     } else {
       const items = getGuestCartItems();
       cart.value = {
@@ -332,6 +459,26 @@ const removeItem = async (itemId) => {
   }
 };
 
+const buildOrderPayload = () => {
+  const payload = {
+    cdek_delivery: { ...selectedDelivery.value },
+  };
+
+  if (isSelectedRecipient.value) {
+    payload.recipient_id = selectedRecipientId.value;
+    return payload;
+  }
+
+  payload.recipient_first_name = recipientFirstName.value.trim();
+  payload.recipient_last_name = recipientLastName.value.trim();
+  payload.recipient_phone = normalizePhone(recipientPhone.value);
+  payload.recipient_country_code = recipientCountryCode.value;
+  if (recipientCountryCode.value === 'RU' && recipientPatronymic.value.trim()) {
+    payload.recipient_patronymic = recipientPatronymic.value.trim();
+  }
+  return payload;
+};
+
 const createOrder = async () => {
   if (creatingOrder.value) return;
   if (!isAuthenticated.value) {
@@ -343,22 +490,21 @@ const createOrder = async () => {
     return;
   }
   if (!isRecipientValid.value) {
-    toast('Укажите имя и фамилию получателя', 'error');
+    toast('Укажите корректные данные получателя', 'error');
     return;
   }
   creatingOrder.value = true;
+  recipientError.value = '';
   try {
-    const { data: order } = await api.post('/orders/create/', {
-      cdek_delivery: { ...selectedDelivery.value },
-      recipient_first_name: recipientFirstName.value.trim(),
-      recipient_last_name: recipientLastName.value.trim(),
-    });
+    const payload = buildOrderPayload();
+    const { data: order } = await api.post('/orders/create/', payload);
     toast('Заказ успешно создан!', 'success');
     await syncCartCount();
     await router.push(`/checkout/${order.id}`);
   } catch (err) {
     const detail = err.response?.data?.detail;
-    toast(detail || 'Не удалось создать заказ', 'error');
+    recipientError.value = detail || 'Не удалось создать заказ';
+    toast(recipientError.value, 'error');
   } finally {
     creatingOrder.value = false;
   }
@@ -776,11 +922,34 @@ watch(supplierId, () => {
   border-top: 1px solid var(--color-border);
 }
 
+.cart__recipient-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
 .cart__recipient-title {
   font-size: 14px;
   font-weight: 600;
   color: var(--color-text);
-  margin: 0 0 10px;
+  margin: 0;
+}
+
+.cart__recipient-manage {
+  font-size: 13px;
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.cart__recipient-loading {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  margin-bottom: 10px;
+}
+
+.cart__recipient-select {
+  margin-bottom: 10px;
 }
 
 .cart__recipient-fields {
@@ -795,12 +964,17 @@ watch(supplierId, () => {
   gap: 4px;
 }
 
+.cart__recipient-field--wide {
+  grid-column: 1 / -1;
+}
+
 .cart__recipient-field label {
   font-size: 12px;
   color: var(--color-text-secondary);
 }
 
-.cart__recipient-field input {
+.cart__recipient-field input,
+.cart__recipient-field select {
   padding: 10px 12px;
   border-radius: 10px;
   border: 1px solid var(--color-border);
@@ -810,9 +984,22 @@ watch(supplierId, () => {
   width: 100%;
 }
 
-.cart__recipient-field input:focus {
+.cart__recipient-field input:disabled,
+.cart__recipient-field select:disabled {
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+}
+
+.cart__recipient-field input:focus,
+.cart__recipient-field select:focus {
   outline: none;
   border-color: var(--color-primary);
+}
+
+.cart__recipient-error {
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--color-danger);
 }
 
 /* Sticky Checkout Bar */

@@ -23,6 +23,7 @@ from src.app.api.notifications import router as notifications_router
 from src.app.api.orders import router as orders_router
 from src.app.api.payments import router as payments_router
 from src.app.api.products import router as products_router
+from src.app.api.recipients import router as recipients_router
 from src.app.api.reviews import router as reviews_router
 from src.app.api.seed import router as seed_router
 from src.app.api.users import router as users_router
@@ -102,6 +103,7 @@ app.include_router(admin_router, prefix="/api/v1", tags=["admin"])
 app.include_router(analytics_router, prefix="/api/v1", tags=["analytics"])
 app.include_router(categories_router, prefix="/api/v1", tags=["categories"])
 app.include_router(products_router, prefix="/api/v1", tags=["products"])
+app.include_router(recipients_router, prefix="/api/v1", tags=["recipients"])
 app.include_router(cart_router, prefix="/api/v1", tags=["cart"])
 app.include_router(orders_router, prefix="/api/v1", tags=["orders"])
 app.include_router(payments_router, prefix="/api/v1", tags=["payments"])

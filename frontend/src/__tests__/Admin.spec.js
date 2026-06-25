@@ -117,6 +117,14 @@ const mockOrders = [
     delivery_method: { name: 'CDEK' },
     tracking_number: 'TRK987654321',
     created_at: '2026-05-18T10:00:00Z',
+    recipient: {
+      id: 1,
+      first_name: 'Иван',
+      last_name: 'Иванов',
+      patronymic: 'Иванович',
+      phone: '+79990001122',
+      country_code: 'RU',
+    },
     cdek_order: {
       id: 1,
       cdek_uuid: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
@@ -511,5 +519,23 @@ describe('Admin.vue', () => {
     expect(mockPost).toHaveBeenCalledTimes(1);
     expect(mockPost).toHaveBeenCalledWith('/admin/orders/101/ship/');
     expect(toastFn).toHaveBeenCalledWith('Заказ отправлен', 'success');
+  });
+
+  it('отображает данные получателя в модалке заказа', async () => {
+    const wrapper = mount(Admin, { global: { plugins: [router] } });
+    await flushPromises();
+
+    await switchSectionTab(wrapper, 'orders');
+
+    const editBtn = wrapper.find('[data-testid="orders-table"] .admin__icon-btn--edit');
+    expect(editBtn.exists()).toBe(true);
+    await editBtn.trigger('click');
+    await flushPromises();
+
+    const recipientBlock = wrapper.find('[data-testid="order-modal-recipient"]');
+    expect(recipientBlock.exists()).toBe(true);
+    expect(wrapper.find('[data-testid="order-modal-recipient-name"]').text()).toContain('Иванов');
+    expect(wrapper.find('[data-testid="order-modal-recipient-name"]').text()).toContain('Иванович');
+    expect(wrapper.find('[data-testid="order-modal-recipient-phone"]').text()).toBe('+79990001122');
   });
 });

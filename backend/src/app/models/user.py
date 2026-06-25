@@ -19,6 +19,10 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     full_name = Column(String, nullable=True)
+    first_name = Column(String, nullable=True)
+    last_name = Column(String, nullable=True)
+    patronymic = Column(String, nullable=True)
+    country_code = Column(String, nullable=True, default="RU")
     email = Column(String, unique=True, index=True, nullable=False)
     phone = Column(String, nullable=True)
     hashed_password = Column(String, nullable=True)
@@ -31,6 +35,7 @@ class User(Base):
     # Relationship to SocialAccount
     social_accounts = relationship("SocialAccount", back_populates="user", cascade="all, delete-orphan")
     addresses = relationship("UserAddress", back_populates="user", cascade="all, delete-orphan")
+    recipients = relationship("Recipient", back_populates="user", cascade="all, delete-orphan")
     password_reset_tokens = relationship(
         "PasswordResetToken", back_populates="user", cascade="all, delete-orphan"
     )

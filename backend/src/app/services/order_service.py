@@ -12,11 +12,13 @@ from src.app.models.cdek_order import CdekOrder
 from src.app.models.order import Order, OrderItem
 from src.app.models.payment import Payment
 from src.app.models.product import Product
+from src.app.models.recipient import Recipient
 from src.app.models.user import User
 from src.app.schemas.order import AdminOrderUpdate, GuestOrderCreate, OrderCreate, OrderUpdateStatus
 from src.app.services.cart_service import CartService
 from src.app.services.email_service import EmailService
 from src.app.services.notification_service import NotificationService
+from src.app.services.recipient_service import RecipientService
 from src.app.services.yookassa_service import YooKassaService
 
 logger = logging.getLogger(__name__)
@@ -62,13 +64,34 @@ class OrderService:
         delivery_price = delivery.price
         shipping_address = delivery.shipping_address or OrderService._format_shipping_address(delivery)
 
+        recipient = None
+        if order_data.recipient_id is not None:
+            recipient = await RecipientService.get_for_user(
+                user_id=current_user.id,
+                recipient_id=order_data.recipient_id,
+                db=db,
+            )
+        else:
+            recipient = await RecipientService.create(
+                user_id=current_user.id,
+                first_name=order_data.recipient_first_name,
+                last_name=order_data.recipient_last_name,
+                phone=order_data.recipient_phone,
+                patronymic=order_data.recipient_patronymic,
+                country_code=order_data.recipient_country_code,
+                is_default=False,
+                db=db,
+            )
+
         new_order = Order(
             user_id=current_user.id,
             total_price=total_price + delivery_price,
             status="pending",
             shipping_address=shipping_address,
-            recipient_first_name=order_data.recipient_first_name,
-            recipient_last_name=order_data.recipient_last_name,
+            recipient_id=recipient.id,
+            recipient_first_name=recipient.first_name,
+            recipient_last_name=recipient.last_name,
+            guest_phone=recipient.phone,
             items=order_items,
         )
         db.add(new_order)
@@ -101,7 +124,7 @@ class OrderService:
         order_result = await db.execute(
             select(Order).where(Order.id == new_order.id).options(
                 selectinload(Order.items),
-                selectinload(Order.cdek_order).selectinload(CdekOrder.status_history),
+                selectinload(Order.recipient), selectinload(Order.cdek_order).selectinload(CdekOrder.status_history),
             )
         )
         full_order = order_result.scalars().first()
@@ -176,15 +199,28 @@ class OrderService:
         delivery_price = delivery.price
         shipping_address = delivery.shipping_address or OrderService._format_shipping_address(delivery)
 
+        recipient = Recipient(
+            user_id=None,
+            first_name=order_data.recipient_first_name,
+            last_name=order_data.recipient_last_name,
+            patronymic=order_data.recipient_patronymic,
+            phone=order_data.recipient_phone,
+            country_code=order_data.recipient_country_code,
+            is_default=False,
+        )
+        db.add(recipient)
+        await db.flush()
+
         new_order = Order(
             user_id=None,
             total_price=total_price + delivery_price,
             status="pending",
             shipping_address=shipping_address,
+            recipient_id=recipient.id,
             guest_email=order_data.guest_email.lower(),
-            guest_phone=order_data.guest_phone,
-            recipient_first_name=order_data.recipient_first_name,
-            recipient_last_name=order_data.recipient_last_name,
+            guest_phone=recipient.phone,
+            recipient_first_name=recipient.first_name,
+            recipient_last_name=recipient.last_name,
             save_address=order_data.save_address,
             items=order_items,
         )
@@ -212,7 +248,7 @@ class OrderService:
         order_result = await db.execute(
             select(Order).where(Order.id == new_order.id).options(
                 selectinload(Order.items),
-                selectinload(Order.cdek_order).selectinload(CdekOrder.status_history),
+                selectinload(Order.recipient), selectinload(Order.cdek_order).selectinload(CdekOrder.status_history),
             )
         )
         full_order = order_result.scalars().first()
@@ -259,7 +295,7 @@ class OrderService:
                 Order.id == order_id,
                 func.lower(Order.guest_email) == guest_email.lower(),
             )
-            .options(selectinload(Order.items), selectinload(Order.cdek_order).selectinload(CdekOrder.status_history))
+            .options(selectinload(Order.items), selectinload(Order.recipient), selectinload(Order.cdek_order).selectinload(CdekOrder.status_history))
         )
         order = result.scalars().first()
         if not order:
@@ -272,7 +308,7 @@ class OrderService:
     ) -> list[Order]:
         from sqlalchemy import select
 
-        query = select(Order).options(selectinload(Order.items), selectinload(Order.cdek_order).selectinload(CdekOrder.status_history))
+        query = select(Order).options(selectinload(Order.items), selectinload(Order.recipient), selectinload(Order.cdek_order).selectinload(CdekOrder.status_history))
         if status:
             query = query.where(Order.status == status)
         if user_id:
@@ -294,7 +330,7 @@ class OrderService:
         result = await db.execute(
             select(Order)
             .where(Order.id.in_(select(subquery.c.id)))
-            .options(selectinload(Order.items).selectinload(OrderItem.product), selectinload(Order.user))
+            .options(selectinload(Order.items).selectinload(OrderItem.product), selectinload(Order.recipient), selectinload(Order.user))
             .offset(skip)
             .limit(limit)
             .order_by(Order.created_at.desc())
@@ -306,7 +342,7 @@ class OrderService:
         result = await db.execute(
             select(Order)
             .where(Order.id == order_id)
-            .options(selectinload(Order.items).selectinload(OrderItem.product), selectinload(Order.user))
+            .options(selectinload(Order.items).selectinload(OrderItem.product), selectinload(Order.recipient), selectinload(Order.user))
         )
         order = result.scalars().first()
         if not order:
@@ -323,7 +359,7 @@ class OrderService:
     @staticmethod
     async def update_supplier_order_status(order_id: int, supplier_id: int, new_status: str, db: AsyncSession) -> Order:
         result = await db.execute(
-            select(Order).where(Order.id == order_id).options(selectinload(Order.items).selectinload(OrderItem.product))
+            select(Order).where(Order.id == order_id).options(selectinload(Order.items).selectinload(OrderItem.product), selectinload(Order.recipient))
         )
         order = result.scalars().first()
         if not order:
@@ -346,7 +382,7 @@ class OrderService:
         order_result = await db.execute(
             select(Order)
             .where(Order.id == order_id)
-            .options(selectinload(Order.items).selectinload(OrderItem.product), selectinload(Order.user))
+            .options(selectinload(Order.items).selectinload(OrderItem.product), selectinload(Order.recipient), selectinload(Order.user))
         )
         full_order = order_result.scalars().first()
         if not full_order:
@@ -359,7 +395,7 @@ class OrderService:
         result = await db.execute(
             select(Order).where(Order.id == order_id).options(
                 selectinload(Order.items),
-                selectinload(Order.cdek_order).selectinload(CdekOrder.status_history),
+                selectinload(Order.recipient), selectinload(Order.cdek_order).selectinload(CdekOrder.status_history),
             )
         )
         order = result.scalars().first()
@@ -387,7 +423,7 @@ class OrderService:
         order_result = await db.execute(
             select(Order).where(Order.id == order_id).options(
                 selectinload(Order.items),
-                selectinload(Order.cdek_order).selectinload(CdekOrder.status_history),
+                selectinload(Order.recipient), selectinload(Order.cdek_order).selectinload(CdekOrder.status_history),
             )
         )
         full_order = order_result.scalars().first()
@@ -429,7 +465,7 @@ class OrderService:
         result = await db.execute(
             select(Order)
             .where(Order.id == order_id, Order.user_id == current_user.id)
-            .options(selectinload(Order.items), selectinload(Order.cdek_order).selectinload(CdekOrder.status_history))
+            .options(selectinload(Order.items), selectinload(Order.recipient), selectinload(Order.cdek_order).selectinload(CdekOrder.status_history))
         )
         order = result.scalars().first()
 
@@ -442,7 +478,7 @@ class OrderService:
         result = await db.execute(
             select(Order)
             .where(Order.user_id == current_user.id)
-            .options(selectinload(Order.items), selectinload(Order.cdek_order).selectinload(CdekOrder.status_history))
+            .options(selectinload(Order.items), selectinload(Order.recipient), selectinload(Order.cdek_order).selectinload(CdekOrder.status_history))
         )
         return list(result.scalars().all())
 
@@ -451,7 +487,7 @@ class OrderService:
         result = await db.execute(
             select(Order)
             .where(Order.id == order_id, Order.user_id == current_user.id)
-            .options(selectinload(Order.items), selectinload(Order.cdek_order).selectinload(CdekOrder.status_history))
+            .options(selectinload(Order.items), selectinload(Order.recipient), selectinload(Order.cdek_order).selectinload(CdekOrder.status_history))
             .with_for_update()
         )
         order = result.scalars().first()
@@ -527,7 +563,7 @@ class OrderService:
         order_result = await db.execute(
             select(Order)
             .where(Order.id == order_id)
-            .options(selectinload(Order.items), selectinload(Order.cdek_order).selectinload(CdekOrder.status_history))
+            .options(selectinload(Order.items), selectinload(Order.recipient), selectinload(Order.cdek_order).selectinload(CdekOrder.status_history))
         )
         order = order_result.scalars().first()
 
@@ -551,7 +587,7 @@ class OrderService:
         result = await db.execute(
             select(Order)
             .where(Order.id == order_id)
-            .options(selectinload(Order.items), selectinload(Order.cdek_order))
+            .options(selectinload(Order.items), selectinload(Order.recipient), selectinload(Order.cdek_order))
             .with_for_update()
         )
         order = result.scalars().first()
@@ -573,7 +609,7 @@ class OrderService:
         order_result = await db.execute(
             select(Order)
             .where(Order.id == order_id)
-            .options(selectinload(Order.items), selectinload(Order.cdek_order).selectinload(CdekOrder.status_history))
+            .options(selectinload(Order.items), selectinload(Order.recipient), selectinload(Order.cdek_order).selectinload(CdekOrder.status_history))
         )
         order = order_result.scalars().first()
 
@@ -621,7 +657,7 @@ class OrderService:
 
         order_result = await db.execute(
             select(Order).where(Order.id == order_id).options(
-                selectinload(Order.items), selectinload(Order.cdek_order).selectinload(CdekOrder.status_history)
+                selectinload(Order.items), selectinload(Order.recipient), selectinload(Order.cdek_order).selectinload(CdekOrder.status_history)
             )
         )
         full_order = order_result.scalars().first()

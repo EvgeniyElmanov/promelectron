@@ -23,7 +23,7 @@ export const normalizePhone = (phone) => {
 export const useGuestCheckout = () => {
   const submitting = ref(false);
 
-  const validateGuestForm = ({ email, firstName, lastName, phone }) => {
+  const validateGuestForm = ({ email, firstName, lastName, patronymic, phone, countryCode = 'RU' }) => {
     const errors = {};
     const normalizedEmail = email.trim().toLowerCase();
     if (!normalizedEmail) {
@@ -41,6 +41,13 @@ export const useGuestCheckout = () => {
     } else if (!NAME_REGEX.test(lastName.trim())) {
       errors.lastName = 'Фамилия содержит недопустимые символы';
     }
+    if (countryCode === 'RU') {
+      if (!patronymic.trim()) {
+        errors.patronymic = 'Укажите отчество';
+      } else if (!NAME_REGEX.test(patronymic.trim())) {
+        errors.patronymic = 'Отчество содержит недопустимые символы';
+      }
+    }
     const normalizedPhone = normalizePhone(phone);
     if (!phone.trim()) {
       errors.phone = 'Укажите телефон';
@@ -56,7 +63,9 @@ export const useGuestCheckout = () => {
     email,
     firstName,
     lastName,
+    patronymic,
     phone,
+    countryCode,
     saveAddress,
   }) => ({
     items: items.map((i) => ({ product_id: i.product_id, quantity: i.quantity })),
@@ -65,6 +74,9 @@ export const useGuestCheckout = () => {
     guest_phone: normalizePhone(phone),
     recipient_first_name: firstName.trim(),
     recipient_last_name: lastName.trim(),
+    recipient_patronymic: countryCode === 'RU' ? patronymic.trim() : undefined,
+    recipient_phone: normalizePhone(phone),
+    recipient_country_code: countryCode || 'RU',
     save_address: saveAddress,
   });
 
@@ -74,10 +86,19 @@ export const useGuestCheckout = () => {
     email,
     firstName,
     lastName,
+    patronymic,
     phone,
+    countryCode,
     saveAddress,
   }) => {
-    const validationErrors = validateGuestForm({ email, firstName, lastName, phone });
+    const validationErrors = validateGuestForm({
+      email,
+      firstName,
+      lastName,
+      patronymic,
+      phone,
+      countryCode,
+    });
     const firstErrorKey = Object.keys(validationErrors)[0];
     if (firstErrorKey) {
       const error = new Error(validationErrors[firstErrorKey]);
@@ -100,7 +121,9 @@ export const useGuestCheckout = () => {
         email,
         firstName,
         lastName,
+        patronymic,
         phone,
+        countryCode,
         saveAddress,
       });
       const { data: order } = await createGuestOrder(orderPayload);

@@ -46,14 +46,53 @@
           <div class="field">
             <label class="field-label">Имя</label>
             <input
-              v-model="form.full_name"
+              v-model="form.first_name"
               type="text"
               placeholder="Ваше имя"
               class="field-input"
-              :class="{ 'field-input--error': errors.full_name }"
-              data-testid="edit-profile-name"
+              :class="{ 'field-input--error': errors.first_name }"
+              data-testid="edit-profile-first-name"
             />
-            <span v-if="errors.full_name" class="field-error">{{ errors.full_name }}</span>
+            <span v-if="errors.first_name" class="field-error">{{ errors.first_name }}</span>
+          </div>
+
+          <div class="field">
+            <label class="field-label">Фамилия</label>
+            <input
+              v-model="form.last_name"
+              type="text"
+              placeholder="Ваша фамилия"
+              class="field-input"
+              :class="{ 'field-input--error': errors.last_name }"
+              data-testid="edit-profile-last-name"
+            />
+            <span v-if="errors.last_name" class="field-error">{{ errors.last_name }}</span>
+          </div>
+
+          <div class="field">
+            <label class="field-label">Страна</label>
+            <select
+              v-model="form.country_code"
+              class="field-input"
+              data-testid="edit-profile-country-code"
+            >
+              <option value="RU">Россия</option>
+              <option value="KZ">Казахстан</option>
+              <option value="BY">Беларусь</option>
+            </select>
+          </div>
+
+          <div v-if="form.country_code === 'RU'" class="field">
+            <label class="field-label">Отчество</label>
+            <input
+              v-model="form.patronymic"
+              type="text"
+              placeholder="Ваше отчество"
+              class="field-input"
+              :class="{ 'field-input--error': errors.patronymic }"
+              data-testid="edit-profile-patronymic"
+            />
+            <span v-if="errors.patronymic" class="field-error">{{ errors.patronymic }}</span>
           </div>
 
           <div class="field">
@@ -216,7 +255,10 @@ const passwordSuccess = ref(false);
 const passwordError = ref('');
 
 const form = ref({
-  full_name: '',
+  first_name: '',
+  last_name: '',
+  patronymic: '',
+  country_code: 'RU',
   email: '',
   phone: '',
   shipping_address: { region: '', district: '', city: '', street: '', house: '', apartment: '' },
@@ -232,7 +274,7 @@ const avatarUploading = ref(false);
 const avatarProgress = ref(0);
 
 const initials = computed(() => {
-  const name = form.value.full_name || form.value.email || '?';
+  const name = `${form.value.first_name} ${form.value.last_name}`.trim() || form.value.email || '?';
   const parts = name.split(' ').filter(Boolean);
   if (parts.length >= 2) {
     return (parts[0][0] + parts[1][0]).toUpperCase();
@@ -278,7 +320,10 @@ const fetchProfile = async () => {
   loading.value = true;
   try {
     const { data } = await api.get('/auth/profile');
-    form.value.full_name = data.full_name || '';
+    form.value.first_name = data.first_name || '';
+    form.value.last_name = data.last_name || '';
+    form.value.patronymic = data.patronymic || '';
+    form.value.country_code = data.country_code || 'RU';
     form.value.email = data.email || '';
     form.value.phone = data.phone || '';
     form.value.shipping_address = data.shipping_address || {
@@ -314,7 +359,10 @@ async function handleSaveProfile() {
   savingProfile.value = true;
   try {
     const payload = {};
-    if (form.value.full_name.trim()) payload.full_name = form.value.full_name.trim();
+    if (form.value.first_name.trim()) payload.first_name = form.value.first_name.trim();
+    if (form.value.last_name.trim()) payload.last_name = form.value.last_name.trim();
+    if (form.value.patronymic.trim()) payload.patronymic = form.value.patronymic.trim();
+    payload.country_code = form.value.country_code || 'RU';
     if (form.value.email.trim()) payload.email = form.value.email.trim();
     if (form.value.phone.trim()) payload.phone = form.value.phone.trim();
 

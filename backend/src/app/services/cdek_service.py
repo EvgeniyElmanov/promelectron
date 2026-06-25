@@ -144,10 +144,20 @@ class CdekService:
 
     @staticmethod
     def _build_recipient(order: Order) -> dict[str, Any]:
-        name = " ".join(filter(None, [order.recipient_first_name, order.recipient_last_name]))
-        if not name:
-            name = order.user.full_name if order.user else (order.guest_name or "Получатель")
-        phone = order.user.phone if order.user and order.user.phone else order.guest_phone
+        if order.recipient:
+            name = " ".join(
+                filter(None, [
+                    order.recipient.last_name,
+                    order.recipient.first_name,
+                    order.recipient.patronymic,
+                ])
+            )
+            phone = order.recipient.phone
+        else:
+            name = " ".join(filter(None, [order.recipient_first_name, order.recipient_last_name]))
+            if not name:
+                name = order.user.full_name if order.user else (order.guest_name or "Получатель")
+            phone = order.user.phone if order.user and order.user.phone else order.guest_phone
         return {
             "name": name or "Получатель",
             "phones": [{"number": CdekService._phone(phone)}],

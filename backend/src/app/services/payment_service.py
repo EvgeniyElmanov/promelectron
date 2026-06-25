@@ -211,12 +211,15 @@ class PaymentService:
         current_user_id = order_user_id
         if current_user_id is None and payment.order.guest_email:
             try:
+                recipient = payment.order.recipient
                 user, created, temp_password = await UserService.get_or_create_from_guest(
                     email=payment.order.guest_email,
-                    first_name=payment.order.recipient_first_name or "",
-                    last_name=payment.order.recipient_last_name or "",
-                    phone=payment.order.guest_phone,
+                    first_name=recipient.first_name if recipient else (payment.order.recipient_first_name or ""),
+                    last_name=recipient.last_name if recipient else (payment.order.recipient_last_name or ""),
+                    phone=(recipient.phone if recipient else payment.order.guest_phone),
                     db=db,
+                    patronymic=recipient.patronymic if recipient else None,
+                    country_code=recipient.country_code if recipient else "RU",
                 )
                 payment.order.user_id = user.id
                 current_user_id = user.id
@@ -408,7 +411,7 @@ class PaymentService:
         result = await db.execute(
             select(Payment)
             .where(Payment.yookassa_payment_id == yookassa_payment_id)
-            .options(selectinload(Payment.order).selectinload(Order.items), selectinload(Payment.order).selectinload(Order.cdek_order))
+            .options(selectinload(Payment.order).selectinload(Order.items), selectinload(Payment.order).selectinload(Order.recipient), selectinload(Payment.order).selectinload(Order.cdek_order))
         )
         payment = result.scalars().first()
 
@@ -451,7 +454,7 @@ class PaymentService:
         result = await db.execute(
             select(Payment)
             .where(Payment.id == payment_id)
-            .options(selectinload(Payment.order).selectinload(Order.items), selectinload(Payment.order).selectinload(Order.cdek_order))
+            .options(selectinload(Payment.order).selectinload(Order.items), selectinload(Payment.order).selectinload(Order.recipient), selectinload(Payment.order).selectinload(Order.cdek_order))
         )
         payment = result.scalars().first()
 
@@ -496,7 +499,7 @@ class PaymentService:
             result = await db.execute(
                 select(Payment)
                 .where(Payment.order_id == order_id)
-                .options(selectinload(Payment.order).selectinload(Order.items), selectinload(Payment.order).selectinload(Order.cdek_order))
+                .options(selectinload(Payment.order).selectinload(Order.items), selectinload(Payment.order).selectinload(Order.recipient), selectinload(Payment.order).selectinload(Order.cdek_order))
             )
             payment = result.scalars().first()
 
@@ -612,7 +615,7 @@ class PaymentService:
         result = await db.execute(
             select(Payment)
             .where(Payment.order_id == order_id)
-            .options(selectinload(Payment.order).selectinload(Order.items), selectinload(Payment.order).selectinload(Order.cdek_order))
+            .options(selectinload(Payment.order).selectinload(Order.items), selectinload(Payment.order).selectinload(Order.recipient), selectinload(Payment.order).selectinload(Order.cdek_order))
         )
         payment = result.scalars().first()
 
@@ -644,7 +647,7 @@ class PaymentService:
         result = await db.execute(
             select(Payment)
             .where(Payment.order_id == order_id)
-            .options(selectinload(Payment.order).selectinload(Order.items), selectinload(Payment.order).selectinload(Order.cdek_order))
+            .options(selectinload(Payment.order).selectinload(Order.items), selectinload(Payment.order).selectinload(Order.recipient), selectinload(Payment.order).selectinload(Order.cdek_order))
         )
         payment = result.scalars().first()
 

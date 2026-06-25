@@ -228,6 +228,7 @@ class TestAdminOrders:
                 "cdek_delivery": cdek_delivery_payload,
                 "recipient_first_name": "Тест",
                 "recipient_last_name": "Пользователь",
+                "recipient_phone": "+79990001122",
             },
             headers={"Authorization": f"Bearer {user_token}"},
         )
@@ -275,6 +276,7 @@ class TestAdminOrders:
                 "cdek_delivery": cdek_delivery_payload,
                 "recipient_first_name": "Тест",
                 "recipient_last_name": "Пользователь",
+                "recipient_phone": "+79990001122",
             },
             headers={"Authorization": f"Bearer {user_token}"},
         )
