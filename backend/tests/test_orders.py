@@ -318,6 +318,72 @@ class TestOrdersAPI:
         assert response.status_code == 403
 
     @pytest.mark.asyncio
+    async def test_create_order_with_recipient_id(
+        self, client, test_user, user_token, test_product, test_session, cdek_delivery_payload
+    ):
+        """Создание заказа с выбором сохранённого получателя."""
+        from src.app.models.recipient import Recipient
+
+        recipient = Recipient(
+            user_id=test_user.id,
+            first_name="Иван",
+            last_name="Иванов",
+            phone="+79990001122",
+            country_code="RU",
+            is_default=False,
+        )
+        test_session.add(recipient)
+        await test_session.commit()
+        await test_session.refresh(recipient)
+
+        await client.post(
+            "/api/v1/cart/add",
+            json={"product_id": test_product.id, "quantity": 1},
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        order_resp = await client.post(
+            "/api/v1/orders/create/",
+            json={"cdek_delivery": cdek_delivery_payload, "recipient_id": recipient.id},
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert order_resp.status_code == 200
+        order_data = order_resp.json()
+        assert order_data["recipient"]["id"] == recipient.id
+        assert order_data["recipient"]["first_name"] == "Иван"
+        assert order_data["recipient"]["last_name"] == "Иванов"
+        assert order_data["recipient"]["phone"] == "+79990001122"
+
+    @pytest.mark.asyncio
+    async def test_create_order_with_inline_recipient(
+        self, client, test_user, user_token, test_product, cdek_delivery_payload
+    ):
+        """Создание заказа с inline-полями получателя создаёт нового Recipient."""
+        await client.post(
+            "/api/v1/cart/add",
+            json={"product_id": test_product.id, "quantity": 1},
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        order_resp = await client.post(
+            "/api/v1/orders/create/",
+            json={
+                "cdek_delivery": cdek_delivery_payload,
+                "recipient_first_name": "Пётр",
+                "recipient_last_name": "Петров",
+                "recipient_patronymic": "Петрович",
+                "recipient_phone": "+79990002233",
+                "recipient_country_code": "RU",
+            },
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert order_resp.status_code == 200
+        order_data = order_resp.json()
+        assert order_data["recipient"] is not None
+        assert order_data["recipient"]["first_name"] == "Пётр"
+        assert order_data["recipient"]["last_name"] == "Петров"
+        assert order_data["recipient"]["patronymic"] == "Петрович"
+        assert order_data["recipient"]["phone"] == "+79990002233"
+
+    @pytest.mark.asyncio
     async def test_create_order_removes_only_ordered_items(
         self, client, test_user, user_token, test_product, test_category, test_session, test_supplier, cdek_delivery_payload
     ):

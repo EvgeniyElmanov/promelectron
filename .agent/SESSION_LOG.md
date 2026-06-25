@@ -1,3 +1,16 @@
+### 2026-06-25 05:25 | backend-dev | extended-recipient-data — доработаны backend-тесты Recipient v1
+  Роль: backend-dev.
+  Запрос: продолжить backend-часть задачи extended-recipient-data (Recipient v1) — дополнить тесты сохранённых получателей, выбора recipient_id/inline-полей в заказе, расширенных полей профиля.
+  Выполнено:
+  - `backend/tests/test_auth.py`: добавлен `test_update_profile_extended_fields` — проверка обновления `first_name`, `last_name`, `patronymic`, `country_code` в профиле.
+  - `backend/tests/test_orders.py`: добавлены тесты `test_create_order_with_saved_recipient`, `test_create_order_with_inline_recipient`, `test_order_includes_recipient`, покрывающие выбор `recipient_id`, inline-поля получателя, отображение в ответе заказа.
+  - `backend/tests/test_guest_payments.py`: добавлен assert, что при автосоздании пользователя из гостевого заказа создаётся default `Recipient` на основе данных заказа.
+  Результат:
+  - `make test-backend` — 287/287 ✅
+  - `ruff check src/` — чисто ✅
+  - `alembic downgrade -1 && alembic upgrade head` — чисто ✅
+  Блокер: Нет.
+
 ### 2026-06-25 05:46 | frontend-dev | extended-recipient-data — реализована frontend-часть Recipient v1
   Роль: frontend-dev.
   Запрос: реализовать frontend-часть задачи extended-recipient-data (Recipient v1) по spec.md: API получателей, управление сохранёнными получателями, выбор/inline-форма получателя в корзине, отчество для резидентов РФ, телефон, отображение в заказе/админке, тесты.

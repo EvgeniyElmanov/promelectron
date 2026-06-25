@@ -5,6 +5,7 @@ import pytest
 from sqlalchemy import select
 
 from src.app.models.order import Order
+from src.app.models.recipient import Recipient
 from src.app.models.user import PasswordResetToken, User, UserAddress
 
 
@@ -182,6 +183,17 @@ class TestGuestPaymentsAPI:
         assert address is not None
         assert address.city is not None
 
+        # Проверяем создание получателя по умолчанию
+        recipient_result = await test_session.execute(
+            select(Recipient).where(Recipient.user_id == user.id)
+        )
+        recipient = recipient_result.scalars().first()
+        assert recipient is not None
+        assert recipient.first_name == "Иван"
+        assert recipient.last_name == "Гость"
+        assert recipient.phone == "+79990001122"
+        assert recipient.is_default is True
+
     @pytest.mark.asyncio
     async def test_webhook_links_guest_order_to_existing_user(
         self, client, test_product, cdek_delivery_payload, test_session, test_user
@@ -338,6 +350,16 @@ class TestGuestPaymentsAPI:
         user_result = await test_session.execute(select(User).where(User.email == "mockguest@example.com"))
         user = user_result.scalars().first()
         assert user is not None
+
+        # Проверяем создание получателя по умолчанию
+        recipient_result = await test_session.execute(
+            select(Recipient).where(Recipient.user_id == user.id)
+        )
+        recipient = recipient_result.scalars().first()
+        assert recipient is not None
+        assert recipient.first_name == "Мок"
+        assert recipient.last_name == "Гость"
+        assert recipient.is_default is True
 
     @pytest.mark.asyncio
     async def test_guest_mock_confirm_wrong_email(self, client, test_product, cdek_delivery_payload):
