@@ -73,7 +73,7 @@ describe('GuestCheckout.vue', () => {
     ];
     getSupplierCityCode.mockResolvedValue(44);
     mockGet.mockResolvedValue({ data: {} });
-    vi.stubGlobal('localStorage', {
+    vi.stubGlobal('sessionStorage', {
       getItem: () => null,
       setItem: (_key, value) => { storedGuestEmail = value; },
       removeItem: vi.fn(),
@@ -186,7 +186,7 @@ describe('GuestCheckout.vue', () => {
     await wrapper.find('[data-testid="guest-email"]').setValue('test@example.com');
     await wrapper.find('[data-testid="guest-first-name"]').setValue('Иван');
     await wrapper.find('[data-testid="guest-last-name"]').setValue('Иванов');
-    await wrapper.find('[data-testid="guest-patronymic"]').setValue('');
+    await wrapper.find('[data-testid="guest-patronymic"]').setValue('Иван123');
     await wrapper.find('[data-testid="guest-phone"]').setValue('+79990001122');
     wrapper.vm.selectedDelivery = selectedDelivery;
     await flushPromises();
@@ -197,7 +197,7 @@ describe('GuestCheckout.vue', () => {
     await wrapper.vm.submitOrder();
     await flushPromises();
 
-    expect(wrapper.find('[data-testid="guest-patronymic-error"]').text()).toContain('Укажите отчество');
+    expect(wrapper.find('[data-testid="guest-patronymic-error"]').text()).toContain('недопустимые символы');
     expect(mockPost).not.toHaveBeenCalled();
   });
 

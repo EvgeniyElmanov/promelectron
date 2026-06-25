@@ -81,6 +81,7 @@ class OrderService:
                 country_code=order_data.recipient_country_code,
                 is_default=False,
                 db=db,
+                commit=False,
             )
 
         new_order = Order(

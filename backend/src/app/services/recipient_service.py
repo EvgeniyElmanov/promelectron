@@ -36,6 +36,7 @@ class RecipientService:
         country_code: str,
         is_default: bool,
         db: AsyncSession,
+        commit: bool = True,
     ) -> Recipient:
         if is_default:
             await RecipientService._reset_default(user_id, db)
@@ -50,7 +51,10 @@ class RecipientService:
             is_default=is_default,
         )
         db.add(recipient)
-        await db.commit()
+        if commit:
+            await db.commit()
+        else:
+            await db.flush()
         await db.refresh(recipient)
         return recipient
 

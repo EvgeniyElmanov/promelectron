@@ -101,7 +101,7 @@
         </select>
       </div>
       <div v-if="guestCountryCode === 'RU'" class="field">
-        <label class="field__label">Отчество <span class="field__required">*</span></label>
+        <label class="field__label">Отчество</label>
         <input
           v-model="guestPatronymic"
           class="field__input"
@@ -201,11 +201,7 @@ const loadSupplierCityCode = async () => {
       isFallback.value = false;
       supplierCityCode.value = code;
     }
-  } catch (err) {
-    if (import.meta.env.DEV) {
-       
-      console.error('Failed to load supplier city code:', err);
-    }
+  } catch {
     isFallback.value = true;
     supplierCityCode.value = 44;
   }
@@ -268,7 +264,7 @@ const submitOrder = async () => {
     });
 
     const email = order.guest_email || guestEmail.value.trim();
-    localStorage.setItem(GUEST_EMAIL_KEY, email);
+    sessionStorage.setItem(GUEST_EMAIL_KEY, email);
     clearGuestCart();
     toast('Заказ создан. Переходим к оплате...', 'success');
 

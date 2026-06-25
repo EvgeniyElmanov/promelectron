@@ -75,7 +75,7 @@ class TestGuestOrdersAPI:
                 "items": [{"product_id": test_product.id, "quantity": 1}],
                 "cdek_delivery": cdek_delivery_payload,
                 "guest_email": "guest@example.com",
-                "guest_phone": "89990001122",
+                "recipient_phone": "89990001122",
                 "recipient_first_name": "Иван",
                 "recipient_last_name": "Гость",
             },

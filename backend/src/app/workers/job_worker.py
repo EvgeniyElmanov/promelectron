@@ -44,7 +44,11 @@ async def handle_cdek_create_order(job: Job, db: AsyncSession) -> None:
     result = await db.execute(
         select(Order)
         .where(Order.id == order_id)
-        .options(selectinload(Order.items), selectinload(Order.cdek_order))
+        .options(
+            selectinload(Order.items),
+            selectinload(Order.cdek_order),
+            selectinload(Order.recipient),
+        )
     )
     order = result.scalars().first()
     if not order:

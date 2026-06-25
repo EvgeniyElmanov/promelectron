@@ -220,6 +220,21 @@ class TestCdekService:
         recipient = CdekService._build_recipient(order)
         assert recipient["name"] == "Получатель"
 
+    def test_build_recipient_from_order_recipient(self):
+        """Имя получателя собирается из order.recipient с отчеством."""
+        from src.app.models.recipient import Recipient
+
+        recipient = Recipient(
+            first_name="Иван",
+            last_name="Гость",
+            patronymic="Иванович",
+            phone="+79990001122",
+        )
+        order = Order(recipient=recipient)
+        result = CdekService._build_recipient(order)
+        assert result["name"] == "Гость Иван Иванович"
+        assert result["phones"][0]["number"] == "+79990001122"
+
     def test_build_tracking_url(self):
         """tracking_url строится по цепочке fallback."""
         cdek_order = CdekOrder(cdek_number="1101234567")
@@ -232,6 +247,33 @@ class TestCdekService:
         assert CdekService.build_tracking_url(cdek_order) == "https://www.cdek.ru/ru/tracking?order_id=uuid-123"
 
         assert CdekService.build_tracking_url(None) is None
+
+    @pytest.mark.asyncio
+    async def test_cancel_cdek_order_logs_safe_fields(self, monkeypatch, caplog):
+        """cancel_cdek_order логирует только безопасные идентификаторы, не весь ответ."""
+        fake_response = {
+            "entity": {"uuid": "cancel-uuid"},
+            "requests": [{"state": "ACCEPTED"}],
+        }
+
+        class FakeClient:
+            async def delete_order(self, uuid):
+                return fake_response
+
+            async def close(self):
+                pass
+
+        monkeypatch.setattr(
+            "src.app.services.cdek_service.CdekClient",
+            lambda **kwargs: FakeClient(),
+        )
+
+        with caplog.at_level("INFO", logger="src.app.services.cdek_service"):
+            result = await CdekService.cancel_cdek_order("target-uuid")
+
+        assert result == fake_response
+        assert any("target-uuid" in record.message for record in caplog.records)
+        assert not any("+7" in record.message for record in caplog.records)
 
     @pytest.mark.asyncio
     async def test_create_cdek_order_already_has_uuid(self, test_order, test_session):
@@ -275,6 +317,54 @@ class TestCdekService:
         result = await CdekService.create_cdek_order(test_order, test_session)
         assert result.cdek_uuid == "new-uuid"
         assert captured_payload["recipient"]["name"] == "Иван Гость"
+        assert captured_payload["from_location"]["code"] == 44
+
+    @pytest.mark.asyncio
+    async def test_create_cdek_order_success_with_recipient(
+        self, test_order, test_supplier, test_session, monkeypatch
+    ):
+        """Успешное создание заказа в CDEK использует order.recipient."""
+        from src.app.models.recipient import Recipient
+        from src.app.models.supplier import Supplier
+
+        recipient = Recipient(
+            user_id=test_order.user_id,
+            first_name="Иван",
+            last_name="Гость",
+            patronymic="Иванович",
+            phone="+79990001122",
+            country_code="RU",
+            is_default=False,
+        )
+        test_session.add(recipient)
+        await test_session.flush()
+        test_order.recipient_id = recipient.id
+        await test_session.commit()
+
+        result = await test_session.execute(select(Supplier).where(Supplier.user_id == test_supplier.id))
+        supplier = result.scalars().first()
+        supplier.cdek_shipment_point = "MSK123"
+        await test_session.commit()
+
+        captured_payload = {}
+
+        async def fake_get_delivery_point(*args):
+            return {"code": "MSK123", "location": {"city_code": 44}}
+
+        async def fake_create_order(payload):
+            captured_payload.update(payload)
+            return {"entity": {"uuid": "new-uuid"}, "requests": [{"state": "ACCEPTED"}]}
+
+        fake_client = AsyncMock()
+        fake_client.get_delivery_point = fake_get_delivery_point
+        fake_client.create_order = fake_create_order
+        fake_client.close = AsyncMock()
+        monkeypatch.setattr("src.app.services.cdek_service.CdekClient", lambda: fake_client)
+
+        result = await CdekService.create_cdek_order(test_order, test_session)
+        assert result.cdek_uuid == "new-uuid"
+        assert captured_payload["recipient"]["name"] == "Гость Иван Иванович"
+        assert captured_payload["recipient"]["phones"][0]["number"] == "+79990001122"
         assert captured_payload["from_location"]["code"] == 44
 
     @pytest.mark.asyncio

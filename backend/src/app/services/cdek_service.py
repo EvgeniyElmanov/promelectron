@@ -344,7 +344,12 @@ class CdekService:
         result = await db.execute(
             select(Order)
             .where(Order.id == order.id)
-            .options(selectinload(Order.items), selectinload(Order.cdek_order), selectinload(Order.user))
+            .options(
+                selectinload(Order.items),
+                selectinload(Order.cdek_order),
+                selectinload(Order.user),
+                selectinload(Order.recipient),
+            )
         )
         order = result.scalars().first()
         if not order:
@@ -392,10 +397,18 @@ class CdekService:
         finally:
             await client.close()
 
-        logger.info("CDEK create order response for order %s: %s", order.id, result)
+        entity = result.get("entity", {}) if isinstance(result, dict) else {}
+        cdek_uuid = entity.get("uuid") if isinstance(entity, dict) else None
+        requests = result.get("requests", []) if isinstance(result, dict) else []
+        request_state = requests[0].get("state") if isinstance(requests, list) and requests else None
 
-        entity = result.get("entity", {})
-        cdek_uuid = entity.get("uuid")
+        logger.info(
+            "CDEK create order response for order %s: cdek_uuid=%s request_state=%s",
+            order.id,
+            cdek_uuid,
+            request_state,
+        )
+
         if cdek_uuid:
             cdek_order.cdek_uuid = cdek_uuid
             cdek_order.sync_failed = False
@@ -634,5 +647,14 @@ class CdekService:
         finally:
             await client.close()
 
-        logger.info("CDEK cancel order response for uuid=%s: %s", cdek_uuid, result)
+        entity = result.get("entity", {}) if isinstance(result, dict) else {}
+        requests = result.get("requests", []) if isinstance(result, dict) else []
+        request_state = requests[0].get("state") if isinstance(requests, list) and requests else None
+
+        logger.info(
+            "CDEK cancel order response for uuid=%s: cdek_uuid=%s request_state=%s",
+            cdek_uuid,
+            entity.get("uuid") if isinstance(entity, dict) else None,
+            request_state,
+        )
         return result

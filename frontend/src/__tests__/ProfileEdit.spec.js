@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import { createRouter, createWebHistory } from 'vue-router'
 import ProfileEdit from '@/views/ProfileEdit.vue'
 
@@ -90,5 +90,67 @@ describe('ProfileEdit.vue', () => {
       expect(wrapper.find('[data-testid="edit-profile-confirm-password"]').exists()).toBe(true)
       expect(wrapper.find('[data-testid="edit-profile-password-save"]').exists()).toBe(true)
     })
+  })
+
+  it('валидирует телефон в формате +7XXXXXXXXXX', async () => {
+    const router = createRouter({
+      history: createWebHistory(),
+      routes: [{ path: '/profile/edit', component: ProfileEdit }],
+    })
+    await router.push('/profile/edit')
+    await router.isReady()
+
+    const wrapper = mount(ProfileEdit, {
+      global: { plugins: [router] },
+    })
+    await vi.waitFor(() => expect(wrapper.find('[data-testid="edit-profile-phone"]').exists()).toBe(true))
+
+    await wrapper.find('[data-testid="edit-profile-phone"]').setValue('abc')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="edit-profile-phone-error"]').text()).toContain('+7')
+  })
+
+  it('валидирует имя и фамилию на недопустимые символы', async () => {
+    const router = createRouter({
+      history: createWebHistory(),
+      routes: [{ path: '/profile/edit', component: ProfileEdit }],
+    })
+    await router.push('/profile/edit')
+    await router.isReady()
+
+    const wrapper = mount(ProfileEdit, {
+      global: { plugins: [router] },
+    })
+    await vi.waitFor(() => expect(wrapper.find('[data-testid="edit-profile-first-name"]').exists()).toBe(true))
+
+    await wrapper.find('[data-testid="edit-profile-first-name"]').setValue('Иван123')
+    await wrapper.find('[data-testid="edit-profile-last-name"]').setValue('')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="edit-profile-first-name-error"]').text()).toContain('недопустимые символы')
+    expect(wrapper.find('[data-testid="edit-profile-last-name-error"]').text()).toContain('Введите фамилию')
+  })
+
+  it('нормализует телефон перед отправкой', async () => {
+    const router = createRouter({
+      history: createWebHistory(),
+      routes: [{ path: '/profile/edit', component: ProfileEdit }],
+    })
+    await router.push('/profile/edit')
+    await router.isReady()
+
+    const wrapper = mount(ProfileEdit, {
+      global: { plugins: [router] },
+    })
+    await vi.waitFor(() => expect(wrapper.find('[data-testid="edit-profile-phone"]').exists()).toBe(true))
+
+    await wrapper.find('[data-testid="edit-profile-phone"]').setValue('8 (999) 000-11-22')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="edit-profile-phone-error"]').exists()).toBe(false)
   })
 })

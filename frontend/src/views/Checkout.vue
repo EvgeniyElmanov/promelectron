@@ -97,7 +97,7 @@ const { add: toast } = useToast();
 const { isAuthenticated } = useAuth();
 
 const orderId = computed(() => route.params.id);
-const guestEmail = computed(() => route.query.guest_email || localStorage.getItem('guest_checkout_email') || '');
+const guestEmail = computed(() => route.query.guest_email || sessionStorage.getItem('guest_checkout_email') || '');
 const isGuest = computed(() => !isAuthenticated.value && Boolean(guestEmail.value));
 
 const order = ref(null);

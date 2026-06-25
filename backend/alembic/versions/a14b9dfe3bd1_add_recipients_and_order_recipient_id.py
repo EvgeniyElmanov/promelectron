@@ -55,42 +55,75 @@ def upgrade() -> None:
         ondelete='SET NULL',
     )
 
-    # Migrate existing orders to recipients (one recipient per order)
-    op.execute("""
-        DO $$
-        DECLARE
-            r_id INT;
-            o RECORD;
-        BEGIN
-            FOR o IN SELECT id, user_id, guest_name, recipient_first_name, recipient_last_name, guest_phone FROM orders LOOP
-                INSERT INTO recipients (
-                    user_id,
-                    first_name,
-                    last_name,
-                    patronymic,
-                    phone,
-                    country_code,
-                    is_default,
-                    created_at,
-                    updated_at
-                )
-                VALUES (
-                    o.user_id,
-                    COALESCE(NULLIF(TRIM(o.recipient_first_name), ''), NULLIF(SPLIT_PART(o.guest_name, ' ', 1), ''), 'Получатель'),
-                    COALESCE(NULLIF(TRIM(o.recipient_last_name), ''), NULLIF(SPLIT_PART(o.guest_name, ' ', 2), ''), ''),
-                    NULL,
-                    COALESCE(o.guest_phone, (SELECT phone FROM users WHERE id = o.user_id), '+70000000000'),
-                    'RU',
-                    FALSE,
-                    NOW(),
-                    NOW()
-                )
-                RETURNING id INTO r_id;
+    # Migrate existing orders to recipients in batches with intermediate commits
+    conn = op.get_bind()
+    batch_size = 1000
+    offset = 0
+    while True:
+        rows = conn.execute(
+            sa.text("""
+                SELECT id, user_id, guest_name, recipient_first_name, recipient_last_name, guest_phone
+                FROM orders
+                ORDER BY id
+                LIMIT :limit OFFSET :offset
+            """),
+            {"limit": batch_size, "offset": offset},
+        ).fetchall()
+        if not rows:
+            break
 
-                UPDATE orders SET recipient_id = r_id WHERE id = o.id;
-            END LOOP;
-        END $$;
-    """)
+        for row in rows:
+            guest_name = row.guest_name or ""
+            r_id = conn.execute(
+                sa.text("""
+                    INSERT INTO recipients (
+                        user_id,
+                        first_name,
+                        last_name,
+                        patronymic,
+                        phone,
+                        country_code,
+                        is_default,
+                        created_at,
+                        updated_at
+                    )
+                    VALUES (
+                        :user_id,
+                        COALESCE(
+                            NULLIF(TRIM(:recipient_first_name), ''),
+                            NULLIF(SPLIT_PART(:guest_name, ' ', 1), ''),
+                            'Получатель'
+                        ),
+                        COALESCE(
+                            NULLIF(TRIM(:recipient_last_name), ''),
+                            NULLIF(SPLIT_PART(:guest_name, ' ', 2), ''),
+                            NULLIF(SPLIT_PART(:guest_name, ' ', 1), ''),
+                            'Не указана'
+                        ),
+                        NULL,
+                        COALESCE(:guest_phone, (SELECT phone FROM users WHERE id = :user_id), '+70000000000'),
+                        'RU',
+                        FALSE,
+                        NOW(),
+                        NOW()
+                    )
+                    RETURNING id
+                """),
+                {
+                    "user_id": row.user_id,
+                    "recipient_first_name": row.recipient_first_name,
+                    "guest_name": guest_name,
+                    "recipient_last_name": row.recipient_last_name,
+                    "guest_phone": row.guest_phone,
+                },
+            ).scalar()
+            conn.execute(
+                sa.text("UPDATE orders SET recipient_id = :recipient_id WHERE id = :order_id"),
+                {"recipient_id": r_id, "order_id": row.id},
+            )
+
+        op.execute(sa.text("COMMIT"))
+        offset += batch_size
 
 
 def downgrade() -> None:

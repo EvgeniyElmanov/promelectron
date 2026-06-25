@@ -1,16 +1,18 @@
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+CountryCode = Literal["RU", "KZ", "BY"]
+
+NAME_REGEX = r'^[A-Za-zА-Яа-яЁё\- ]+$'
+PHONE_REGEX = r'^\+7\d{10}$'
 
 
 def _normalize_name(value: str | None) -> str | None:
     if value is None:
         return None
-    value = value.strip()
-    if not value:
-        return None
-    return value
+    return value.strip()
 
 
 class RecipientBase(BaseModel):
@@ -18,22 +20,22 @@ class RecipientBase(BaseModel):
         ...,
         min_length=1,
         max_length=100,
-        pattern=r'^[A-Za-zА-Яа-яЁё\- ]+$',
+        pattern=NAME_REGEX,
     )
     last_name: str = Field(
         ...,
         min_length=1,
         max_length=100,
-        pattern=r'^[A-Za-zА-Яа-яЁё\- ]+$',
+        pattern=NAME_REGEX,
     )
     patronymic: Optional[str] = Field(
         default=None,
         min_length=1,
         max_length=100,
-        pattern=r'^[A-Za-zА-Яа-яЁё\- ]+$',
+        pattern=NAME_REGEX,
     )
-    phone: str = Field(..., pattern=r'^\+7\d{10}$')
-    country_code: str = Field(default="RU", max_length=3)
+    phone: str = Field(..., pattern=PHONE_REGEX)
+    country_code: CountryCode = Field(default="RU")
 
     model_config = ConfigDict(from_attributes=True, str_strip_whitespace=True)
 
@@ -52,22 +54,22 @@ class RecipientUpdate(BaseModel):
         default=None,
         min_length=1,
         max_length=100,
-        pattern=r'^[A-Za-zА-Яа-яЁё\- ]+$',
+        pattern=NAME_REGEX,
     )
     last_name: Optional[str] = Field(
         default=None,
         min_length=1,
         max_length=100,
-        pattern=r'^[A-Za-zА-Яа-яЁё\- ]+$',
+        pattern=NAME_REGEX,
     )
     patronymic: Optional[str] = Field(
         default=None,
         min_length=1,
         max_length=100,
-        pattern=r'^[A-Za-zА-Яа-яЁё\- ]+$',
+        pattern=NAME_REGEX,
     )
-    phone: Optional[str] = Field(default=None, pattern=r'^\+7\d{10}$')
-    country_code: Optional[str] = Field(default=None, max_length=3)
+    phone: Optional[str] = Field(default=None, pattern=PHONE_REGEX)
+    country_code: Optional[CountryCode] = None
     is_default: Optional[bool] = None
 
     model_config = ConfigDict(from_attributes=True, str_strip_whitespace=True)

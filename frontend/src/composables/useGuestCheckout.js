@@ -1,9 +1,9 @@
 import { ref, computed } from 'vue';
 import { createGuestOrder } from '@/api/orders';
 
-const PHONE_REGEX = /^\+7\d{10}$/;
+export const PHONE_REGEX = /^\+7\d{10}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const NAME_REGEX = /^[A-Za-zА-Яа-яЁё\- ]+$/;
+export const NAME_REGEX = /^[A-Za-zА-Яа-яЁё\- ]+$/;
 
 export const normalizePhone = (phone) => {
   if (!phone) return '';
@@ -41,12 +41,8 @@ export const useGuestCheckout = () => {
     } else if (!NAME_REGEX.test(lastName.trim())) {
       errors.lastName = 'Фамилия содержит недопустимые символы';
     }
-    if (countryCode === 'RU') {
-      if (!patronymic.trim()) {
-        errors.patronymic = 'Укажите отчество';
-      } else if (!NAME_REGEX.test(patronymic.trim())) {
-        errors.patronymic = 'Отчество содержит недопустимые символы';
-      }
+    if (countryCode === 'RU' && patronymic.trim() && !NAME_REGEX.test(patronymic.trim())) {
+      errors.patronymic = 'Отчество содержит недопустимые символы';
     }
     const normalizedPhone = normalizePhone(phone);
     if (!phone.trim()) {
@@ -74,7 +70,7 @@ export const useGuestCheckout = () => {
     guest_phone: normalizePhone(phone),
     recipient_first_name: firstName.trim(),
     recipient_last_name: lastName.trim(),
-    recipient_patronymic: countryCode === 'RU' ? patronymic.trim() : undefined,
+    recipient_patronymic: countryCode === 'RU' && patronymic.trim() ? patronymic.trim() : undefined,
     recipient_phone: normalizePhone(phone),
     recipient_country_code: countryCode || 'RU',
     save_address: saveAddress,

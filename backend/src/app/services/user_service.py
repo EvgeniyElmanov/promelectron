@@ -115,11 +115,21 @@ class UserService:
         if user_data.full_name is not None:
             user.full_name = user_data.full_name
 
+        names_changed = False
         if user_data.first_name is not None:
             user.first_name = user_data.first_name
+            names_changed = True
 
         if user_data.last_name is not None:
             user.last_name = user_data.last_name
+            names_changed = True
+
+        if names_changed:
+            new_full_name = " ".join(
+                filter(None, [user.first_name, user.last_name])
+            ).strip()
+            if new_full_name:
+                user.full_name = new_full_name
 
         if user_data.patronymic is not None:
             user.patronymic = user_data.patronymic

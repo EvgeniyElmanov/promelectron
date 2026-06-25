@@ -61,7 +61,20 @@ describe('useGuestCheckout', () => {
     expect(errors.phone).toContain('+7');
   });
 
-  it('validateGuestForm requires patronymic for RU', () => {
+  it('validateGuestForm validates patronymic format for RU', () => {
+    const { validateGuestForm } = useGuestCheckout();
+    const errors = validateGuestForm({
+      email: 'test@example.com',
+      firstName: 'Иван',
+      lastName: 'Иванов',
+      patronymic: 'Иван123',
+      phone: '+79990001122',
+      countryCode: 'RU',
+    });
+    expect(errors.patronymic).toContain('недопустимые символы');
+  });
+
+  it('validateGuestForm allows empty patronymic for RU', () => {
     const { validateGuestForm } = useGuestCheckout();
     const errors = validateGuestForm({
       email: 'test@example.com',
@@ -71,7 +84,7 @@ describe('useGuestCheckout', () => {
       phone: '+79990001122',
       countryCode: 'RU',
     });
-    expect(errors.patronymic).toContain('Укажите отчество');
+    expect(errors).toEqual({});
   });
 
   it('validateGuestForm skips patronymic for non-RU', () => {
@@ -126,5 +139,22 @@ describe('useGuestCheckout', () => {
     });
     expect(payload.recipient_patronymic).toBeUndefined();
     expect(payload.recipient_country_code).toBe('KZ');
+  });
+
+  it('buildGuestOrderPayload omits empty patronymic for RU', () => {
+    const { buildGuestOrderPayload } = useGuestCheckout();
+    const payload = buildGuestOrderPayload({
+      items: [{ product_id: 1, quantity: 1 }],
+      selectedDelivery: { tariff_code: 136 },
+      email: 'test@example.com',
+      firstName: 'Иван',
+      lastName: 'Иванов',
+      patronymic: '',
+      phone: '+79990001122',
+      countryCode: 'RU',
+      saveAddress: false,
+    });
+    expect(payload.recipient_patronymic).toBeUndefined();
+    expect(payload.recipient_country_code).toBe('RU');
   });
 });

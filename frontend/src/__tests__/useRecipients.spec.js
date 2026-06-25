@@ -51,6 +51,21 @@ describe('useRecipients', () => {
     expect(result.id).toBe(2);
   });
 
+  it('creating a default recipient resets is_default on others', async () => {
+    mockPost.mockResolvedValue({ data: { ...mockRecipient, id: 3, is_default: true } });
+    const { recipients, addRecipient } = useRecipients();
+    recipients.value = [
+      { ...mockRecipient, id: 1, is_default: true },
+      { ...mockRecipient, id: 2, is_default: false },
+    ];
+
+    await addRecipient({ ...mockRecipient, is_default: true });
+
+    expect(recipients.value.find((r) => r.id === 1).is_default).toBe(false);
+    expect(recipients.value.find((r) => r.id === 2).is_default).toBe(false);
+    expect(recipients.value.find((r) => r.id === 3).is_default).toBe(true);
+  });
+
   it('updates a recipient', async () => {
     mockPatch.mockResolvedValue({ data: { ...mockRecipient, first_name: 'Пётр' } });
     const { recipients, editRecipient } = useRecipients();
@@ -60,6 +75,20 @@ describe('useRecipients', () => {
 
     expect(mockPatch).toHaveBeenCalledWith('/me/recipients/1/', { first_name: 'Пётр' });
     expect(recipients.value[0].first_name).toBe('Пётр');
+  });
+
+  it('editing a recipient to default resets is_default on others', async () => {
+    mockPatch.mockResolvedValue({ data: { ...mockRecipient, id: 2, is_default: true } });
+    const { recipients, editRecipient } = useRecipients();
+    recipients.value = [
+      { ...mockRecipient, id: 1, is_default: true },
+      { ...mockRecipient, id: 2, is_default: false },
+    ];
+
+    await editRecipient(2, { is_default: true });
+
+    expect(recipients.value.find((r) => r.id === 1).is_default).toBe(false);
+    expect(recipients.value.find((r) => r.id === 2).is_default).toBe(true);
   });
 
   it('deletes a recipient', async () => {

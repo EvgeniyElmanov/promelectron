@@ -53,7 +53,7 @@
               :class="{ 'field-input--error': errors.first_name }"
               data-testid="edit-profile-first-name"
             />
-            <span v-if="errors.first_name" class="field-error">{{ errors.first_name }}</span>
+            <span v-if="errors.first_name" class="field-error" data-testid="edit-profile-first-name-error">{{ errors.first_name }}</span>
           </div>
 
           <div class="field">
@@ -66,7 +66,7 @@
               :class="{ 'field-input--error': errors.last_name }"
               data-testid="edit-profile-last-name"
             />
-            <span v-if="errors.last_name" class="field-error">{{ errors.last_name }}</span>
+            <span v-if="errors.last_name" class="field-error" data-testid="edit-profile-last-name-error">{{ errors.last_name }}</span>
           </div>
 
           <div class="field">
@@ -92,7 +92,7 @@
               :class="{ 'field-input--error': errors.patronymic }"
               data-testid="edit-profile-patronymic"
             />
-            <span v-if="errors.patronymic" class="field-error">{{ errors.patronymic }}</span>
+            <span v-if="errors.patronymic" class="field-error" data-testid="edit-profile-patronymic-error">{{ errors.patronymic }}</span>
           </div>
 
           <div class="field">
@@ -105,7 +105,7 @@
               :class="{ 'field-input--error': errors.email }"
               data-testid="edit-profile-email"
             />
-            <span v-if="errors.email" class="field-error">{{ errors.email }}</span>
+            <span v-if="errors.email" class="field-error" data-testid="edit-profile-email-error">{{ errors.email }}</span>
           </div>
 
           <div class="field">
@@ -118,7 +118,7 @@
               :class="{ 'field-input--error': errors.phone }"
               data-testid="edit-profile-phone"
             />
-            <span v-if="errors.phone" class="field-error">{{ errors.phone }}</span>
+            <span v-if="errors.phone" class="field-error" data-testid="edit-profile-phone-error">{{ errors.phone }}</span>
           </div>
 
           <AddressForm
@@ -241,6 +241,7 @@
 import { ref, onMounted, computed } from 'vue';
 import api from '@/services/api';
 import { useAuth } from '@/composables/useAuth';
+import { normalizePhone, PHONE_REGEX, NAME_REGEX } from '@/composables/useGuestCheckout';
 import AddressForm from '@/components/AddressForm.vue';
 import SkeletonProfile from '@/components/SkeletonProfile.vue';
 
@@ -339,14 +340,39 @@ const fetchProfile = async () => {
 
 function validateProfile() {
   const e = {};
+  const firstName = form.value.first_name.trim();
+  const lastName = form.value.last_name.trim();
+  const patronymic = form.value.patronymic.trim();
+  const phone = normalizePhone(form.value.phone);
+
   if (!form.value.email.trim()) {
     e.email = 'Введите email';
   } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.value.email)) {
     e.email = 'Некорректный email';
   }
+
+  if (!firstName) {
+    e.first_name = 'Введите имя';
+  } else if (!NAME_REGEX.test(firstName)) {
+    e.first_name = 'Имя содержит недопустимые символы';
+  }
+
+  if (!lastName) {
+    e.last_name = 'Введите фамилию';
+  } else if (!NAME_REGEX.test(lastName)) {
+    e.last_name = 'Фамилия содержит недопустимые символы';
+  }
+
+  if (form.value.country_code === 'RU' && patronymic && !NAME_REGEX.test(patronymic)) {
+    e.patronymic = 'Отчество содержит недопустимые символы';
+  }
+
   if (!form.value.phone.trim()) {
     e.phone = 'Введите телефон';
+  } else if (!PHONE_REGEX.test(phone)) {
+    e.phone = 'Телефон должен быть в формате +7XXXXXXXXXX';
   }
+
   errors.value = e;
   return Object.keys(e).length === 0;
 }
@@ -359,12 +385,12 @@ async function handleSaveProfile() {
   savingProfile.value = true;
   try {
     const payload = {};
-    if (form.value.first_name.trim()) payload.first_name = form.value.first_name.trim();
-    if (form.value.last_name.trim()) payload.last_name = form.value.last_name.trim();
+    payload.first_name = form.value.first_name.trim();
+    payload.last_name = form.value.last_name.trim();
     if (form.value.patronymic.trim()) payload.patronymic = form.value.patronymic.trim();
     payload.country_code = form.value.country_code || 'RU';
     if (form.value.email.trim()) payload.email = form.value.email.trim();
-    if (form.value.phone.trim()) payload.phone = form.value.phone.trim();
+    payload.phone = normalizePhone(form.value.phone);
 
     const addr = form.value.shipping_address;
     const hasAny = addr && (addr.region || addr.district || addr.city || addr.street || addr.house || addr.apartment);

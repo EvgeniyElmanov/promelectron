@@ -35,6 +35,11 @@ export const useRecipients = () => {
     error.value = null;
     try {
       const { data } = await createRecipient(payload);
+      if (data.is_default) {
+        recipients.value.forEach((r) => {
+          r.is_default = false;
+        });
+      }
       recipients.value.push(data);
       return data;
     } catch (err) {
@@ -50,6 +55,13 @@ export const useRecipients = () => {
     error.value = null;
     try {
       const { data } = await updateRecipient(recipientId, payload);
+      if (data.is_default) {
+        recipients.value.forEach((r) => {
+          if (r.id !== recipientId) {
+            r.is_default = false;
+          }
+        });
+      }
       const idx = recipients.value.findIndex((r) => r.id === recipientId);
       if (idx !== -1) {
         recipients.value[idx] = data;

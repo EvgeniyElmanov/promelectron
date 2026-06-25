@@ -5,7 +5,7 @@ from typing import List, Optional
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from src.app.schemas.cdek_order import CdekLocation, CdekOrderOut
-from src.app.schemas.recipient import RecipientOut
+from src.app.schemas.recipient import CountryCode, RecipientOut
 
 
 class OrderItemOut(BaseModel):
@@ -70,7 +70,7 @@ class OrderCreate(BaseModel):
         pattern=r'^[A-Za-zА-Яа-яЁё\- ]+$',
     )
     recipient_phone: Optional[str] = Field(default=None, pattern=r'^\+7\d{10}$')
-    recipient_country_code: str = Field(default="RU", max_length=3)
+    recipient_country_code: CountryCode = Field(default="RU")
 
     model_config = ConfigDict(from_attributes=True, str_strip_whitespace=True)
 
@@ -117,7 +117,7 @@ class GuestOrderCreate(BaseModel):
         pattern=r'^[A-Za-zА-Яа-яЁё\- ]+$',
     )
     recipient_phone: str = Field(..., pattern=r'^\+7\d{10}$')
-    recipient_country_code: str = Field(default="RU", max_length=3)
+    recipient_country_code: CountryCode = Field(default="RU")
     save_address: bool = False
 
     model_config = ConfigDict(from_attributes=True, str_strip_whitespace=True)
