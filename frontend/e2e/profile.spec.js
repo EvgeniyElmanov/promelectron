@@ -38,14 +38,15 @@ test.describe('Profile & Edit Profile', () => {
     await expect(page).toHaveURL('/profile/edit');
 
     // Edit name and phone (phone is required)
-    await page.fill('[data-testid="edit-profile-name"]', 'Updated Name');
+    await page.fill('[data-testid="edit-profile-first-name"]', 'Updated');
+    await page.fill('[data-testid="edit-profile-last-name"]', 'Name');
     await page.fill('[data-testid="edit-profile-phone"]', '+79990001122');
     await page.click('[data-testid="edit-profile-save"]');
     await page.waitForTimeout(1000);
 
-    // Go back to profile and verify
+    // Go back to profile and verify (displayed as "Last Name First Name")
     await page.goto('/profile');
-    await expect(page.locator('.avatar-name')).toContainText('Updated Name');
+    await expect(page.locator('.avatar-name')).toContainText('Name Updated');
   });
 
   test('user can update shipping address', async ({ page }) => {
@@ -64,7 +65,9 @@ test.describe('Profile & Edit Profile', () => {
     // Go to edit profile
     await page.goto('/profile/edit');
 
-    // Fill phone (required) and shipping address
+    // Fill names, phone (required) and shipping address
+    await page.fill('[data-testid="edit-profile-first-name"]', 'Адрес');
+    await page.fill('[data-testid="edit-profile-last-name"]', 'Тестовый');
     await page.fill('[data-testid="edit-profile-phone"]', '+79990001122');
     await fillAddress(page, 'edit-profile-');
     await page.click('[data-testid="edit-profile-save"]');

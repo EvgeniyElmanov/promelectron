@@ -87,6 +87,8 @@ test.describe('Checkout Flow', () => {
 
     // Set profile data (phone required for CDEK recipient)
     await page.goto('/profile/edit');
+    await page.fill('[data-testid="edit-profile-first-name"]', 'Профиль');
+    await page.fill('[data-testid="edit-profile-last-name"]', 'Тестовый');
     await page.fill('[data-testid="edit-profile-phone"]', '+79990001122');
     await fillAddress(page, 'edit-profile-');
     await page.click('[data-testid="edit-profile-save"]');
@@ -131,7 +133,7 @@ test.describe('Checkout Flow', () => {
     // Verify checkout page shows recipient name and pay button
     const recipientBlock = page.locator('[data-testid="checkout-recipient"]');
     await expect(recipientBlock).toBeVisible();
-    await expect(recipientBlock).toContainText('Иван Иванов');
+    await expect(recipientBlock).toContainText('Иванов Иван');
 
     const payButton = page.locator('[data-testid="pay-button"]');
     await expect(payButton).toBeVisible();
@@ -227,6 +229,8 @@ test.describe('Checkout Flow', () => {
 
     // 2. Set profile data (phone required for CDEK recipient)
     await page.goto('/profile/edit');
+    await page.fill('[data-testid="edit-profile-first-name"]', 'Профиль');
+    await page.fill('[data-testid="edit-profile-last-name"]', 'Тестовый');
     await page.fill('[data-testid="edit-profile-phone"]', '+79990001122');
     await fillAddress(page, 'edit-profile-');
     await page.click('[data-testid="edit-profile-save"]');
