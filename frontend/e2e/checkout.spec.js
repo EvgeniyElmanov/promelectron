@@ -49,6 +49,10 @@ async function fillRecipientName(page, firstName = 'Иван', lastName = 'Ив�
   await page.fill('[data-testid="recipient-last-name"]', lastName);
 }
 
+async function fillRecipientPhone(page, phone = '+79990001122') {
+  await page.fill('[data-testid="recipient-phone"]', phone);
+}
+
 async function fillGuestContactInfo(page, email, firstName = 'Иван', lastName = 'Иванов', phone = '+79990001122') {
   await page.fill('[data-testid="guest-email"]', email);
   await page.fill('[data-testid="guest-first-name"]', firstName);
@@ -96,9 +100,10 @@ test.describe('Checkout Flow', () => {
     await expect(page).toHaveURL('/cart');
     await page.waitForSelector('[data-testid="cart-item"]', { timeout: 5000 });
 
-    // Select CDEK delivery and fill recipient name
+    // Select CDEK delivery and fill recipient data
     await selectCdekDelivery(page);
     await fillRecipientName(page, 'Иван', 'Иванов');
+    await fillRecipientPhone(page, '+79990001122');
 
     // Place order → redirects to checkout page
     const createOrderResponse = page.waitForResponse(
@@ -237,6 +242,7 @@ test.describe('Checkout Flow', () => {
 
     await selectCdekDelivery(page);
     await fillRecipientName(page, 'Иван', 'Иванов');
+    await fillRecipientPhone(page, '+79990001122');
 
     const createOrderResponse = page.waitForResponse(
       response => response.url().includes('/orders/create'),
