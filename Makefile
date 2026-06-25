@@ -27,23 +27,6 @@ dev-backend: ## Запустить только бэкенд (API + PostgreSQL +
 dev-frontend: ## Запустить только фронтенд
 	$(COMPOSE_FRONTEND) up -d
 
-devcontainer-build: ## Собрать devcontainer образ для frontend
-	docker build -f frontend/Dockerfile.devcontainer -t promelectron-devcontainer frontend/
-
-devcontainer-up: ## Запустить devcontainer (frontend в изолированном окружении Node 24)
-	docker run --rm -it \
-	  -v "$(PWD)/frontend:/app" \
-	  -w /app \
-	  -p 5173:5173 \
-	  promelectron-devcontainer sh -c "npm install && npm run dev -- --host 0.0.0.0"
-
-devcontainer-shell: ## Войти в devcontainer shell
-	docker run --rm -it \
-	  -v "$(PWD)/frontend:/app" \
-	  -w /app \
-	  -p 5173:5173 \
-	  promelectron-devcontainer bash
-
 stop: ## Остановить все сервисы
 	$(COMPOSE) down
 
