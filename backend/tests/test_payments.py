@@ -15,7 +15,12 @@ class TestPaymentsAPI:
         await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
         order_resp = await client.post(
             "/api/v1/orders/create/",
-            json={"cdek_delivery": cdek_delivery_payload},
+            json={
+                "cdek_delivery": cdek_delivery_payload,
+                "recipient_first_name": "Тест",
+                "recipient_last_name": "Пользователь",
+                "recipient_phone": "+79990001122",
+            },
             headers={"Authorization": f"Bearer {user_token}"},
         )
         assert order_resp.status_code == 200
@@ -63,7 +68,12 @@ class TestPaymentsAPI:
         await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
         order_resp = await client.post(
             "/api/v1/orders/create/",
-            json={"cdek_delivery": cdek_delivery_payload},
+            json={
+                "cdek_delivery": cdek_delivery_payload,
+                "recipient_first_name": "Тест",
+                "recipient_last_name": "Пользователь",
+                "recipient_phone": "+79990001122",
+            },
             headers={"Authorization": f"Bearer {user_token}"},
         )
         order_id = order_resp.json()["id"]
@@ -98,7 +108,12 @@ class TestPaymentsAPI:
         await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
         order_resp = await client.post(
             "/api/v1/orders/create/",
-            json={"cdek_delivery": cdek_delivery_payload},
+            json={
+                "cdek_delivery": cdek_delivery_payload,
+                "recipient_first_name": "Тест",
+                "recipient_last_name": "Пользователь",
+                "recipient_phone": "+79990001122",
+            },
             headers={"Authorization": f"Bearer {user_token}"},
         )
         order_id = order_resp.json()["id"]
@@ -128,7 +143,12 @@ class TestPaymentsAPI:
         await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
         order_resp = await client.post(
             "/api/v1/orders/create/",
-            json={"cdek_delivery": cdek_delivery_payload},
+            json={
+                "cdek_delivery": cdek_delivery_payload,
+                "recipient_first_name": "Тест",
+                "recipient_last_name": "Пользователь",
+                "recipient_phone": "+79990001122",
+            },
             headers={"Authorization": f"Bearer {user_token}"},
         )
         order_id = order_resp.json()["id"]
@@ -160,7 +180,12 @@ class TestPaymentsAPI:
         await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
         order_resp = await client.post(
             "/api/v1/orders/create/",
-            json={"cdek_delivery": cdek_delivery_payload},
+            json={
+                "cdek_delivery": cdek_delivery_payload,
+                "recipient_first_name": "Тест",
+                "recipient_last_name": "Пользователь",
+                "recipient_phone": "+79990001122",
+            },
             headers={"Authorization": f"Bearer {user_token}"},
         )
         order_id = order_resp.json()["id"]
@@ -214,6 +239,7 @@ class TestPaymentsAPI:
                 "cdek_delivery": cdek_delivery_payload,
                 "recipient_first_name": "Тест",
                 "recipient_last_name": "Пользователь",
+                "recipient_phone": "+79990001122",
             },
             headers={"Authorization": f"Bearer {user_token}"},
         )

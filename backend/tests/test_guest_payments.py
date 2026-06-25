@@ -5,6 +5,7 @@ import pytest
 from sqlalchemy import select
 
 from src.app.models.order import Order
+from src.app.models.recipient import Recipient
 from src.app.models.user import PasswordResetToken, User, UserAddress
 
 
@@ -20,7 +21,7 @@ class TestGuestPaymentsAPI:
                 "items": [{"product_id": test_product.id, "quantity": 1}],
                 "cdek_delivery": cdek_delivery_payload,
                 "guest_email": "guest@example.com",
-                "guest_phone": "+79990001122",
+                "recipient_phone": "+79990001122",
                 "recipient_first_name": "Иван",
                 "recipient_last_name": "Гость",
             },
@@ -60,7 +61,7 @@ class TestGuestPaymentsAPI:
                 "items": [{"product_id": test_product.id, "quantity": 1}],
                 "cdek_delivery": cdek_delivery_payload,
                 "guest_email": "guest@example.com",
-                "guest_phone": "+79990001122",
+                "recipient_phone": "+79990001122",
                 "recipient_first_name": "Иван",
                 "recipient_last_name": "Гость",
             },
@@ -82,7 +83,7 @@ class TestGuestPaymentsAPI:
                 "items": [{"product_id": test_product.id, "quantity": 1}],
                 "cdek_delivery": cdek_delivery_payload,
                 "guest_email": "guest@example.com",
-                "guest_phone": "+79990001122",
+                "recipient_phone": "+79990001122",
                 "recipient_first_name": "Иван",
                 "recipient_last_name": "Гость",
             },
@@ -104,7 +105,7 @@ class TestGuestPaymentsAPI:
                 "items": [{"product_id": test_product.id, "quantity": 1}],
                 "cdek_delivery": cdek_delivery_payload,
                 "guest_email": "newuser@example.com",
-                "guest_phone": "+79990001122",
+                "recipient_phone": "+79990001122",
                 "recipient_first_name": "Иван",
                 "recipient_last_name": "Гость",
                 "save_address": True,
@@ -182,6 +183,17 @@ class TestGuestPaymentsAPI:
         assert address is not None
         assert address.city is not None
 
+        # Проверяем создание получателя по умолчанию
+        recipient_result = await test_session.execute(
+            select(Recipient).where(Recipient.user_id == user.id)
+        )
+        recipient = recipient_result.scalars().first()
+        assert recipient is not None
+        assert recipient.first_name == "Иван"
+        assert recipient.last_name == "Гость"
+        assert recipient.phone == "+79990001122"
+        assert recipient.is_default is True
+
     @pytest.mark.asyncio
     async def test_webhook_links_guest_order_to_existing_user(
         self, client, test_product, cdek_delivery_payload, test_session, test_user
@@ -193,7 +205,7 @@ class TestGuestPaymentsAPI:
                 "items": [{"product_id": test_product.id, "quantity": 1}],
                 "cdek_delivery": cdek_delivery_payload,
                 "guest_email": test_user.email,
-                "guest_phone": "+79990001122",
+                "recipient_phone": "+79990001122",
                 "recipient_first_name": "Иван",
                 "recipient_last_name": "Гость",
             },
@@ -251,7 +263,7 @@ class TestGuestPaymentsAPI:
                 "items": [{"product_id": test_product.id, "quantity": 1}],
                 "cdek_delivery": cdek_delivery_payload,
                 "guest_email": "nosave@example.com",
-                "guest_phone": "+79990001122",
+                "recipient_phone": "+79990001122",
                 "recipient_first_name": "Иван",
                 "recipient_last_name": "Гость",
                 "save_address": False,
@@ -308,7 +320,7 @@ class TestGuestPaymentsAPI:
                 "items": [{"product_id": test_product.id, "quantity": 1}],
                 "cdek_delivery": cdek_delivery_payload,
                 "guest_email": "mockguest@example.com",
-                "guest_phone": "+79990001122",
+                "recipient_phone": "+79990001122",
                 "recipient_first_name": "Мок",
                 "recipient_last_name": "Гость",
                 "save_address": True,
@@ -339,6 +351,16 @@ class TestGuestPaymentsAPI:
         user = user_result.scalars().first()
         assert user is not None
 
+        # Проверяем создание получателя по умолчанию
+        recipient_result = await test_session.execute(
+            select(Recipient).where(Recipient.user_id == user.id)
+        )
+        recipient = recipient_result.scalars().first()
+        assert recipient is not None
+        assert recipient.first_name == "Мок"
+        assert recipient.last_name == "Гость"
+        assert recipient.is_default is True
+
     @pytest.mark.asyncio
     async def test_guest_mock_confirm_wrong_email(self, client, test_product, cdek_delivery_payload):
         """Guest mock-confirm с неверным email возвращает 404."""
@@ -348,7 +370,7 @@ class TestGuestPaymentsAPI:
                 "items": [{"product_id": test_product.id, "quantity": 1}],
                 "cdek_delivery": cdek_delivery_payload,
                 "guest_email": "mockguest2@example.com",
-                "guest_phone": "+79990001122",
+                "recipient_phone": "+79990001122",
                 "recipient_first_name": "Мок",
                 "recipient_last_name": "Гость",
             },
@@ -376,7 +398,7 @@ class TestGuestPaymentsAPI:
                 "items": [{"product_id": test_product.id, "quantity": 1}],
                 "cdek_delivery": cdek_delivery_payload,
                 "guest_email": "mockguest3@example.com",
-                "guest_phone": "+79990001122",
+                "recipient_phone": "+79990001122",
                 "recipient_first_name": "Мок",
                 "recipient_last_name": "Гость",
             },
@@ -407,7 +429,7 @@ class TestGuestPaymentsAPI:
                 "items": [{"product_id": test_product.id, "quantity": 1}],
                 "cdek_delivery": cdek_delivery_payload,
                 "guest_email": "guest@example.com",
-                "guest_phone": "+79990001122",
+                "recipient_phone": "+79990001122",
                 "recipient_first_name": "Иван",
                 "recipient_last_name": "Гость",
             },
@@ -445,7 +467,7 @@ class TestGuestPaymentsAPI:
                 "items": [{"product_id": test_product.id, "quantity": 1}],
                 "cdek_delivery": cdek_delivery_payload,
                 "guest_email": "MockGuest@Example.COM",
-                "guest_phone": "+79990001122",
+                "recipient_phone": "+79990001122",
                 "recipient_first_name": "Мок",
                 "recipient_last_name": "Гость",
             },
@@ -477,7 +499,7 @@ class TestGuestPaymentsAPI:
                 "items": [{"product_id": test_product.id, "quantity": 1}],
                 "cdek_delivery": cdek_delivery_payload,
                 "guest_email": test_user.email.upper(),
-                "guest_phone": "+79990001122",
+                "recipient_phone": "+79990001122",
                 "recipient_first_name": "Иван",
                 "recipient_last_name": "Гость",
             },

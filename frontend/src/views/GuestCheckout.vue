@@ -89,6 +89,29 @@
         <span v-if="validationErrors.lastName" class="field__error" data-testid="guest-last-name-error">{{ validationErrors.lastName }}</span>
       </div>
       <div class="field">
+        <label class="field__label">Страна <span class="field__required">*</span></label>
+        <select
+          v-model="guestCountryCode"
+          class="field__input"
+          data-testid="guest-country-code"
+        >
+          <option value="RU">Россия</option>
+          <option value="KZ">Казахстан</option>
+          <option value="BY">Беларусь</option>
+        </select>
+      </div>
+      <div v-if="guestCountryCode === 'RU'" class="field">
+        <label class="field__label">Отчество</label>
+        <input
+          v-model="guestPatronymic"
+          class="field__input"
+          :class="{ 'field__input--error': validationErrors.patronymic }"
+          placeholder="Иванович"
+          data-testid="guest-patronymic"
+        />
+        <span v-if="validationErrors.patronymic" class="field__error" data-testid="guest-patronymic-error">{{ validationErrors.patronymic }}</span>
+      </div>
+      <div class="field">
         <label class="field__label">Телефон <span class="field__required">*</span></label>
         <input
           v-model="guestPhone"
@@ -155,7 +178,9 @@ const isFallback = ref(false);
 const guestEmail = ref('');
 const guestFirstName = ref('');
 const guestLastName = ref('');
+const guestPatronymic = ref('');
 const guestPhone = ref('');
+const guestCountryCode = ref('RU');
 const saveAddress = ref(false);
 const validationErrors = ref({});
 
@@ -176,10 +201,7 @@ const loadSupplierCityCode = async () => {
       isFallback.value = false;
       supplierCityCode.value = code;
     }
-  } catch (err) {
-    if (import.meta.env.DEV) {
-      console.error('Failed to load supplier city code:', err);
-    }
+  } catch {
     isFallback.value = true;
     supplierCityCode.value = 44;
   }
@@ -204,7 +226,9 @@ const canSubmit = computed(() => {
     email: guestEmail.value,
     firstName: guestFirstName.value,
     lastName: guestLastName.value,
+    patronymic: guestPatronymic.value,
     phone: guestPhone.value,
+    countryCode: guestCountryCode.value,
   });
   return Object.keys(errors).length === 0 && isDeliveryValid.value;
 });
@@ -233,12 +257,14 @@ const submitOrder = async () => {
       email: guestEmail.value,
       firstName: guestFirstName.value,
       lastName: guestLastName.value,
+      patronymic: guestPatronymic.value,
       phone: guestPhone.value,
+      countryCode: guestCountryCode.value,
       saveAddress: saveAddress.value,
     });
 
     const email = order.guest_email || guestEmail.value.trim();
-    localStorage.setItem(GUEST_EMAIL_KEY, email);
+    sessionStorage.setItem(GUEST_EMAIL_KEY, email);
     clearGuestCart();
     toast('Заказ создан. Переходим к оплате...', 'success');
 

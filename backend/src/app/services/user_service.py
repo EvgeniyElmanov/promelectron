@@ -7,6 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.app.core.config import ACCESS_TOKEN_EXPIRE_MINUTES
+from src.app.models.recipient import Recipient
 from src.app.models.supplier import Supplier
 from src.app.models.user import PasswordResetToken, User, UserAddress
 from src.app.schemas.user import UserAddressCreate, UserCreate, UserOut
@@ -114,6 +115,28 @@ class UserService:
         if user_data.full_name is not None:
             user.full_name = user_data.full_name
 
+        names_changed = False
+        if user_data.first_name is not None:
+            user.first_name = user_data.first_name
+            names_changed = True
+
+        if user_data.last_name is not None:
+            user.last_name = user_data.last_name
+            names_changed = True
+
+        if names_changed:
+            new_full_name = " ".join(
+                filter(None, [user.first_name, user.last_name])
+            ).strip()
+            if new_full_name:
+                user.full_name = new_full_name
+
+        if user_data.patronymic is not None:
+            user.patronymic = user_data.patronymic
+
+        if user_data.country_code is not None:
+            user.country_code = user_data.country_code
+
         if user_data.phone is not None:
             user.phone = user_data.phone
 
@@ -157,6 +180,8 @@ class UserService:
         last_name: str,
         phone: str | None,
         db: AsyncSession,
+        patronymic: str | None = None,
+        country_code: str = "RU",
     ) -> tuple[User, bool, str]:
         """Получить существующего пользователя или создать из данных гостя.
 
@@ -169,11 +194,23 @@ class UserService:
         user = result.scalars().first()
 
         if user:
-            # Обновляем пустые поля данными из чекаута
+            # Обновляем пустие поля данными из чекаута
             updated = False
             full_name = f"{first_name} {last_name}".strip()
             if full_name and not user.full_name:
                 user.full_name = full_name
+                updated = True
+            if first_name and not user.first_name:
+                user.first_name = first_name
+                updated = True
+            if last_name and not user.last_name:
+                user.last_name = last_name
+                updated = True
+            if patronymic and not user.patronymic:
+                user.patronymic = patronymic
+                updated = True
+            if country_code and not user.country_code:
+                user.country_code = country_code
                 updated = True
             if phone and not user.phone:
                 user.phone = phone
@@ -189,6 +226,10 @@ class UserService:
             email=email,
             hashed_password=hash_password(temp_password),
             full_name=full_name or None,
+            first_name=first_name or None,
+            last_name=last_name or None,
+            patronymic=patronymic or None,
+            country_code=country_code or "RU",
             phone=phone,
             role="user",
             is_active=True,
@@ -197,7 +238,6 @@ class UserService:
         try:
             await db.commit()
             await db.refresh(new_user)
-            return new_user, True, temp_password
         except IntegrityError:
             await db.rollback()
             result = await db.execute(select(User).where(func.lower(User.email) == email))
@@ -207,6 +247,18 @@ class UserService:
                 if full_name and not existing_user.full_name:
                     existing_user.full_name = full_name
                     updated = True
+                if first_name and not existing_user.first_name:
+                    existing_user.first_name = first_name
+                    updated = True
+                if last_name and not existing_user.last_name:
+                    existing_user.last_name = last_name
+                    updated = True
+                if patronymic and not existing_user.patronymic:
+                    existing_user.patronymic = patronymic
+                    updated = True
+                if country_code and not existing_user.country_code:
+                    existing_user.country_code = country_code
+                    updated = True
                 if phone and not existing_user.phone:
                     existing_user.phone = phone
                     updated = True
@@ -215,6 +267,21 @@ class UserService:
                     await db.refresh(existing_user)
                 return existing_user, False, ""
             raise
+
+        # Создаём получателя по умолчанию из данных заказа
+        default_recipient = Recipient(
+            user_id=new_user.id,
+            first_name=first_name,
+            last_name=last_name,
+            patronymic=patronymic,
+            phone=phone or "+70000000000",
+            country_code=country_code or "RU",
+            is_default=True,
+        )
+        db.add(default_recipient)
+        await db.commit()
+
+        return new_user, True, temp_password
 
     @staticmethod
     async def save_address(user_id: int, address_data: UserAddressCreate, db: AsyncSession) -> UserAddress:

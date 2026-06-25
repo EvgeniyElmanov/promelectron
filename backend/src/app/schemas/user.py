@@ -1,7 +1,14 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from src.app.schemas.recipient import (
+    CountryCode,
+    NAME_REGEX,
+    PHONE_REGEX,
+    _normalize_name,
+)
 
 
 class AddressDetails(BaseModel):
@@ -25,6 +32,10 @@ class UserOut(BaseModel):
     id: int
     email: str
     full_name: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    patronymic: Optional[str] = None
+    country_code: Optional[str] = None
     phone: Optional[str] = None
     avatar_url: Optional[str] = None
     shipping_address: Optional[AddressDetails] = None
@@ -36,10 +47,36 @@ class UserOut(BaseModel):
 
 class UserUpdate(BaseModel):
     full_name: Optional[str] = None
+    first_name: Optional[str] = Field(
+        default=None,
+        min_length=1,
+        max_length=100,
+        pattern=NAME_REGEX,
+    )
+    last_name: Optional[str] = Field(
+        default=None,
+        min_length=1,
+        max_length=100,
+        pattern=NAME_REGEX,
+    )
+    patronymic: Optional[str] = Field(
+        default=None,
+        min_length=1,
+        max_length=100,
+        pattern=NAME_REGEX,
+    )
+    country_code: Optional[CountryCode] = None
     email: Optional[str] = None
-    phone: Optional[str] = None
+    phone: Optional[str] = Field(default=None, pattern=PHONE_REGEX)
     avatar_url: Optional[str] = None
     shipping_address: Optional[AddressDetails] = None
+
+    model_config = ConfigDict(from_attributes=True, str_strip_whitespace=True)
+
+    @field_validator("first_name", "last_name", "patronymic", mode="before")
+    @classmethod
+    def normalize_name(cls, value):
+        return _normalize_name(value)
 
 
 class PasswordChange(BaseModel):

@@ -11,6 +11,12 @@ class Order(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    recipient_id = Column(
+        Integer,
+        ForeignKey("recipients.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     guest_email = Column(String, nullable=True)
     guest_name = Column(String, nullable=True)
     recipient_first_name = Column(String, nullable=True)
@@ -40,6 +46,7 @@ class Order(Base):
     )
 
     user = relationship("User")
+    recipient = relationship("Recipient", back_populates="orders")
     items = relationship("OrderItem", back_populates="order")
     payment = relationship("Payment", back_populates="order", uselist=False)
     cdek_order = relationship(

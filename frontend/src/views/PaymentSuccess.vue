@@ -84,7 +84,7 @@ const route = useRoute();
 const router = useRouter();
 const { isAuthenticated } = useAuth();
 const orderId = ref(route.query.order_id || route.params.id);
-const guestEmail = ref(route.query.guest_email || localStorage.getItem('guest_checkout_email') || '');
+const guestEmail = ref(route.query.guest_email || sessionStorage.getItem('guest_checkout_email') || '');
 const isGuest = computed(() => !isAuthenticated.value && Boolean(guestEmail.value));
 const order = ref(null);
 const loading = ref(true);

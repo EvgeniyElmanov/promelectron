@@ -92,7 +92,7 @@ describe('PaymentFailed.vue — гостевой режим', () => {
       }
       return Promise.resolve({ data: {} });
     });
-    vi.stubGlobal('localStorage', {
+    vi.stubGlobal('sessionStorage', {
       getItem: () => 'guest@example.com',
       setItem: vi.fn(),
       removeItem: vi.fn(),

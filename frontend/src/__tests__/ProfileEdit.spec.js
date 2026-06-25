@@ -1,11 +1,15 @@
 import { describe, it, expect, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import { createRouter, createWebHistory } from 'vue-router'
 import ProfileEdit from '@/views/ProfileEdit.vue'
 
 const mockProfile = {
-  full_name: 'Иван Петров',
+  first_name: 'Иван',
+  last_name: 'Петров',
+  patronymic: 'Петрович',
+  country_code: 'RU',
   email: 'ivan@example.com',
+  phone: '+79990001122',
 }
 
 vi.mock('@/services/api', () => ({
@@ -16,7 +20,8 @@ vi.mock('@/services/api', () => ({
       }
       return Promise.resolve({ data: {} })
     }),
-    patch: vi.fn(() => Promise.resolve({ data: { ...mockProfile, full_name: 'Иван Обновлённый' } })),
+    patch: vi.fn(() => Promise.resolve({ data: { ...mockProfile, first_name: 'Пётр' } })),
+    post: vi.fn(() => Promise.resolve({ data: {} })),
   },
 }))
 
@@ -58,9 +63,12 @@ describe('ProfileEdit.vue', () => {
     })
 
     await vi.waitFor(() => {
-      const nameInput = wrapper.find('[data-testid="edit-profile-name"]')
-      expect(nameInput.exists()).toBe(true)
-      expect(nameInput.element.value).toBe('Иван Петров')
+      expect(wrapper.find('[data-testid="edit-profile-first-name"]').element.value).toBe('Иван')
+      expect(wrapper.find('[data-testid="edit-profile-last-name"]').element.value).toBe('Петров')
+      expect(wrapper.find('[data-testid="edit-profile-patronymic"]').element.value).toBe('Петрович')
+      expect(wrapper.find('[data-testid="edit-profile-country-code"]').element.value).toBe('RU')
+      expect(wrapper.find('[data-testid="edit-profile-email"]').element.value).toBe('ivan@example.com')
+      expect(wrapper.find('[data-testid="edit-profile-phone"]').element.value).toBe('+79990001122')
     })
   })
 
@@ -82,5 +90,67 @@ describe('ProfileEdit.vue', () => {
       expect(wrapper.find('[data-testid="edit-profile-confirm-password"]').exists()).toBe(true)
       expect(wrapper.find('[data-testid="edit-profile-password-save"]').exists()).toBe(true)
     })
+  })
+
+  it('валидирует телефон в формате +7XXXXXXXXXX', async () => {
+    const router = createRouter({
+      history: createWebHistory(),
+      routes: [{ path: '/profile/edit', component: ProfileEdit }],
+    })
+    await router.push('/profile/edit')
+    await router.isReady()
+
+    const wrapper = mount(ProfileEdit, {
+      global: { plugins: [router] },
+    })
+    await vi.waitFor(() => expect(wrapper.find('[data-testid="edit-profile-phone"]').exists()).toBe(true))
+
+    await wrapper.find('[data-testid="edit-profile-phone"]').setValue('abc')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="edit-profile-phone-error"]').text()).toContain('+7')
+  })
+
+  it('валидирует имя и фамилию на недопустимые символы', async () => {
+    const router = createRouter({
+      history: createWebHistory(),
+      routes: [{ path: '/profile/edit', component: ProfileEdit }],
+    })
+    await router.push('/profile/edit')
+    await router.isReady()
+
+    const wrapper = mount(ProfileEdit, {
+      global: { plugins: [router] },
+    })
+    await vi.waitFor(() => expect(wrapper.find('[data-testid="edit-profile-first-name"]').exists()).toBe(true))
+
+    await wrapper.find('[data-testid="edit-profile-first-name"]').setValue('Иван123')
+    await wrapper.find('[data-testid="edit-profile-last-name"]').setValue('')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="edit-profile-first-name-error"]').text()).toContain('недопустимые символы')
+    expect(wrapper.find('[data-testid="edit-profile-last-name-error"]').text()).toContain('Введите фамилию')
+  })
+
+  it('нормализует телефон перед отправкой', async () => {
+    const router = createRouter({
+      history: createWebHistory(),
+      routes: [{ path: '/profile/edit', component: ProfileEdit }],
+    })
+    await router.push('/profile/edit')
+    await router.isReady()
+
+    const wrapper = mount(ProfileEdit, {
+      global: { plugins: [router] },
+    })
+    await vi.waitFor(() => expect(wrapper.find('[data-testid="edit-profile-phone"]').exists()).toBe(true))
+
+    await wrapper.find('[data-testid="edit-profile-phone"]').setValue('8 (999) 000-11-22')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="edit-profile-phone-error"]').exists()).toBe(false)
   })
 })

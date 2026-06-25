@@ -73,7 +73,7 @@ describe('GuestCheckout.vue', () => {
     ];
     getSupplierCityCode.mockResolvedValue(44);
     mockGet.mockResolvedValue({ data: {} });
-    vi.stubGlobal('localStorage', {
+    vi.stubGlobal('sessionStorage', {
       getItem: () => null,
       setItem: (_key, value) => { storedGuestEmail = value; },
       removeItem: vi.fn(),
@@ -107,6 +107,8 @@ describe('GuestCheckout.vue', () => {
     expect(wrapper.find('[data-testid="guest-first-name"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="guest-last-name"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="guest-phone"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="guest-country-code"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="guest-patronymic"]').exists()).toBe(true);
   });
 
   it('показывает ссылку "Уже есть аккаунт? Войти"', async () => {
@@ -140,6 +142,7 @@ describe('GuestCheckout.vue', () => {
     await wrapper.find('[data-testid="guest-email"]').setValue('invalid-email');
     await wrapper.find('[data-testid="guest-first-name"]').setValue('Иван');
     await wrapper.find('[data-testid="guest-last-name"]').setValue('Иванов');
+    await wrapper.find('[data-testid="guest-patronymic"]').setValue('Иванович');
     await wrapper.find('[data-testid="guest-phone"]').setValue('+79990001122');
     wrapper.vm.selectedDelivery = selectedDelivery;
     await flushPromises();
@@ -161,6 +164,7 @@ describe('GuestCheckout.vue', () => {
     await wrapper.find('[data-testid="guest-email"]').setValue('test@example.com');
     await wrapper.find('[data-testid="guest-first-name"]').setValue('Иван');
     await wrapper.find('[data-testid="guest-last-name"]').setValue('Иванов');
+    await wrapper.find('[data-testid="guest-patronymic"]').setValue('Иванович');
     await wrapper.find('[data-testid="guest-phone"]').setValue('abc');
     wrapper.vm.selectedDelivery = selectedDelivery;
     await flushPromises();
@@ -173,6 +177,62 @@ describe('GuestCheckout.vue', () => {
 
     expect(wrapper.find('[data-testid="guest-phone-error"]').text()).toContain('+7');
     expect(mockPost).not.toHaveBeenCalled();
+  });
+
+  it('валидирует отчество для резидентов РФ', async () => {
+    const wrapper = mount(GuestCheckout, { global: { plugins: [router] } });
+    await flushPromises();
+
+    await wrapper.find('[data-testid="guest-email"]').setValue('test@example.com');
+    await wrapper.find('[data-testid="guest-first-name"]').setValue('Иван');
+    await wrapper.find('[data-testid="guest-last-name"]').setValue('Иванов');
+    await wrapper.find('[data-testid="guest-patronymic"]').setValue('Иван123');
+    await wrapper.find('[data-testid="guest-phone"]').setValue('+79990001122');
+    wrapper.vm.selectedDelivery = selectedDelivery;
+    await flushPromises();
+
+    const btn = wrapper.find('[data-testid="guest-checkout-submit"]');
+    expect(btn.attributes('disabled')).toBeDefined();
+
+    await wrapper.vm.submitOrder();
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="guest-patronymic-error"]').text()).toContain('недопустимые символы');
+    expect(mockPost).not.toHaveBeenCalled();
+  });
+
+  it('не требует отчество для нерезидентов РФ', async () => {
+    mockPost.mockImplementation((url) => {
+      if (url === '/orders/create-guest/') {
+        return Promise.resolve({
+          data: { id: 42, guest_email: 'test@example.com', total_price: 4350 },
+        });
+      }
+      return Promise.resolve({ data: {} });
+    });
+
+    const wrapper = mount(GuestCheckout, { global: { plugins: [router] } });
+    await flushPromises();
+
+    await wrapper.find('[data-testid="guest-email"]').setValue('test@example.com');
+    await wrapper.find('[data-testid="guest-first-name"]').setValue('Иван');
+    await wrapper.find('[data-testid="guest-last-name"]').setValue('Иванов');
+    await wrapper.find('[data-testid="guest-country-code"]').setValue('KZ');
+    await wrapper.find('[data-testid="guest-phone"]').setValue('+79990001122');
+    wrapper.vm.selectedDelivery = selectedDelivery;
+    await flushPromises();
+
+    const btn = wrapper.find('[data-testid="guest-checkout-submit"]');
+    expect(btn.attributes('disabled')).toBeUndefined();
+
+    await btn.trigger('click');
+    await flushPromises();
+
+    expect(mockPost).toHaveBeenCalledWith('/orders/create-guest/', expect.objectContaining({
+      guest_email: 'test@example.com',
+      recipient_country_code: 'KZ',
+      recipient_patronymic: undefined,
+    }));
   });
 
   it('создаёт заказ и редиректит на страницу оплаты', async () => {
@@ -191,6 +251,7 @@ describe('GuestCheckout.vue', () => {
     await wrapper.find('[data-testid="guest-email"]').setValue('test@example.com');
     await wrapper.find('[data-testid="guest-first-name"]').setValue('Иван');
     await wrapper.find('[data-testid="guest-last-name"]').setValue('Иванов');
+    await wrapper.find('[data-testid="guest-patronymic"]').setValue('Иванович');
     await wrapper.find('[data-testid="guest-phone"]').setValue('+79990001122');
     wrapper.vm.selectedDelivery = selectedDelivery;
     await wrapper.find('[data-testid="guest-save-address"]').setValue(true);
@@ -207,6 +268,9 @@ describe('GuestCheckout.vue', () => {
       guest_phone: '+79990001122',
       recipient_first_name: 'Иван',
       recipient_last_name: 'Иванов',
+      recipient_patronymic: 'Иванович',
+      recipient_phone: '+79990001122',
+      recipient_country_code: 'RU',
       save_address: true,
       items: [
         { product_id: 1, quantity: 2 },
@@ -230,6 +294,7 @@ describe('GuestCheckout.vue', () => {
     wrapper.vm.guestEmail = 'test@example.com';
     wrapper.vm.guestFirstName = 'Иван';
     wrapper.vm.guestLastName = 'Иванов';
+    wrapper.vm.guestPatronymic = 'Иванович';
     wrapper.vm.guestPhone = '+79990001122';
     wrapper.vm.selectedDelivery = selectedDelivery;
     await flushPromises();
@@ -260,6 +325,7 @@ describe('GuestCheckout.vue', () => {
     await wrapper.find('[data-testid="guest-email"]').setValue('test@example.com');
     await wrapper.find('[data-testid="guest-first-name"]').setValue('Иван123');
     await wrapper.find('[data-testid="guest-last-name"]').setValue('Иванов');
+    await wrapper.find('[data-testid="guest-patronymic"]').setValue('Иванович');
     await wrapper.find('[data-testid="guest-phone"]').setValue('+79990001122');
     wrapper.vm.selectedDelivery = selectedDelivery;
     await flushPromises();
@@ -281,6 +347,7 @@ describe('GuestCheckout.vue', () => {
     await wrapper.find('[data-testid="guest-email"]').setValue('test@example.com');
     await wrapper.find('[data-testid="guest-first-name"]').setValue('Иван');
     await wrapper.find('[data-testid="guest-last-name"]').setValue('Иванов@');
+    await wrapper.find('[data-testid="guest-patronymic"]').setValue('Иванович');
     await wrapper.find('[data-testid="guest-phone"]').setValue('+79990001122');
     wrapper.vm.selectedDelivery = selectedDelivery;
     await flushPromises();
@@ -302,6 +369,7 @@ describe('GuestCheckout.vue', () => {
     await wrapper.find('[data-testid="guest-email"]').setValue('test@example.com');
     await wrapper.find('[data-testid="guest-first-name"]').setValue('Иван');
     await wrapper.find('[data-testid="guest-last-name"]').setValue('Иванов');
+    await wrapper.find('[data-testid="guest-patronymic"]').setValue('Иванович');
     await wrapper.find('[data-testid="guest-phone"]').setValue('799900011222');
     wrapper.vm.selectedDelivery = selectedDelivery;
     await flushPromises();
@@ -326,6 +394,7 @@ describe('GuestCheckout.vue', () => {
     await wrapper.find('[data-testid="guest-email"]').setValue('Test@Example.com');
     await wrapper.find('[data-testid="guest-first-name"]').setValue('Иван');
     await wrapper.find('[data-testid="guest-last-name"]').setValue('Иванов');
+    await wrapper.find('[data-testid="guest-patronymic"]').setValue('Иванович');
     await wrapper.find('[data-testid="guest-phone"]').setValue('+7 (999) 000-11-22');
     wrapper.vm.selectedDelivery = selectedDelivery;
     await flushPromises();
@@ -339,6 +408,7 @@ describe('GuestCheckout.vue', () => {
     expect(mockPost).toHaveBeenCalledWith('/orders/create-guest/', expect.objectContaining({
       guest_email: 'test@example.com',
       guest_phone: '+79990001122',
+      recipient_phone: '+79990001122',
     }));
   });
 
@@ -358,6 +428,7 @@ describe('GuestCheckout.vue', () => {
     await wrapper.find('[data-testid="guest-email"]').setValue('Test@Example.com');
     await wrapper.find('[data-testid="guest-first-name"]').setValue('Иван');
     await wrapper.find('[data-testid="guest-last-name"]').setValue('Иванов');
+    await wrapper.find('[data-testid="guest-patronymic"]').setValue('Иванович');
     await wrapper.find('[data-testid="guest-phone"]').setValue('8-999-000-11-22');
     wrapper.vm.selectedDelivery = selectedDelivery;
     await flushPromises();
@@ -371,6 +442,7 @@ describe('GuestCheckout.vue', () => {
     expect(mockPost).toHaveBeenCalledWith('/orders/create-guest/', expect.objectContaining({
       guest_email: 'test@example.com',
       guest_phone: '+79990001122',
+      recipient_phone: '+79990001122',
     }));
   });
 });

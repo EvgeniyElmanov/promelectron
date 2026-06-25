@@ -1,3 +1,99 @@
+### 2026-06-25 15:35 | orchestrator | extended-recipient-data — PR открыт, ожидает merge
+  Роль: orchestrator.
+  Запрос пользователя: issue #15 — расширенные данные получателя.
+  Выполнено:
+  - Завершён полный цикл /skill:implement: spec, backend, frontend, code review (backend/frontend/security), QA, PR.
+  - Открыт PR #26: https://github.com/AutonomaCo/promelectron/pull/26
+  - GitHub Issue #15 переведён в статус In review.
+  - Итоговые проверки:
+    - `make test-backend` — 297/297 ✅
+    - `cd frontend && npm run test -- --run` — 226/226 ✅
+    - `make pre-push` — lint + unit tests ✅
+  - Основные изменения: модель Recipient, миграция с backfill, CRUD получателей в профиле, выбор/inline-получатель в корзине, отчество для резидентов РФ, валидация телефона +7XXXXXXXXXX, CDEK использует recipient, PII удалён из логов.
+  Результат:
+  - Ветка `feature/extended-recipient-data` запушена, PR открыт, ожидает explicit user approval для merge в `main`.
+  Блокер: Нет.
+
+### 2026-06-25 15:25 | backend-dev | extended-recipient-data — исправлены security findings F021–F022
+  Роль: backend-dev.
+  Запрос: исправить OPEN security findings из `.agent/runs/extended-recipient-data/review/findings-security-final.md` (F021, F022).
+  Выполнено:
+  - `backend/src/app/schemas/recipient.py`: вынесены reusable константы `NAME_REGEX` и `PHONE_REGEX`; `_normalize_name` больше не превращает пустую строку в `None` (чтобы `min_length=1` корректно отклонял пустые значения).
+  - `backend/src/app/schemas/user.py`: `UserUpdate` теперь валидирует `first_name`, `last_name`, `patronymic` (min/max length + `NAME_REGEX`) и `phone` (`PHONE_REGEX`); добавлен `field_validator` для нормализации пробелов в ФИО/отчестве.
+  - `backend/src/app/services/cdek_service.py`: `cancel_cdek_order` больше не логирует полный ответ CDEK; логируются только безопасные идентификаторы (`uuid`, `request_state`), аналогично `create_cdek_order`.
+  - `backend/tests/test_auth.py`: добавлены `test_update_profile_phone_success` и параметризованный `test_update_profile_invalid_pii` для проверки backend-валидации PII-полей профиля.
+  - `backend/tests/test_cdek.py`: добавлен `test_cancel_cdek_order_logs_safe_fields` — проверяет, что в логах нет телефонов/PII при отмене CDEK-заказа.
+  - `.agent/runs/extended-recipient-data/review/findings-security-final.md`: F021 и F022 отмечены как FIXED.
+  Результат:
+  - `cd /home/evgeniy/project/my_shop_backend/.worktrees/extended-recipient-data && make test-backend` — 297/297 ✅
+  - `cd /home/evgeniy/project/my_shop_backend/.worktrees/extended-recipient-data/backend && ruff check src/ tests/` — чисто ✅
+  Блокер: Нет.
+
+### 2026-06-25 06:55 | frontend-dev | extended-recipient-data — исправлены frontend review findings F019–F020
+  Роль: frontend-dev.
+  Запрос: исправить OPEN frontend findings из `.agent/runs/extended-recipient-data/review/findings-frontend-final.md` (F019, F020).
+  Выполнено:
+  - `frontend/src/composables/useGuestCheckout.js`: `buildGuestOrderPayload` теперь включает `recipient_patronymic` только при непустом значении (`countryCode === 'RU' && patronymic.trim() ? patronymic.trim() : undefined`), что соответствует поведению `Cart.vue` и `ProfileRecipients.vue` и предотвращает 422 от бэкенда для пустого отчества резидентов РФ (F019).
+  - `frontend/src/composables/useRecipients.js`: `addRecipient` сбрасывает `is_default` у всех существующих получателей перед добавлением нового default-получателя; `editRecipient` сбрасывает `is_default` у остальных получателей при установке default у редактируемого (F020).
+  - Тесты: добавлен `buildGuestOrderPayload omits empty patronymic for RU` в `useGuestCheckout.spec.js`; добавлены `creating a default recipient resets is_default on others` и `editing a recipient to default resets is_default on others` в `useRecipients.spec.js`.
+  - `.agent/runs/extended-recipient-data/review/findings-frontend-final.md`: F019 и F020 отмечены как FIXED.
+  Результат:
+  - `cd frontend && npm run test -- --run` — 226/226 ✅
+  - `cd frontend && npm run lint` — чисто ✅
+  Блокер: Нет.
+
+### 2026-06-25 06:30 | frontend-dev | extended-recipient-data — исправлены frontend review findings F009–F018
+  Роль: frontend-dev.
+  Запрос: исправить OPEN frontend findings из `.agent/runs/extended-recipient-data/review/findings.md` (F009, F010, F011, F012, F013, F017, F018).
+  Выполнено:
+  - `frontend/src/views/ProfileEdit.vue`: добавлена валидация телефона по `+7XXXXXXXXXX` (F009/F017) и ФИО по `NAME_REGEX` (F010); телефон нормализуется перед отправкой; добавлены `data-testid` для сообщений об ошибках полей.
+  - `frontend/src/views/Profile.vue`: отображение имени теперь строится из `first_name`/`last_name`/`patronymic` с fallback на `full_name` (F013); инициалы формируются из имени и фамилии. Добавлен `frontend/src/__tests__/Profile.spec.js`.
+  - `frontend/src/composables/useGuestCheckout.js`: отчество для резидентов РФ стало опциональным; оставлена только валидация формата при заполнении (F011). Экспортированы `PHONE_REGEX` и `NAME_REGEX` для повторного использования.
+  - `frontend/src/views/GuestCheckout.vue`: убран `*` у label отчества (F011); удалён `console.error` (F012); гостевой email сохраняется в `sessionStorage` вместо `localStorage` (F018).
+  - `frontend/src/views/Checkout.vue`, `frontend/src/views/PaymentSuccess.vue`, `frontend/src/views/PaymentFailed.vue`: чтение гостевого email переведено на `sessionStorage` (F018).
+  - Тесты: обновлены `ProfileEdit.spec.js`, `useGuestCheckout.spec.js`, `GuestCheckout.spec.js`, `Checkout.spec.js`, `PaymentSuccess.spec.js`, `PaymentFailed.spec.js`; добавлен `Profile.spec.js`.
+  - `.agent/runs/extended-recipient-data/review/findings.md`: F009–F013, F017, F018 отмечены как FIXED.
+  Результат:
+  - `cd frontend && npm run test -- --run` — 223/223 ✅
+  - `cd frontend && npm run lint` — чисто ✅
+  Блокер: Нет.
+
+### 2026-06-25 05:25 | backend-dev | extended-recipient-data — доработаны backend-тесты Recipient v1
+  Роль: backend-dev.
+  Запрос: продолжить backend-часть задачи extended-recipient-data (Recipient v1) — дополнить тесты сохранённых получателей, выбора recipient_id/inline-полей в заказе, расширенных полей профиля.
+  Выполнено:
+  - `backend/tests/test_auth.py`: добавлен `test_update_profile_extended_fields` — проверка обновления `first_name`, `last_name`, `patronymic`, `country_code` в профиле.
+  - `backend/tests/test_orders.py`: добавлены тесты `test_create_order_with_saved_recipient`, `test_create_order_with_inline_recipient`, `test_order_includes_recipient`, покрывающие выбор `recipient_id`, inline-поля получателя, отображение в ответе заказа.
+  - `backend/tests/test_guest_payments.py`: добавлен assert, что при автосоздании пользователя из гостевого заказа создаётся default `Recipient` на основе данных заказа.
+  Результат:
+  - `make test-backend` — 287/287 ✅
+  - `ruff check src/` — чисто ✅
+  - `alembic downgrade -1 && alembic upgrade head` — чисто ✅
+  Блокер: Нет.
+
+### 2026-06-25 05:46 | frontend-dev | extended-recipient-data — реализована frontend-часть Recipient v1
+  Роль: frontend-dev.
+  Запрос: реализовать frontend-часть задачи extended-recipient-data (Recipient v1) по spec.md: API получателей, управление сохранёнными получателями, выбор/inline-форма получателя в корзине, отчество для резидентов РФ, телефон, отображение в заказе/админке, тесты.
+  Выполнено:
+  - `frontend/src/api/recipients.js`: CRUD + set-default endpoint'ы для получателей (trailing slash).
+  - `frontend/src/composables/useRecipients.js`: module-level state, load/create/edit/delete/set-default.
+  - `frontend/src/composables/useGuestCheckout.js`: `country_code`, `patronymic`, нормализация телефона `+7XXXXXXXXXX`, валидация.
+  - `frontend/src/views/GuestCheckout.vue`: селектор страны, отчество для RU, телефон, inline-форма получателя.
+  - `frontend/src/views/Cart.vue`: выбор сохранённого получателя, создание нового, подстановка данных, отправка `recipient_id` или inline-полей.
+  - `frontend/src/views/Checkout.vue`: отображение ФИО и телефона получателя из `order.recipient`.
+  - `frontend/src/views/Admin.vue`: отображение ФИО/телефона получателя в модалке заказа.
+  - `frontend/src/views/ProfileRecipients.vue`: управление сохранёнными получателями (список, модалка create/edit).
+  - `frontend/src/views/Profile.vue`: ссылка "Получатели".
+  - `frontend/src/views/ProfileEdit.vue`: расширены поля профиля (`first_name`, `last_name`, `patronymic`, `country_code`).
+  - `frontend/src/router/index.js`: маршрут `/profile/recipients`.
+  - Тесты: `ProfileRecipients.spec.js`, `useRecipients.spec.js`, `useGuestCheckout.spec.js`, обновлены `Cart.spec.js`, `GuestCheckout.spec.js`, `Checkout.spec.js`, `Admin.spec.js`, `ProfileEdit.spec.js`.
+  Результат:
+  - `cd frontend && npm run test -- --run` — 216/216 ✅
+  - `cd frontend && npm run lint` — чисто ✅
+  Риск/Техдолг:
+  - В `ProfileRecipients.spec.js` пришлось триггерить submit через `wrapper.find('form').trigger('submit')`, т.к. click по кнопке не вызывал submit в VTU; компонент и тесты работают корректно.
+  Блокер: Нет.
+
 ### 2026-06-24 23:45 | orchestrator | clear-cart-after-order — открыт PR #25
   Роль: orchestrator / architect / backend-dev / frontend-dev / code-reviewer.
   Запрос пользователя: после оформления заказа из корзины должны исчезнуть только оформленные товары (issue #23).
@@ -1181,3 +1277,24 @@
   - Полное удаление issue #16–#18 невозможно через текущий GitHub-токен (нет прав `deleteIssue`). Для физического удаления нужен пользователь с админ-правами.
   Блокер: Нет
 
+
+### 2026-06-25 | backend-dev | Исправление backend-находок review для extended-recipient-data
+  Изменено:
+  - `backend/src/app/services/cdek_service.py`: добавлен `selectinload(Order.recipient)` в `create_cdek_order`; убрано логирование полного ответа CDEK, логируются только `order.id`, `cdek_uuid`, `request_state`.
+  - `backend/src/app/workers/job_worker.py`: добавлен `selectinload(Order.recipient)` в `handle_cdek_create_order`.
+  - `backend/src/app/services/recipient_service.py`: `create` теперь принимает `commit: bool = True`, чтобы `OrderService` мог создавать получателя без промежуточного коммита.
+  - `backend/src/app/services/order_service.py`: вызов `RecipientService.create` в `create_order` теперь передаёт `commit=False`.
+  - `backend/src/app/models/recipient.py`: `updated_at` использует `onupdate=lambda: datetime.now(timezone.utc)`.
+  - `backend/src/app/services/user_service.py`: `update_profile` синхронизирует `full_name` с `first_name`/`last_name`.
+  - `backend/src/app/schemas/recipient.py`, `order.py`, `user.py`: `country_code` ограничен `Literal["RU", "KZ", "BY"]`.
+  - `backend/src/app/api/recipients.py`: все endpoints получателей защищены `@conditional_limit("100/minute")`.
+  - `backend/alembic/versions/a14b9dfe3bd1_add_recipients_and_order_recipient_id.py`: backfill переписан пакетами `LIMIT`/`OFFSET` с промежуточными `COMMIT`; добавлен fallback для пустой фамилии.
+  - `backend/tests/test_guest_orders.py`: `test_create_guest_order_invalid_phone` теперь использует `recipient_phone`.
+  - `backend/tests/test_cdek.py`: добавлены тесты `_build_recipient_from_order_recipient` и `test_create_cdek_order_success_with_recipient`.
+  Результат:
+  - `make test-backend`: 289 passed.
+  - `ruff check src/ tests/`: zero errors.
+  Риск/Техдолг:
+  - В diff worktree присутствуют frontend-изменения, внесённые ранее; они не затронуты данной сессией.
+  - Frontend-находки F009–F013, F017–F018 остаются OPEN и требуют frontend-dev.
+  Блокер: Нет

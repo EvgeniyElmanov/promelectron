@@ -159,6 +159,59 @@ class TestAuthAPI:
         assert data["email"] == "testuser@example.com"
 
     @pytest.mark.asyncio
+    async def test_update_profile_extended_fields(self, client, test_user, user_token):
+        """Обновление ФИО и страны через PATCH /me."""
+        response = await client.patch(
+            "/api/v1/me",
+            headers={"Authorization": f"Bearer {user_token}"},
+            json={
+                "first_name": "Иван",
+                "last_name": "Иванов",
+                "patronymic": "Иванович",
+                "country_code": "RU",
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["first_name"] == "Иван"
+        assert data["last_name"] == "Иванов"
+        assert data["patronymic"] == "Иванович"
+        assert data["country_code"] == "RU"
+
+    @pytest.mark.asyncio
+    async def test_update_profile_phone_success(self, client, test_user, user_token):
+        """Обновление телефона в профиле принимается только в формате +7XXXXXXXXXX."""
+        response = await client.patch(
+            "/api/v1/me",
+            headers={"Authorization": f"Bearer {user_token}"},
+            json={"phone": "+79161234567"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["phone"] == "+79161234567"
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            {"phone": "89161234567"},
+            {"phone": "+7916123456"},
+            {"phone": "abc"},
+            {"first_name": "Иван123"},
+            {"last_name": ""},
+            {"patronymic": "Иванович!"},
+        ],
+    )
+    async def test_update_profile_invalid_pii(self, client, test_user, user_token, payload):
+        """Невалидные PII-поля профиля отклоняются с 422."""
+        response = await client.patch(
+            "/api/v1/me",
+            headers={"Authorization": f"Bearer {user_token}"},
+            json=payload,
+        )
+        assert response.status_code == 422
+
+    @pytest.mark.asyncio
     async def test_update_profile_email(self, client, test_user, user_token):
         """Обновление email через PATCH /me."""
         response = await client.patch(

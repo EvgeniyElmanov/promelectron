@@ -39,6 +39,19 @@ vi.mock('@/api/cdek', () => ({
   getSupplierCityCode: vi.fn(() => Promise.resolve(44)),
 }));
 
+const mockRecipients = ref([]);
+const mockRecipientsLoading = ref(false);
+const mockLoadRecipients = vi.hoisted(() => vi.fn());
+
+vi.mock('@/composables/useRecipients', () => ({
+  useRecipients: () => ({
+    recipients: mockRecipients,
+    loading: mockRecipientsLoading,
+    loadRecipients: mockLoadRecipients,
+    defaultRecipient: computed(() => mockRecipients.value.find((r) => r.is_default) || null),
+  }),
+}));
+
 vi.mock('@/composables/useCart', () => ({
   useCart: () => ({
     cartCount: computed(() => mockCartCount.value),
@@ -110,10 +123,26 @@ const mockCartWithItems = {
   ],
 };
 
-const mockProfile = {
-  email: 'test@example.com',
-  shipping_address: null,
-};
+const mockSavedRecipients = [
+  {
+    id: 1,
+    first_name: 'Иван',
+    last_name: 'Иванов',
+    patronymic: 'Иванович',
+    phone: '+79990001122',
+    country_code: 'RU',
+    is_default: true,
+  },
+  {
+    id: 2,
+    first_name: 'Пётр',
+    last_name: 'Петров',
+    patronymic: '',
+    phone: '+79990003344',
+    country_code: 'RU',
+    is_default: false,
+  },
+];
 
 describe('Cart.vue', () => {
   beforeEach(() => {
@@ -121,11 +150,14 @@ describe('Cart.vue', () => {
     mockIsAuthenticated.value = true;
     mockGuestItems.value = [];
     mockCartCount.value = 0;
+    mockRecipients.value = [];
+    mockRecipientsLoading.value = false;
     getSupplierCityCode.mockResolvedValue(44);
     mockGet.mockImplementation((url) => {
       if (url === '/cart/') return Promise.resolve({ data: mockCartWithItems });
-      if (url === '/auth/profile') return Promise.resolve({ data: mockProfile });
+      if (url === '/auth/profile') return Promise.resolve({ data: {} });
       if (url === '/delivery-methods/') return Promise.resolve({ data: [] });
+      if (url === '/me/recipients/') return Promise.resolve({ data: mockSavedRecipients });
       return Promise.resolve({ data: {} });
     });
   });
@@ -154,7 +186,7 @@ describe('Cart.vue', () => {
   it('отображает пустое состояние', async () => {
     mockGet.mockImplementation((url) => {
       if (url === '/cart/') return Promise.resolve({ data: { id: 1, user_id: 1, items: [] } });
-      if (url === '/auth/profile') return Promise.resolve({ data: mockProfile });
+      if (url === '/auth/profile') return Promise.resolve({ data: {} });
       if (url === '/delivery-methods/') return Promise.resolve({ data: [] });
       return Promise.resolve({ data: {} });
     });
@@ -194,15 +226,63 @@ describe('Cart.vue', () => {
     expect(mockDelete).toHaveBeenCalledWith('/cart/remove/101');
   });
 
-  it('показывает поля имени и фамилии получателя для авторизованного пользователя', async () => {
+  it('показывает поля получателя для авторизованного пользователя', async () => {
     const wrapper = mount(Cart, { global: { plugins: [router] } });
     await flushPromises();
 
     expect(wrapper.find('[data-testid="recipient-first-name"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="recipient-last-name"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="recipient-phone"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="recipient-country-code"]').exists()).toBe(true);
   });
 
-  it('отправляет имя и фамилию получателя при создании заказа', async () => {
+  it('загружает и отображает сохранённых получателей', async () => {
+    mockRecipients.value = mockSavedRecipients;
+    const wrapper = mount(Cart, { global: { plugins: [router] } });
+    await flushPromises();
+
+    const select = wrapper.find('[data-testid="recipient-select"]');
+    expect(select.exists()).toBe(true);
+    expect(select.html()).toContain('Иванов Иван Иванович');
+    expect(select.html()).toContain('Петров Пётр');
+  });
+
+  it('подставляет данные выбранного получателя', async () => {
+    mockRecipients.value = mockSavedRecipients;
+    const wrapper = mount(Cart, { global: { plugins: [router] } });
+    await flushPromises();
+
+    wrapper.vm.selectedRecipientId = 1;
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="recipient-first-name"]').element.value).toBe('Иван');
+    expect(wrapper.find('[data-testid="recipient-last-name"]').element.value).toBe('Иванов');
+    expect(wrapper.find('[data-testid="recipient-patronymic"]').element.value).toBe('Иванович');
+    expect(wrapper.find('[data-testid="recipient-phone"]').element.value).toBe('+79990001122');
+  });
+
+  it('отправляет recipient_id при создании заказа с выбранным получателем', async () => {
+    mockRecipients.value = mockSavedRecipients;
+    mockPost.mockResolvedValue({ data: { id: 42 } });
+
+    const wrapper = mount(Cart, { global: { plugins: [router] } });
+    await flushPromises();
+
+    wrapper.vm.selectedDelivery = { tariff_code: 136, price: 350, delivery_mode: 'PVZ' };
+    wrapper.vm.selectedRecipientId = 1;
+    await flushPromises();
+
+    const btn = wrapper.find('[data-testid="checkout-button"]');
+    await btn.trigger('click');
+    await flushPromises();
+
+    expect(mockPost).toHaveBeenCalledWith('/orders/create/', expect.objectContaining({
+      cdek_delivery: expect.objectContaining({ tariff_code: 136 }),
+      recipient_id: 1,
+    }));
+  });
+
+  it('отправляет inline-поля получателя при создании заказа', async () => {
     mockPost.mockResolvedValue({ data: { id: 42 } });
 
     const wrapper = mount(Cart, { global: { plugins: [router] } });
@@ -211,6 +291,8 @@ describe('Cart.vue', () => {
     wrapper.vm.selectedDelivery = { tariff_code: 136, price: 350, delivery_mode: 'PVZ' };
     wrapper.vm.recipientFirstName = 'Иван';
     wrapper.vm.recipientLastName = 'Иванов';
+    wrapper.vm.recipientPatronymic = 'Иванович';
+    wrapper.vm.recipientPhone = '+79990001122';
     await flushPromises();
 
     const btn = wrapper.find('[data-testid="checkout-button"]');
@@ -221,6 +303,9 @@ describe('Cart.vue', () => {
       cdek_delivery: expect.objectContaining({ tariff_code: 136 }),
       recipient_first_name: 'Иван',
       recipient_last_name: 'Иванов',
+      recipient_patronymic: 'Иванович',
+      recipient_phone: '+79990001122',
+      recipient_country_code: 'RU',
     }));
   });
 
@@ -233,6 +318,7 @@ describe('Cart.vue', () => {
     wrapper.vm.selectedDelivery = { tariff_code: 136, price: 350, delivery_mode: 'PVZ' };
     wrapper.vm.recipientFirstName = 'Иван';
     wrapper.vm.recipientLastName = 'Иванов';
+    wrapper.vm.recipientPhone = '+79990001122';
     await flushPromises();
 
     const btn = wrapper.find('[data-testid="checkout-button"]');
@@ -242,11 +328,13 @@ describe('Cart.vue', () => {
     expect(mockSyncCartCount).toHaveBeenCalled();
   });
 
-  it('не создаёт заказ без имени получателя', async () => {
+  it('не создаёт заказ без телефона получателя', async () => {
     const wrapper = mount(Cart, { global: { plugins: [router] } });
     await flushPromises();
 
     wrapper.vm.selectedDelivery = { tariff_code: 136, price: 350, delivery_mode: 'PVZ' };
+    wrapper.vm.recipientFirstName = 'Иван';
+    wrapper.vm.recipientLastName = 'Иванов';
     await flushPromises();
 
     const btn = wrapper.find('[data-testid="checkout-button"]');
@@ -269,6 +357,7 @@ describe('Cart.vue — гостевая корзина', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockIsAuthenticated.value = false;
+    mockRecipients.value = [];
     mockGuestItems.value = [
       {
         product_id: 10,

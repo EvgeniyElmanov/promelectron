@@ -504,6 +504,18 @@
             <label class="field__label">Трек-номер</label>
             <input v-model="orderForm.tracking_number" class="field__input" placeholder="Например, 1234567890" />
           </div>
+          <div v-if="editingOrderRecipientName" class="order-modal__recipient" data-testid="order-modal-recipient">
+            <div class="info-list">
+              <div class="info-row">
+                <span class="info-label">Получатель</span>
+                <span class="info-value" data-testid="order-modal-recipient-name">{{ editingOrderRecipientName }}</span>
+              </div>
+              <div v-if="editingOrderRecipientPhone" class="info-row">
+                <span class="info-label">Телефон</span>
+                <span class="info-value" data-testid="order-modal-recipient-phone">{{ editingOrderRecipientPhone }}</span>
+              </div>
+            </div>
+          </div>
           <button type="submit" class="modal__submit" :disabled="submittingOrderStatus">
             {{ submittingOrderStatus ? 'Сохранение...' : 'Сохранить' }}
           </button>
@@ -683,6 +695,18 @@ const cdekStatusHistory = computed(() => {
     const bDate = b.status_date_time ? new Date(b.status_date_time) : 0;
     return bDate - aDate;
   });
+});
+
+const editingOrderRecipientName = computed(() => {
+  const r = editingOrder.value?.recipient;
+  if (r) {
+    return [r.last_name, r.first_name, r.patronymic].filter(Boolean).join(' ');
+  }
+  return [editingOrder.value?.recipient_last_name, editingOrder.value?.recipient_first_name].filter(Boolean).join(' ');
+});
+
+const editingOrderRecipientPhone = computed(() => {
+  return editingOrder.value?.recipient?.phone || editingOrder.value?.guest_phone || '';
 });
 
 // KPI computed
@@ -1674,6 +1698,38 @@ onMounted(() => {
   background: var(--color-primary);
   color: #fff;
   border-color: var(--color-primary);
+}
+
+.order-modal__recipient {
+  margin-top: 4px;
+  padding: 12px;
+  border-radius: 10px;
+  background: var(--color-bg);
+}
+
+.order-modal__recipient .info-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.order-modal__recipient .info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+}
+
+.order-modal__recipient .info-label {
+  color: var(--color-text-secondary);
+}
+
+.order-modal__recipient .info-value {
+  color: var(--color-text);
+  font-weight: 500;
+  text-align: right;
+  word-break: break-all;
 }
 
 .order-modal__cdek .info-list {

@@ -32,9 +32,10 @@
           </div>
         </div>
 
-        <div v-if="order.recipient_first_name || order.recipient_last_name" class="checkout__recipient" data-testid="checkout-recipient">
+        <div v-if="recipientName" class="checkout__recipient" data-testid="checkout-recipient">
           <div class="checkout__recipient-label">Получатель</div>
-          <div class="checkout__recipient-name">{{ order.recipient_first_name }} {{ order.recipient_last_name }}</div>
+          <div class="checkout__recipient-name">{{ recipientName }}</div>
+          <div v-if="recipientPhone" class="checkout__recipient-phone" data-testid="checkout-recipient-phone">{{ recipientPhone }}</div>
         </div>
       </div>
 
@@ -96,13 +97,27 @@ const { add: toast } = useToast();
 const { isAuthenticated } = useAuth();
 
 const orderId = computed(() => route.params.id);
-const guestEmail = computed(() => route.query.guest_email || localStorage.getItem('guest_checkout_email') || '');
+const guestEmail = computed(() => route.query.guest_email || sessionStorage.getItem('guest_checkout_email') || '');
 const isGuest = computed(() => !isAuthenticated.value && Boolean(guestEmail.value));
 
 const order = ref(null);
 const loading = ref(true);
 const error = ref(null);
 const processing = ref(false);
+
+const recipientName = computed(() => {
+  const r = order.value?.recipient;
+  if (!r) {
+    const parts = [order.value?.recipient_first_name, order.value?.recipient_last_name].filter(Boolean);
+    return parts.length ? parts.join(' ') : '';
+  }
+  const parts = [r.last_name, r.first_name, r.patronymic].filter(Boolean);
+  return parts.join(' ');
+});
+
+const recipientPhone = computed(() => {
+  return order.value?.recipient?.phone || order.value?.guest_phone || '';
+});
 
 const fetchOrder = async () => {
   loading.value = true;
@@ -350,5 +365,11 @@ onMounted(fetchOrder);
   font-size: 15px;
   font-weight: 600;
   color: var(--color-text);
+}
+
+.checkout__recipient-phone {
+  font-size: 14px;
+  color: var(--color-text);
+  margin-top: 2px;
 }
 </style>

@@ -34,7 +34,7 @@
         <div class="detail-list">
           <div class="detail-item">
             <span class="detail-label">Имя</span>
-            <span class="detail-value">{{ user.full_name || 'Не указано' }}</span>
+            <span class="detail-value">{{ fullName || 'Не указано' }}</span>
           </div>
           <div class="detail-item">
             <span class="detail-label">Email</span>
@@ -78,6 +78,17 @@
               <path d="M16 10a4 4 0 01-8 0"/>
             </svg>
             <span>Мои заказы</span>
+            <svg class="action-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 18l6-6-6-6"/>
+            </svg>
+          </router-link>
+
+          <router-link to="/profile/recipients" class="action-btn" data-testid="profile-recipients-link">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
+            <span>Получатели</span>
             <svg class="action-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M9 18l6-6-6-6"/>
             </svg>
@@ -152,17 +163,23 @@ const error = ref(null);
 
 const user = computed(() => localUser.value || authUser.value);
 
+const fullName = computed(() => {
+  const parts = [user.value?.last_name, user.value?.first_name, user.value?.patronymic].filter(Boolean);
+  return parts.length ? parts.join(' ') : (user.value?.full_name || '');
+});
+
 const initials = computed(() => {
-  const name = user.value?.full_name || user.value?.email || '?';
-  const parts = name.split(' ').filter(Boolean);
-  if (parts.length >= 2) {
-    return (parts[0][0] + parts[1][0]).toUpperCase();
+  const first = user.value?.first_name || '';
+  const last = user.value?.last_name || '';
+  if (first && last) {
+    return (first[0] + last[0]).toUpperCase();
   }
+  const name = user.value?.full_name || user.value?.email || '?';
   return name.charAt(0).toUpperCase();
 });
 
 const displayName = computed(() => {
-  return user.value?.full_name || user.value?.email || 'Пользователь';
+  return fullName.value || user.value?.email || 'Пользователь';
 });
 
 const roleLabel = computed(() => {

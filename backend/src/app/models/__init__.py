@@ -8,6 +8,7 @@ from .notification import Notification as Notification
 from .order import Order as Order, OrderItem as OrderItem
 from .payment import Payment as Payment
 from .product import Product as Product
+from .recipient import Recipient as Recipient
 from .review import Review as Review
 from .social_account import SocialAccount as SocialAccount
 from .supplier import Supplier as Supplier
@@ -30,6 +31,7 @@ __all__ = [
     "Payment",
     "PasswordResetToken",
     "Product",
+    "Recipient",
     "Review",
     "SocialAccount",
     "Supplier",

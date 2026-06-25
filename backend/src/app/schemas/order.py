@@ -2,9 +2,10 @@ from datetime import datetime
 from decimal import Decimal
 from typing import List, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from src.app.schemas.cdek_order import CdekLocation, CdekOrderOut
+from src.app.schemas.recipient import CountryCode, RecipientOut
 
 
 class OrderItemOut(BaseModel):
@@ -49,6 +50,7 @@ def _normalize_recipient_name(value: str | None) -> str | None:
 
 class OrderCreate(BaseModel):
     cdek_delivery: CdekDeliveryIn
+    recipient_id: Optional[int] = None
     recipient_first_name: Optional[str] = Field(
         default=None,
         min_length=1,
@@ -61,13 +63,29 @@ class OrderCreate(BaseModel):
         max_length=100,
         pattern=r'^[A-Za-zА-Яа-яЁё\- ]+$',
     )
+    recipient_patronymic: Optional[str] = Field(
+        default=None,
+        min_length=1,
+        max_length=100,
+        pattern=r'^[A-Za-zА-Яа-яЁё\- ]+$',
+    )
+    recipient_phone: Optional[str] = Field(default=None, pattern=r'^\+7\d{10}$')
+    recipient_country_code: CountryCode = Field(default="RU")
 
     model_config = ConfigDict(from_attributes=True, str_strip_whitespace=True)
 
-    @field_validator("recipient_first_name", "recipient_last_name", mode="before")
+    @field_validator("recipient_first_name", "recipient_last_name", "recipient_patronymic", mode="before")
     @classmethod
     def normalize_recipient_name(cls, value):
         return _normalize_recipient_name(value)
+
+    @model_validator(mode="after")
+    def check_recipient_data(self):
+        if self.recipient_id is not None:
+            return self
+        if not self.recipient_first_name or not self.recipient_last_name or not self.recipient_phone:
+            raise ValueError("Either recipient_id or recipient first_name/last_name/phone must be provided")
+        return self
 
 
 class GuestOrderItemCreate(BaseModel):
@@ -80,7 +98,6 @@ class GuestOrderCreate(BaseModel):
     cdek_delivery: CdekDeliveryIn
     guest_email: str = Field(..., pattern=r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
     guest_name: Optional[str] = None
-    guest_phone: str = Field(..., pattern=r'^\+7\d{10}$')
     recipient_first_name: str = Field(
         ...,
         min_length=1,
@@ -93,11 +110,19 @@ class GuestOrderCreate(BaseModel):
         max_length=100,
         pattern=r'^[A-Za-zА-Яа-яЁё\- ]+$',
     )
+    recipient_patronymic: Optional[str] = Field(
+        default=None,
+        min_length=1,
+        max_length=100,
+        pattern=r'^[A-Za-zА-Яа-яЁё\- ]+$',
+    )
+    recipient_phone: str = Field(..., pattern=r'^\+7\d{10}$')
+    recipient_country_code: CountryCode = Field(default="RU")
     save_address: bool = False
 
     model_config = ConfigDict(from_attributes=True, str_strip_whitespace=True)
 
-    @field_validator("recipient_first_name", "recipient_last_name", mode="before")
+    @field_validator("recipient_first_name", "recipient_last_name", "recipient_patronymic", mode="before")
     @classmethod
     def normalize_recipient_name(cls, value):
         return _normalize_recipient_name(value)
@@ -149,5 +174,6 @@ class OrderOut(BaseModel):
     cdek_order: Optional[CdekOrderOut] = None
     save_address: bool = False
     cancelled_at: Optional[datetime] = None
+    recipient: Optional[RecipientOut] = None
 
     model_config = ConfigDict(from_attributes=True)
