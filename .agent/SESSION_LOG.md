@@ -13,7 +13,22 @@
   - `cd frontend && npm run test -- --run` — 227/227 ✅
   - `cd backend && ruff check src/ tests/` — чисто ✅
   - `cd frontend && npx eslint src/ --max-warnings=0` — чисто ✅
+  Git:
+  - PR #32 смержен в `main` (merge commit `5ea52b8`).
+  - GitHub Issue #15 переведён в **Done**.
   Блокер: Нет.
+
+### 2026-06-25 22:30 | orchestrator / developer | e2e-node-version — фикс CI после merge #32
+  Роль: orchestrator / developer.
+  Запрос пользователя: CI тесты упали после merge, проверить.
+  Причина: self-hosted runner использует Node 22.14.0, а `frontend/package.json` требует `^22.18.0 || >=24.11.0` (`.nvmrc` = 24). `npm ci` в E2E job падает с `EBADENGINE`.
+  Выполнено:
+  - Добавлен `actions/setup-node@v4` в `.github/workflows/e2e.yml` с `node-version-file: frontend/.nvmrc` и кэшем `frontend/package-lock.json`.
+  Git:
+  - Branch: `bugfix/e2e-node-version`
+  - Commit: `0279062`
+  - PR: https://github.com/AutonomaCo/promelectron/pull/33
+  Блокер: Нет. Ожидает merge PR #33 в `main`.
 
 ### 2026-06-25 17:25 | orchestrator / audit | extended-recipient-data — аудит сессии и финальный статус задачи #15
   Роль: orchestrator / auditor.
