@@ -43,6 +43,21 @@ make test-frontend    # Vitest
 make test-e2e         # Playwright через Docker
 ```
 
+## Dev Container / Node.js версия
+
+Frontend требует **Node.js `^22.18.0 || >=24.11.0`**. Если локально установлена другая версия, используйте devcontainer:
+
+```bash
+# VS Code: Ctrl+Shift+P → "Dev Containers: Reopen in Container"
+# Или вручную через Docker:
+make devcontainer-build   # собрать образ с Node 24
+make devcontainer-up      # запустить dev-сервер frontend
+make devcontainer-shell   # войти в shell контейнера
+```
+
+Конфигурация: [`.devcontainer/devcontainer.json`](.devcontainer/devcontainer.json).  
+Образ использует `node:24-slim` и включает зависимости Playwright/Chromium.
+
 ## Структура проекта
 
 ```

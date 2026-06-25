@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "preinstall": "node -e \"const [maj]=process.version.slice(1).split('.'); if (+maj<22) { console.error('ERROR: Node.js ^22.18.0 || >=24.11.0 required, current '+process.version); process.exit(1); }\"",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
