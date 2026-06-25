@@ -1,3 +1,19 @@
+### 2026-06-25 15:35 | orchestrator | extended-recipient-data — PR открыт, ожидает merge
+  Роль: orchestrator.
+  Запрос пользователя: issue #15 — расширенные данные получателя.
+  Выполнено:
+  - Завершён полный цикл /skill:implement: spec, backend, frontend, code review (backend/frontend/security), QA, PR.
+  - Открыт PR #26: https://github.com/AutonomaCo/promelectron/pull/26
+  - GitHub Issue #15 переведён в статус In review.
+  - Итоговые проверки:
+    - `make test-backend` — 297/297 ✅
+    - `cd frontend && npm run test -- --run` — 226/226 ✅
+    - `make pre-push` — lint + unit tests ✅
+  - Основные изменения: модель Recipient, миграция с backfill, CRUD получателей в профиле, выбор/inline-получатель в корзине, отчество для резидентов РФ, валидация телефона +7XXXXXXXXXX, CDEK использует recipient, PII удалён из логов.
+  Результат:
+  - Ветка `feature/extended-recipient-data` запушена, PR открыт, ожидает explicit user approval для merge в `main`.
+  Блокер: Нет.
+
 ### 2026-06-25 15:25 | backend-dev | extended-recipient-data — исправлены security findings F021–F022
   Роль: backend-dev.
   Запрос: исправить OPEN security findings из `.agent/runs/extended-recipient-data/review/findings-security-final.md` (F021, F022).
