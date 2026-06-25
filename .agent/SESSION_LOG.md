@@ -70,6 +70,18 @@
   - PR: https://github.com/AutonomaCo/promelectron/pull/35
   Блокер: Нет. PR #35 смержен в `main`.
 
+### 2026-06-25 23:23 | orchestrator / developer | revert-e2e-setup-node-return — повторный откат setup-node
+  Роль: orchestrator / developer.
+  Запрос пользователя: откатить последний коммит (PR #35) с возвратом setup-node.
+  Выполнено:
+  - Откачен PR #35: `actions/setup-node@v4` снова убран из `.github/workflows/e2e.yml`.
+  - Зафиксировано в `main`: commit `3f8d6f2` откатывает `chore(frontend): upgrade to Node 24 and add devcontainer` (убраны `.npmrc`, `preinstall`, devcontainer-файлы). Без `engine-strict=true` и `preinstall` `npm ci` на Node 22.14 проходит с предупреждениями EBADENGINE.
+  Git:
+  - Branch: `revert/e2e-setup-node-return`
+  - Commit: `ece2611`
+  - PR: https://github.com/AutonomaCo/promelectron/pull/37
+  Блокер: Нет. PR #37 смержен в `main`.
+
 ### 2026-06-25 17:25 | orchestrator / audit | extended-recipient-data — аудит сессии и финальный статус задачи #15
   Роль: orchestrator / auditor.
   Запрос пользователя: изучить сессию `session_958104cd-a7b0-4fbe-8c49-ec2fde2033d3`, проверить работу агентов, логику, баги; дать подробный отчет по задаче #15 (extended-recipient-data).
