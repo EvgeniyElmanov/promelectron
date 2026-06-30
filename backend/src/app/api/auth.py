@@ -430,11 +430,7 @@ async def password_reset_request(
         from src.app.services.email_service import EmailService
 
         reset_url = f"{settings.frontend_url.rstrip('/')}/reset-password?token={token}"
-        try:
-            await EmailService.send_email(
-                to=user.email,
-                subject="MyShop — Сброс пароля",
-                html=f"""\
+        html = f"""\
 <!DOCTYPE html>
 <html>
 <head><meta charset="UTF-8"></head>
@@ -447,8 +443,15 @@ async def password_reset_request(
   </div>
 </body>
 </html>
-""",
-                text=f"Сброс пароля: {reset_url} (действует 24 часа).",
+"""
+        text = f"Сброс пароля: {reset_url} (действует 24 часа)."
+        try:
+            await EmailService.enqueue_email(
+                to=user.email,
+                subject="MyShop — Сброс пароля",
+                html=html,
+                text=text,
+                db=db,
             )
         except Exception:
             pass

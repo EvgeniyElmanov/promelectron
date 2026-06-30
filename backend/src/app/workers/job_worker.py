@@ -14,6 +14,7 @@ from src.app.models.job import Job
 from src.app.models.order import Order
 from src.app.services.cdek_client import CdekAPIError, CdekClient
 from src.app.services.cdek_service import CdekService
+from src.app.services.email_service import EmailService
 
 logger = logging.getLogger(__name__)
 
@@ -97,9 +98,21 @@ async def handle_cdek_sync_status(job: Job, db: AsyncSession) -> None:
         job.status = "pending"
 
 
+async def handle_send_email(job: Job, db: AsyncSession) -> None:
+    """Send an email using the payload prepared at enqueue time."""
+    payload = job.payload
+    await EmailService.send_email(
+        to=payload["to"],
+        subject=payload["subject"],
+        html_body=payload["html"],
+        text_body=payload.get("text", ""),
+    )
+
+
 HANDLERS: dict[str, "callable"] = {
     "CDEK_CREATE_ORDER": handle_cdek_create_order,
     "CDEK_SYNC_ORDER_STATUS": handle_cdek_sync_status,
+    "SEND_EMAIL": handle_send_email,
 }
 
 

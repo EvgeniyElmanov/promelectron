@@ -1,8 +1,10 @@
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from sqlalchemy import select
 
 from src.app.core.config import Settings, settings as original_settings
+from src.app.models.job import Job
 from src.app.services.email_service import EmailService
 
 
@@ -197,8 +199,8 @@ class TestEmailService:
         assert "user not found" in caplog.text
 
     @pytest.mark.asyncio
-    async def test_send_verification_email_builds_correct_link(self, monkeypatch):
-        """send_verification_email формирует ссылку с verify_base_url."""
+    async def test_send_verification_email_builds_correct_link(self, monkeypatch, test_session):
+        """send_verification_email формирует ссылку с verify_base_url и создаёт job."""
         new_settings = _make_settings(
             smtp_user="u",
             smtp_password="p",
@@ -210,17 +212,106 @@ class TestEmailService:
             "src.app.services.email_service.settings", new_settings
         )
 
-        captured = {}
-
         async def fake_send(message, **kwargs):
-            captured["html"] = message.get_body("html").get_content()
-            captured["text"] = message.get_body("plain").get_content()
+            pass
 
         with patch("src.app.services.email_service.send", new=fake_send):
             await EmailService.send_verification_email(
-                to="user@example.com", token="secret-token"
+                to="user@example.com", token="secret-token", db=test_session
             )
 
-        assert "https://promelectron.aidrivencode.ru/verify-email?token=secret-token" in captured["html"]
-        assert "secret-token" in captured["text"]
-        assert "60 минут" in captured["html"]
+        result = await test_session.execute(
+            select(Job).where(Job.job_type == "SEND_EMAIL")
+        )
+        job = result.scalars().first()
+        assert job is not None
+        assert job.payload["to"] == "user@example.com"
+        assert "https://promelectron.aidrivencode.ru/verify-email?token=secret-token" in job.payload["html"]
+        assert "60 минут" in job.payload["html"]
+
+    @pytest.mark.asyncio
+    async def test_enqueue_email_creates_send_email_job(self, test_session):
+        """enqueue_email создаёт Job с типом SEND_EMAIL и корректным payload."""
+        job = await EmailService.enqueue_email(
+            to="user@example.com",
+            subject="Test subject",
+            html="<p>HTML</p>",
+            text="Text",
+            db=test_session,
+        )
+
+        assert job.id is not None
+        assert job.job_type == "SEND_EMAIL"
+        assert job.status == "pending"
+        assert job.payload == {
+            "to": "user@example.com",
+            "subject": "Test subject",
+            "html": "<p>HTML</p>",
+            "text": "Text",
+        }
+
+        result = await test_session.execute(select(Job).where(Job.id == job.id))
+        stored = result.scalars().first()
+        assert stored is not None
+        assert stored.payload["to"] == "user@example.com"
+
+    @pytest.mark.asyncio
+    async def test_send_order_confirmation_creates_job(self, test_session):
+        """send_order_confirmation не отправляет письмо сразу, а создаёт job."""
+        await EmailService.send_order_confirmation(
+            to="user@example.com",
+            order_id=42,
+            total_price=1500.0,
+            items=[{"product_name": "Товар", "quantity": 1, "price_at_time": 1500.0}],
+            shipping_address="Москва",
+            db=test_session,
+        )
+
+        result = await test_session.execute(
+            select(Job).where(Job.job_type == "SEND_EMAIL")
+        )
+        job = result.scalars().first()
+        assert job is not None
+        assert job.payload["to"] == "user@example.com"
+        assert "Заказ №42 оформлен" in job.payload["subject"]
+        assert "Товар" in job.payload["html"]
+
+    @pytest.mark.asyncio
+    async def test_send_order_status_update_creates_job(self, test_session):
+        """send_order_status_update создаёт SEND_EMAIL job."""
+        await EmailService.send_order_status_update(
+            to="user@example.com",
+            order_id=42,
+            status="shipped",
+            db=test_session,
+        )
+
+        result = await test_session.execute(
+            select(Job).where(Job.job_type == "SEND_EMAIL")
+        )
+        job = result.scalars().first()
+        assert job is not None
+        assert job.payload["to"] == "user@example.com"
+        assert "Отправлен" in job.payload["subject"]
+        assert "shipped" not in job.payload["html"].lower()
+
+    @pytest.mark.asyncio
+    async def test_send_welcome_email_creates_job(self, test_session):
+        """send_welcome_email создаёт SEND_EMAIL job."""
+        await EmailService.send_welcome_email(
+            to="user@example.com",
+            temp_password="tmp123",
+            reset_token="abc-token",
+            frontend_url="http://localhost:5173",
+            db=test_session,
+        )
+
+        result = await test_session.execute(
+            select(Job).where(Job.job_type == "SEND_EMAIL")
+        )
+        job = result.scalars().first()
+        assert job is not None
+        assert job.payload["to"] == "user@example.com"
+        assert "tmp123" in job.payload["html"]
+        assert "abc-token" in job.payload["html"]
+        assert "Сменить пароль" in job.payload["html"]

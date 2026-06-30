@@ -149,6 +149,7 @@ class OrderService:
                 total_price=float(full_order.total_price),
                 items=items_for_email,
                 shipping_address=full_order.shipping_address,
+                db=db,
             )
 
             await NotificationService.create_notification(
@@ -273,6 +274,7 @@ class OrderService:
                 total_price=float(full_order.total_price),
                 items=items_for_email,
                 shipping_address=full_order.shipping_address,
+                db=db,
             )
         except Exception:
             import logging
@@ -436,28 +438,32 @@ class OrderService:
             user_result = await db.execute(select(User).where(User.id == full_order.user_id))
             user = user_result.scalars().first()
             if user:
-                await EmailService.send_order_status_update(
-                    to=user.email,
-                    order_id=full_order.id,
-                    status=full_order.status,
-                )
+                try:
+                    await EmailService.send_order_status_update(
+                        to=user.email,
+                        order_id=full_order.id,
+                        status=full_order.status,
+                        db=db,
+                    )
 
-                status_labels = {
-                    "pending": "Ожидает оплаты",
-                    "paid": "Оплачен",
-                    "shipped": "Отправлен",
-                    "delivered": "Доставлен",
-                    "cancelled": "Отменён",
-                }
-                label = status_labels.get(full_order.status, full_order.status)
-                await NotificationService.create_notification(
-                    db=db,
-                    user_id=user.id,
-                    type="status_changed",
-                    title="Статус заказа изменён",
-                    message=f"Заказ №{full_order.id}: {label}",
-                    order_id=full_order.id,
-                )
+                    status_labels = {
+                        "pending": "Ожидает оплаты",
+                        "paid": "Оплачен",
+                        "shipped": "Отправлен",
+                        "delivered": "Доставлен",
+                        "cancelled": "Отменён",
+                    }
+                    label = status_labels.get(full_order.status, full_order.status)
+                    await NotificationService.create_notification(
+                        db=db,
+                        user_id=user.id,
+                        type="status_changed",
+                        title="Статус заказа изменён",
+                        message=f"Заказ №{full_order.id}: {label}",
+                        order_id=full_order.id,
+                    )
+                except Exception:
+                    logger.exception("Failed to send status update side-effects for order %s", full_order.id)
 
         return full_order
 
@@ -669,27 +675,31 @@ class OrderService:
         user_result = await db.execute(select(User).where(User.id == full_order.user_id))
         user = user_result.scalars().first()
         if user:
-            await EmailService.send_order_status_update(
-                to=user.email,
-                order_id=full_order.id,
-                status=full_order.status,
-            )
+            try:
+                await EmailService.send_order_status_update(
+                    to=user.email,
+                    order_id=full_order.id,
+                    status=full_order.status,
+                    db=db,
+                )
 
-            status_labels = {
-                "pending": "Ожидает оплаты",
-                "paid": "Оплачен",
-                "shipped": "Отправлен",
-                "delivered": "Доставлен",
-                "cancelled": "Отменён",
-            }
-            label = status_labels.get(full_order.status, full_order.status)
-            await NotificationService.create_notification(
-                db=db,
-                user_id=user.id,
-                type="status_changed",
-                title="Статус заказа изменён",
-                message=f"Заказ №{full_order.id}: {label}",
-                order_id=full_order.id,
-            )
+                status_labels = {
+                    "pending": "Ожидает оплаты",
+                    "paid": "Оплачен",
+                    "shipped": "Отправлен",
+                    "delivered": "Доставлен",
+                    "cancelled": "Отменён",
+                }
+                label = status_labels.get(full_order.status, full_order.status)
+                await NotificationService.create_notification(
+                    db=db,
+                    user_id=user.id,
+                    type="status_changed",
+                    title="Статус заказа изменён",
+                    message=f"Заказ №{full_order.id}: {label}",
+                    order_id=full_order.id,
+                )
+            except Exception:
+                logger.exception("Failed to send status update side-effects for order %s", full_order.id)
 
         return full_order

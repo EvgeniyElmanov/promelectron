@@ -46,6 +46,26 @@ class TestPasswordResetAPI:
         assert response.status_code == 422
 
     @pytest.mark.asyncio
+    async def test_password_reset_request_creates_email_job(self, client, test_user, test_session):
+        """Запрос сброса пароля создаёт SEND_EMAIL job (исправлен TypeError)."""
+        from src.app.models.job import Job
+
+        response = await client.post(
+            "/api/v1/auth/password-reset-request/",
+            json={"email": test_user.email},
+        )
+        assert response.status_code == 200
+
+        result = await test_session.execute(
+            select(Job).where(Job.job_type == "SEND_EMAIL")
+        )
+        job = result.scalars().first()
+        assert job is not None
+        assert job.payload["to"] == test_user.email
+        assert "Сброс пароля" in job.payload["subject"]
+        assert "reset-password?token=" in job.payload["html"]
+
+    @pytest.mark.asyncio
     async def test_password_reset_changes_password(self, client, test_user, test_session):
         """Сброс пароля по токену меняет пароль пользователя."""
         from src.app.services.user_service import UserService

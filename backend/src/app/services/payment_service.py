@@ -232,6 +232,7 @@ class PaymentService:
                         temp_password=temp_password,
                         reset_token=reset_token,
                         frontend_url=settings.frontend_url,
+                        db=db,
                     )
                     logger.info(
                         "Created user from guest checkout: user_id=%s order_id=%s",
@@ -295,6 +296,7 @@ class PaymentService:
                     total_price=order_total_price,
                     items=items_for_email,
                     shipping_address=order_shipping_address,
+                    db=db,
                 )
 
                 await NotificationService.create_notification(

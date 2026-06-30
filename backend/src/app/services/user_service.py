@@ -1,4 +1,3 @@
-import asyncio
 import hashlib
 import hmac
 import logging
@@ -34,18 +33,15 @@ def _token_for_user(user: User) -> str:
     )
 
 
-def _schedule_verification_email(to: str, token: str) -> None:
+async def _schedule_verification_email(to: str, token: str, db: AsyncSession) -> None:
     """Отправить письмо с подтверждением email в фоне, не блокируя ответ API."""
     from src.app.services.email_service import EmailService
 
-    async def _send() -> None:
-        try:
-            await EmailService.send_verification_email(to=to, token=token)
-        except Exception:
-            # Email delivery is best-effort; log and ignore.
-            logger.exception("Failed to send verification email to <redacted>")
-
-    asyncio.create_task(_send())
+    try:
+        await EmailService.send_verification_email(to=to, token=token, db=db)
+    except Exception:
+        # Email delivery is best-effort; log and ignore.
+        logger.exception("Failed to send verification email to <redacted>")
 
 
 class UserService:
@@ -95,7 +91,7 @@ class UserService:
             verification_token = await UserService.create_email_verification_token(
                 user_id=new_user.id, db=db
             )
-            _schedule_verification_email(to=new_user.email, token=verification_token)
+            await _schedule_verification_email(to=new_user.email, token=verification_token, db=db)
         except Exception:
             # Email delivery is best-effort; registration must not fail.
             pass
@@ -539,7 +535,7 @@ class UserService:
         token = await UserService.create_email_verification_token(
             user_id=user.id, db=db
         )
-        _schedule_verification_email(to=user.email, token=token)
+        await _schedule_verification_email(to=user.email, token=token, db=db)
 
     @staticmethod
     async def invalidate_email_verification_tokens(

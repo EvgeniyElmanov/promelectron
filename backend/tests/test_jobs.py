@@ -101,3 +101,72 @@ class TestJobWorker:
         await job_session.refresh(job)
         assert job.status == "failed"
         assert "Unknown job_type" in job.processing_log[0]
+
+    @pytest.mark.asyncio
+    async def test_process_jobs_send_email(self, job_session, monkeypatch):
+        """SEND_EMAIL job вызывает EmailService.send_email и завершается."""
+        from src.app.services.email_service import EmailService
+
+        calls = []
+
+        async def fake_send_email(*, to, subject, html_body, text_body=""):
+            calls.append({"to": to, "subject": subject, "html_body": html_body, "text_body": text_body})
+
+        monkeypatch.setattr(EmailService, "send_email", fake_send_email)
+
+        job = Job(
+            job_type="SEND_EMAIL",
+            payload={
+                "to": "user@example.com",
+                "subject": "Test",
+                "html": "<p>hi</p>",
+                "text": "hi",
+            },
+        )
+        job_session.add(job)
+        await job_session.commit()
+
+        monkeypatch.setattr(
+            "src.app.workers.job_worker.SessionLocal",
+            lambda: async_sessionmaker(job_session.bind, expire_on_commit=False)(),
+        )
+
+        processed = await process_jobs()
+        assert processed == 1
+
+        await job_session.refresh(job)
+        assert job.status == "completed"
+        assert len(calls) == 1
+        assert calls[0]["to"] == "user@example.com"
+        assert calls[0]["html_body"] == "<p>hi</p>"
+        assert calls[0]["text_body"] == "hi"
+
+    @pytest.mark.asyncio
+    async def test_process_jobs_send_email_retries_on_error(self, job_session, monkeypatch):
+        """SEND_EMAIL job retry-ится при ошибке отправки."""
+        from src.app.services.email_service import EmailService
+
+        async def failing_send_email(*, to, subject, html_body, text_body=""):
+            raise ConnectionError("smtp down")
+
+        monkeypatch.setattr(EmailService, "send_email", failing_send_email)
+
+        job = Job(
+            job_type="SEND_EMAIL",
+            payload={"to": "user@example.com", "subject": "Test", "html": "<p>hi</p>"},
+        )
+        job_session.add(job)
+        await job_session.commit()
+
+        monkeypatch.setattr(
+            "src.app.workers.job_worker.SessionLocal",
+            lambda: async_sessionmaker(job_session.bind, expire_on_commit=False)(),
+        )
+
+        processed = await process_jobs()
+        assert processed == 0
+
+        await job_session.refresh(job)
+        assert job.status == "pending"
+        assert job.attempts == 1
+        assert "smtp down" in job.processing_log[0]

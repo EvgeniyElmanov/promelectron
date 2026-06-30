@@ -17,6 +17,8 @@ from src.app.models.order import Order, OrderItem
 from src.app.models.product import Product
 from src.app.models.supplier import Supplier
 from src.app.services.cdek_client import CdekAPIError, CdekClient
+from src.app.services.email_service import EmailService
+from src.app.services.notification_service import NotificationService
 
 logger = logging.getLogger(__name__)
 
@@ -471,7 +473,10 @@ class CdekService:
         order: Order | None = None
         if cdek_order.order_id is not None:
             order_result = await db.execute(
-                select(Order).where(Order.id == cdek_order.order_id).with_for_update()
+                select(Order)
+                .where(Order.id == cdek_order.order_id)
+                .options(selectinload(Order.user))
+                .with_for_update()
             )
             order = order_result.scalars().one()
 
@@ -542,6 +547,39 @@ class CdekService:
         if changed:
             await db.commit()
             await db.refresh(cdek_order)
+
+            # Notify customer about automatic status change from CDEK (best-effort)
+            if order:
+                try:
+                    recipient_email = (order.user.email if order.user else None) or order.guest_email
+                    if recipient_email:
+                        await EmailService.send_order_status_update(
+                            to=recipient_email,
+                            order_id=order.id,
+                            status=order.status,
+                            db=db,
+                        )
+
+                    if order.user_id:
+                        status_labels = {
+                            "pending": "Ожидает оплаты",
+                            "paid": "Оплачен",
+                            "shipped": "Отправлен",
+                            "delivered": "Доставлен",
+                            "cancelled": "Отменён",
+                        }
+                        label = status_labels.get(order.status, order.status)
+                        await NotificationService.create_notification(
+                            db=db,
+                            user_id=order.user_id,
+                            type="status_changed",
+                            title="Статус заказа изменён",
+                            message=f"Заказ №{order.id}: {label}",
+                            order_id=order.id,
+                        )
+                except Exception:
+                    logger.exception("Failed to send CDEK status notification for order %s", order.id)
+
             logger.info(
                 "Applied CDEK status to cdek_order=%s source=%s status=%s",
                 cdek_order.id,

@@ -7,6 +7,7 @@ from sqlalchemy import select
 
 from src.app.models.cdek_order import CdekOrder, CdekStatusHistory
 from src.app.models.job import Job
+from src.app.models.notification import Notification
 from src.app.models.order import Order
 from src.app.services.cdek_client import CdekAPIError, CdekClient
 from src.app.services.cdek_service import CdekService
@@ -396,6 +397,58 @@ class TestCdekService:
         assert refreshed_cdek.cdek_number == "1101234567"
         assert refreshed_cdek.tracking_number == "1101234567"
         assert refreshed_order.status == "delivered"
+
+        # Email notification job should be created
+        result = await test_session.execute(
+            select(Job).where(
+                Job.job_type == "SEND_EMAIL",
+                Job.payload.contains({"to": test_order.user.email}),
+            )
+        )
+        email_job = result.scalars().first()
+        assert email_job is not None
+        assert "Доставлен" in email_job.payload["subject"]
+
+        # In-app notification should be created
+        result = await test_session.execute(
+            select(Notification).where(
+                Notification.user_id == test_order.user_id,
+                Notification.type == "status_changed",
+            )
+        )
+        notification = result.scalars().first()
+        assert notification is not None
+        assert "Доставлен" in notification.message
+
+    @pytest.mark.asyncio
+    async def test_apply_cdek_status_no_email_when_unchanged(self, test_order, test_session):
+        """apply_cdek_status не создаёт уведомлений, если статус не изменился."""
+        test_order.status = "delivered"
+        await test_session.commit()
+
+        cdek_order = await _load_cdek_order(test_session, test_order.cdek_order_id)
+        cdek_order.cdek_status = "DELIVERED"
+        await test_session.commit()
+
+        payload = {
+            "entity": {
+                "statuses": [
+                    {"code": "DELIVERED", "date_time": "2026-06-24T10:00:00+00:00"},
+                ],
+            }
+        }
+        changed = await CdekService.apply_cdek_status(cdek_order, payload, test_session)
+        assert changed is False
+
+        result = await test_session.execute(
+            select(Job).where(Job.job_type == "SEND_EMAIL")
+        )
+        assert result.scalars().first() is None
+
+        result = await test_session.execute(
+            select(Notification).where(Notification.user_id == test_order.user_id)
+        )
+        assert result.scalars().first() is None
 
     @pytest.mark.asyncio
     async def test_apply_cdek_status_idempotent(self, test_order, test_session):

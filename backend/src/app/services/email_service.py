@@ -10,8 +10,11 @@ from aiosmtplib import (
     SMTPRecipientsRefused,
     SMTPServerDisconnected,
 )
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.app.core.config import settings
+from src.app.db.database import SessionLocal
+from src.app.models.job import Job
 
 logger = logging.getLogger(__name__)
 
@@ -96,11 +99,31 @@ class EmailService:
         )
 
     @classmethod
+    async def enqueue_email(
+        cls,
+        to: str,
+        subject: str,
+        html: str,
+        text: str,
+        db: AsyncSession,
+    ) -> Job:
+        """Create a SEND_EMAIL job for asynchronous delivery."""
+        job = Job(
+            job_type="SEND_EMAIL",
+            payload={"to": to, "subject": subject, "html": html, "text": text},
+        )
+        db.add(job)
+        await db.commit()
+        await db.refresh(job)
+        return job
+
+    @classmethod
     async def send_verification_email(
         cls,
         to: str,
         token: str,
         base_url: str | None = None,
+        db: AsyncSession | None = None,
     ) -> None:
         base = (base_url or settings.verify_base_url or settings.frontend_url).rstrip("/")
         verify_url = f"{base}/verify-email?token={token}"
@@ -129,12 +152,21 @@ class EmailService:
             f"Подтверждение email. Перейдите по ссылке: {verify_url} "
             f"(действует {ttl_minutes} минут)."
         )
-        await cls.send_email(
-            to,
-            f"{settings.smtp_from_name} — Подтверждение email",
-            html,
-            text,
-        )
+
+        async def _enqueue(session: AsyncSession) -> None:
+            await cls.enqueue_email(
+                to=to,
+                subject=f"{settings.smtp_from_name} — Подтверждение email",
+                html=html,
+                text=text,
+                db=session,
+            )
+
+        if db is not None:
+            await _enqueue(db)
+        else:
+            async with SessionLocal() as session:
+                await _enqueue(session)
 
     @staticmethod
     def _format_price(price: float) -> str:
@@ -152,7 +184,7 @@ class EmailService:
 
     @classmethod
     async def send_order_confirmation(
-        cls, to: str, order_id: int, total_price: float, items: list[dict], shipping_address: str
+        cls, to: str, order_id: int, total_price: float, items: list[dict], shipping_address: str, db: AsyncSession
     ) -> None:
         items_html = cls._order_items_html(items)
         html = f"""\
@@ -188,11 +220,17 @@ class EmailService:
 </html>
 """
         text = f"Заказ №{order_id} оформлен. Итого: {cls._format_price(total_price)} ₽. Адрес: {shipping_address or 'Не указан'}."
-        await cls.send_email(to, f"MyShop — Заказ №{order_id} оформлен", html, text)
+        await cls.enqueue_email(
+            to=to,
+            subject=f"MyShop — Заказ №{order_id} оформлен",
+            html=html,
+            text=text,
+            db=db,
+        )
 
     @classmethod
     async def send_order_status_update(
-        cls, to: str, order_id: int, status: str
+        cls, to: str, order_id: int, status: str, db: AsyncSession
     ) -> None:
         status_labels = {
             "pending": "Ожидает обработки",
@@ -216,11 +254,17 @@ class EmailService:
 </html>
 """
         text = f"Статус заказа №{order_id} изменён: {label}"
-        await cls.send_email(to, f"MyShop — Заказ №{order_id}: {label}", html, text)
+        await cls.enqueue_email(
+            to=to,
+            subject=f"MyShop — Заказ №{order_id}: {label}",
+            html=html,
+            text=text,
+            db=db,
+        )
 
     @classmethod
     async def send_welcome_email(
-        cls, to: str, temp_password: str, reset_token: str, frontend_url: str
+        cls, to: str, temp_password: str, reset_token: str, frontend_url: str, db: AsyncSession
     ) -> None:
         reset_url = f"{frontend_url.rstrip('/')}/reset-password?token={reset_token}"
         html = f"""\
@@ -253,4 +297,10 @@ class EmailService:
             f"Ваш аккаунт MyShop создан. Временный пароль: {temp_password}. "
             f"Сменить пароль: {reset_url} (действует 24 часа)."
         )
-        await cls.send_email(to, "MyShop — Аккаунт создан", html, text)
+        await cls.enqueue_email(
+            to=to,
+            subject="MyShop — Аккаунт создан",
+            html=html,
+            text=text,
+            db=db,
+        )
