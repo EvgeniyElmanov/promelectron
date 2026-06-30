@@ -190,7 +190,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '@/services/api';
 import { register as apiRegister } from '@/api/auth';
@@ -198,8 +198,6 @@ import { useAuth } from '@/composables/useAuth';
 
 const router = useRouter();
 const { setAuth } = useAuth();
-
-let redirectTimeoutId = null;
 
 const fullName = ref('');
 const email = ref('');
@@ -287,19 +285,13 @@ async function handleRegister() {
     });
     setAuth(response.data.access_token, response.data.user);
     registrationSuccess.value = true;
-    redirectTimeoutId = setTimeout(() => router.push('/'), 3000);
+    router.push('/');
   } catch (err) {
     serverError.value = err.response?.data?.detail || 'Ошибка регистрации. Попробуйте позже.';
   } finally {
     isSubmitting.value = false;
   }
 }
-
-onUnmounted(() => {
-  if (redirectTimeoutId) {
-    clearTimeout(redirectTimeoutId);
-  }
-});
 
 async function loginWithGoogle() {
   try {
