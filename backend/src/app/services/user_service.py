@@ -1,5 +1,7 @@
+import asyncio
 import hashlib
 import hmac
+import logging
 import secrets
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
@@ -21,6 +23,8 @@ from src.app.models.user import (
 from src.app.schemas.user import UserAddressCreate, UserCreate, UserOut
 from src.app.utils.auth import create_access_token, hash_password, verify_password
 
+logger = logging.getLogger(__name__)
+
 
 def _token_for_user(user: User) -> str:
     # F-10: sub is the stable numeric user id, not email.
@@ -28,6 +32,20 @@ def _token_for_user(user: User) -> str:
     return create_access_token(
         data={"sub": str(user.id), "role": user.role.value}, expires_delta=access_token_expires
     )
+
+
+def _schedule_verification_email(to: str, token: str) -> None:
+    """Отправить письмо с подтверждением email в фоне, не блокируя ответ API."""
+    from src.app.services.email_service import EmailService
+
+    async def _send() -> None:
+        try:
+            await EmailService.send_verification_email(to=to, token=token)
+        except Exception:
+            # Email delivery is best-effort; log and ignore.
+            logger.exception("Failed to send verification email to <redacted>")
+
+    asyncio.create_task(_send())
 
 
 class UserService:
@@ -72,16 +90,12 @@ class UserService:
             db.add(supplier)
             await db.commit()
 
-        # Best-effort email verification token + email.
+        # Best-effort email verification token + email (non-blocking).
         try:
             verification_token = await UserService.create_email_verification_token(
                 user_id=new_user.id, db=db
             )
-            from src.app.services.email_service import EmailService
-
-            await EmailService.send_verification_email(
-                to=new_user.email, token=verification_token
-            )
+            _schedule_verification_email(to=new_user.email, token=verification_token)
         except Exception:
             # Email delivery is best-effort; registration must not fail.
             pass
@@ -521,13 +535,11 @@ class UserService:
     async def resend_verification_email(
         user: User, db: AsyncSession
     ) -> None:
-        """Инвалидировать старые токены, создать новый и отправить письмо."""
+        """Инвалидировать старые токены, создать новый и отправить письмо (в фоне)."""
         token = await UserService.create_email_verification_token(
             user_id=user.id, db=db
         )
-        from src.app.services.email_service import EmailService
-
-        await EmailService.send_verification_email(to=user.email, token=token)
+        _schedule_verification_email(to=user.email, token=token)
 
     @staticmethod
     async def invalidate_email_verification_tokens(
