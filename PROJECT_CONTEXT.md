@@ -1,15 +1,15 @@
 ---
 sprint: "Sprint 1"
 sprint_dates: "2026-06-29 — 2026-07-12"
-last_update: "2026-06-26"
-last_commit: "864e88b"
-commit_message: "feat(auth): Yandex SMTP + email verification backend (Phase 1 + Phase 2)"
+last_update: "2026-06-30"
+last_commit: "836cc13"
+commit_message: "feat(auth): Yandex SMTP + email verification (#19)"
 blockers_count: 2
 blockers_p0: 0
 blockers_p1: 2
-backend_tests: "315/315"
-frontend_tests: "226/226"
-e2e_tests: "3/3"
+backend_tests: "320/320"
+frontend_tests: "243/243"
+e2e_tests: "108/108"
 ---
 
 # PROJECT_CONTEXT — Promelectron
@@ -19,7 +19,7 @@ e2e_tests: "3/3"
 
 > **Метаданные в YAML frontmatter выше.** Не дублируйте здесь.
 >
-> **Последний коммит:** `2f77465` — guest checkout with auto-account creation + BLK-008 fix
+> **Последний коммит:** `836cc13` — feat(auth): Yandex SMTP + email verification (#19)
 
 ---
 
@@ -50,7 +50,7 @@ e2e_tests: "3/3"
 - [x] **Управление получателями** — сохранённые получатели в профиле, выбор/inline-получатель в корзине, отчество для резидентов РФ, валидация телефона `+7XXXXXXXXXX`
 - [x] **Email-верификация (backend)** — `User.email_verified`, `EmailVerificationToken`, verification email при регистрации, подтверждение по ссылке, повторная отправка, сброс флага при смене email
 - [x] **Yandex SMTP (backend)** — `SMTP_USE_TLS`/`SMTP_STARTTLS`, retry, fallback-логирование
-- [x] **Тесты зелёные** — Backend 315/315 ✅, Frontend 226/226 ✅, E2E 3/3 ✅
+- [x] **Тесты зелёные** — Backend 320/320 ✅, Frontend 243/243 ✅, E2E 108/108 ✅
 
 ---
 
@@ -65,7 +65,7 @@ e2e_tests: "3/3"
 | **Helm worker templates** | ✅ done | — | Celery worker работает в K8s. |
 | **Product.price → Numeric(10,2)** | ⏳ todo | — | Ждёт отдельной задачи |
 | **Malformed Alembic revision** | ✅ done | — | Миграции чистые, история корректна |
-| **Yandex SMTP + email verification** | 🔄 backend done / frontend pending | — | Задача #43, backend Phase 1+2 готов; остался frontend + Helm values |
+| **Yandex SMTP + email verification** | ✅ done | — | Реализовано и влито в main (#40). Backend + frontend + Helm values + SOPS TODOs. |
 
 ---
 
@@ -258,6 +258,7 @@ make test-e2e      # Playwright
 ## История изменений (кратко)
 
 | Дата | Что изменилось | Кто |
+| 2026-06-30 | **yandex-smtp-and-email-verification — merged (#40)**: завершена frontend-часть (баннеры верификации, страницы `/verify-email/*`, обработка 302-редиректа), review fixes (rate limit на verify-email, `hmac.compare_digest`, PII redaction, DB-индексы, placeholder SMTP-данные), обновлены Helm values/`deploy.yml`/SOPS TODOs. QA: backend 320/320 ✅, frontend 243/243 ✅, E2E 108/108 ✅. PR #40 влит в `main` (merge commit `836cc13`). Issue #19 закрыт, статус в GitHub Projects — Done. | backend-dev / frontend-dev / devops / orchestrator |
 | 2026-06-26 | **yandex-smtp-and-email-verification (backend Phase 1+2)**: подключён Yandex SMTP (`SMTP_USE_TLS`/`SMTP_STARTTLS`), retry, fallback-логирование; добавлена верификация email — `User.email_verified`, `EmailVerificationToken`, Alembic-миграция `b3edea26617e`, `EmailService.send_verification_email`, `UserService` helpers, endpoints `GET /api/v1/auth/verify-email/` (302 redirect) и `POST /api/v1/auth/resend-verification/` (rate limit), OAuth callback выставляет `email_verified`. Trailing slash для `/register/`, `/login/`, `/me/`, `/me/password/`. Backend-тесты 315/315 ✅, `ruff check src/ tests/` чисто ✅, downgrade/upgrade head проходит ✅. Issue #43/#19. | backend-dev |
 | 2026-06-25 | **extended-recipient-data (PR #26)**: реализованы расширенные данные получателя. Backend: модель `Recipient`, Alembic-миграция `a14b9dfe3bd1` с backfill существующих заказов, CRUD `/api/v1/me/recipients/`, `recipient_service.py`, интеграция с `OrderService` и `CdekService`, rate limiting, безопасное логирование. Frontend: `useRecipients.js`, `ProfileRecipients.vue`, выбор/inline-получатель в `Cart.vue`, отчество для резидентов РФ в `GuestCheckout.vue`/`ProfileRecipients.vue`, отображение получателя в `Checkout.vue`/`Admin.vue`. Backend-тесты 297/297 ✅, frontend-тесты 226/226 ✅, lint чисто ✅. Issue #15, PR #26. | orchestrator / backend-dev / frontend-dev / code-reviewer / security-reviewer |
 | 2026-06-24 | **clear-cart-after-order (PR #25)**: исправлен баг — после оформления авторизованного заказа из корзины удаляются только оформленные `CartItem` по `cart_item_id` (`CartService.remove_cart_items_by_ids()`, вызов из `OrderService.create_order()` после `commit`). На фронтенде `Cart.vue` вызывает `syncCartCount()` после успешного создания заказа. Добавлены backend-тесты `test_create_order_removes_only_ordered_items` и `test_create_order_failure_keeps_cart_items`, frontend-тест в `Cart.spec.js`. Backend 272/272 ✅, frontend 189/189 ✅, lint чисто ✅. Issue #23, PR #25. | orchestrator / backend-dev / frontend-dev |
