@@ -1,3 +1,24 @@
+### 2026-06-30 04:44 | orchestrator / backend-dev | fix-register-email-blocking — deploy E2E regression fix
+  Роли: orchestrator, backend-dev.
+  Запрос: проверить упавшие deploy-тесты после #40, подтвердить PR #42, устранить причину.
+  Выполнено:
+  - Проверено, что PR #42 `docs(context): post-merge status update` влит в `main` (merge commit `9314150`).
+  - Найдена причина падения `Deploy to Kubernetes` run 28419947105: `UserService.register_user`/`resend_verification_email` синхронно ждали `EmailService.send_verification_email`. На test-окружении с unreachable Yandex SMTP это вызывало длинные задержки ответа `POST /register/`, и E2E-тесты регистрации не успевали дождаться редиректа.
+  - Создана ветка `bugfix/register-email-blocking` и worktree `/home/evgeniy/project/my_shop_backend/.worktrees/fix-register-email-blocking`.
+  - Реализован fix: отправка verification email запускается в фоновой `asyncio.create_task`, токен создаётся синхронно, ошибки логируются.
+  - Создан и влит PR #43 (merge commit `4dd041e`).
+  - Deploy run 28420894298 после merge прошёл успешно: build ✅, deploy-test ✅, smoke ✅, E2E ✅.
+  Проверки:
+  - `make test-backend` — 320/320 ✅
+  - `ruff check --no-cache backend/src/ backend/tests/` — чисто ✅
+  - CI deploy + E2E на test после merge — зелёные ✅
+  Git:
+  - Branch: `bugfix/register-email-blocking` (merged)
+  - Worktree: `/home/evgeniy/project/my_shop_backend/.worktrees/fix-register-email-blocking`
+  - PR: https://github.com/AutonomaCo/promelectron/pull/43
+  - Issue: https://github.com/AutonomaCo/promelectron/issues/19
+  Блокер: Нет.
+
 ### 2026-06-29 19:18 | backend-dev + frontend-dev | yandex-smtp-and-email-verification — QA gate passed, PR opened
   Роли: backend-dev, frontend-dev (финальная сборка и PR).
   Запрос: завершить задачу #19 (Yandex SMTP + email verification), пройти QA gate и открыть PR.

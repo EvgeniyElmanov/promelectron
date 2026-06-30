@@ -2,8 +2,8 @@
 sprint: "Sprint 1"
 sprint_dates: "2026-06-29 — 2026-07-12"
 last_update: "2026-06-30"
-last_commit: "836cc13"
-commit_message: "feat(auth): Yandex SMTP + email verification (#19)"
+last_commit: "4dd041e"
+commit_message: "fix(auth): send verification email asynchronously to avoid blocking registration"
 blockers_count: 2
 blockers_p0: 0
 blockers_p1: 2
@@ -19,7 +19,7 @@ e2e_tests: "108/108"
 
 > **Метаданные в YAML frontmatter выше.** Не дублируйте здесь.
 >
-> **Последний коммит:** `836cc13` — feat(auth): Yandex SMTP + email verification (#19)
+> **Последний коммит:** `4dd041e` — fix(auth): send verification email asynchronously to avoid blocking registration
 
 ---
 
@@ -258,6 +258,7 @@ make test-e2e      # Playwright
 ## История изменений (кратко)
 
 | Дата | Что изменилось | Кто |
+| 2026-06-30 | **fix: async verification email (#43)**: регрессия в E2E после #40 — `UserService.register_user`/`resend_verification_email` блокировали ответ API синхронной отправкой письма, что на test-окружении с unreachable Yandex SMTP приводило к таймаутам и падению E2E регистрации. Исправлено: отправка запускается в фоновой `asyncio.create_task`, токен создаётся синхронно, ошибки логируются. Backend 320/320 ✅, lint чисто ✅, deploy + E2E на test после merge зелёные. | backend-dev / orchestrator |
 | 2026-06-30 | **yandex-smtp-and-email-verification — merged (#40)**: завершена frontend-часть (баннеры верификации, страницы `/verify-email/*`, обработка 302-редиректа), review fixes (rate limit на verify-email, `hmac.compare_digest`, PII redaction, DB-индексы, placeholder SMTP-данные), обновлены Helm values/`deploy.yml`/SOPS TODOs. QA: backend 320/320 ✅, frontend 243/243 ✅, E2E 108/108 ✅. PR #40 влит в `main` (merge commit `836cc13`). Issue #19 закрыт, статус в GitHub Projects — Done. | backend-dev / frontend-dev / devops / orchestrator |
 | 2026-06-26 | **yandex-smtp-and-email-verification (backend Phase 1+2)**: подключён Yandex SMTP (`SMTP_USE_TLS`/`SMTP_STARTTLS`), retry, fallback-логирование; добавлена верификация email — `User.email_verified`, `EmailVerificationToken`, Alembic-миграция `b3edea26617e`, `EmailService.send_verification_email`, `UserService` helpers, endpoints `GET /api/v1/auth/verify-email/` (302 redirect) и `POST /api/v1/auth/resend-verification/` (rate limit), OAuth callback выставляет `email_verified`. Trailing slash для `/register/`, `/login/`, `/me/`, `/me/password/`. Backend-тесты 315/315 ✅, `ruff check src/ tests/` чисто ✅, downgrade/upgrade head проходит ✅. Issue #43/#19. | backend-dev |
 | 2026-06-25 | **extended-recipient-data (PR #26)**: реализованы расширенные данные получателя. Backend: модель `Recipient`, Alembic-миграция `a14b9dfe3bd1` с backfill существующих заказов, CRUD `/api/v1/me/recipients/`, `recipient_service.py`, интеграция с `OrderService` и `CdekService`, rate limiting, безопасное логирование. Frontend: `useRecipients.js`, `ProfileRecipients.vue`, выбор/inline-получатель в `Cart.vue`, отчество для резидентов РФ в `GuestCheckout.vue`/`ProfileRecipients.vue`, отображение получателя в `Checkout.vue`/`Admin.vue`. Backend-тесты 297/297 ✅, frontend-тесты 226/226 ✅, lint чисто ✅. Issue #15, PR #26. | orchestrator / backend-dev / frontend-dev / code-reviewer / security-reviewer |
