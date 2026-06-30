@@ -148,6 +148,8 @@ jobs:
           OVR_MINIO_SECRET_KEY: ${{ secrets.MINIO_SECRET_KEY }}
           OVR_MINIO_ROOT_USER: ${{ secrets.MINIO_ROOT_USER }}
           OVR_MINIO_ROOT_PASSWORD: ${{ secrets.MINIO_ROOT_PASSWORD }}
+          OVR_SMTP_USER: ${{ secrets.SMTP_USER }}
+          OVR_SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
         run: |
           set -euo pipefail
           # Build --set-string overrides for every secret whose GitHub Secret is non-empty.
@@ -157,7 +159,8 @@ jobs:
                      SECRET_KEY ONEC_API_URL ONEC_API_KEY \
                      YOOKASSA_SHOP_ID YOOKASSA_SECRET_KEY CDEK_ACCOUNT CDEK_SECURE \
                      YANDEX_CLIENT_ID YANDEX_CLIENT_SECRET GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET \
-                     MINIO_ACCESS_KEY MINIO_SECRET_KEY MINIO_ROOT_USER MINIO_ROOT_PASSWORD; do
+                     MINIO_ACCESS_KEY MINIO_SECRET_KEY MINIO_ROOT_USER MINIO_ROOT_PASSWORD \
+                     SMTP_USER SMTP_PASSWORD; do
             var="OVR_${key}"
             val="${!var:-}"
             [ -n "$val" ] || continue
@@ -264,6 +267,8 @@ jobs:
           OVR_MINIO_SECRET_KEY: ${{ secrets.MINIO_SECRET_KEY }}
           OVR_MINIO_ROOT_USER: ${{ secrets.MINIO_ROOT_USER }}
           OVR_MINIO_ROOT_PASSWORD: ${{ secrets.MINIO_ROOT_PASSWORD }}
+          OVR_SMTP_USER: ${{ secrets.SMTP_USER }}
+          OVR_SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
         run: |
           set -euo pipefail
           # Build --set-string overrides for every secret whose GitHub Secret is non-empty.
@@ -273,7 +278,8 @@ jobs:
                      SECRET_KEY ONEC_API_URL ONEC_API_KEY \
                      YOOKASSA_SHOP_ID YOOKASSA_SECRET_KEY CDEK_ACCOUNT CDEK_SECURE \
                      YANDEX_CLIENT_ID YANDEX_CLIENT_SECRET GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET \
-                     MINIO_ACCESS_KEY MINIO_SECRET_KEY MINIO_ROOT_USER MINIO_ROOT_PASSWORD; do
+                     MINIO_ACCESS_KEY MINIO_SECRET_KEY MINIO_ROOT_USER MINIO_ROOT_PASSWORD \
+                     SMTP_USER SMTP_PASSWORD; do
             var="OVR_${key}"
             val="${!var:-}"
             [ -n "$val" ] || continue

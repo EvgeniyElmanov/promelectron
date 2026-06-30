@@ -25,7 +25,7 @@ class TestAuthAPI:
     async def test_register_user(self, client):
         """Регистрация нового пользователя — возвращает токен и user."""
         response = await client.post(
-            "/api/v1/register",
+            "/api/v1/register/",
             json={"email": "newuser@example.com", "password": "securepass123"},
         )
         assert response.status_code == 200
@@ -34,13 +34,14 @@ class TestAuthAPI:
         assert data["token_type"] == "bearer"
         assert data["user"]["email"] == "newuser@example.com"
         assert data["user"]["role"] == "user"
+        assert data["user"]["email_verified"] is False
         assert "id" in data["user"]
 
     @pytest.mark.asyncio
     async def test_register_with_full_name(self, client):
         """Регистрация с именем."""
         response = await client.post(
-            "/api/v1/register",
+            "/api/v1/register/",
             json={
                 "email": "nameduser@example.com",
                 "password": "securepass123",
@@ -55,7 +56,7 @@ class TestAuthAPI:
     async def test_register_duplicate_email(self, client, test_user):
         """Регистрация с уже существующим email — 400."""
         response = await client.post(
-            "/api/v1/register",
+            "/api/v1/register/",
             json={"email": "testuser@example.com", "password": "password123"},
         )
         assert response.status_code == 400
@@ -65,7 +66,7 @@ class TestAuthAPI:
     async def test_login_success(self, client, test_user):
         """Успешный вход — возвращает токен и user."""
         response = await client.post(
-            "/api/v1/login",
+            "/api/v1/login/",
             json={"email": "testuser@example.com", "password": "password123"},
         )
         assert response.status_code == 200
@@ -74,12 +75,13 @@ class TestAuthAPI:
         assert data["token_type"] == "bearer"
         assert data["user"]["email"] == "testuser@example.com"
         assert data["user"]["role"] == "user"
+        assert data["user"]["email_verified"] is False
 
     @pytest.mark.asyncio
     async def test_login_wrong_password(self, client, test_user):
         """Вход с неверным паролем — 401."""
         response = await client.post(
-            "/api/v1/login",
+            "/api/v1/login/",
             json={"email": "testuser@example.com", "password": "wrongpassword"},
         )
         assert response.status_code == 401
@@ -89,7 +91,7 @@ class TestAuthAPI:
     async def test_login_token_expiry_matches_settings(self, client, test_user):
         """Токен входа имеет exp, соответствующий ACCESS_TOKEN_EXPIRE_MINUTES."""
         response = await client.post(
-            "/api/v1/login",
+            "/api/v1/login/",
             json={"email": "testuser@example.com", "password": "password123"},
         )
         assert response.status_code == 200
@@ -100,7 +102,7 @@ class TestAuthAPI:
     async def test_get_me(self, client, test_user, user_token):
         """Получение текущего пользователя."""
         response = await client.get(
-            "/api/v1/me",
+            "/api/v1/me/",
             headers={"Authorization": f"Bearer {user_token}"},
         )
         assert response.status_code == 200
@@ -110,7 +112,7 @@ class TestAuthAPI:
     @pytest.mark.asyncio
     async def test_get_me_no_token(self, client):
         """Запрос /me без токена — 403."""
-        response = await client.get("/api/v1/me")
+        response = await client.get("/api/v1/me/")
         assert response.status_code == 403
 
     @pytest.mark.asyncio
@@ -149,7 +151,7 @@ class TestAuthAPI:
     async def test_update_profile_name(self, client, test_user, user_token):
         """Обновление имени через PATCH /me."""
         response = await client.patch(
-            "/api/v1/me",
+            "/api/v1/me/",
             headers={"Authorization": f"Bearer {user_token}"},
             json={"full_name": "Иван Обновлённый"},
         )
@@ -162,7 +164,7 @@ class TestAuthAPI:
     async def test_update_profile_extended_fields(self, client, test_user, user_token):
         """Обновление ФИО и страны через PATCH /me."""
         response = await client.patch(
-            "/api/v1/me",
+            "/api/v1/me/",
             headers={"Authorization": f"Bearer {user_token}"},
             json={
                 "first_name": "Иван",
@@ -182,7 +184,7 @@ class TestAuthAPI:
     async def test_update_profile_phone_success(self, client, test_user, user_token):
         """Обновление телефона в профиле принимается только в формате +7XXXXXXXXXX."""
         response = await client.patch(
-            "/api/v1/me",
+            "/api/v1/me/",
             headers={"Authorization": f"Bearer {user_token}"},
             json={"phone": "+79161234567"},
         )
@@ -205,7 +207,7 @@ class TestAuthAPI:
     async def test_update_profile_invalid_pii(self, client, test_user, user_token, payload):
         """Невалидные PII-поля профиля отклоняются с 422."""
         response = await client.patch(
-            "/api/v1/me",
+            "/api/v1/me/",
             headers={"Authorization": f"Bearer {user_token}"},
             json=payload,
         )
@@ -215,7 +217,7 @@ class TestAuthAPI:
     async def test_update_profile_email(self, client, test_user, user_token):
         """Обновление email через PATCH /me."""
         response = await client.patch(
-            "/api/v1/me",
+            "/api/v1/me/",
             headers={"Authorization": f"Bearer {user_token}"},
             json={"email": "newemail@example.com"},
         )
@@ -229,7 +231,7 @@ class TestAuthAPI:
     ):
         """Обновление email на уже существующий — 400."""
         response = await client.patch(
-            "/api/v1/me",
+            "/api/v1/me/",
             headers={"Authorization": f"Bearer {user_token}"},
             json={"email": "admin@example.com"},
         )
@@ -239,14 +241,14 @@ class TestAuthAPI:
     @pytest.mark.asyncio
     async def test_update_profile_no_token(self, client):
         """PATCH /me без токена — 403."""
-        response = await client.patch("/api/v1/me", json={"full_name": "Test"})
+        response = await client.patch("/api/v1/me/", json={"full_name": "Test"})
         assert response.status_code == 403
 
     @pytest.mark.asyncio
     async def test_change_password_success(self, client, test_user, user_token):
         """Успешная смена пароля."""
         response = await client.patch(
-            "/api/v1/me/password",
+            "/api/v1/me/password/",
             headers={"Authorization": f"Bearer {user_token}"},
             json={"old_password": "password123", "new_password": "newpassword456"},
         )
@@ -255,7 +257,7 @@ class TestAuthAPI:
 
         # Проверяем вход с новым паролем
         login_resp = await client.post(
-            "/api/v1/login",
+            "/api/v1/login/",
             json={"email": "testuser@example.com", "password": "newpassword456"},
         )
         assert login_resp.status_code == 200
@@ -265,7 +267,7 @@ class TestAuthAPI:
     async def test_change_password_wrong_old(self, client, test_user, user_token):
         """Смена пароля с неверным старым паролем — 400."""
         response = await client.patch(
-            "/api/v1/me/password",
+            "/api/v1/me/password/",
             headers={"Authorization": f"Bearer {user_token}"},
             json={"old_password": "wrongpassword", "new_password": "newpassword456"},
         )
@@ -291,7 +293,11 @@ def _make_oauth_settings(overrides: dict):
         "smtp_user": original.smtp_user,
         "smtp_password": original.smtp_password,
         "smtp_from": original.smtp_from,
-        "smtp_tls": original.smtp_tls,
+        "smtp_from_name": original.smtp_from_name,
+        "smtp_use_tls": original.smtp_use_tls,
+        "smtp_starttls": original.smtp_starttls,
+        "email_verify_token_ttl_minutes": original.email_verify_token_ttl_minutes,
+        "verify_base_url": original.verify_base_url,
         "redis_url": original.redis_url,
         "api_base_url": original.api_base_url,
         "minio_endpoint": original.minio_endpoint,
@@ -433,6 +439,7 @@ class TestOAuth:
         assert data["user"]["full_name"] == "Google User"
         assert data["user"]["avatar_url"] == "https://example.com/avatar.jpg"
         assert data["user"]["role"] == "user"
+        assert data["user"]["email_verified"] is False
 
     @pytest.mark.asyncio
     async def test_oauth_token_expiry_matches_settings(
@@ -537,6 +544,7 @@ class TestOAuth:
         data = response.json()
         assert data["user"]["email"] == test_user.email
         assert data["user"]["id"] == test_user.id
+        assert data["user"]["email_verified"] is True
 
     @pytest.mark.asyncio
     async def test_unsupported_provider(self, client):
@@ -806,7 +814,7 @@ class TestOAuth:
         await test_session.commit()
 
         response = await client.post(
-            "/api/v1/login",
+            "/api/v1/login/",
             json={"email": "oauthonly@example.com", "password": "anypassword123"},
         )
         assert response.status_code == 401
@@ -945,7 +953,7 @@ class TestOAuthHardeningFindings:
         )
 
         response = await client.patch(
-            "/api/v1/me/password",
+            "/api/v1/me/password/",
             headers={"Authorization": f"Bearer {oauth_token}"},
             json={"old_password": "anything", "new_password": "newpass123"},
         )
@@ -1205,7 +1213,7 @@ class TestOAuthHardeningFindings:
 
         # Register the same-shaped user via email to get a reference shape
         reg_resp = await client.post(
-            "/api/v1/register",
+            "/api/v1/register/",
             json={"email": "shapereference@example.com", "password": "password123"},
         )
         assert reg_resp.status_code == 200
@@ -1369,7 +1377,7 @@ class TestHardeningDeferred:
         """Login → protected endpoint OK → logout → same token → 401."""
         # Login to get a real token
         login_resp = await client.post(
-            "/api/v1/login",
+            "/api/v1/login/",
             json={"email": "testuser@example.com", "password": "password123"},
         )
         assert login_resp.status_code == 200
@@ -1377,7 +1385,7 @@ class TestHardeningDeferred:
 
         # Token works before logout
         me_resp = await client.get(
-            "/api/v1/me",
+            "/api/v1/me/",
             headers={"Authorization": f"Bearer {token}"},
         )
         assert me_resp.status_code == 200
@@ -1392,7 +1400,7 @@ class TestHardeningDeferred:
 
         # Same token is now rejected
         me_after = await client.get(
-            "/api/v1/me",
+            "/api/v1/me/",
             headers={"Authorization": f"Bearer {token}"},
         )
         assert me_after.status_code == 401
@@ -1412,7 +1420,7 @@ class TestHardeningDeferred:
         """Logging out one token does not affect another user's valid token."""
         # Login as regular user
         user_resp = await client.post(
-            "/api/v1/login",
+            "/api/v1/login/",
             json={"email": "testuser@example.com", "password": "password123"},
         )
         assert user_resp.status_code == 200
@@ -1420,7 +1428,7 @@ class TestHardeningDeferred:
 
         # Login as admin (separate token)
         admin_resp = await client.post(
-            "/api/v1/login",
+            "/api/v1/login/",
             json={"email": "admin@example.com", "password": "admin123"},
         )
         assert admin_resp.status_code == 200
@@ -1434,7 +1442,7 @@ class TestHardeningDeferred:
 
         # Admin token still works
         admin_me = await client.get(
-            "/api/v1/me",
+            "/api/v1/me/",
             headers={"Authorization": f"Bearer {admin_token_val}"},
         )
         assert admin_me.status_code == 200
@@ -1546,7 +1554,7 @@ class TestHardeningDeferred:
     async def test_token_sub_is_numeric_id(self, client, test_user):
         """Freshly minted token has sub = str(user.id), role present."""
         login_resp = await client.post(
-            "/api/v1/login",
+            "/api/v1/login/",
             json={"email": "testuser@example.com", "password": "password123"},
         )
         assert login_resp.status_code == 200
@@ -1564,13 +1572,13 @@ class TestHardeningDeferred:
     async def test_protected_endpoint_resolves_correct_user(self, client, test_user):
         """Protected endpoint returns the right user after F-10 sub=id change."""
         login_resp = await client.post(
-            "/api/v1/login",
+            "/api/v1/login/",
             json={"email": "testuser@example.com", "password": "password123"},
         )
         token = login_resp.json()["access_token"]
 
         me_resp = await client.get(
-            "/api/v1/me",
+            "/api/v1/me/",
             headers={"Authorization": f"Bearer {token}"},
         )
         assert me_resp.status_code == 200
@@ -1585,14 +1593,14 @@ class TestHardeningDeferred:
         """Changing email doesn't 401 an existing token (sub is id, not email)."""
         # Confirm token works first
         me_before = await client.get(
-            "/api/v1/me",
+            "/api/v1/me/",
             headers={"Authorization": f"Bearer {user_token}"},
         )
         assert me_before.status_code == 200
 
         # Change email
         patch_resp = await client.patch(
-            "/api/v1/me",
+            "/api/v1/me/",
             headers={"Authorization": f"Bearer {user_token}"},
             json={"email": "changed_f10@example.com"},
         )
@@ -1600,7 +1608,7 @@ class TestHardeningDeferred:
 
         # Token still resolves to the same user (sub=id is stable)
         me_after = await client.get(
-            "/api/v1/me",
+            "/api/v1/me/",
             headers={"Authorization": f"Bearer {user_token}"},
         )
         assert me_after.status_code == 200
@@ -1615,13 +1623,13 @@ class TestHardeningDeferred:
         """A 100-char password registers and logs in successfully (no truncation)."""
         long_pw = "A" * 100
         reg_resp = await client.post(
-            "/api/v1/register",
+            "/api/v1/register/",
             json={"email": "longpw@example.com", "password": long_pw},
         )
         assert reg_resp.status_code == 200
 
         login_resp = await client.post(
-            "/api/v1/login",
+            "/api/v1/login/",
             json={"email": "longpw@example.com", "password": long_pw},
         )
         assert login_resp.status_code == 200
@@ -1632,7 +1640,7 @@ class TestHardeningDeferred:
         """A 200-char password → 422 validation error at the schema layer."""
         overlong_pw = "B" * 200
         resp = await client.post(
-            "/api/v1/register",
+            "/api/v1/register/",
             json={"email": "overlongpw@example.com", "password": overlong_pw},
         )
         assert resp.status_code == 422
@@ -1642,13 +1650,13 @@ class TestHardeningDeferred:
         """Exactly 128-char password is accepted (boundary check)."""
         max_pw = "C" * 128
         reg_resp = await client.post(
-            "/api/v1/register",
+            "/api/v1/register/",
             json={"email": "maxpw@example.com", "password": max_pw},
         )
         assert reg_resp.status_code == 200
 
         login_resp = await client.post(
-            "/api/v1/login",
+            "/api/v1/login/",
             json={"email": "maxpw@example.com", "password": max_pw},
         )
         assert login_resp.status_code == 200

@@ -12,6 +12,7 @@ from .recipient import Recipient as Recipient
 from .review import Review as Review
 from .social_account import SocialAccount as SocialAccount
 from .supplier import Supplier as Supplier
+from .user import EmailVerificationToken as EmailVerificationToken
 from .user import PasswordResetToken as PasswordResetToken
 from .user import User as User
 from .user import UserAddress as UserAddress
@@ -23,6 +24,7 @@ __all__ = [
     "CdekOrder",
     "CdekStatusHistory",
     "DeliveryMethod",
+    "EmailVerificationToken",
     "Favorite",
     "Job",
     "Notification",

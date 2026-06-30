@@ -16,6 +16,41 @@
 
     <!-- Content -->
     <div v-else-if="user" class="profile-content">
+      <!-- Email verification banner -->
+      <div
+        v-if="!emailVerified"
+        class="profile-card profile-card--warning"
+        data-testid="profile-verify-banner"
+      >
+        <div class="verify-banner__content">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          <div class="verify-banner__text">
+            <p class="verify-banner__title">Подтвердите email</p>
+            <p class="verify-banner__subtitle">
+              На <strong>{{ user.email }}</strong> отправлено письмо со ссылкой.
+            </p>
+          </div>
+        </div>
+        <button
+          class="verify-banner__btn"
+          :disabled="resending"
+          data-testid="profile-resend-verification"
+          @click="handleResendVerification"
+        >
+          {{ resending ? 'Отправка...' : 'Отправить повторно' }}
+        </button>
+        <p v-if="resendMessage" class="verify-banner__message" data-testid="profile-resend-message">
+          {{ resendMessage }}
+        </p>
+        <p v-if="resendError" class="verify-banner__error" data-testid="profile-resend-error">
+          {{ resendError }}
+        </p>
+      </div>
+
       <!-- Avatar Card -->
       <div class="profile-card profile-card--avatar">
         <div class="avatar" data-testid="profile-avatar">
@@ -38,7 +73,16 @@
           </div>
           <div class="detail-item">
             <span class="detail-label">Email</span>
-            <span class="detail-value">{{ user.email }}</span>
+            <span class="detail-value">
+              {{ user.email }}
+              <span
+                class="verify-badge"
+                :class="emailVerified ? 'verify-badge--verified' : 'verify-badge--unverified'"
+                data-testid="profile-email-status"
+              >
+                {{ emailVerified ? 'Подтверждён' : 'Не подтверждён' }}
+              </span>
+            </span>
           </div>
           <div class="detail-item">
             <span class="detail-label">Роль</span>
@@ -155,13 +199,17 @@ import api from '@/services/api';
 import { useAuth } from '@/composables/useAuth';
 
 const router = useRouter();
-const { user: authUser, logout, isAdmin, isSupplier } = useAuth();
+const { user: authUser, logout, isAdmin, isSupplier, resendVerification } = useAuth();
 
 const localUser = ref(null);
 const loading = ref(true);
 const error = ref(null);
+const resending = ref(false);
+const resendMessage = ref('');
+const resendError = ref('');
 
 const user = computed(() => localUser.value || authUser.value);
+const emailVerified = computed(() => !!user.value?.email_verified);
 
 const fullName = computed(() => {
   const parts = [user.value?.last_name, user.value?.first_name, user.value?.patronymic].filter(Boolean);
@@ -217,6 +265,20 @@ const fetchUserProfile = async () => {
 const handleLogout = () => {
   logout();
   router.push('/login');
+};
+
+const handleResendVerification = async () => {
+  resendMessage.value = '';
+  resendError.value = '';
+  resending.value = true;
+  try {
+    await resendVerification();
+    resendMessage.value = 'Письмо отправлено. Проверьте почту.';
+  } catch (err) {
+    resendError.value = err.response?.data?.detail || 'Не удалось отправить письмо. Попробуйте позже.';
+  } finally {
+    resending.value = false;
+  }
 };
 
 onMounted(fetchUserProfile);
@@ -290,6 +352,81 @@ onMounted(fetchUserProfile);
   background: var(--color-bg-white);
   border-radius: 14px;
   padding: 18px;
+}
+
+.profile-card--warning {
+  background: #fff8e1;
+  border: 1px solid #ffe082;
+  color: #b45309;
+}
+
+.verify-banner__content {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.verify-banner__text {
+  flex: 1;
+}
+
+.verify-banner__title {
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.verify-banner__subtitle {
+  font-size: 13px;
+  margin-top: 2px;
+  opacity: 0.9;
+}
+
+.verify-banner__btn {
+  margin-top: 12px;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #b45309;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  transition: opacity 0.15s;
+}
+
+.verify-banner__btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.verify-banner__message {
+  margin-top: 10px;
+  font-size: 13px;
+  color: #0d7a3e;
+}
+
+.verify-banner__error {
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--color-danger);
+}
+
+.verify-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.verify-badge--verified {
+  background: #e6f7ed;
+  color: #0d7a3e;
+}
+
+.verify-badge--unverified {
+  background: #fff0f0;
+  color: var(--color-danger);
 }
 
 .profile-card--avatar {

@@ -1,15 +1,15 @@
 ---
 sprint: "Sprint 1"
-sprint_dates: "2026-06-01 — 2026-06-14"
-last_update: "2026-06-25"
-last_commit: "23ae77f"
-commit_message: "fix(recipients): address backend/frontend/security review findings"
-blockers_count: 3
+sprint_dates: "2026-06-29 — 2026-07-12"
+last_update: "2026-06-26"
+last_commit: "864e88b"
+commit_message: "feat(auth): Yandex SMTP + email verification backend (Phase 1 + Phase 2)"
+blockers_count: 2
 blockers_p0: 0
-blockers_p1: 3
-backend_tests: "297/297"
+blockers_p1: 2
+backend_tests: "315/315"
 frontend_tests: "226/226"
-e2e_tests: "not run locally (requires dev stack + permissions)"
+e2e_tests: "3/3"
 ---
 
 # PROJECT_CONTEXT — Promelectron
@@ -48,7 +48,9 @@ e2e_tests: "not run locally (requires dev stack + permissions)"
 - [x] **CDEK доставка** — расчёт тарифов, выбор ПВЗ/двери, автосоздание заказа после оплаты через job `CDEK_CREATE_ORDER`, вебхуки статусов + polling через job `CDEK_SYNC_ORDER_STATUS`, универсальная таблица `jobs`, `job_worker` в бесконечном цикле, таблица `cdek_status_history`, программная отмена заказа в CDEK
 - [x] **Password reset** — токены с TTL 24ч, инвалидация остальных токенов после использования
 - [x] **Управление получателями** — сохранённые получатели в профиле, выбор/inline-получатель в корзине, отчество для резидентов РФ, валидация телефона `+7XXXXXXXXXX`
-- [x] **Тесты зелёные** — Backend 297/297 ✅, Frontend 226/226 ✅, E2E 3/3 ✅
+- [x] **Email-верификация (backend)** — `User.email_verified`, `EmailVerificationToken`, verification email при регистрации, подтверждение по ссылке, повторная отправка, сброс флага при смене email
+- [x] **Yandex SMTP (backend)** — `SMTP_USE_TLS`/`SMTP_STARTTLS`, retry, fallback-логирование
+- [x] **Тесты зелёные** — Backend 315/315 ✅, Frontend 226/226 ✅, E2E 3/3 ✅
 
 ---
 
@@ -63,6 +65,7 @@ e2e_tests: "not run locally (requires dev stack + permissions)"
 | **Helm worker templates** | ✅ done | — | Celery worker работает в K8s. |
 | **Product.price → Numeric(10,2)** | ⏳ todo | — | Ждёт отдельной задачи |
 | **Malformed Alembic revision** | ✅ done | — | Миграции чистые, история корректна |
+| **Yandex SMTP + email verification** | 🔄 backend done / frontend pending | — | Задача #43, backend Phase 1+2 готов; остался frontend + Helm values |
 
 ---
 
@@ -70,11 +73,16 @@ e2e_tests: "not run locally (requires dev stack + permissions)"
 
 | ID | Уровень | Описание | Кто решает | Дедлайн |
 |----|---------|----------|------------|---------|
-| **BLK-005** | P1 | Нет реальных SMTP кредов — email в fallback-режиме (welcome email для гостевого чекаута логируется, но не отправляется) | project-manager | 2026-06-15 |
 | **BLK-009** | P1 | CDEK widget-service `calculate` возвращает 502 на test-окружении при передаче адреса без `code`. Блокирует UI-выбор доставки гостем. | backend-dev / devops | 2026-06-23 |
 | **BLK-010** | P1 | YooKassa webhook `payment.succeeded` не приходит на `/api/v1/payments/yookassa/webhook/` в test-окружении — заказ не переходит в `paid` без ручной синхронизации. Нужно настроить webhook URL в личном кабинете YooKassa. | devops / project-manager | 2026-06-23 |
 
 > **Правило:** Блокер >2 дней — эскалация пользователю.
+
+### Снятые блокеры
+
+| ID | Дата | Описание | Решение |
+|----|------|----------|---------|
+| **BLK-005** | 2026-06-26 | Нет реальных SMTP кредов — email в fallback-режиме | Креды Yandex SMTP (app password) получены; backend-реализация Phase 1+2 готова в задаче #43 |
 
 ---
 
@@ -133,6 +141,8 @@ Product.price → Numeric      →  Product variants / Seller payouts
 | POST | `/api/v1/auth/yandex/` | ✅ | OAuth Yandex callback |
 | POST | `/api/v1/auth/google/` | ✅ | OAuth Google callback |
 | GET | `/api/v1/auth/providers/` | ✅ | Доступность OAuth-провайдеров |
+| GET | `/api/v1/auth/verify-email/` | ✅ | Подтвердить email по токену (302 redirect) |
+| POST | `/api/v1/auth/resend-verification/` | ✅ | Повторно отправить письмо для подтверждения email |
 
 ### Авторизованные
 | Метод | Путь | Статус | Описание |
@@ -248,6 +258,7 @@ make test-e2e      # Playwright
 ## История изменений (кратко)
 
 | Дата | Что изменилось | Кто |
+| 2026-06-26 | **yandex-smtp-and-email-verification (backend Phase 1+2)**: подключён Yandex SMTP (`SMTP_USE_TLS`/`SMTP_STARTTLS`), retry, fallback-логирование; добавлена верификация email — `User.email_verified`, `EmailVerificationToken`, Alembic-миграция `b3edea26617e`, `EmailService.send_verification_email`, `UserService` helpers, endpoints `GET /api/v1/auth/verify-email/` (302 redirect) и `POST /api/v1/auth/resend-verification/` (rate limit), OAuth callback выставляет `email_verified`. Trailing slash для `/register/`, `/login/`, `/me/`, `/me/password/`. Backend-тесты 315/315 ✅, `ruff check src/ tests/` чисто ✅, downgrade/upgrade head проходит ✅. Issue #43/#19. | backend-dev |
 | 2026-06-25 | **extended-recipient-data (PR #26)**: реализованы расширенные данные получателя. Backend: модель `Recipient`, Alembic-миграция `a14b9dfe3bd1` с backfill существующих заказов, CRUD `/api/v1/me/recipients/`, `recipient_service.py`, интеграция с `OrderService` и `CdekService`, rate limiting, безопасное логирование. Frontend: `useRecipients.js`, `ProfileRecipients.vue`, выбор/inline-получатель в `Cart.vue`, отчество для резидентов РФ в `GuestCheckout.vue`/`ProfileRecipients.vue`, отображение получателя в `Checkout.vue`/`Admin.vue`. Backend-тесты 297/297 ✅, frontend-тесты 226/226 ✅, lint чисто ✅. Issue #15, PR #26. | orchestrator / backend-dev / frontend-dev / code-reviewer / security-reviewer |
 | 2026-06-24 | **clear-cart-after-order (PR #25)**: исправлен баг — после оформления авторизованного заказа из корзины удаляются только оформленные `CartItem` по `cart_item_id` (`CartService.remove_cart_items_by_ids()`, вызов из `OrderService.create_order()` после `commit`). На фронтенде `Cart.vue` вызывает `syncCartCount()` после успешного создания заказа. Добавлены backend-тесты `test_create_order_removes_only_ordered_items` и `test_create_order_failure_keeps_cart_items`, frontend-тест в `Cart.spec.js`. Backend 272/272 ✅, frontend 189/189 ✅, lint чисто ✅. Issue #23, PR #25. | orchestrator / backend-dev / frontend-dev |
 | 2026-06-24 | **Backlog automation for `/skill:implement`**: добавлена автоматическая публикация задач в GitHub Issues + GitHub Projects после approve spec. Расширен `scripts/implement-pipeline.py` командами `create-issue`, `set-status`, `sync-backlog`. Обновлён `.kimi-code/skills/implement/SKILL.md` (Step 4.5, статус-транзишены In progress → In review → Done). Обновлены `.kimi-code/AGENTS.md` (hard rules) и `.agent/BACKLOG.md` (колонка Issue + раздел agent intake). Протестировано на issue #20, `bash scripts/audit-agents.sh` проходит без ошибок. | orchestrator |

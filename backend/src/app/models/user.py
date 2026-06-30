@@ -1,7 +1,8 @@
 from datetime import datetime, timezone
 from enum import Enum as PyEnum
 
-from sqlalchemy import JSON, Boolean, Column, DateTime, Enum, ForeignKey, Integer, String
+import sqlalchemy as sa
+from sqlalchemy import JSON, Boolean, Column, DateTime, Enum, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import relationship
 
 from src.app.db.database import Base
@@ -30,6 +31,12 @@ class User(Base):
     shipping_address = Column(JSON, nullable=True)
     role = Column(Enum(RoleEnum), default=RoleEnum.user, nullable=False)
     is_active = Column(Boolean, default=True)
+    email_verified = Column(
+        Boolean,
+        default=False,
+        nullable=False,
+        server_default=sa.false(),
+    )
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     # Relationship to SocialAccount
@@ -38,6 +45,12 @@ class User(Base):
     recipients = relationship("Recipient", back_populates="user", cascade="all, delete-orphan")
     password_reset_tokens = relationship(
         "PasswordResetToken", back_populates="user", cascade="all, delete-orphan"
+    )
+    email_verification_tokens = relationship(
+        "EmailVerificationToken",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        order_by="EmailVerificationToken.created_at.desc()",
     )
 
 
@@ -78,3 +91,31 @@ class PasswordResetToken(Base):
 
     def is_valid(self) -> bool:
         return self.used_at is None and not self.is_expired()
+
+
+class EmailVerificationToken(Base):
+    __tablename__ = "email_verification_tokens"
+    __table_args__ = (
+        Index(
+            "ix_email_verification_tokens_user_id_created_at",
+            "user_id",
+            "created_at",
+        ),
+        Index(
+            "ix_email_verification_tokens_expires_at",
+            "expires_at",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    token_hash = Column(String, nullable=False, unique=True, index=True)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    used_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+    user = relationship("User", back_populates="email_verification_tokens")

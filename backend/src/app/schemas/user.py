@@ -40,6 +40,7 @@ class UserOut(BaseModel):
     avatar_url: Optional[str] = None
     shipping_address: Optional[AddressDetails] = None
     role: str
+    email_verified: bool = False
     created_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
@@ -126,3 +127,10 @@ class PasswordResetConfirm(BaseModel):
     token: str = Field(..., min_length=1)
     # F-13: max_length=128 prevents unbounded input.
     new_password: str = Field(..., min_length=6, max_length=128)
+
+
+class ResendVerificationRequest(BaseModel):
+    email: Optional[str] = Field(
+        default=None,
+        pattern=r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+    )

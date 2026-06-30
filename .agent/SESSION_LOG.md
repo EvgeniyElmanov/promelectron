@@ -1,3 +1,140 @@
+### 2026-06-29 19:18 | backend-dev + frontend-dev | yandex-smtp-and-email-verification — QA gate passed, PR opened
+  Роли: backend-dev, frontend-dev (финальная сборка и PR).
+  Запрос: завершить задачу #19 (Yandex SMTP + email verification), пройти QA gate и открыть PR.
+  Выполнено:
+  - Исправлен rate-limit тест для `GET /auth/verify-email/`: используется fresh `Limiter` instance, чтобы избежать shared state между тестами.
+  - Закоммичены все review fixes в один коммит `fix(review): address security/quality findings for email verification`.
+  - Ветка `feature/yandex-smtp-and-email-verification` запушена на origin.
+  - Создан PR: https://github.com/AutonomaCo/promelectron/pull/40
+  - Статус issue #19 в GitHub Projects обновлён на `In review`.
+  - В PR добавлен комментарий с финальными результатами E2E.
+  Проверки:
+  - `make test-backend` — 320/320 ✅
+  - `npm run test -- --run` (frontend) — 243/243 ✅
+  - `make test-e2e` — 108/108 ✅
+  - `ruff check --no-cache backend/src/ backend/tests/` — чисто ✅
+  - `npm run lint` (frontend) — чисто ✅
+  Git:
+  - Branch: `feature/yandex-smtp-and-email-verification`
+  - Worktree: `/home/evgeniy/project/my_shop_backend/.worktrees/yandex-smtp-and-email-verification`
+  - PR: https://github.com/AutonomaCo/promelectron/pull/40
+  - Issue: https://github.com/AutonomaCo/promelectron/issues/19
+  Блокер: Нет.
+
+### 2026-06-29 17:45 | backend-dev | yandex-smtp-and-email-verification — backend review fixes iteration 2 (F015, S001, S002)
+  Роль: backend-dev.
+  Запрос: исправить OPEN backend findings из `.agent/runs/yandex-smtp-and-email-verification/review/findings.md` (F015, S001, S002).
+  Выполнено:
+  - `backend/alembic/versions/b3edea26617e_add_email_verified_and_verification_.py` (F015): заменён простой индекс `ix_email_verification_tokens_user_id` на составной `ix_email_verification_tokens_user_id_created_at` (user_id, created_at) и добавлен `ix_email_verification_tokens_expires_at` (expires_at). Downgrade обновлён соответственно.
+  - `backend/src/app/models/user.py` (F015): в `EmailVerificationToken` добавлен `__table_args__` с теми же индексами.
+  - `backend/src/app/services/email_service.py` (S001): fallback-лог больше не пишет `text_body`/`html_body`, только `[email fallback] To: <redacted> | Subject: ...`.
+  - `backend/src/app/services/email_service.py` (S002): добавлен `_redact_emails()`; SMTP-исключения логируются через него, чтобы email получателя не утекал в логи.
+  - `backend/tests/test_email.py`: добавлен assert, что секретное тело письма не попадает в fallback-лог; добавлен `test_send_email_redacts_exception_emails` для S002.
+  - `backend/tests/test_email_verification.py`: добавлен `test_email_verification_token_indexes` для F015.
+  - `.agent/runs/yandex-smtp-and-email-verification/review/findings.md`: F015, S001, S002 отмечены как FIXED.
+  Проверки:
+  - `cd /home/evgeniy/project/my_shop_backend/.worktrees/yandex-smtp-and-email-verification && make test-backend` — 319/319 ✅
+  - `ruff check --no-cache src/ tests/` — чисто ✅
+  - `alembic downgrade -1 && alembic upgrade head` — проходит ✅
+  Git:
+  - Branch: `feature/yandex-smtp-and-email-verification`
+  - Worktree: `/home/evgeniy/project/my_shop_backend/.worktrees/yandex-smtp-and-email-verification`
+  - Issue: https://github.com/AutonomaCo/promelectron/issues/19
+  Блокер: `make lint-backend` не работает в образе api, т.к. `ruff` отсутствует в PATH/Dockerfile (Makefile не передаёт `--entrypoint ""` и не устанавливает requirements-dev). Линтинг выполнен локально через venv.
+
+### 2026-06-29 09:28 | frontend-dev | yandex-smtp-and-email-verification — frontend review fixes iteration 2 (F016–F018)
+  Роль: frontend-dev.
+  Запрос: исправить OPEN frontend findings из `.agent/runs/yandex-smtp-and-email-verification/review/findings.md` (F016, F017, F018).
+  Выполнено:
+  - `frontend/src/views/VerifyEmail.vue` (F016): после `verifyEmail(token)` проверяем `response.request.responseURL`, парсим конечный путь и роутим на `/verify-email/success` или `/verify-email/error?reason=...` в зависимости от фактического URL, чтобы корректно обработать прозрачный 302-редирект браузера.
+  - `frontend/src/views/Register.vue` (F017): `setTimeout` для редиректа на `/` сохраняется в `redirectTimeoutId` и очищается в `onUnmounted`.
+  - `frontend/src/views/VerifyEmail.vue` (F018): добавлен флаг `isMounted`, `loading.value = false` выставляется только при `isMounted.value === true`.
+  - `frontend/src/__tests__/VerifyEmail.spec.js`: добавлены тесты на прозрачный 302-редирект через `response.request.responseURL` для success и error.
+  - `.agent/runs/yandex-smtp-and-email-verification/review/findings.md`: F016, F017, F018 отмечены как FIXED.
+  Проверки:
+  - `cd /home/evgeniy/project/my_shop_backend/.worktrees/yandex-smtp-and-email-verification/frontend && npm run test -- --run` — 243/243 ✅
+  - `cd /home/evgeniy/project/my_shop_backend/.worktrees/yandex-smtp-and-email-verification/frontend && npm run lint` — чисто ✅
+  Git:
+  - Branch: `feature/yandex-smtp-and-email-verification`
+  - Worktree: `/home/evgeniy/project/my_shop_backend/.worktrees/yandex-smtp-and-email-verification`
+  - Issue: https://github.com/AutonomaCo/promelectron/issues/19
+  Блокер: Нет.
+
+### 2026-06-26 14:01 | frontend-dev | yandex-smtp-and-email-verification — frontend Phase 2 (email verification UI)
+  Роль: frontend-dev.
+  Запрос: реализовать frontend часть Phase 2 задачи #19 (Yandex SMTP + email verification): обновление auth API, страницы регистрации/профиля/редактирования профиля, верификация email, тесты.
+  Выполнено:
+  - `frontend/src/api/auth.js`: добавлены `register`, `login`, `resendVerification`, `verifyEmail` с trailing slash (`/register/`, `/login/`, `/auth/resend-verification/`, `/auth/verify-email/?token=`).
+  - `frontend/src/composables/useAuth.js`: добавлены `emailVerified` (computed), `setUser`, `resendVerification`.
+  - `frontend/src/views/Register.vue`: после `/register/` сохраняет JWT, показывает баннер «Письмо отправлено на email...», редиректит на `/` через 3 секунды.
+  - `frontend/src/views/Login.vue`: использует `/login/` через `auth.login`.
+  - `frontend/src/views/Profile.vue`: показывает персистентный баннер и badge «Не подтверждён» при `email_verified===false`, кнопка «Отправить повторно» вызывает `/auth/resend-verification/`.
+  - `frontend/src/views/ProfileEdit.vue`: badge «Подтверждён»/«Не подтверждён» рядом с email, предупреждение при смене email, trailing slash в `/me/` и `/me/password/`.
+  - `frontend/src/views/VerifyEmail.vue`, `VerifyEmailSuccess.vue`, `VerifyEmailError.vue`: обработка `/verify-email?token=...`, редирект на `/verify-email/success` или `/verify-email/error?reason=...`.
+  - `frontend/src/router/index.js`: добавлены маршруты `/verify-email`, `/verify-email/success`, `/verify-email/error`.
+  - Тесты: созданы `Register.spec.js`, `VerifyEmail.spec.js`; обновлены `Profile.spec.js`, `ProfileEdit.spec.js`, `Login.spec.js`.
+  Проверки:
+  - `npm run test` — 241/241 ✅
+  - `npm run lint` — чисто ✅
+  Git:
+  - Branch: `feature/yandex-smtp-and-email-verification`
+  - Worktree: `/home/evgeniy/project/my_shop_backend/.worktrees/yandex-smtp-and-email-verification`
+  - Issue: https://github.com/AutonomaCo/promelectron/issues/19
+  Блокер: Нет.
+
+### 2026-06-26 13:48 | devops | yandex-smtp-and-email-verification — infra / Helm / CI env updates for Yandex SMTP
+  Роль: devops.
+  Запрос: обновить infra-часть задачи #19 (Yandex SMTP + email verification): Helm values, SOPS secrets placeholders, CI/CD env overrides.
+  Выполнено:
+  - `infra/helm/values.yaml`: SMTP defaults обновлены на Yandex (`SMTP_HOST=smtp.yandex.ru`, `SMTP_PORT=465`, `SMTP_USE_TLS=true`, `SMTP_STARTTLS=false`, `SMTP_FROM=dadeko.aleksandr@yandex.ru`, `SMTP_FROM_NAME=MyShop`); добавлены `VERIFY_BASE_URL` и `EMAIL_VERIFY_TOKEN_TTL_MINUTES=60`.
+  - `infra/helm/stage/test/values.yaml`: `VERIFY_BASE_URL` override для test-окружения.
+  - `.github/workflows/deploy.yml`: добавлены `OVR_SMTP_USER` / `OVR_SMTP_PASSWORD` и включены в цикл `--set-string env.secrets.*` для test и prod.
+  - `infra/helm/stage/test/secrets.TODO.md`: документировано требуемое добавление `SMTP_USER` в SOPS-шифрованный `secrets.yaml` (SOPS ключ недоступен в dev).
+  - `infra/helm/stage/prod/secrets.TODO.md`: документировано требуемое добавление `SMTP_USER` и `SMTP_PASSWORD` в SOPS-шифрованный `secrets.yaml`.
+  - Проверено, что шаблоны Helm (`configmap.yaml`, `api-deployment.yaml`, `worker-deployment.yaml`, `job-worker-deployment.yaml`, cronjobs) уже используют `envFrom` из ConfigMap/Secret — дополнительных правок шаблонов не требуется.
+  Проверки:
+  - `helm template promelectron-test ./infra/helm -f infra/helm/stage/test/values.yaml --skip-tests` — OK ✅
+  - `helm template promelectron ./infra/helm -f infra/helm/stage/prod/values.yaml --skip-tests` — OK ✅
+  - `python3 -c "import yaml; yaml.safe_load(open('.github/workflows/deploy.yml'))"` — OK ✅
+  Git:
+  - Branch: `feature/yandex-smtp-and-email-verification`
+  - Worktree: `/home/evgeniy/project/my_shop_backend/.worktrees/yandex-smtp-and-email-verification`
+  - Issue: https://github.com/AutonomaCo/promelectron/issues/19
+  Риск/Техдолг:
+  - SOPS-ключ для `infra/helm/stage/test/secrets.yaml` и `infra/helm/stage/prod/secrets.yaml` отсутствует в dev-окружении; реальные значения `SMTP_USER`/`SMTP_PASSWORD` должны быть добавлены владельцем SOPS-ключа или через GitHub Secrets.
+  - Изменения в `.github/workflows/deploy.yml` требуют merge в `main` через PR с explicit user approval (BLK-001 снят, но `.github/` защищён).
+  Блокер: Нет (требуется ручное обновление SOPS-secrets / GitHub Secrets перед первым деплоем с реальными SMTP-кредами).
+
+### 2026-06-26 13:45 | backend-dev | yandex-smtp-and-email-verification — реализован backend Phase 1 + Phase 2
+  Роль: backend-dev.
+  Запрос: реализовать backend часть задачи #19 (Yandex SMTP + email verification) согласно spec.md.
+  Выполнено:
+  - `backend/src/app/core/config.py`: добавлены `SMTP_USE_TLS`, `SMTP_STARTTLS`, `SMTP_FROM_NAME`, `EMAIL_VERIFY_TOKEN_TTL_MINUTES`, `VERIFY_BASE_URL`; `SMTP_TLS` оставлен как deprecated alias для `SMTP_STARTTLS`.
+  - `backend/src/app/services/email_service.py`: поддержка `use_tls`/`start_tls`, retry transient ошибок, `send_verification_email`, fallback-логирование при пустых SMTP_USER/SMTP_PASSWORD.
+  - `backend/src/app/models/user.py`: добавлен `User.email_verified`, новый класс `EmailVerificationToken` с индексами.
+  - `backend/alembic/versions/b3edea26617e_add_email_verified_and_verification_.py`: миграция только для `users.email_verified` + таблицы `email_verification_tokens`.
+  - `backend/src/app/schemas/user.py`: `email_verified` в `UserOut`, новая `ResendVerificationRequest`.
+  - `backend/src/app/services/user_service.py`: `register_user` создаёт verification token и отправляет письмо best-effort; helper'ы `create_email_verification_token`, `verify_email_token`, `resend_verification_email`, `invalidate_email_verification_tokens`; `update_profile` сбрасывает `email_verified` и инвалидирует токены при смене email.
+  - `backend/src/app/api/users.py`: trailing slash для `/register/`, `/login/`, `/me/`, `/me/password/`.
+  - `backend/src/app/api/auth.py`: новые endpoints `GET /auth/verify-email/` (302 redirect) и `POST /auth/resend-verification/` (rate limit); OAuth callback выставляет `email_verified` для провайдеров с подтверждённым email.
+  - `backend/tests/test_email.py`: тесты `EmailService` (implicit TLS, STARTTLS, From header, fallback logging, retry).
+  - `backend/tests/test_email_verification.py`: тесты верификации (token creation, verify-email redirect, invalid/expired/reuse, resend, email change resets flag).
+  - `backend/tests/test_auth.py`: URL'ы приведены к trailing slash, добавлены assert'ы `email_verified`, обновлён `_make_oauth_settings`.
+  - `backend/.env.example` и корневой `.env.example`: актуальные SMTP-переменные и настройки верификации.
+  - `PROJECT_CONTEXT.md`, `.agent/BACKLOG.md`, `.agent/BLOCKERS.md`: BLK-005 снят (креды получены), задача #43/#19 в `in_progress`, статус backend Phase 1+2 обновлён.
+  Проверки:
+  - `make test-backend` — 315/315 ✅
+  - `ruff check src/ tests/` — чисто ✅
+  - `alembic downgrade -1 && alembic upgrade head` — чисто ✅
+  Git:
+  - Branch: `feature/yandex-smtp-and-email-verification`
+  - Commits: `864e88b` (backend Phase 1+2), `eceb129` (docs update)
+  - Issue: https://github.com/AutonomaCo/promelectron/issues/19
+  Риск/Техдолг:
+  - Frontend-часть (баннер в профиле, страницы verify-email/success/error) — отдельный sub-task / frontend-dev.
+  - Helm values и SOPS-secrets — отдельный devops sub-task (BLK-001 защита `.github/` снята, но infra-изменения требуют ручной проверки).
+  Блокер: Нет.
+
 ### 2026-06-25 13:50 | orchestrator | yandex-smtp-and-email-verification — обновление задачи #19
   Роль: orchestrator.
   Запрос пользователя: объединить требования из файла (Yandex SMTP + email verification) с задачей #19 и обновить GitHub/backlog.
@@ -1445,4 +1582,40 @@
   Риск/Техдолг:
   - В diff worktree присутствуют frontend-изменения, внесённые ранее; они не затронуты данной сессией.
   - Frontend-находки F009–F013, F017–F018 остаются OPEN и требуют frontend-dev.
+  Блокер: Нет
+
+### 2026-06-29 | frontend-dev | Исправление frontend-находок review для yandex-smtp-and-email-verification (Iteration 1)
+  Изменено:
+  - `frontend/src/views/ProfileEdit.vue`: добавлен импорт `setUser` из `useAuth`, вызов `setUser(data)` после `fetchProfile()` для корректного отображения `emailVerified` при прямом заходе.
+  - `frontend/src/views/VerifyEmail.vue`: удалён мёртвый `error` ref и соответствующий шаблон (`v-else-if="error"`), компонент всегда выполняет redirect.
+  - `frontend/src/__tests__/ProfileEdit.spec.js`: mock `useAuth` больше не задаёт `emailVerified` напрямую; статус верификации выводится из ответа API (`mockProfile.email_verified`) через `setUser`.
+  Результат:
+  - `npm run test -- --run`: 241/241 ✅
+  - `npm run lint`: чисто ✅
+  Риск/Техдолг:
+  - Backend-находки F001–F006, F010–F014 остаются OPEN и требуют backend-dev.
+  Блокер: Нет
+
+
+### 2026-06-29 | backend-dev | Исправление backend-находок review для yandex-smtp-and-email-verification (Iteration 1)
+  Изменено:
+  - `backend/src/app/services/email_service.py`: fallback-лог теперь использует `<redacted>` вместо реального email получателя (F001).
+  - `backend/src/app/services/user_service.py`: добавлен `import hmac`; `verify_email_token` выполняет `hmac.compare_digest(computed_hash, token_row.token_hash)` перед отметкой токена использованным (F002).
+  - `backend/src/app/api/auth.py`: удалена локальная `_get_optional_user`, endpoint `/auth/resend-verification/` теперь использует `Depends(get_optional_user)` из `src.app.utils.auth` с проверкой JWT denylist (F003).
+  - `backend/src/app/core/config.py`: `verify_base_url` проходит валидацию `_validate_frontend_url` в production (F004); удалено deprecated поле `smtp_tls` из `Settings` (F014).
+  - `backend/src/app/api/auth.py`: `RedirectResponse` в `/auth/verify-email/` возвращает `status_code=302` (F005).
+  - `backend/src/app/api/auth.py`: убрано дублирующее присвоение `user.email_verified = True` при OAuth автолинковке; финальный блок обновления профиля отвечает за коммит (F006).
+  - `backend/src/app/api/auth.py`: query-параметр `token` в `/auth/verify-email/` ограничен `max_length=128` (F010).
+  - `backend/src/app/api/auth.py`: `/auth/resend-verification/` пропускает создание токена/письма, если пользователь уже `email_verified=True`, но всё равно возвращает generic success (F011).
+  - `backend/tests/test_email.py`: обновлён `test_send_email_logs_when_credentials_missing` — проверяет `<redacted>` и отсутствие email в логе; убран `smtp_tls` из `_make_settings`.
+  - `backend/tests/test_auth.py`: убран `smtp_tls` из `_make_oauth_settings`.
+  - `backend/tests/test_email_verification.py`: статусы redirect обновлены до `302`; `test_verify_email_token_invalid_raises` теперь использует `pytest.raises(HTTPException)` с проверкой `status_code`/`detail` (F012); добавлены тесты `test_resend_verification_skips_already_verified` (F011) и `test_resend_verification_rate_limit_blocks_second_request` (F013).
+  Результат:
+  - `make test-backend`: 317 passed ✅
+  - `ruff check src/ tests/`: zero errors ✅
+  - `alembic downgrade -1 && alembic upgrade head`: прошло успешно ✅
+  Риск/Техдолг:
+  - Frontend-находки F007–F009 уже исправлены в предыдущей сессии.
+  - Backend-находки F001–F006, F010–F014 закрыты.
+  - H001 (GET verify-email сразу потребляет токен) остаётся accepted risk для MVP.
   Блокер: Нет

@@ -96,7 +96,16 @@
           </div>
 
           <div class="field">
-            <label class="field-label">Email <span class="required">*</span></label>
+            <label class="field-label">
+              Email <span class="required">*</span>
+              <span
+                class="verify-badge"
+                :class="emailVerified ? 'verify-badge--verified' : 'verify-badge--unverified'"
+                data-testid="edit-profile-email-status"
+              >
+                {{ emailVerified ? 'Подтверждён' : 'Не подтверждён' }}
+              </span>
+            </label>
             <input
               v-model="form.email"
               type="email"
@@ -106,6 +115,13 @@
               data-testid="edit-profile-email"
             />
             <span v-if="errors.email" class="field-error" data-testid="edit-profile-email-error">{{ errors.email }}</span>
+            <p
+              v-if="emailChanged"
+              class="field-hint field-hint--warning"
+              data-testid="edit-profile-email-warning"
+            >
+              После смены email потребуется повторное подтверждение.
+            </p>
           </div>
 
           <div class="field">
@@ -245,7 +261,7 @@ import { normalizePhone, PHONE_REGEX, NAME_REGEX } from '@/composables/useGuestC
 import AddressForm from '@/components/AddressForm.vue';
 import SkeletonProfile from '@/components/SkeletonProfile.vue';
 
-const { setAuth } = useAuth();
+const { setAuth, setUser, emailVerified } = useAuth();
 
 const loading = ref(true);
 const savingProfile = ref(false);
@@ -273,6 +289,9 @@ const showConfirm = ref(false);
 const avatarUrl = ref('');
 const avatarUploading = ref(false);
 const avatarProgress = ref(0);
+const originalEmail = ref('');
+
+const emailChanged = computed(() => form.value.email.trim() !== originalEmail.value);
 
 const initials = computed(() => {
   const name = `${form.value.first_name} ${form.value.last_name}`.trim() || form.value.email || '?';
@@ -326,11 +345,13 @@ const fetchProfile = async () => {
     form.value.patronymic = data.patronymic || '';
     form.value.country_code = data.country_code || 'RU';
     form.value.email = data.email || '';
+    originalEmail.value = data.email || '';
     form.value.phone = data.phone || '';
     form.value.shipping_address = data.shipping_address || {
       region: '', district: '', city: '', street: '', house: '', apartment: '',
     };
     avatarUrl.value = data.avatar_url || '';
+    setUser(data);
   } catch {
     // silently fail
   } finally {
@@ -396,7 +417,8 @@ async function handleSaveProfile() {
     const hasAny = addr && (addr.region || addr.district || addr.city || addr.street || addr.house || addr.apartment);
     payload.shipping_address = hasAny ? { ...addr } : null;
 
-    const { data } = await api.patch('/me', payload);
+    const { data } = await api.patch('/me/', payload);
+    originalEmail.value = data.email || '';
     setAuth(localStorage.getItem('access_token'), data);
     profileSuccess.value = true;
     setTimeout(() => (profileSuccess.value = false), 3000);
@@ -431,7 +453,7 @@ async function handleChangePassword() {
 
   savingPassword.value = true;
   try {
-    await api.patch('/me/password', {
+    await api.patch('/me/password/', {
       old_password: passwordForm.value.old_password,
       new_password: passwordForm.value.new_password,
     });
@@ -678,6 +700,34 @@ onMounted(fetchProfile);
 
 .field-error {
   font-size: 12px;
+  color: var(--color-danger);
+}
+
+.field-hint {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.field-hint--warning {
+  color: #b45309;
+}
+
+.verify-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.verify-badge--verified {
+  background: #e6f7ed;
+  color: #0d7a3e;
+}
+
+.verify-badge--unverified {
+  background: #fff0f0;
   color: var(--color-danger);
 }
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import { createRouter, createWebHistory } from 'vue-router'
 import Login from '@/views/Login.vue'
 
@@ -90,7 +90,7 @@ describe('Login.vue', () => {
     })
 
     await router.isReady()
-    await wrapper.vm.$nextTick()
+    await flushPromises()
 
     expect(wrapper.text()).toContain('Google')
     expect(wrapper.text()).toContain('Яндекс')
@@ -109,7 +109,7 @@ describe('Login.vue', () => {
     })
 
     await router.isReady()
-    await wrapper.vm.$nextTick()
+    await flushPromises()
 
     expect(wrapper.text()).not.toContain('Google')
     expect(wrapper.text()).toContain('Яндекс')
@@ -128,7 +128,7 @@ describe('Login.vue', () => {
     })
 
     await router.isReady()
-    await wrapper.vm.$nextTick()
+    await flushPromises()
 
     expect(wrapper.text()).not.toContain('Google')
     expect(wrapper.text()).not.toContain('Яндекс')

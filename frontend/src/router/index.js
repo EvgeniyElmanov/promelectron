@@ -25,6 +25,9 @@ import PaymentFailed from '../views/PaymentFailed.vue';
 import Notifications from '../views/Notifications.vue';
 import ForgotPassword from '../views/ForgotPassword.vue';
 import ResetPassword from '../views/ResetPassword.vue';
+import VerifyEmail from '../views/VerifyEmail.vue';
+import VerifyEmailSuccess from '../views/VerifyEmailSuccess.vue';
+import VerifyEmailError from '../views/VerifyEmailError.vue';
 
 const routes = [
   { path: '/', component: Products },
@@ -32,6 +35,9 @@ const routes = [
   { path: '/register', component: Register },
   { path: '/forgot-password', component: ForgotPassword },
   { path: '/reset-password', component: ResetPassword },
+  { path: '/verify-email', component: VerifyEmail },
+  { path: '/verify-email/success', component: VerifyEmailSuccess },
+  { path: '/verify-email/error', component: VerifyEmailError },
   { path: '/cart', component: Cart },
   { path: '/orders', component: Orders, meta: { requiresAuth: true } },
   { path: '/orders/:id', component: OrderDetail, meta: { requiresAuth: true } },

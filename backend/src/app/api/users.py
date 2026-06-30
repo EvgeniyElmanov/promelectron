@@ -31,24 +31,24 @@ AVATAR_ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
 router = APIRouter()
 
 
-@router.post("/register")
+@router.post("/register/")
 @conditional_limit("50/minute")
 async def register_user(request: Request, user_data: UserCreate, db: AsyncSession = Depends(get_db)):
     return await UserService.register_user(user_data=user_data, db=db)
 
 
-@router.post("/login")
+@router.post("/login/")
 @conditional_limit("50/minute")
 async def login_user(request: Request, user_data: UserCreate, db: AsyncSession = Depends(get_db)):
     return await UserService.login_user(user_data=user_data, db=db)
 
 
-@router.get("/me", response_model=UserOut)
+@router.get("/me/", response_model=UserOut)
 async def read_users_me(current_user: User = Depends(get_current_user)):
     return current_user
 
 
-@router.patch("/me", response_model=UserOut)
+@router.patch("/me/", response_model=UserOut)
 async def update_users_me(
     user_data: UserUpdate,
     current_user: User = Depends(get_current_user),
@@ -59,7 +59,7 @@ async def update_users_me(
     )
 
 
-@router.patch("/me/password")
+@router.patch("/me/password/")
 async def change_password(
     password_data: PasswordChange,
     current_user: User = Depends(get_current_user),

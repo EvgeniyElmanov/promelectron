@@ -2,6 +2,7 @@ import logging
 from datetime import timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import RedirectResponse
 from fastapi.security import HTTPAuthorizationCredentials
 from jose import JWTError, jwt
 from sqlalchemy import func, select
@@ -14,12 +15,17 @@ from src.app.core.config import ALGORITHM, SECRET_KEY, settings
 from src.app.db.database import get_db
 from src.app.models.social_account import SocialAccount
 from src.app.models.user import User
-from src.app.schemas.user import PasswordResetConfirm, PasswordResetRequest, UserOut
+from src.app.schemas.user import (
+    PasswordResetConfirm,
+    PasswordResetRequest,
+    ResendVerificationRequest,
+    UserOut,
+)
 from src.app.services.feature_flags import is_enabled
 from src.app.services.oauth_state import create_state, delete_state, generate_pkce_pair, peek_state
 from src.app.services.token_denylist import revoke as revoke_token
 from src.app.services.user_service import UserService, _token_for_user
-from src.app.utils.auth import get_current_user, optional_security
+from src.app.utils.auth import get_current_user, get_optional_user, optional_security
 from src.app.utils.rate_limiter import conditional_limit
 
 logger = logging.getLogger(__name__)
@@ -289,6 +295,8 @@ async def oauth_callback(
     )
     social = social_result.scalars().first()
 
+    provider_email_verified = _provider_email_verified(provider, user_info)
+
     if social:
         user_result = await db.execute(select(User).where(User.id == social.user_id))
         user = user_result.scalars().first()
@@ -309,7 +317,7 @@ async def oauth_callback(
         if user:
             # F-03: автолинковка к существующему аккаунту только при
             # подтверждённом провайдером email — иначе риск захвата аккаунта.
-            if not _provider_email_verified(provider, user_info):
+            if not provider_email_verified:
                 # Fix #10: corrected instruction — no "link in settings" ghost flow.
                 raise HTTPException(
                     status_code=409,
@@ -328,6 +336,7 @@ async def oauth_callback(
                     avatar_url=avatar_url,
                     hashed_password=None,  # OAuth-пользователь без пароля (F-11)
                     is_active=True,
+                    email_verified=provider_email_verified,
                 )
                 db.add(user)
                 await db.commit()
@@ -384,6 +393,9 @@ async def oauth_callback(
         updated = True
     if avatar_url and not user.avatar_url:
         user.avatar_url = avatar_url
+        updated = True
+    if provider_email_verified and not user.email_verified:
+        user.email_verified = True
         updated = True
     if updated:
         await db.commit()
@@ -455,3 +467,65 @@ async def password_reset(
     return await UserService.reset_password(
         token=data.token, new_password=data.new_password, db=db
     )
+
+
+@router.get("/verify-email/")
+@conditional_limit("5/minute")
+async def verify_email(
+    request: Request,
+    token: str = Query(..., min_length=1, max_length=128),
+    db: AsyncSession = Depends(get_db),
+):
+    """Подтвердить email по одноразовому токену и редиректить на фронтенд."""
+    base_url = settings.verify_base_url or settings.frontend_url
+    base_url = base_url.rstrip("/")
+
+    try:
+        await UserService.verify_email_token(token=token, db=db)
+        return RedirectResponse(
+            url=f"{base_url}/verify-email/success", status_code=302
+        )
+    except HTTPException as exc:
+        reason = "expired" if exc.detail.lower() == "expired token" else "invalid"
+        return RedirectResponse(
+            url=f"{base_url}/verify-email/error?reason={reason}",
+            status_code=302,
+        )
+
+
+@router.post("/resend-verification/")
+@conditional_limit("1/minute")
+async def resend_verification(
+    request: Request,
+    data: ResendVerificationRequest,
+    current_user: User | None = Depends(get_optional_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Повторно отправить письмо для подтверждения email.
+
+    Авторизованный режим: использует текущего пользователя.
+    Неавторизованный режим: принимает email. Всегда возвращает одинаковый
+    ответ, чтобы не раскрывать существование аккаунта.
+    """
+    target_user = current_user
+    if target_user is None and data.email:
+        normalized_email = data.email.lower()
+        result = await db.execute(
+            select(User).where(func.lower(User.email) == normalized_email)
+        )
+        target_user = result.scalars().first()
+
+    # F-011: skip creating a new token/email if the user is already verified,
+    # but still return the same generic success response.
+    if target_user and not target_user.email_verified:
+        try:
+            await UserService.resend_verification_email(
+                user=target_user, db=db
+            )
+        except Exception:
+            # Best-effort: do not leak failures.
+            pass
+
+    return {
+        "message": "If the email exists, instructions have been sent"
+    }

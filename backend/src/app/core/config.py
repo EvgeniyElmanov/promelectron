@@ -25,7 +25,11 @@ class Settings:
     smtp_user: str
     smtp_password: str
     smtp_from: str
-    smtp_tls: bool
+    smtp_from_name: str
+    smtp_use_tls: bool
+    smtp_starttls: bool
+    email_verify_token_ttl_minutes: int
+    verify_base_url: str
     redis_url: str
     api_base_url: str
     minio_endpoint: str | None
@@ -125,7 +129,16 @@ settings = Settings(
     smtp_user=os.getenv("SMTP_USER", ""),
     smtp_password=os.getenv("SMTP_PASSWORD", ""),
     smtp_from=os.getenv("SMTP_FROM", "noreply@myshop.ru"),
-    smtp_tls=os.getenv("SMTP_TLS", "true").lower() == "true",
+    smtp_from_name=os.getenv("SMTP_FROM_NAME", "MyShop"),
+    smtp_use_tls=os.getenv("SMTP_USE_TLS", "false").lower() == "true",
+    smtp_starttls=os.getenv("SMTP_STARTTLS", os.getenv("SMTP_TLS", "true")).lower()
+    == "true",
+    email_verify_token_ttl_minutes=int(
+        os.getenv("EMAIL_VERIFY_TOKEN_TTL_MINUTES", "60")
+    ),
+    verify_base_url=_validate_frontend_url(
+        os.getenv("VERIFY_BASE_URL", os.getenv("FRONTEND_URL", "http://localhost:5173"))
+    ),
     redis_url=os.getenv("REDIS_URL", "redis://redis:6379/0"),
     api_base_url=os.getenv("API_BASE_URL", ""),
     minio_endpoint=os.getenv("MINIO_ENDPOINT"),

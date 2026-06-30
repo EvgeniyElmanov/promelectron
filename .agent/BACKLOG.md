@@ -35,7 +35,7 @@
 | 14 | Добавить `.dockerignore` в `backend/` | | devops | P1 | todo | — | 1 день | — |
 | 15 | Убрать `console.error` из production-кода фронтенда | | frontend-dev | P2 | todo | — | 1 день | — |
 | 16 | Написать unit-тесты для `useCart` composable | | frontend-dev | P2 | todo | — | 2 дня | — |
-| 43 | Подключить реальный SMTP и отправку email (BLK-005) | [#19](https://github.com/AutonomaCo/promelectron/issues/19) | backend-dev + devops | P1 | **blocked** | — | 2 дня | BLK-005 |
+| 43 | Подключить реальный SMTP и отправку email + верификацию email при регистрации (BLK-005) | [#19](https://github.com/AutonomaCo/promelectron/issues/19) | backend-dev + frontend-dev + devops | P0 | **backend done / frontend pending** | — | 6 дней | — |
 
 **Цель спринта:** Реальные платежи работают, гостевая корзина в проде, OAuth production-ready, нет критичных security issues.
 

@@ -1,3 +1,6 @@
+import hashlib
+import hmac
+import secrets
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
@@ -6,10 +9,15 @@ from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.app.core.config import ACCESS_TOKEN_EXPIRE_MINUTES
+from src.app.core.config import ACCESS_TOKEN_EXPIRE_MINUTES, settings
 from src.app.models.recipient import Recipient
 from src.app.models.supplier import Supplier
-from src.app.models.user import PasswordResetToken, User, UserAddress
+from src.app.models.user import (
+    EmailVerificationToken,
+    PasswordResetToken,
+    User,
+    UserAddress,
+)
 from src.app.schemas.user import UserAddressCreate, UserCreate, UserOut
 from src.app.utils.auth import create_access_token, hash_password, verify_password
 
@@ -46,6 +54,7 @@ class UserService:
             hashed_password=hashed_pw,
             full_name=user_data.full_name,
             role=role,
+            email_verified=False,
         )
         db.add(new_user)
         await db.commit()
@@ -62,6 +71,20 @@ class UserService:
             )
             db.add(supplier)
             await db.commit()
+
+        # Best-effort email verification token + email.
+        try:
+            verification_token = await UserService.create_email_verification_token(
+                user_id=new_user.id, db=db
+            )
+            from src.app.services.email_service import EmailService
+
+            await EmailService.send_verification_email(
+                to=new_user.email, token=verification_token
+            )
+        except Exception:
+            # Email delivery is best-effort; registration must not fail.
+            pass
 
         access_token = _token_for_user(new_user)
         return {
@@ -111,6 +134,10 @@ class UserService:
             if existing.scalars().first():
                 raise HTTPException(status_code=400, detail="Email already in use")
             user.email = new_email
+            user.email_verified = False
+            await UserService.invalidate_email_verification_tokens(
+                user_id=user.id, db=db
+            )
 
         if user_data.full_name is not None:
             user.full_name = user_data.full_name
@@ -388,3 +415,132 @@ class UserService:
                 return {"message": "Password reset successfully"}
 
         raise HTTPException(status_code=400, detail="Invalid or expired token")
+
+    @staticmethod
+    async def create_email_verification_token(
+        user_id: int, db: AsyncSession
+    ) -> str:
+        """Создать одноразовый токен подтверждения email. Возвращает plaintext токен."""
+        now = datetime.now(timezone.utc)
+        # Invalidate all unused tokens for this user before creating a new one.
+        await db.execute(
+            update(EmailVerificationToken)
+            .where(
+                EmailVerificationToken.user_id == user_id,
+                EmailVerificationToken.used_at.is_(None),
+            )
+            .values(used_at=now)
+        )
+
+        token = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(token.encode()).hexdigest()
+        expires_at = now + timedelta(minutes=settings.email_verify_token_ttl_minutes)
+
+        verification_token = EmailVerificationToken(
+            user_id=user_id,
+            token_hash=token_hash,
+            expires_at=expires_at,
+        )
+        db.add(verification_token)
+        await db.commit()
+        await db.refresh(verification_token)
+        return token
+
+    @staticmethod
+    async def verify_email_token(token: str, db: AsyncSession) -> User:
+        """Подтвердить email по одноразовому токену. Возвращает пользователя."""
+        computed_hash = hashlib.sha256(token.encode()).hexdigest()
+        now = datetime.now(timezone.utc)
+
+        # Look up the token first so we can distinguish invalid vs expired.
+        token_result = await db.execute(
+            select(EmailVerificationToken).where(
+                EmailVerificationToken.token_hash == computed_hash
+            )
+        )
+        token_row = token_result.scalars().first()
+        if token_row is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token"
+            )
+        # F-002: constant-time comparison of the computed and stored hashes.
+        if not hmac.compare_digest(computed_hash, token_row.token_hash):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token"
+            )
+        if token_row.used_at is not None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token"
+            )
+        if token_row.expires_at <= now:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Expired token"
+            )
+
+        # Atomic consume: mark used and return user_id only for a valid token.
+        result = await db.execute(
+            update(EmailVerificationToken)
+            .where(
+                EmailVerificationToken.token_hash == computed_hash,
+                EmailVerificationToken.used_at.is_(None),
+                EmailVerificationToken.expires_at > now,
+            )
+            .values(used_at=now)
+            .returning(EmailVerificationToken.user_id)
+        )
+        row = result.fetchone()
+        if not row:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid or expired token",
+            )
+
+        user_id = row[0]
+        user_result = await db.execute(select(User).where(User.id == user_id))
+        user = user_result.scalars().first()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+            )
+
+        user.email_verified = True
+        # Invalidate any remaining unused tokens for this user.
+        await db.execute(
+            update(EmailVerificationToken)
+            .where(
+                EmailVerificationToken.user_id == user.id,
+                EmailVerificationToken.used_at.is_(None),
+            )
+            .values(used_at=now)
+        )
+        await db.commit()
+        await db.refresh(user)
+        return user
+
+    @staticmethod
+    async def resend_verification_email(
+        user: User, db: AsyncSession
+    ) -> None:
+        """Инвалидировать старые токены, создать новый и отправить письмо."""
+        token = await UserService.create_email_verification_token(
+            user_id=user.id, db=db
+        )
+        from src.app.services.email_service import EmailService
+
+        await EmailService.send_verification_email(to=user.email, token=token)
+
+    @staticmethod
+    async def invalidate_email_verification_tokens(
+        user_id: int, db: AsyncSession
+    ) -> None:
+        """Пометить все неиспользованные токены пользователя как использованные."""
+        now = datetime.now(timezone.utc)
+        await db.execute(
+            update(EmailVerificationToken)
+            .where(
+                EmailVerificationToken.user_id == user_id,
+                EmailVerificationToken.used_at.is_(None),
+            )
+            .values(used_at=now)
+        )
+        await db.commit()

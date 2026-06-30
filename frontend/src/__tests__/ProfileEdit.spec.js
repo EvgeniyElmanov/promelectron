@@ -10,6 +10,7 @@ const mockProfile = {
   country_code: 'RU',
   email: 'ivan@example.com',
   phone: '+79990001122',
+  email_verified: true,
 }
 
 vi.mock('@/services/api', () => ({
@@ -25,12 +26,23 @@ vi.mock('@/services/api', () => ({
   },
 }))
 
-vi.mock('@/composables/useAuth', () => ({
-  useAuth: () => ({
-    user: { value: mockProfile },
-    setAuth: vi.fn(),
-  }),
-}))
+vi.mock('@/composables/useAuth', () => {
+  const currentUser = { value: null }
+  return {
+    useAuth: () => ({
+      get user() {
+        return { value: currentUser.value }
+      },
+      setAuth: vi.fn(),
+      setUser: (userData) => {
+        currentUser.value = userData
+      },
+      get emailVerified() {
+        return { value: !!currentUser.value?.email_verified }
+      },
+    }),
+  }
+})
 
 describe('ProfileEdit.vue', () => {
   it('отображает заголовок страницы', async () => {
@@ -152,5 +164,43 @@ describe('ProfileEdit.vue', () => {
     await flushPromises()
 
     expect(wrapper.find('[data-testid="edit-profile-phone-error"]').exists()).toBe(false)
+  })
+
+  it('отображает статус подтверждения email', async () => {
+    const router = createRouter({
+      history: createWebHistory(),
+      routes: [{ path: '/profile/edit', component: ProfileEdit }],
+    })
+    await router.push('/profile/edit')
+    await router.isReady()
+
+    const wrapper = mount(ProfileEdit, {
+      global: { plugins: [router] },
+    })
+    await vi.waitFor(() => expect(wrapper.find('[data-testid="edit-profile-email-status"]').exists()).toBe(true))
+
+    expect(wrapper.find('[data-testid="edit-profile-email-status"]').text()).toContain('Подтверждён')
+  })
+
+  it('показывает предупреждение при смене email', async () => {
+    const router = createRouter({
+      history: createWebHistory(),
+      routes: [{ path: '/profile/edit', component: ProfileEdit }],
+    })
+    await router.push('/profile/edit')
+    await router.isReady()
+
+    const wrapper = mount(ProfileEdit, {
+      global: { plugins: [router] },
+    })
+    await vi.waitFor(() => expect(wrapper.find('[data-testid="edit-profile-email"]').exists()).toBe(true))
+
+    expect(wrapper.find('[data-testid="edit-profile-email-warning"]').exists()).toBe(false)
+
+    await wrapper.find('[data-testid="edit-profile-email"]').setValue('new@example.com')
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="edit-profile-email-warning"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="edit-profile-email-warning"]').text()).toContain('повторное подтверждение')
   })
 })

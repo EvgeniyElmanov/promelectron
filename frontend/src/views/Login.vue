@@ -96,6 +96,7 @@
 import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import api from '@/services/api';
+import { login as apiLogin } from '@/api/auth';
 import { useAuth } from '@/composables/useAuth';
 import { useCart } from '@/composables/useCart';
 
@@ -144,7 +145,7 @@ async function handleLogin() {
 
   isSubmitting.value = true;
   try {
-    const response = await api.post('/login', {
+    const response = await apiLogin({
       email: email.value,
       password: password.value,
     });

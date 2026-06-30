@@ -152,6 +152,15 @@
         </button>
       </form>
 
+      <!-- Success message -->
+      <div v-if="registrationSuccess" class="auth-success" data-testid="register-success">
+        <p>
+          Регистрация прошла успешно! Письмо с подтверждением отправлено на
+          <strong>{{ email }}</strong>.
+        </p>
+        <p class="auth-success__hint">Проверьте почту и перейдите по ссылке в письме.</p>
+      </div>
+
       <!-- Global error -->
       <p v-if="serverError" class="auth-error" data-testid="register-error">{{ serverError }}</p>
 
@@ -181,13 +190,16 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '@/services/api';
+import { register as apiRegister } from '@/api/auth';
 import { useAuth } from '@/composables/useAuth';
 
 const router = useRouter();
 const { setAuth } = useAuth();
+
+let redirectTimeoutId = null;
 
 const fullName = ref('');
 const email = ref('');
@@ -198,6 +210,7 @@ const showPassword = ref(false);
 const showConfirm = ref(false);
 const isSubmitting = ref(false);
 const serverError = ref('');
+const registrationSuccess = ref(false);
 const errors = ref({});
 const providers = ref({ google: false, yandex: false });
 
@@ -261,24 +274,32 @@ function validate() {
 
 async function handleRegister() {
   serverError.value = '';
+  registrationSuccess.value = false;
   if (!validate()) return;
 
   isSubmitting.value = true;
   try {
-    const response = await api.post('/register', {
+    const response = await apiRegister({
       email: email.value,
       password: password.value,
       full_name: fullName.value.trim() || null,
       role: selectedRole.value,
     });
     setAuth(response.data.access_token, response.data.user);
-    router.push('/');
+    registrationSuccess.value = true;
+    redirectTimeoutId = setTimeout(() => router.push('/'), 3000);
   } catch (err) {
     serverError.value = err.response?.data?.detail || 'Ошибка регистрации. Попробуйте позже.';
   } finally {
     isSubmitting.value = false;
   }
 }
+
+onUnmounted(() => {
+  if (redirectTimeoutId) {
+    clearTimeout(redirectTimeoutId);
+  }
+});
 
 async function loginWithGoogle() {
   try {
@@ -444,6 +465,23 @@ async function loginWithYandex() {
   color: var(--color-danger);
   font-size: 14px;
   text-align: center;
+}
+
+.auth-success {
+  margin-top: 12px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: #e6f7ed;
+  color: #0d7a3e;
+  font-size: 14px;
+  text-align: center;
+}
+
+.auth-success__hint {
+  margin-top: 6px;
+  font-size: 13px;
+  color: #0d7a3e;
+  opacity: 0.9;
 }
 
 .auth-divider {
