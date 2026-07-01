@@ -1,6 +1,8 @@
 services:
   frontend:
-    image: mcr.microsoft.com/playwright:v1.61.0-jammy
+    build:
+      context: .
+      dockerfile: Dockerfile.devcontainer
     working_dir: /app
     ports:
       - "5173:5173"
@@ -11,4 +13,5 @@ services:
       - VITE_YANDEX_MAPS_API_KEY=test-yandex-maps-api-key
     volumes:
       - ../frontend:/app
+      - /app/node_modules
     command: sh -c "npm install --silent && npm run dev -- --host 0.0.0.0"
