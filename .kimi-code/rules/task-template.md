@@ -1,4 +1,13 @@
-> Используйте этот шаблон при создании `.agent/tasks/TASK_XXX.md` для любой задачи.
+---
+name: task-template
+description: >
+  Template for the per-task coordination file `.agent/runs/<task-id>/task.md`.
+type: prompt
+disableModelInvocation: true
+---
+
+> Используйте этот шаблон для содержимого `.agent/runs/<task-id>/task.md` (task-id — kebab-case), который создаёт пайплайн для любой задачи.
+> Примечание: формат `.agent/tasks/TASK_XXX.md` — устаревший (легаси); актуальная схема — `.agent/runs/<task-id>/task.md`.
 
 ## ЗАДАЧА
 [Краткое название, 3-7 слов]

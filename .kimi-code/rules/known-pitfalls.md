@@ -1,3 +1,11 @@
+---
+name: known-pitfalls
+description: >
+  Real pitfalls that have already happened in Promelectron. Check before committing.
+type: prompt
+disableModelInvocation: true
+---
+
 # Known pitfalls (Promelectron)
 
 > Real issues that have already happened. Check before committing.

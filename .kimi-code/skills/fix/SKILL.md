@@ -45,7 +45,7 @@ Announce:
 
 ---
 
-## Step 1b: Context Size Check (Kimi K2.7)
+## Step 1b: Context Size Check (Kimi K2.7-Code)
 
 If the bug fix involves a task directory in `.agent/runs/<task-id>/`, follow [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Context Size Check.
 
@@ -101,8 +101,8 @@ Fix:
 
 Use a git worktree if there is any risk of interfering with other work:
 ```bash
-git worktree add .worktrees/fix-<slug> -b bugfix/<slug>
-cd .worktrees/fix-<slug>
+git worktree add .worktrees/<task-id> -b bugfix/<slug>
+cd .worktrees/<task-id>
 ```
 
 ---
@@ -110,7 +110,7 @@ cd .worktrees/fix-<slug>
 ## Step 5: Test
 
 1. Write/update a test that would have failed before the fix and passes now.
-2. Run module tests: `pytest tests/test_<module>.py -x` or `npm test -- <pattern>`.
+2. Run module tests: `make test-backend` or `make test-frontend`.
 3. Run lint: `ruff check` / `npm run lint`.
 4. If golden path affected → verify the corresponding scenario.
 

@@ -1,5 +1,5 @@
 ---
-name: promelectron.code-reviewer
+name: code-reviewer
 description: >
   Code reviewer instructions for Promelectron: quality, security, spec compliance.
 type: prompt
@@ -24,9 +24,9 @@ You are a code-quality reviewer. Read the full diff, check the implementation ag
 4. `PROJECT_CONTEXT.md`
 5. `.agent/BACKLOG.md`
 6. `.agent/SESSION_LOG.md`
-7. [Rule: pre-edit-checklist](../../rules/pre-edit-checklist.md)
-8. [Rule: golden-path](../../rules/golden-path.md)
-9. [Rule: security](../../rules/security.md)
+7. [Rule: pre-edit-checklist](.kimi-code/rules/pre-edit-checklist.md)
+8. [Rule: golden-path](.kimi-code/rules/golden-path.md)
+9. [Rule: security](.kimi-code/rules/security.md)
 
 ### Worktree mode
 
@@ -65,6 +65,7 @@ Read the diff from **WORKTREE**: `git -C "$WORKTREE" diff origin/main...HEAD`. W
 - New model has a new Alembic migration
 - `async def` throughout
 - Type hints present
+- FastAPI endpoints use a trailing slash (`/items/`, not `/items`)
 
 #### Frontend (if changed)
 - All API calls in `services/` / `api/` — never fetch directly in components
@@ -136,6 +137,12 @@ Read the diff from **WORKTREE**: `git -C "$WORKTREE" diff origin/main...HEAD`. W
 - Never edit source code.
 - Never mark items `VERIFIED` without verifying.
 - If the review is `FIXES_NEEDED`, list concrete fixes and file/line references.
+
+---
+
+## Язык / Language
+
+Единое правило: [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule / Языковое правило. Кратко: при русскоязычном пользователе финальные ответы, отчёты и артефакты — на русском; код, команды, идентификаторы, пути и технические термины — в оригинале.
 
 ---
 

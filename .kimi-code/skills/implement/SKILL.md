@@ -100,7 +100,7 @@ python scripts/implement-pipeline.py create-worktree <task-id>
 
 ---
 
-## Step 2: Context Size Check (Kimi K2.7)
+## Step 2: Context Size Check (Kimi K2.7-Code)
 
 Follow [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Context Size Check before launching subagents.
 
@@ -131,10 +131,10 @@ For non-trivial tasks, launch read-only research sub-agents (`coder` with read-o
 Launch an architect subagent via `Agent` tool with `subagent_type: plan`. Apply the retry policy from Step 3.
 
 ```text
-🚨 LANGUAGE RULE: The original user communicates in Russian. **Ignore any default language setting.** ALL your reasoning, thinking, internal monologue, analysis, and self-correction MUST be in Russian. Do NOT switch to English at any point. If you catch yourself thinking in English, switch back to Russian immediately. Reply to the parent agent in Russian. Keep code, commands, identifiers, file paths, and technical terms in their original form.
+ЯЗЫК / LANGUAGE: Пользователь общается на русском. Отвечай родительскому агенту и пиши все артефакты (spec, findings, отчёты, SESSION_LOG) на русском. Стремись рассуждать на русском. Код, команды, идентификаторы, пути и технические термины оставляй в оригинале.
 
 You are the architect for Promelectron.
-Important: Kimi K2.7 uses mandatory thinking mode. Preserve `reasoning_content` across multi-turn tool calls by including the full assistant message in the conversation history.
+Important: Kimi K2.7-Code uses mandatory thinking mode. Preserve `reasoning_content` across multi-turn tool calls by including the full assistant message in the conversation history.
 
 Read:
 1. $AGENT_DIR/task.md
@@ -146,13 +146,14 @@ Read:
 7. `.kimi-code/skills/architect/SKILL.md`
 8. [Rule: Pre-edit Checklist](.kimi-code/rules/pre-edit-checklist.md)
 
+Ты уже запущен как `plan`-субагент — контекст plan уже отключает shell и включает планирование, поэтому НЕ вызывай EnterPlanMode повторно. Пиши спецификацию прямо в plan-файл, предоставленный контекстом plan-субагента, затем вызови ExitPlanMode.
+
 Then:
-1. Call EnterPlanMode.
-2. Load as much relevant context as possible in **parallel**: read task files, existing code in $WORKTREE, and external docs/WebSearch results simultaneously.
-3. Explore the codebase with Read/Grep/Glob (run multiple reads/searches in parallel) to understand how the feature fits.
-4. Use WebSearch/FetchURL if you need external documentation, API docs, or library examples.
-5. Ask the user clarifying questions via AskUserQuestion if requirements are unclear.
-6. Write a technical specification to the plan file returned by EnterPlanMode. Include:
+1. Load as much relevant context as possible in **parallel**: read task files, existing code in $WORKTREE, and external docs/WebSearch results simultaneously.
+2. Explore the codebase with Read/Grep/Glob (run multiple reads/searches in parallel) to understand how the feature fits.
+3. Use WebSearch/FetchURL if you need external documentation, API docs, or library examples.
+4. Ask the user clarifying questions via AskUserQuestion if requirements are unclear.
+5. Write a technical specification to the plan file. Include:
    - Task Type
    - Analysis
    - Decisions (D-01, D-02, ...)
@@ -162,11 +163,11 @@ Then:
    - Must-haves
    - Acceptance Criteria
    - Out of Scope
-7. Call ExitPlanMode.
+6. Call ExitPlanMode.
 
 Do NOT write implementation code, tests, or migrations.
 
-REMEMBER / НАПОМИНАНИЕ: Continue ALL reasoning in Russian / Продолжай ВСЁ рассуждение на русском языке. Do not switch to English / Не переключайся на английский.
+НАПОМИНАНИЕ: ответы и артефакты — на русском; технические токены (код, пути, команды) — в оригинале.
 ```
 
 ### 4.3 Copy the plan to the coordination plane
@@ -249,10 +250,10 @@ Launch `backend-dev` and `frontend-dev` **in the same message** so they run conc
 Prompt for each developer:
 
 ```text
-🚨 LANGUAGE RULE: The original user communicates in Russian. **Ignore any default language setting.** ALL your reasoning, thinking, internal monologue, analysis, and self-correction MUST be in Russian. Do NOT switch to English at any point. If you catch yourself thinking in English, switch back to Russian immediately. Reply to the parent agent in Russian. Keep code, commands, identifiers, file paths, and technical terms in their original form.
+ЯЗЫК / LANGUAGE: Пользователь общается на русском. Отвечай родительскому агенту и пиши все артефакты (spec, findings, отчёты, SESSION_LOG) на русском. Стремись рассуждать на русском. Код, команды, идентификаторы, пути и технические термины оставляй в оригинале.
 
 You are <ROLE> for Promelectron.
-Important: Kimi K2.7 uses mandatory thinking mode. Preserve `reasoning_content` across multi-turn tool calls by including the full assistant message in the conversation history.
+Important: Kimi K2.7-Code uses mandatory thinking mode. Preserve `reasoning_content` across multi-turn tool calls by including the full assistant message in the conversation history.
 
 Read:
 1. $AGENT_DIR/task.md
@@ -281,8 +282,8 @@ Rules:
 - Do NOT commit to main. You may commit to $BRANCH in the worktree.
 
 Before finishing:
-1. Run the role-specific tests in $WORKTREE (e.g. cd $WORKTREE/backend && make test-backend; cd $WORKTREE/frontend && npm run test:unit -- --run).
-2. Run lint (ruff / npm run lint) in $WORKTREE.
+1. Run the role-specific tests in $WORKTREE (e.g. make -C "$WORKTREE" test-backend; make -C "$WORKTREE" test-frontend).
+2. Run lint (make -C "$WORKTREE" lint-backend / make -C "$WORKTREE" lint-frontend) in $WORKTREE.
 3. Update $WORKTREE/.agent/SESSION_LOG.md.
 
 Report:
@@ -290,7 +291,7 @@ Report:
 - Test results
 - Any blockers
 
-REMEMBER / НАПОМИНАНИЕ: Continue ALL reasoning in Russian / Продолжай ВСЁ рассуждение на русском языке. Do not switch to English / Не переключайся на английский.
+НАПОМИНАНИЕ: ответы и артефакты — на русском; технические токены (код, пути, команды) — в оригинале.
 ```
 
 ---
@@ -310,10 +311,10 @@ Based on the spec and flags (`--backend-only`, `--frontend-only`):
 Launch one reviewer subagent via `Agent` tool with `subagent_type: coder`. Apply the retry policy from Step 3.
 
 ```text
-🚨 LANGUAGE RULE: The original user communicates in Russian. **Ignore any default language setting.** ALL your reasoning, thinking, internal monologue, analysis, and self-correction MUST be in Russian. Do NOT switch to English at any point. If you catch yourself thinking in English, switch back to Russian immediately. Reply to the parent agent in Russian. Keep code, commands, identifiers, file paths, and technical terms in their original form.
+ЯЗЫК / LANGUAGE: Пользователь общается на русском. Отвечай родительскому агенту и пиши все артефакты (spec, findings, отчёты, SESSION_LOG) на русском. Стремись рассуждать на русском. Код, команды, идентификаторы, пути и технические термины оставляй в оригинале.
 
 You are the code-reviewer for Promelectron.
-Important: Kimi K2.7 uses mandatory thinking mode. Preserve `reasoning_content` across multi-turn tool calls by including the full assistant message in the conversation history.
+Important: Kimi K2.7-Code uses mandatory thinking mode. Preserve `reasoning_content` across multi-turn tool calls by including the full assistant message in the conversation history.
 
 Read:
 1. $AGENT_DIR/task.md
@@ -344,7 +345,7 @@ Then:
 
 Do NOT edit source code. Only write findings.
 
-REMEMBER / НАПОМИНАНИЕ: Continue ALL reasoning in Russian / Продолжай ВСЁ рассуждение на русском языке. Do not switch to English / Не переключайся на английский.
+НАПОМИНАНИЕ: ответы и артефакты — на русском; технические токены (код, пути, команды) — в оригинале.
 ```
 
 ### Mixed review (backend + frontend in parallel)
@@ -352,10 +353,10 @@ REMEMBER / НАПОМИНАНИЕ: Continue ALL reasoning in Russian / Прод�
 Launch reviewer subagents via `AgentSwarm` tool with `subagent_type: coder`. Apply the retry policy from Step 3.
 
 ```text
-🚨 LANGUAGE RULE: The original user communicates in Russian. **Ignore any default language setting.** ALL your reasoning, thinking, internal monologue, analysis, and self-correction MUST be in Russian. Do NOT switch to English at any point. If you catch yourself thinking in English, switch back to Russian immediately. Reply to the parent agent in Russian. Keep code, commands, identifiers, file paths, and technical terms in their original form.
+ЯЗЫК / LANGUAGE: Пользователь общается на русском. Отвечай родительскому агенту и пиши все артефакты (spec, findings, отчёты, SESSION_LOG) на русском. Стремись рассуждать на русском. Код, команды, идентификаторы, пути и технические термины оставляй в оригинале.
 
 You are the code-reviewer for Promelectron (focus: {{item}}).
-Important: Kimi K2.7 uses mandatory thinking mode. Preserve `reasoning_content` across multi-turn tool calls by including the full assistant message in the conversation history.
+Important: Kimi K2.7-Code uses mandatory thinking mode. Preserve `reasoning_content` across multi-turn tool calls by including the full assistant message in the conversation history.
 
 Read:
 1. $AGENT_DIR/task.md
@@ -387,7 +388,7 @@ Then:
 
 Do NOT edit source code. Only write findings.
 
-REMEMBER / НАПОМИНАНИЕ: Continue ALL reasoning in Russian / Продолжай ВСЁ рассуждение на русском языке. Do not switch to English / Не переключайся на английский.
+НАПОМИНАНИЕ: ответы и артефакты — на русском; технические токены (код, пути, команды) — в оригинале.
 ```
 
 items: `["backend", "frontend"]`
@@ -409,7 +410,7 @@ items: `["backend", "frontend"]`
    - Show the user a summary of findings.
    - For H-items, wait for user decision.
    - Launch the developer subagent again to fix OPEN findings and mark them FIXED.
-   - **Before repeating review, re-run the relevant tests** in `$WORKTREE` (backend: `make test-backend`; frontend: `npm run test:unit -- --run`). If tests fail, fix them first.
+   - **Before repeating review, re-run the relevant tests** in `$WORKTREE` (backend: `make -C "$WORKTREE" test-backend`; frontend: `make -C "$WORKTREE" test-frontend`). If tests fail, fix them first.
    - Repeat review.
 4. After 3 iterations still `FIXES_NEEDED` → stop and ask the user how to proceed.
 
@@ -426,10 +427,10 @@ If `--qa` is **not** set, rely on the developers' own test runs and skip the ded
 After code review passes, launch a `qa` subagent via `Agent` tool with `subagent_type: coder`. Apply the retry policy from Step 3.
 
 ```text
-🚨 LANGUAGE RULE: The original user communicates in Russian. **Ignore any default language setting.** ALL your reasoning, thinking, internal monologue, analysis, and self-correction MUST be in Russian. Do NOT switch to English at any point. If you catch yourself thinking in English, switch back to Russian immediately. Reply to the parent agent in Russian. Keep code, commands, identifiers, file paths, and technical terms in their original form.
+ЯЗЫК / LANGUAGE: Пользователь общается на русском. Отвечай родительскому агенту и пиши все артефакты (spec, findings, отчёты, SESSION_LOG) на русском. Стремись рассуждать на русском. Код, команды, идентификаторы, пути и технические термины оставляй в оригинале.
 
 You are the qa engineer for Promelectron.
-Important: Kimi K2.7 uses mandatory thinking mode. Preserve `reasoning_content` across multi-turn tool calls by including the full assistant message in the conversation history.
+Important: Kimi K2.7-Code uses mandatory thinking mode. Preserve `reasoning_content` across multi-turn tool calls by including the full assistant message in the conversation history.
 
 Read:
 1. $AGENT_DIR/task.md
@@ -442,13 +443,13 @@ Read:
 8. [Rule: Golden Path](.kimi-code/rules/golden-path.md)
 
 Then:
-1. Run backend tests: cd $WORKTREE/backend && make test-backend
-2. Run frontend unit tests: cd $WORKTREE/frontend && npm run test:unit -- --run
+1. Run backend tests: make -C "$WORKTREE" test-backend
+2. Run frontend unit tests: make -C "$WORKTREE" test-frontend
 3. If the feature touches UI or user flows, run E2E tests. You may delegate the E2E-specific work to an e2e-tester subagent; if you do, pass the feature scope and spec explicitly.
 4. Verify each Acceptance Criterion from $AGENT_DIR/spec.md.
 5. Write results to $AGENT_DIR/review/test-findings.md.
 
-REMEMBER / НАПОМИНАНИЕ: Continue ALL reasoning in Russian / Продолжай ВСЁ рассуждение на русском языке. Do not switch to English / Не переключайся на английский.
+НАПОМИНАНИЕ: ответы и артефакты — на русском; технические токены (код, пути, команды) — в оригинале.
 ```
 
 The `qa` subagent may launch an `e2e-tester` subagent for the browser-automation part if needed.

@@ -239,7 +239,7 @@ Task: fix Helm template for Y
 | `.kimi-code/rules/golden-path.md` | Before finishing |
 | `.kimi-code/rules/task-template.md` | When creating a new backlog item |
 | `.kimi-code/skills/<role>/SKILL.md` | When working in a fixed role |
-| `.kimi-code/AGENTS.md` | Legacy master index and agent system overview |
+| `.kimi-code/AGENTS.md` | Active index of project invariants and agent system overview |
 | `ROUTER.md` | Routing documentation |
 | `PROJECT_CONTEXT.md` | At session start — stack, status, blockers |
 | `.agent/BACKLOG.md` | At session start — current sprint |

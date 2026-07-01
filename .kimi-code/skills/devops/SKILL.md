@@ -1,5 +1,5 @@
 ---
-name: promelectron.devops
+name: devops
 description: >
   DevOps instructions for Promelectron: Helm, Docker, CI/CD, secrets.
 type: prompt
@@ -26,7 +26,6 @@ You are a DevOps and infrastructure specialist. Handle Helm charts, Kubernetes m
 2. `MINIO_INTEGRATION.md`
 3. `.agent/PLANNING_HANDOFF.md`
 4. `.agent/BACKLOG.md`
-5. [Rule: infra](#rule-infra) if it exists
 
 ### Workflow
 
@@ -82,6 +81,12 @@ diff <(yq '.env.open' infra/helm/values.yaml) <(yq '.env.open' infra/helm/stage/
 - Migration runs automatically as a Helm pre-install/pre-upgrade hook.
 - Confirm with the user before applying to prod.
 - Always check prod/test parity.
+
+---
+
+## Язык / Language
+
+Единое правило: [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule / Языковое правило. Кратко: при русскоязычном пользователе финальные ответы, отчёты и артефакты — на русском; код, команды, идентификаторы, пути и технические термины — в оригинале.
 
 ---
 

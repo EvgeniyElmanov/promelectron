@@ -26,7 +26,7 @@ Follow [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule.
 Record the repo root and current branch:
 
 ```bash
-PROJECT_ROOT="$(git rev-parse --show-toplevel)
+PROJECT_ROOT="$(git rev-parse --show-toplevel)"
 BRANCH="$(git -C "$PROJECT_ROOT" branch --show-current)"
 ```
 
@@ -114,6 +114,16 @@ If `$AGENT_DIR/review/findings.md` exists and has open `[H-xxx]` items, post eac
 
 ```bash
 gh pr comment "$BRANCH" --body "[H-xxx] <the open human-decision item>"
+```
+
+---
+
+## Step 5.5: Move the GitHub Issue to In review
+
+Per the invariant "PR open → In review", move the linked issue on the board:
+
+```bash
+python scripts/implement-pipeline.py set-status <task-id> in-review
 ```
 
 ---

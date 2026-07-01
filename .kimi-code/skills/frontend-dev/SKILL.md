@@ -1,5 +1,5 @@
 ---
-name: promelectron.frontend-dev
+name: frontend-dev
 description: >
   Frontend developer instructions for Promelectron: Vue 3, Pinia, Axios, Vitest, Playwright.
 type: prompt
@@ -13,7 +13,7 @@ You are a Vue 3 / Pinia / Axios frontend developer. Implement or fix frontend co
 ### Activation
 
 - Called by `/skill:implement` after the spec is approved.
-- You work inside the feature worktree at `.worktrees/implement-<task-id>` on branch `feature/<task-id>`.
+- You work inside the feature worktree at `.worktrees/<task-id>` on branch `feature/<task-id>`.
 
 ### Required context (read all)
 
@@ -24,9 +24,9 @@ You are a Vue 3 / Pinia / Axios frontend developer. Implement or fix frontend co
 5. `PROJECT_CONTEXT.md`
 6. `.agent/BACKLOG.md`
 7. `.agent/SESSION_LOG.md`
-8. [Rule: pre-edit-checklist](../../rules/pre-edit-checklist.md)
-9. [Rule: dependency-map](../../rules/dependency-map.md)
-10. [Rule: security](../../rules/security.md)
+8. [Rule: pre-edit-checklist](.kimi-code/rules/pre-edit-checklist.md)
+9. [Rule: dependency-map](.kimi-code/rules/dependency-map.md)
+10. [Rule: security](.kimi-code/rules/security.md)
 
 ### Worktree mode
 
@@ -34,7 +34,7 @@ When invoked by `/skill:implement`, the orchestrator passes two absolute paths:
 - **AGENT_DIR** — `.agent/runs/<task-id>/`, the gitignored coordination plane.
 - **WORKTREE** — `.worktrees/<task-id>/`, the per-task code checkout on branch `feature/<task-id>`.
 
-ALL code work happens under **WORKTREE**. Use explicit paths: `git -C "$WORKTREE" …`, `cd $WORKTREE/frontend && npm run ...`, Read/Edit/Write files under `$WORKTREE`. A subagent's `cd` does not persist between tool calls.
+ALL code work happens under **WORKTREE**. Use explicit paths: `git -C "$WORKTREE" …`, `make -C "$WORKTREE" test-frontend`, Read/Edit/Write files under `$WORKTREE`. A subagent's `cd` does not persist between tool calls.
 
 ### Implementation order
 
@@ -54,9 +54,9 @@ ALL code work happens under **WORKTREE**. Use explicit paths: `git -C "$WORKTREE
 
 ### Before finishing
 
-1. Run `cd $WORKTREE/frontend && npm run test:unit -- --run` — all tests must pass.
-2. Run `cd $WORKTREE/frontend && npm run lint` — zero errors.
-3. If a critical path from [Rule: golden-path](../../rules/golden-path.md) is touched, verify it.
+1. Run `make -C "$WORKTREE" test-frontend` — all tests must pass.
+2. Run `make -C "$WORKTREE" lint-frontend` — zero errors.
+3. If a critical path from [Rule: golden-path](.kimi-code/rules/golden-path.md) is touched, verify it.
 4. Do NOT push. Wait for review.
 
 ### After finishing
@@ -66,4 +66,8 @@ ALL code work happens under **WORKTREE**. Use explicit paths: `git -C "$WORKTREE
 3. Report readiness for review.
 
 ---
+
+## Язык / Language
+
+Единое правило: [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule / Языковое правило. Кратко: при русскоязычном пользователе финальные ответы, отчёты и артефакты — на русском; код, команды, идентификаторы, пути и технические термины — в оригинале.
 

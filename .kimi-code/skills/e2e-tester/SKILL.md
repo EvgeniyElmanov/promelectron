@@ -1,5 +1,5 @@
 ---
-name: promelectron.e2e-tester
+name: e2e-tester
 description: >
   E2E tester instructions for Promelectron: Playwright UI validation.
 type: prompt
@@ -30,7 +30,7 @@ ALL code work happens under **WORKTREE**. Use explicit paths: `cd $WORKTREE/fron
 2. `$AGENT_DIR/spec.md`
 3. `PROJECT_CONTEXT.md`
 4. Existing E2E tests in `$WORKTREE/frontend/e2e/`
-5. [Rule: golden-path](../../rules/golden-path.md)
+5. [Rule: golden-path](.kimi-code/rules/golden-path.md)
 
 ### Workflow
 
@@ -69,6 +69,12 @@ E2E tests also run automatically in GitHub Actions on the `promelectron-test` en
 
 - Updated/new `frontend/e2e/<feature>.spec.js`
 - Brief report in chat with pass/fail status and screenshot paths if failed
+
+---
+
+## Язык / Language
+
+Единое правило: [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule / Языковое правило. Кратко: при русскоязычном пользователе финальные ответы, отчёты и артефакты — на русском; код, команды, идентификаторы, пути и технические термины — в оригинале.
 
 ---
 

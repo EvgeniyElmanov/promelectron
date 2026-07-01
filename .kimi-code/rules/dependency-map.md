@@ -33,7 +33,7 @@ models/payment.py  →  schemas/payment.py
 - `backend/src/app/services/*.py` — если менял response/input
 - `backend/src/app/api/*.py` — route handlers
 - `frontend/src/api/*.js` — axios calls (если менялся API contract)
-- `frontend/src/types/*.js` — TypeScript типы (если есть)
+- `frontend/src/types/*.js` — JS-модули с контрактами данных / JSDoc-типами (если есть)
 
 #### Изменил Service (`backend/src/app/services/*.py`)
 **Обнови:**

@@ -1,3 +1,11 @@
+---
+name: planning
+description: >
+  Rules for maintaining project plans, roadmaps, task prioritization, and the Definition of Done.
+type: prompt
+disableModelInvocation: true
+---
+
 # Rule: planning
 
 Rules for maintaining project plans, roadmaps, task prioritization, and the Definition of Done.
@@ -33,6 +41,8 @@ Every task in `.agent/PLANNING_HANDOFF.md` and `.agent/BACKLOG.md` should follow
 | Done | `[x]` | Merged to main, verified |
 | Blocked | `[!]` | External dependency or blocker |
 | Deferred | `[-]` | Intentionally postponed |
+
+> **Примечание:** Значки статусов (`[ ] [/] [?] [x] [!] [-]`) относятся к стратегическому роадмапу/бэклогу (`.agent/PLANNING_HANDOFF.md`, `.agent/BACKLOG.md`). Статусы задач в активной разработке ведутся на доске GitHub Project (In progress → In review → Done).
 
 ## Prioritization Matrix
 

@@ -11,7 +11,7 @@ arguments: "<test|prod>"
 
 # /skill:deploy — Deploy to Kubernetes
 
-Deploy via GitHub Actions. No local `kubectl` required.
+Deploy via GitHub Actions. No local `kubectl` required for normal deploys — the emergency rollback path below is the exception and needs `kubectl`/`helm`.
 
 ## Language
 

@@ -33,12 +33,12 @@ When invoked by `/skill:implement` or `/skill:qa-gate`, the orchestrator passes 
 - **AGENT_DIR** — `.agent/runs/<task-id>/`, the gitignored coordination plane.
 - **WORKTREE** — `.worktrees/<task-id>/`, the per-task code checkout.
 
-ALL test commands run inside **WORKTREE**. Use explicit paths: `cd $WORKTREE/backend && make test-backend`, `cd $WORKTREE/frontend && npm run test:unit -- --run`. A subagent's `cd` does not persist between tool calls.
+ALL test commands run inside **WORKTREE**. Use explicit paths: `make -C "$WORKTREE" test-backend`, `make -C "$WORKTREE" test-frontend`. A subagent's `cd` does not persist between tool calls.
 
 ## Workflow
 
-1. **Backend tests:** `cd $WORKTREE/backend && make test-backend`
-2. **Frontend unit tests:** `cd $WORKTREE/frontend && npm run test:unit -- --run`
+1. **Backend tests:** `make -C "$WORKTREE" test-backend`
+2. **Frontend unit tests:** `make -C "$WORKTREE" test-frontend`
 3. **E2E tests:**
    - If the feature touches UI or user flows, start dev environment (`make dev`) in $WORKTREE, verify health checks, then run Playwright.
    - You may delegate the E2E-specific work to an `e2e-tester` subagent; in that case pass the feature scope and spec.
@@ -85,3 +85,9 @@ TESTS_PASSED | TESTS_FAILED
 - If a test fails, keep the full log.
 - If status is `TESTS_FAILED`, explicitly list which Acceptance Criteria failed.
 - After developer fixes, repeat the full QA cycle.
+
+---
+
+## Язык / Language
+
+Единое правило: [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule / Языковое правило. Кратко: при русскоязычном пользователе финальные ответы, отчёты и артефакты — на русском; код, команды, идентификаторы, пути и технические термины — в оригинале.

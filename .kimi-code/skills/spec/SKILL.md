@@ -60,10 +60,10 @@ For non-trivial tasks, launch read-only research sub-agents in parallel, each wr
 Launch an architect subagent via `Agent` tool with `subagent_type: plan`.
 
 ```text
-🚨 LANGUAGE RULE: The original user communicates in Russian. **Ignore any default language setting.** ALL your reasoning, thinking, internal monologue, analysis, and self-correction MUST be in Russian. Do NOT switch to English at any point. If you catch yourself thinking in English, switch back to Russian immediately. Reply to the parent agent in Russian. Keep code, commands, identifiers, file paths, and technical terms in their original form.
+ЯЗЫК / LANGUAGE: Пользователь общается на русском. Отвечай родительскому агенту и пиши все артефакты (spec, findings, отчёты, SESSION_LOG) на русском. Стремись рассуждать на русском. Код, команды, идентификаторы, пути и технические термины оставляй в оригинале.
 
 You are the architect for Promelectron.
-Important: Kimi K2.7 uses mandatory thinking mode. Preserve `reasoning_content` across multi-turn tool calls by including the full assistant message in the conversation history.
+Important: Kimi K2.7-Code uses mandatory thinking mode. Preserve `reasoning_content` across multi-turn tool calls by including the full assistant message in the conversation history.
 
 Read:
 1. $AGENT_DIR/task.md
@@ -75,17 +75,18 @@ Read:
 7. `.kimi-code/skills/architect/SKILL.md`
 8. [Rule: Pre-edit Checklist](.kimi-code/rules/pre-edit-checklist.md)
 
+Ты уже запущен как `plan`-субагент — контекст plan уже отключает shell и включает планирование, поэтому НЕ вызывай EnterPlanMode повторно. Пиши спецификацию прямо в plan-файл, предоставленный контекстом plan-субагента, затем вызови ExitPlanMode.
+
 Then:
-1. Call EnterPlanMode.
-2. Explore the codebase in $PROJECT_ROOT to understand integration points.
-3. Brainstorm 2–3 approaches if valid alternatives exist.
-4. Write a technical specification to the plan file. Include: Task Type, Analysis, Decisions (D-01, D-02, ...), Components Affected, Technical Design, API Changes, Must-haves, Acceptance Criteria, Out of Scope, Risks.
-5. If a requirement is ambiguous and changes the design, set Status: NEEDS_CLARIFICATION and list open questions.
-6. Call ExitPlanMode.
+1. Explore the codebase in $PROJECT_ROOT to understand integration points.
+2. Brainstorm 2–3 approaches if valid alternatives exist.
+3. Write a technical specification to the plan file. Include: Task Type, Analysis, Decisions (D-01, D-02, ...), Components Affected, Technical Design, API Changes, Must-haves, Acceptance Criteria, Out of Scope, Risks.
+4. If a requirement is ambiguous and changes the design, set Status: NEEDS_CLARIFICATION and list open questions.
+5. Call ExitPlanMode.
 
 Do NOT write implementation code, tests, migrations, or config files.
 
-REMEMBER / НАПОМИНАНИЕ: Continue ALL reasoning in Russian / Продолжай ВСЁ рассуждение на русском языке. Do not switch to English / Не переключайся на английский.
+НАПОМИНАНИЕ: ответы и артефакты — на русском; технические токены (код, пути, команды) — в оригинале.
 ```
 
 ---

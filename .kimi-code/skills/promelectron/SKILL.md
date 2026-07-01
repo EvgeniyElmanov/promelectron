@@ -82,7 +82,7 @@ Shared rules (reference markdown, not skills):
 - Prompt format: [Rule: Prompt Format](.kimi-code/rules/prompt-format.md)
 - Task template: [Rule: Task Template](.kimi-code/rules/task-template.md)
 
-Legacy `.kimi-code/AGENTS.md` is kept for reference but new skills use flat skills under `.kimi-code/skills/`.
+`.kimi-code/AGENTS.md` — активный индекс инвариантов проекта (загружается автоматически). Роли живут в плоских скиллах `.kimi-code/skills/<role>/`.
 
 ---
 
@@ -98,7 +98,7 @@ Before any code change, read:
 
 ---
 
-## 4. Context Size Check (Kimi K2.7)
+## 4. Context Size Check (Kimi K2.7-Code)
 
 Before launching subagents, estimate task context size:
 
@@ -109,7 +109,7 @@ python scripts/implement-pipeline.py check-context <task-id>
 - If `ESTIMATED_TOKENS` >= 180000, read `.agent/runs/<task-id>/CONTEXT_SUMMARY.md` instead of full history.
 - Log the estimated token count in `.agent/SESSION_LOG.md`.
 
-Kimi K2.7 has a 256K context window with mandatory thinking mode. Staying below 180K leaves room for `reasoning_content`, tool outputs, and system instructions.
+Kimi K2.7-Code has a 256K context window with mandatory thinking mode. Staying below 180K leaves room for `reasoning_content`, tool outputs, and system instructions.
 
 ---
 

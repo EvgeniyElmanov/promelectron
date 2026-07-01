@@ -35,7 +35,7 @@ Record `last_update` from PROJECT_CONTEXT.md frontmatter.
 
 ---
 
-## Step 2: Check Active Task Context Size (Kimi K2.7)
+## Step 2: Check Active Task Context Size (Kimi K2.7-Code)
 
 For each active task directory in `.agent/`, follow [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Context Size Check.
 
@@ -60,8 +60,8 @@ Look for:
 ## Step 4: Check Test Status
 
 ```bash
-cd backend && pytest --tb=no -q 2>/dev/null || echo "Backend tests not runnable"
-cd frontend && npm test -- --run 2>/dev/null || echo "Frontend tests not runnable"
+make test-backend 2>/dev/null || echo "Backend tests not runnable"
+make test-frontend 2>/dev/null || echo "Frontend tests not runnable"
 ```
 
 ---
@@ -77,8 +77,8 @@ For each blocker in `BLOCKERS.md`:
 ## Step 6: Check for New Blockers
 
 ```bash
-cd backend && alembic current 2>/dev/null || echo "Alembic issue"
-cd backend && python -c "from src.app.main import app" 2>/dev/null || echo "Import error"
+make migrate-history 2>/dev/null || echo "Alembic issue"
+make lint-backend 2>/dev/null || echo "Import/lint error"
 ```
 
 New blockers:
