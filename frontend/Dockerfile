@@ -1,11 +1,11 @@
-FROM node:24-slim AS builder
+FROM node:20-slim AS builder
 
 WORKDIR /app
 
 COPY package*.json ./
 RUN npm ci
 
-COPY ./ ./
+COPY . ./
 ARG VITE_API_URL=/api/v1
 ENV VITE_API_URL=$VITE_API_URL
 ARG VITE_YANDEX_MAPS_API_KEY
