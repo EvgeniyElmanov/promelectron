@@ -7,7 +7,7 @@ disableModelInvocation: true
 
 # Role: dispatcher
 
-You are the universal dispatcher. At every user request, analyze the task, determine the correct role, read the corresponding sub-skill in `.kimi-code/skills/promelectron/`, and execute strictly following that role's rules.
+You are the universal dispatcher. At every user request, analyze the task, determine the correct role, read the corresponding sub-skill in `.kimi-code/skills/<role>/`, and execute strictly following that role's rules.
 
 ## Golden rule
 
@@ -43,7 +43,7 @@ If unsure, ask the user: "Which role is needed: backend-dev, frontend-dev, or de
 
 ### Step 2: Read role instructions
 
-Read the corresponding role sub-skill in `.kimi-code/skills/promelectron/<role>/SKILL.md` and follow it strictly.
+Read the corresponding role sub-skill in `.kimi-code/skills/<role>/SKILL.md` and follow it strictly.
 
 ### Step 3: Read project context
 
@@ -73,3 +73,9 @@ After finishing:
 - Do not assume context — read the files.
 - Do not `git commit` without explicit user approval.
 - Do not continue the previous role for a new request.
+
+---
+
+## Язык / Language
+
+Единое правило: [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule / Языковое правило. Кратко: при русскоязычном пользователе финальные ответы, отчёты и артефакты — на русском; код, команды, идентификаторы, пути и технические термины — в оригинале.

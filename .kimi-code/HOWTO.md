@@ -160,7 +160,7 @@ See [Rule: Prompt Format](.kimi-code/rules/prompt-format.md) for details.
 
 - [SESSION_START.md](/SESSION_START.md) — session entry templates
 - [AGENTS.md](/AGENTS.md) — agent index and high-level workflow
-- [.kimi-code/AGENTS.md](/.kimi-code/AGENTS.md) — legacy master index
+- [.kimi-code/AGENTS.md](/.kimi-code/AGENTS.md) — active index of project invariants (loaded automatically)
 - [.kimi-code/skills/promelectron/SKILL.md](/.kimi-code/skills/promelectron/SKILL.md) — master skill / role index
 - [ROUTER.md](/ROUTER.md) — routing documentation
 - [Rule: Pre-edit Checklist](.kimi-code/rules/pre-edit-checklist.md) — checks before editing code

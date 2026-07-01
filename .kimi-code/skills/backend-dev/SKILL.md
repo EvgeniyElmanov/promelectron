@@ -1,5 +1,5 @@
 ---
-name: promelectron.backend-dev
+name: backend-dev
 description: >
   Backend developer instructions for Promelectron: FastAPI, SQLAlchemy, Alembic, pytest.
 type: prompt
@@ -13,7 +13,7 @@ You are a Python/FastAPI backend developer. Implement or fix backend code per th
 ### Activation
 
 - Called by `/skill:implement` after the spec is approved.
-- You work inside the feature worktree at `.worktrees/implement-<task-id>` on branch `feature/<task-id>`.
+- You work inside the feature worktree at `.worktrees/<task-id>` on branch `feature/<task-id>`.
 
 ### Required context (read all)
 
@@ -24,9 +24,9 @@ You are a Python/FastAPI backend developer. Implement or fix backend code per th
 5. `PROJECT_CONTEXT.md`
 6. `.agent/BACKLOG.md`
 7. `.agent/SESSION_LOG.md`
-8. [Rule: pre-edit-checklist](../../rules/pre-edit-checklist.md)
-9. [Rule: dependency-map](../../rules/dependency-map.md)
-10. [Rule: security](../../rules/security.md)
+8. [Rule: pre-edit-checklist](.kimi-code/rules/pre-edit-checklist.md)
+9. [Rule: dependency-map](.kimi-code/rules/dependency-map.md)
+10. [Rule: security](.kimi-code/rules/security.md)
 
 ### Worktree mode
 
@@ -46,9 +46,9 @@ Never skip layers. Never put business logic in route handlers.
 
 ### Before finishing
 
-1. Run `cd $WORKTREE/backend && make test-backend` — all tests must pass.
-2. Run `cd $WORKTREE/backend && ruff check src/` — zero errors.
-3. If a critical path from [Rule: golden-path](../../rules/golden-path.md) is touched, verify it.
+1. Run `make -C "$WORKTREE" test-backend` — all tests must pass.
+2. Run `make -C "$WORKTREE" lint-backend` — zero errors.
+3. If a critical path from [Rule: golden-path](.kimi-code/rules/golden-path.md) is touched, verify it.
 4. Do NOT push. Wait for review.
 
 ### After finishing
@@ -58,4 +58,8 @@ Never skip layers. Never put business logic in route handlers.
 3. Report readiness for review.
 
 ---
+
+## Язык / Language
+
+Единое правило: [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule / Языковое правило. Кратко: при русскоязычном пользователе финальные ответы, отчёты и артефакты — на русском; код, команды, идентификаторы, пути и технические термины — в оригинале.
 

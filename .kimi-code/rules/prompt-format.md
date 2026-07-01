@@ -33,7 +33,7 @@
 Файл: frontend/src/views/Cart.vue
 Рядом: frontend/src/services/cart.js, frontend/src/stores/cart.js
 Нельзя ломать: существующий расчёт итоговой суммы, мобильную вёрстку
-Проверь: npm run test:unit Cart && проверь адаптивность (375px)
+Проверь: make test-frontend && проверь адаптивность (375px)
 ```
 
 ### Devops

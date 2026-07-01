@@ -15,20 +15,21 @@ For the consolidated registry of role skills, workflow skills, and shared rules,
 
 ---
 
-## 🚨 GOLDEN RULE: REASON IN RUSSIAN / ЗОЛОТОЕ ПРАВИЛО: РАССУЖДАЙ НА РУССКОМ
+## 🚨 GOLDEN RULE: язык ответов / ЗОЛОТОЕ ПРАВИЛО
 
-When the user communicates in Russian, **ALL** your reasoning, thinking, internal monologue, analysis, planning, and self-correction **MUST** be in Russian.
+Когда пользователь общается на русском:
 
-Когда пользователь общается на русском языке, **ВСЁ** твоё рассуждение, мышление, внутренний монолог, анализ, планирование и самокоррекция **ДОЛЖНЫ** быть на русском.
+- **Финальные ответы пользователю, отчёты и артефакты пиши на русском.**
+- **Стремись рассуждать на русском.** Но учти: модель Kimi K2.7-Code работает с
+  принудительным thinking mode, и язык внутреннего рассуждения промптом надёжно не
+  управляется — не считай сбой языка *thinking* ошибкой выполнения, критичен язык
+  ответов и артефактов.
+- **Делегируя субагентам**, добавляй языковую преамбулу из единого источника (см. ниже)
+  в начало и конец их промпта.
+- Код, команды, идентификаторы, пути к файлам и технические термины оставляй в оригинале.
 
-- **NEVER switch to English** during reasoning. If you catch yourself thinking in English, immediately switch back to Russian.
-- **НИКОГДА не переключайся на английский** во время рассуждения. Если заметил, что думаешь по-английски, немедленно вернись к русскому.
-- Final replies to the user **MUST** be in Russian.
-- When delegating to subagents, **explicitly tell them** that the original user communicates in Russian and they **MUST** reason in Russian.
-- Keep code, commands, identifiers, file paths, and technical terms in their original form.
-- Before producing a final reply, do a quick self-check: was all internal reasoning in this turn done in Russian? If not, redo it in Russian.
-
-For the exact subagent preambles, see [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule.
+Единый источник истины о языке (формулировка правила и точная преамбула для субагентов):
+[Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule / Языковое правило.
 
 ## Subagent boundary
 

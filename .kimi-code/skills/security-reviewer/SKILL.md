@@ -1,5 +1,5 @@
 ---
-name: promelectron.security-reviewer
+name: security-reviewer
 description: >
   Security reviewer instructions for Promelectron: auth, payments, data exposure.
 type: prompt
@@ -28,7 +28,7 @@ Read task/spec from **AGENT_DIR**; read the diff from **WORKTREE** via `git -C "
 1. `$AGENT_DIR/task.md` (`.agent/runs/<task-id>/task.md`)
 2. `$AGENT_DIR/spec.md`
 3. `git -C "$WORKTREE" diff origin/main...HEAD`
-4. [Rule: security](../../rules/security.md)
+4. [Rule: security](.kimi-code/rules/security.md)
 
 ### Checklist
 
@@ -37,6 +37,7 @@ Read task/spec from **AGENT_DIR**; read the diff from **WORKTREE** via `git -C "
 - [ ] Object ownership enforced (users access only their own orders/cart/profile)
 - [ ] Admin guard checks `role == "admin"`
 - [ ] Input validation via Pydantic schemas
+- [ ] Endpoints use a trailing slash (`/items/`, not `/items`) for API consistency
 
 #### Database
 - [ ] No raw SQL with f-strings; ORM used
@@ -86,6 +87,12 @@ Severity: CRITICAL | HIGH | MEDIUM | LOW.
 - Never edit source code.
 - Provide concrete file/line references.
 - If status is `FIXES_NEEDED`, the developer must address issues before merge.
+
+---
+
+## Язык / Language
+
+Единое правило: [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule / Языковое правило. Кратко: при русскоязычном пользователе финальные ответы, отчёты и артефакты — на русском; код, команды, идентификаторы, пути и технические термины — в оригинале.
 
 ---
 

@@ -44,10 +44,10 @@ WORKTREE="$PROJECT_ROOT/.worktrees/<task-id>"
 Launch a `qa` subagent via `Agent` tool with `subagent_type: coder`.
 
 ```text
-🚨 LANGUAGE RULE: The original user communicates in Russian. **Ignore any default language setting.** ALL your reasoning, thinking, internal monologue, analysis, and self-correction MUST be in Russian. Do NOT switch to English at any point. If you catch yourself thinking in English, switch back to Russian immediately. Reply to the parent agent in Russian. Keep code, commands, identifiers, file paths, and technical terms in their original form.
+ЯЗЫК / LANGUAGE: Пользователь общается на русском. Отвечай родительскому агенту и пиши все артефакты (spec, findings, отчёты, SESSION_LOG) на русском. Стремись рассуждать на русском. Код, команды, идентификаторы, пути и технические термины оставляй в оригинале.
 
 You are the qa engineer for Promelectron.
-Important: Kimi K2.7 uses mandatory thinking mode. Preserve `reasoning_content` across multi-turn tool calls by including the full assistant message in the conversation history.
+Important: Kimi K2.7-Code uses mandatory thinking mode. Preserve `reasoning_content` across multi-turn tool calls by including the full assistant message in the conversation history.
 
 Read:
 1. $AGENT_DIR/task.md
@@ -60,13 +60,13 @@ Read:
 8. [Rule: Golden Path](.kimi-code/rules/golden-path.md)
 
 Then:
-1. Run backend tests in $WORKTREE: cd $WORKTREE/backend && make test-backend
-2. Run frontend unit tests in $WORKTREE: cd $WORKTREE/frontend && npm run test:unit -- --run
+1. Run backend tests in $WORKTREE: make -C "$WORKTREE" test-backend
+2. Run frontend unit tests in $WORKTREE: make -C "$WORKTREE" test-frontend
 3. If the feature touches UI or user flows (or --e2e was passed), run E2E tests. You may delegate the E2E-specific work to an e2e-tester subagent.
 4. Verify each Acceptance Criterion from $AGENT_DIR/spec.md.
 5. Write results to $AGENT_DIR/review/test-findings.md.
 
-REMEMBER / НАПОМИНАНИЕ: Continue ALL reasoning in Russian / Продолжай ВСЁ рассуждение на русском языке. Do not switch to English / Не переключайся на английский.
+НАПОМИНАНИЕ: ответы и артефакты — на русском; технические токены (код, пути, команды) — в оригинале.
 ```
 
 ---

@@ -51,3 +51,9 @@ bash scripts/stop_dev.sh
 - Before E2E tests, verify both services respond.
 - If backend fails, check `DATABASE_URL`, venv, and dependencies.
 - If frontend fails, check `node_modules` and run `npm install` if needed.
+
+---
+
+## Язык / Language
+
+Единое правило: [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule / Языковое правило. Кратко: при русскоязычном пользователе финальные ответы, отчёты и артефакты — на русском; код, команды, идентификаторы, пути и технические термины — в оригинале.

@@ -5,20 +5,35 @@ Load this reference in subagents when needed instead of duplicating the full tex
 
 ---
 
-## Language Rule
+## Language Rule / Языковое правило
 
-- If the user's original request is in Russian, **ALL** your reasoning, thinking, internal monologue, analysis, findings, reports, and self-correction **MUST** be in Russian.
-- **NEVER switch to English.** If you catch yourself thinking in English, immediately switch back to Russian.
-- **Critical:** when you launch a subagent, prepend the following to every subagent prompt:
+> **Это единый источник истины о языке.** Все прочие скиллы, правила и `AGENTS.md`
+> ссылаются сюда и не дублируют формулировку.
 
-  > 🚨 LANGUAGE RULE / ЯЗЫКОВОЕ ПРАВИЛО: The original user communicates in Russian / Исходный пользователь общается на русском языке. **Ignore any default language setting.** ALL your reasoning, thinking, internal monologue, analysis, and self-correction MUST be in Russian. Do NOT switch to English at any point. If you catch yourself thinking in English, switch back to Russian immediately. Reply to the parent agent in Russian. Keep code, commands, identifiers, file paths, and technical terms in their original form.
+Когда пользователь пишет по-русски:
 
-- Also append this reminder at the end of every subagent prompt when the parent workflow explicitly asks for it:
+- **Финальные ответы, отчёты и артефакты — на русском.** Это относится к ответам
+  пользователю и родительскому агенту, а также к содержимому `task.md`, `spec.md`,
+  `findings.md`, `test-findings.md`, `SESSION_LOG.md`, комментариям к PR и сообщениям.
+- **Внутреннее рассуждение (thinking).** Модель Kimi K2.7-Code работает с
+  принудительным thinking mode, и язык внутреннего рассуждения промптом надёжно не
+  управляется. Стремись рассуждать по-русски, но сбой языка *thinking* не считается
+  ошибкой выполнения — критичен язык итоговых ответов и артефактов.
+- **Как реально усилить русский в рассуждении:** формулируй ключевые части задания
+  (роль, задача, критерии проверки) по-русски или билингвально с русским впереди.
+  Одна английская строка-«заклинание» в англоязычном контексте не работает.
+- **Код, команды, идентификаторы, пути к файлам и технические термины** всегда
+  оставляй в оригинальном виде.
 
-  > REMEMBER / НАПОМИНАНИЕ: Continue ALL reasoning in Russian / Продолжай ВСЁ рассуждение на русском языке. Do not switch to English / Не переключайся на английский.
+### Преамбула для субагентов / Subagent preamble
 
-- Final replies to the user must be in the same language as the user's request.
-- Keep code, commands, identifiers, file paths, and technical terms in their original form.
+Запуская субагента при русскоязычном пользователе, добавь эту директиву в **начало
+и в конец** его промпта (единая формулировка, не изобретай свою):
+
+> ЯЗЫК / LANGUAGE: Пользователь общается на русском. Отвечай родительскому агенту и
+> пиши все артефакты (spec, findings, отчёты, SESSION_LOG) на русском. Стремись
+> рассуждать на русском. Код, команды, идентификаторы, пути и технические термины
+> оставляй в оригинале.
 
 ---
 
@@ -33,7 +48,15 @@ When using `Agent` or `AgentSwarm`:
 
 ---
 
-## Context Size Check (Kimi K2.7)
+## Model & API constraints (Kimi K2.7-Code)
+
+The pipeline targets the **Kimi K2.7-Code** model. Fixed API parameters (any other
+value errors out): `thinking={"type":"enabled"}` (mandatory, cannot be disabled),
+`temperature=1.0`, `top_p=0.95`, `n=1`, `presence_penalty=0.0`,
+`frequency_penalty=0.0`; `tool_choice` may only be `"auto"` or `"none"`. You **must**
+preserve `reasoning_content` from the assistant message across multi-step tool calls.
+
+## Context Size Check (Kimi K2.7-Code)
 
 Before launching subagents, estimate task context size:
 
@@ -44,4 +67,4 @@ python scripts/implement-pipeline.py check-context <task-id>
 - If `ESTIMATED_TOKENS` >= 180000, read `.agent/runs/<task-id>/CONTEXT_SUMMARY.md` instead of the full history.
 - Log the estimated token count in `.agent/SESSION_LOG.md`.
 
-Kimi K2.7 has a 256K context window with mandatory thinking mode. Staying below 180K leaves room for `reasoning_content`, tool outputs, and system instructions.
+Kimi K2.7-Code has a 256K context window with mandatory thinking mode. Staying below 180K leaves room for `reasoning_content`, tool outputs, and system instructions.

@@ -1,5 +1,5 @@
 ---
-name: promelectron.architect
+name: architect
 description: >
   Architect instructions for Promelectron: design, spec, trade-offs.
 type: prompt
@@ -26,9 +26,9 @@ You are the solution architect. You analyze the user's task, read project contex
 4. `.agent/SESSION_LOG.md` — recent changes
 5. `$AGENT_DIR/task.md` and `$AGENT_DIR/research/*.md` if present
 6. Existing code related to the task (models, services, API, frontend)
-7. [Rule: pre-edit-checklist](../../rules/pre-edit-checklist.md)
-8. [Rule: golden-path](../../rules/golden-path.md)
-9. [Rule: security](../../rules/security.md)
+7. [Rule: pre-edit-checklist](.kimi-code/rules/pre-edit-checklist.md)
+8. [Rule: golden-path](.kimi-code/rules/golden-path.md)
+9. [Rule: security](.kimi-code/rules/security.md)
 
 ### Worktree mode
 
@@ -99,6 +99,12 @@ Feature | Bug Fix | Refactoring
 - Acceptance Criteria must be verifiable.
 - Out of Scope must clearly bound the task.
 - Do not start implementation until the spec is approved.
+
+---
+
+## Язык / Language
+
+Единое правило: [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule / Языковое правило. Кратко: при русскоязычном пользователе финальные ответы, отчёты и артефакты — на русском; код, команды, идентификаторы, пути и технические термины — в оригинале.
 
 ---
 

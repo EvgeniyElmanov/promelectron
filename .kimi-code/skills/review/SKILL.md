@@ -23,7 +23,7 @@ Follow [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule.
 
 ---
 
-## Step 0: Context Size Check (Kimi K2.7)
+## Step 0: Context Size Check (Kimi K2.7-Code)
 
 If reviewing a task directory in `.agent/runs/<task-id>/`, follow [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Context Size Check.
 
@@ -47,10 +47,10 @@ git diff -- <files>
 Launch a `code-reviewer` subagent via `Agent` tool with `subagent_type: coder`. Pass the diff and scope explicitly.
 
 ```text
-🚨 LANGUAGE RULE: The original user communicates in Russian. **Ignore any default language setting.** ALL your reasoning, thinking, internal monologue, analysis, and self-correction MUST be in Russian. Do NOT switch to English at any point. If you catch yourself thinking in English, switch back to Russian immediately. Reply to the parent agent in Russian. Keep code, commands, identifiers, file paths, and technical terms in their original form.
+ЯЗЫК / LANGUAGE: Пользователь общается на русском. Отвечай родительскому агенту и пиши все артефакты (spec, findings, отчёты, SESSION_LOG) на русском. Стремись рассуждать на русском. Код, команды, идентификаторы, пути и технические термины оставляй в оригинале.
 
 You are the code-reviewer for Promelectron.
-Important: Kimi K2.7 uses mandatory thinking mode. Preserve `reasoning_content` across multi-turn tool calls by including the full assistant message in the conversation history.
+Important: Kimi K2.7-Code uses mandatory thinking mode. Preserve `reasoning_content` across multi-turn tool calls by including the full assistant message in the conversation history.
 Read:
 1. `.kimi-code/skills/code-reviewer/SKILL.md`
 2. [Rule: Security](.kimi-code/rules/security.md)
@@ -63,7 +63,7 @@ Flags: <none | --security-only | --quick>
 
 Write findings to `.agent/runs/<task-id>/review/findings.md` using the format from `code-reviewer/SKILL.md`.
 
-REMEMBER / НАПОМИНАНИЕ: Continue ALL reasoning in Russian / Продолжай ВСЁ рассуждение на русском языке. Do not switch to English / Не переключайся на английский.
+НАПОМИНАНИЕ: ответы и артефакты — на русском; технические токены (код, пути, команды) — в оригинале.
 ```
 
 ---

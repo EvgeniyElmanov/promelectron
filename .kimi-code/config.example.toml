@@ -14,7 +14,7 @@ telemetry = true
 # NOTE: There is no "default_yolo" field in Kimi Code CLI.
 # Use default_permission_mode = "manual" | "auto" | "yolo" instead.
 
-# Kimi K2.7 specifics:
+# Kimi K2.7-Code specifics:
 # - Context window: 256K tokens (262,144).
 # - Thinking mode is mandatory and cannot be disabled.
 # - For multi-turn tool calls, preserve reasoning_content from assistant messages.
