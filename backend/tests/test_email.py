@@ -72,18 +72,52 @@ class TestEmailService:
         )
 
         with caplog.at_level("INFO"):
-            await EmailService.send_email(
+            result = await EmailService.send_email(
                 to="user@example.com",
                 subject="Test",
                 html_body="<p>Hi</p>",
                 text_body="secret-token-body",
             )
 
+        assert result == "skipped:no_credentials"
         assert "email fallback" in caplog.text
         assert "To: <redacted>" in caplog.text
         assert "user@example.com" not in caplog.text
         # S-001: message body (which may contain secrets) must not be logged.
         assert "secret-token-body" not in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_send_email_returns_sent_on_success(self, monkeypatch):
+        """Успешная отправка возвращает 'sent'."""
+        new_settings = _make_settings(smtp_user="u", smtp_password="p")
+        monkeypatch.setattr(
+            "src.app.services.email_service.settings", new_settings
+        )
+
+        with patch("src.app.services.email_service.send", new=AsyncMock()):
+            result = await EmailService.send_email(
+                to="user@example.com", subject="Test", html_body="<p>Hi</p>"
+            )
+
+        assert result == "sent"
+
+    @pytest.mark.asyncio
+    async def test_send_email_returns_failed_on_smtp_error(self, monkeypatch):
+        """Постоянная SMTP-ошибка возвращает 'failed:smtp_error', не падает."""
+        from aiosmtplib import SMTPException
+
+        new_settings = _make_settings(smtp_user="u", smtp_password="p")
+        monkeypatch.setattr(
+            "src.app.services.email_service.settings", new_settings
+        )
+
+        failing = AsyncMock(side_effect=SMTPException("smtp down"))
+        with patch("src.app.services.email_service.send", new=failing):
+            result = await EmailService.send_email(
+                to="user@example.com", subject="Test", html_body="<p>Hi</p>"
+            )
+
+        assert result == "failed:smtp_error"
 
     @pytest.mark.asyncio
     async def test_send_email_uses_implicit_tls(self, monkeypatch):

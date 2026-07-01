@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 import signal
 from datetime import datetime, timedelta, timezone
 
@@ -99,14 +100,19 @@ async def handle_cdek_sync_status(job: Job, db: AsyncSession) -> None:
 
 
 async def handle_send_email(job: Job, db: AsyncSession) -> None:
-    """Send an email using the payload prepared at enqueue time."""
+    """Send an email using the payload prepared at enqueue time.
+
+    Records the delivery outcome in ``job.processing_log`` so a ``completed``
+    job can still be distinguished from a silent fallback/failure.
+    """
     payload = job.payload
-    await EmailService.send_email(
+    result = await EmailService.send_email(
         to=payload["to"],
         subject=payload["subject"],
         html_body=payload["html"],
         text_body=payload.get("text", ""),
     )
+    job.processing_log.append(f"send_email: {result}")
 
 
 HANDLERS: dict[str, "callable"] = {
@@ -252,6 +258,10 @@ def _signal_handler(signum: int) -> None:
 
 
 def main() -> None:
+    logging.basicConfig(
+        level=os.getenv("LOG_LEVEL", "INFO").upper(),
+        format="%(asctime)s %(levelname)s %(name)s %(message)s",
+    )
     signal.signal(signal.SIGTERM, _signal_handler)
     signal.signal(signal.SIGINT, _signal_handler)
     asyncio.run(run_worker())

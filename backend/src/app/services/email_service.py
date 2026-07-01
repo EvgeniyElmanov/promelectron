@@ -36,7 +36,19 @@ class EmailService:
         subject: str,
         html_body: str,
         text_body: str = "",
-    ) -> None:
+    ) -> str:
+        """Send an email best-effort and return an outcome string.
+
+        Never raises: transport failures are logged and reported via the
+        return value so callers (e.g. the job worker) can record the real
+        outcome instead of assuming success. Possible return values:
+
+        - ``"sent"`` — accepted by the SMTP server.
+        - ``"skipped:no_credentials"`` — SMTP not configured (dev/test).
+        - ``"failed:recipients_refused"`` — server rejected the recipient.
+        - ``"failed:transient"`` — transient errors exhausted the retries.
+        - ``"failed:smtp_error"`` — a permanent SMTP/transport error.
+        """
         if not settings.smtp_user or not settings.smtp_password:
             # Dev/test fallback: log the email metadata instead of sending.
             # Do NOT log text_body/html_body — they may contain secrets/tokens.
@@ -44,7 +56,7 @@ class EmailService:
                 "[email fallback] To: <redacted> | Subject: %s",
                 subject,
             )
-            return
+            return "skipped:no_credentials"
 
         message = EmailMessage()
         message["From"] = f"{settings.smtp_from_name} <{settings.smtp_from}>"
@@ -71,13 +83,13 @@ class EmailService:
                     kwargs["start_tls"] = True
 
                 await asyncio.wait_for(send(message, **kwargs), timeout=5.0)
-                return
+                return "sent"
             except SMTPRecipientsRefused as exc:
                 logger.warning(
                     "SMTP recipients refused for <redacted>: %s",
                     _redact_emails(str(exc)),
                 )
-                return
+                return "failed:recipients_refused"
             except _TRANSIENT_ERRORS as exc:
                 last_exc = exc
                 logger.warning(
@@ -91,12 +103,13 @@ class EmailService:
                     "Failed to send email to <redacted>: %s",
                     _redact_emails(str(exc)),
                 )
-                return
+                return "failed:smtp_error"
 
         logger.warning(
             "Failed to send email to <redacted> after retries: %s",
             _redact_emails(str(last_exc)) if last_exc else "unknown",
         )
+        return "failed:transient"
 
     @classmethod
     async def enqueue_email(

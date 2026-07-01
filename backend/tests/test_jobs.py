@@ -111,6 +111,7 @@ class TestJobWorker:
 
         async def fake_send_email(*, to, subject, html_body, text_body=""):
             calls.append({"to": to, "subject": subject, "html_body": html_body, "text_body": text_body})
+            return "sent"
 
         monkeypatch.setattr(EmailService, "send_email", fake_send_email)
 
@@ -140,6 +141,8 @@ class TestJobWorker:
         assert calls[0]["to"] == "user@example.com"
         assert calls[0]["html_body"] == "<p>hi</p>"
         assert calls[0]["text_body"] == "hi"
+        # Наблюдаемость: исход отправки записан в processing_log.
+        assert "send_email: sent" in job.processing_log
 
     @pytest.mark.asyncio
     async def test_process_jobs_send_email_retries_on_error(self, job_session, monkeypatch):
