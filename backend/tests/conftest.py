@@ -101,6 +101,23 @@ def mock_storage_service(monkeypatch):
     monkeypatch.setattr("src.app.services.storage_service.storage", fake)
 
 
+@pytest.fixture(autouse=True)
+async def disable_real_email_sending(monkeypatch):
+    """Disable real SMTP transport during tests.
+
+    Email jobs are still enqueued so integration tests can verify job
+    creation, but the actual aiosmtplib.send call is replaced to avoid
+    hitting real mailboxes (e.g. test users with @example.com addresses).
+    """
+    async def _fake_send(*args, **kwargs):
+        return "skipped:test_mock"
+
+    monkeypatch.setattr(
+        "src.app.services.email_service.send",
+        _fake_send,
+    )
+
+
 @pytest.fixture(scope="session")
 def event_loop():
     loop = asyncio.new_event_loop()
