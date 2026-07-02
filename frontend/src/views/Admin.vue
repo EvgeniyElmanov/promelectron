@@ -125,6 +125,13 @@
                   >
                     {{ u.is_active ? 'Заблокировать' : 'Разблокировать' }}
                   </button>
+                  <button
+                    class="admin__btn admin__btn--small admin__btn--primary"
+                    :data-testid="`user-detail-btn-${u.id}`"
+                    @click="openUserModal(u.id)"
+                  >
+                    Подробнее
+                  </button>
                 </td>
               </tr>
             </tbody>
@@ -314,11 +321,19 @@
             <tbody>
               <tr v-for="order in orders" :key="order.id">
                 <td>{{ order.id }}</td>
-                <td>{{ order.user_id }}</td>
+                <td>
+                  <button
+                    class="admin__link-btn"
+                    :data-testid="`order-user-${order.id}`"
+                    @click="openUserModal(order.user_id, orderUserGuestData(order))"
+                  >
+                    {{ orderUserDisplay(order) }}
+                  </button>
+                </td>
                 <td>{{ formatPrice(order.total_price) }}</td>
                 <td>
                   <span class="admin__status-badge" :class="'admin__status-badge--' + order.status">
-                    {{ statusLabel(order.status) }}
+                    {{ orderStatusLabel(order.status) }}
                   </span>
                 </td>
                 <td>{{ order.delivery_method?.name || '—' }}</td>
@@ -577,6 +592,13 @@
         </div>
       </div>
     </div>
+    <!-- User Details Modal -->
+    <UserDetailsModal
+      v-model:visible="showUserModal"
+      :user-id="selectedUserId"
+      :guest-data="selectedGuestData"
+      @view-order="handleViewOrderFromModal"
+    />
   </div>
 </template>
 
@@ -586,7 +608,11 @@ import api from '@/services/api';
 import { useToast } from '@/composables/useToast';
 import { useCategories } from '@/composables/useCategories';
 import { shipOrderAdmin } from '@/api/orders';
+import { formatPriceCurrency as formatPrice } from '@/utils/price';
+import { formatShortDate } from '@/utils/date';
+import { orderStatusLabel } from '@/utils/order';
 import SkeletonAdminTable from '@/components/SkeletonAdminTable.vue';
+import UserDetailsModal from '@/components/admin/UserDetailsModal.vue';
 
 const { add: toast } = useToast();
 const {
@@ -673,6 +699,11 @@ const submitting = ref(false);
 const form = ref({ name: '', description: '', parent_id: null });
 const submittingUser = ref(null);
 
+// User Details Modal
+const showUserModal = ref(false);
+const selectedUserId = ref(null);
+const selectedGuestData = ref(null);
+
 // Delivery Modal
 const showDeliveryModal = ref(false);
 const isEditDelivery = ref(false);
@@ -754,30 +785,9 @@ function getBarHeight(orders) {
   return `${(orders / maxOrders.value) * 100}%`;
 }
 
-function formatShortDate(dateStr) {
-  const d = new Date(dateStr);
-  return `${d.getDate()}.${d.getMonth() + 1}`;
-}
-
-function formatPrice(value) {
-  if (value === undefined || value === null) return '—';
-  return new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 0 }).format(value);
-}
-
 function roleLabel(role) {
   const labels = { user: 'Покупатель', admin: 'Админ', supplier: 'Поставщик' };
   return labels[role] || role;
-}
-
-function statusLabel(status) {
-  const labels = {
-    pending: 'Ожидает оплаты',
-    paid: 'Оплачен',
-    shipped: 'Отправлен',
-    delivered: 'Доставлен',
-    cancelled: 'Отменён',
-  };
-  return labels[status] || status;
 }
 
 function sourceLabel(source) {
@@ -788,6 +798,31 @@ function sourceLabel(source) {
   };
   return labels[source] || source;
 }
+
+const getUserById = (userId) => users.value.find((u) => u.id === userId);
+
+const orderUserDisplay = (order) => {
+  if (order.user_id == null) {
+    return order.guest_email || 'Гость';
+  }
+  const user = getUserById(order.user_id);
+  if (user) {
+    return user.full_name || user.email;
+  }
+  return `Пользователь #${order.user_id}`;
+};
+
+const orderUserGuestData = (order) => {
+  if (order.user_id != null) return null;
+  const recipientName = order.recipient
+    ? [order.recipient.last_name, order.recipient.first_name].filter(Boolean).join(' ')
+    : [order.recipient_last_name, order.recipient_first_name].filter(Boolean).join(' ');
+  return {
+    guest_email: order.guest_email || null,
+    guest_phone: order.guest_phone || null,
+    guest_name: recipientName || order.guest_email || 'Гость',
+  };
+};
 
 // Fetch data
 async function fetchDashboard() {
@@ -1019,6 +1054,19 @@ const closeOrderModal = () => {
   showOrderModal.value = false;
   editingOrder.value = null;
   activeOrderModalTab.value = 'order';
+};
+
+const openUserModal = (userId, guestData = null) => {
+  selectedUserId.value = userId;
+  selectedGuestData.value = guestData;
+  showUserModal.value = true;
+};
+
+const handleViewOrderFromModal = (order) => {
+  showUserModal.value = false;
+  selectedUserId.value = null;
+  selectedGuestData.value = null;
+  openEditOrderModal(order);
 };
 
 const handleOrderSubmit = async () => {
@@ -1497,7 +1545,20 @@ onMounted(() => {
   color: var(--color-danger);
 }
 
-/* Modal */
+.admin__link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--color-primary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.admin__link-btn:hover {
+  text-decoration: none;
+}
 .modal-overlay {
   position: fixed;
   inset: 0;

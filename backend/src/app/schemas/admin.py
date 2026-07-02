@@ -1,5 +1,21 @@
 from pydantic import BaseModel, ConfigDict
 
+from src.app.schemas.order import OrderOut
+from src.app.schemas.user import UserOut
+
+
+class SocialAccountOut(BaseModel):
+    provider: str
+    provider_id: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AdminUserDetailOut(UserOut):
+    is_active: bool
+    social_accounts: list[SocialAccountOut] = []
+    orders: list[OrderOut] = []
+
 
 class DashboardStats(BaseModel):
     total_orders: int

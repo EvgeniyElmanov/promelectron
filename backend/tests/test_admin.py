@@ -146,6 +146,68 @@ class TestAdminDashboard:
         assert response.status_code == 403
 
 
+class TestAdminUserDetail:
+    """Тесты детальной информации о пользователе в админке."""
+
+    @pytest.mark.asyncio
+    async def test_get_user_detail_as_admin(self, client, test_admin, admin_token, test_user, test_order):
+        """Админ получает детали пользователя с заказами."""
+        response = await client.get(
+            f"/api/v1/admin/users/{test_user.id}/",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == test_user.id
+        assert data["email"] == test_user.email
+        assert data["role"] == "user"
+        assert "is_active" in data
+        assert "social_accounts" in data
+        assert isinstance(data["social_accounts"], list)
+        assert "orders" in data
+        assert isinstance(data["orders"], list)
+        assert len(data["orders"]) >= 1
+        order = data["orders"][0]
+        assert order["id"] == test_order.id
+        assert "items" in order
+        assert "recipient" in order
+        assert "cdek_order" in order
+        assert "hashed_password" not in data
+        for key in ("id", "email", "full_name", "first_name", "last_name", "patronymic",
+                    "country_code", "phone", "avatar_url", "shipping_address",
+                    "role", "email_verified", "created_at"):
+            assert key in data
+
+    @pytest.mark.asyncio
+    async def test_get_user_detail_as_user_forbidden(self, client, test_user, user_token):
+        """Обычный пользователь не может получить детали другого пользователя."""
+        response = await client.get(
+            f"/api/v1/admin/users/{test_user.id}/",
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert response.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_get_user_detail_not_found(self, client, test_admin, admin_token):
+        """Запрос несуществующего пользователя возвращает 404."""
+        response = await client.get(
+            "/api/v1/admin/users/99999/",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert response.status_code == 404
+        assert "User not found" in response.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_get_user_detail_no_password_leak(self, client, test_admin, admin_token, test_user):
+        """В ответе не должно быть hashed_password."""
+        response = await client.get(
+            f"/api/v1/admin/users/{test_user.id}/",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert response.status_code == 200
+        assert "hashed_password" not in response.json()
+
+
 class TestAdminOrders:
     """Тесты управления заказами админом."""
 

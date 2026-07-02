@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.app.db.database import get_db
 from src.app.models.user import User
 from src.app.schemas.admin import (
+    AdminUserDetailOut,
     AdminUserOut,
     DashboardStats,
     FeatureFlagOut,
@@ -62,6 +63,16 @@ async def get_users_list(
 ):
     users = await AdminService.get_users_list(db, skip=skip, limit=limit)
     return [AdminUserOut.model_validate(u) for u in users]
+
+
+@router.get("/admin/users/{user_id}/", response_model=AdminUserDetailOut)
+async def get_admin_user_detail(
+    user_id: int,
+    current_user: User = Depends(get_current_active_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    user_detail = await AdminService.get_user_detail(user_id=user_id, db=db)
+    return AdminUserDetailOut.model_validate(user_detail)
 
 
 @router.patch("/admin/users/{user_id}/toggle-active", response_model=AdminUserOut)

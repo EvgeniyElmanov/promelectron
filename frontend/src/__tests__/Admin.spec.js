@@ -64,6 +64,26 @@ const mockUsers = [
   { id: 3, email: 'blocked@example.com', full_name: 'Заблокированный', role: 'user', is_active: false, created_at: '2026-03-01T00:00:00Z' },
 ];
 
+const mockUserDetail = {
+  id: 2,
+  email: 'user@example.com',
+  full_name: 'Пользователь',
+  first_name: 'Иван',
+  last_name: 'Иванов',
+  patronymic: 'Иванович',
+  country_code: 'RU',
+  phone: '+79990001122',
+  shipping_address: { city: 'Москва', street: 'Ленина', house: '1', apartment: '10' },
+  role: 'user',
+  is_active: true,
+  email_verified: true,
+  created_at: '2026-02-01T00:00:00Z',
+  social_accounts: [{ provider: 'yandex', provider_id: 'yandex-123' }],
+  orders: [
+    { id: 201, total_price: 10000, status: 'paid', created_at: '2026-05-20T10:00:00Z' },
+  ],
+};
+
 const mockCategories = [
   { id: 1, name: 'Смартфоны', description: 'Мобильные телефоны', parent_id: null, product_count: 5 },
   { id: 2, name: 'Ноутбуки', description: 'Компьютеры', parent_id: null, product_count: 3 },
@@ -93,6 +113,8 @@ const matchCategoriesRequest = (url, params, categories = mockCategories) => {
 
 const defaultMockGet = (url, config, categories = mockCategories) => {
   const params = config?.params;
+  const userDetailMatch = url.match(/^\/admin\/users\/(\d+)\/$/);
+  if (userDetailMatch) return Promise.resolve({ data: mockUserDetail });
   if (url === '/admin/dashboard') return Promise.resolve({ data: mockDashboard });
   if (url === '/admin/orders-by-day') return Promise.resolve({ data: mockOrdersByDay });
   if (url === '/admin/top-products') return Promise.resolve({ data: mockTopProducts });
@@ -111,7 +133,7 @@ const mockFeatureFlags = [
 const mockOrders = [
   {
     id: 101,
-    user_id: 5,
+    user_id: 2,
     status: 'paid',
     total_price: 29990,
     delivery_method: { name: 'CDEK' },
@@ -140,6 +162,28 @@ const mockOrders = [
         { id: 2, cdek_status: 'ACCEPTED', cdek_status_name: 'Принят', status_date_time: '2026-05-19T10:00:00Z', city: 'Москва' },
       ],
     },
+  },
+  {
+    id: 102,
+    user_id: null,
+    status: 'pending',
+    total_price: 15000,
+    delivery_method: { name: 'Курьер' },
+    tracking_number: null,
+    created_at: '2026-05-19T12:00:00Z',
+    guest_email: 'guest@example.com',
+    guest_phone: '+79998887766',
+    recipient_first_name: 'Гост',
+    recipient_last_name: 'Гостев',
+    recipient: {
+      id: 2,
+      first_name: 'Гост',
+      last_name: 'Гостев',
+      patronymic: null,
+      phone: '+79998887766',
+      country_code: 'RU',
+    },
+    cdek_order: null,
   },
 ];
 
@@ -470,6 +514,26 @@ describe('Admin.vue', () => {
     expect(trackingLink.attributes('href')).toBe(mockOrders[0].cdek_order.tracking_url);
   });
 
+  it('отображает данные получателя в модалке заказа', async () => {
+    const wrapper = mount(Admin, { global: { plugins: [router] } });
+    await flushPromises();
+
+    await switchSectionTab(wrapper, 'orders');
+
+    const editBtn = wrapper.find('[data-testid="orders-table"] .admin__icon-btn--edit');
+    expect(editBtn.exists()).toBe(true);
+    await editBtn.trigger('click');
+    await flushPromises();
+
+    const recipientName = wrapper.find('[data-testid="order-modal-recipient-name"]');
+    expect(recipientName.exists()).toBe(true);
+    expect(recipientName.text()).toBe('Иванов Иван Иванович');
+
+    const recipientPhone = wrapper.find('[data-testid="order-modal-recipient-phone"]');
+    expect(recipientPhone.exists()).toBe(true);
+    expect(recipientPhone.text()).toBe('+79990001122');
+  });
+
   it('показывает кнопку «Подтвердить отправку» для paid заказа', async () => {
     const wrapper = mount(Admin, { global: { plugins: [router] } });
     await flushPromises();
@@ -521,21 +585,60 @@ describe('Admin.vue', () => {
     expect(toastFn).toHaveBeenCalledWith('Заказ отправлен', 'success');
   });
 
-  it('отображает данные получателя в модалке заказа', async () => {
+  it('открывает модалку деталей пользователя из вкладки Пользователи', async () => {
+    const wrapper = mount(Admin, { global: { plugins: [router] } });
+    await flushPromises();
+
+    await switchSectionTab(wrapper, 'users');
+
+    const detailBtn = wrapper.find('[data-testid="user-detail-btn-2"]');
+    expect(detailBtn.exists()).toBe(true);
+    expect(detailBtn.text()).toContain('Подробнее');
+
+    await detailBtn.trigger('click');
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="user-detail-modal"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="user-detail-email"]').text()).toBe('user@example.com');
+    expect(wrapper.find('[data-testid="user-detail-phone"]').text()).toBe('+79990001122');
+    expect(mockGet).toHaveBeenCalledWith('/admin/users/2/');
+  });
+
+  it('открывает модалку деталей пользователя из вкладки Заказы', async () => {
     const wrapper = mount(Admin, { global: { plugins: [router] } });
     await flushPromises();
 
     await switchSectionTab(wrapper, 'orders');
 
-    const editBtn = wrapper.find('[data-testid="orders-table"] .admin__icon-btn--edit');
-    expect(editBtn.exists()).toBe(true);
-    await editBtn.trigger('click');
+    const userLink = wrapper.find('[data-testid="order-user-101"]');
+    expect(userLink.exists()).toBe(true);
+    expect(userLink.text()).toBe('Пользователь');
+
+    await userLink.trigger('click');
     await flushPromises();
 
-    const recipientBlock = wrapper.find('[data-testid="order-modal-recipient"]');
-    expect(recipientBlock.exists()).toBe(true);
-    expect(wrapper.find('[data-testid="order-modal-recipient-name"]').text()).toContain('Иванов');
-    expect(wrapper.find('[data-testid="order-modal-recipient-name"]').text()).toContain('Иванович');
-    expect(wrapper.find('[data-testid="order-modal-recipient-phone"]').text()).toBe('+79990001122');
+    expect(wrapper.find('[data-testid="user-detail-modal"]').exists()).toBe(true);
+    expect(mockGet).toHaveBeenCalledWith('/admin/users/2/');
+  });
+
+  it('для гостевого заказа показывает гостевые данные без вызова API', async () => {
+    const wrapper = mount(Admin, { global: { plugins: [router] } });
+    await flushPromises();
+
+    await switchSectionTab(wrapper, 'orders');
+
+    const userLink = wrapper.find('[data-testid="order-user-102"]');
+    expect(userLink.exists()).toBe(true);
+    expect(userLink.text()).toBe('guest@example.com');
+
+    const apiCallsBefore = mockGet.mock.calls.length;
+
+    await userLink.trigger('click');
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="user-detail-modal"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="user-detail-guest-email"]').text()).toBe('guest@example.com');
+    expect(wrapper.find('[data-testid="user-detail-guest-phone"]').text()).toBe('+79998887766');
+    expect(mockGet.mock.calls.length).toBe(apiCallsBefore);
   });
 });

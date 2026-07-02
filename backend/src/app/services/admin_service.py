@@ -1,15 +1,54 @@
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
+from fastapi import HTTPException
 from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
+from src.app.models.cdek_order import CdekOrder
 from src.app.models.order import Order, OrderItem
 from src.app.models.product import Product
 from src.app.models.user import User
 
 
+class _UserDetailResult:
+    """Прокси-объект для сборки деталей пользователя без мутации ORM."""
+
+    def __init__(self, user: User, orders: list[Order]) -> None:
+        self._user = user
+        self.orders = orders
+
+    def __getattr__(self, name: str):
+        return getattr(self._user, name)
+
+
 class AdminService:
+    @staticmethod
+    async def get_user_detail(user_id: int, db: AsyncSession) -> _UserDetailResult:
+        """Детальная информация о пользователе для админки."""
+        result = await db.execute(
+            select(User)
+            .where(User.id == user_id)
+            .options(selectinload(User.social_accounts))
+        )
+        user = result.scalars().first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        orders_result = await db.execute(
+            select(Order)
+            .where(Order.user_id == user_id)
+            .options(
+                selectinload(Order.items),
+                selectinload(Order.recipient),
+                selectinload(Order.cdek_order).selectinload(CdekOrder.status_history),
+            )
+            .order_by(desc(Order.created_at))
+        )
+        orders = list(orders_result.scalars().all())
+        return _UserDetailResult(user, orders)
+
     @staticmethod
     async def get_dashboard_stats(db: AsyncSession) -> dict:
         """Ключевые метрики для дашборда."""
@@ -110,7 +149,6 @@ class AdminService:
         user = result.scalars().first()
 
         if not user:
-            from fastapi import HTTPException
             raise HTTPException(status_code=404, detail="User not found")
 
         user.is_active = not user.is_active

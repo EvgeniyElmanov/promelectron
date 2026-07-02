@@ -1,3 +1,74 @@
+### 2026-07-02 21:34 | frontend-dev | admin-user-order-details — frontend nit fixes (iteration 2)
+  Роли: frontend-dev.
+  Запрос: устранить non-blocking observations из `review/findings-frontend-r2.md`.
+  Выполнено:
+  - [NIT-001] Из `frontend/src/views/Admin.vue` удалена неиспользуемая функция `closeUserModal`; логика закрытия модалки в `handleViewOrderFromModal` вынесена inline.
+  - [NIT-002] Создан shared helper `frontend/src/utils/order.js` с `orderStatusLabel`; дублирующие `statusLabel` (Admin.vue) и `orderStatusLabel` (UserDetailsModal.vue) удалены, используется общая функция.
+  - [NIT-003] В `frontend/src/utils/date.js` `formatDateTime` переименован в `formatDate` (возвращает только дату); обновлены импорт и использование в `UserDetailsModal.vue`.
+  - [NIT-004] В `UserDetailsModal.vue` в `watch` на `props.userId` перед `fetchDetail()` сбрасывается `detail.value = null`, чтобы не показывать данные предыдущего пользователя во время загрузки.
+  Проверки:
+  - `make -C /home/evgeniy/project/my_shop_backend/.worktrees/admin-user-order-details test-frontend` — 246/246 ✅
+  - `make -C /home/evgeniy/project/my_shop_backend/.worktrees/admin-user-order-details lint-frontend` — чисто ✅
+  Git:
+  - Branch: `feature/admin-user-order-details`
+  - Worktree: `/home/evgeniy/project/my_shop_backend/.worktrees/admin-user-order-details`
+  - Issue: https://github.com/AutonomaCo/promelectron/issues/52
+  Блокер: Нет.
+
+### 2026-07-02 20:48 | frontend-dev | admin-user-order-details — frontend review fixes (iteration 1)
+  Роли: frontend-dev.
+  Запрос: устранить OPEN-находки из `review/findings-frontend.md` для задачи #52.
+  Выполнено:
+  - [F001] В `frontend/src/__tests__/Admin.spec.js` восстановлен тест проверки данных получателя в модалке заказа (`order-modal-recipient-name`, `order-modal-recipient-phone`).
+  - [F002] Дублирующие `formatPrice`/`formatShortDate` удалены из `frontend/src/components/admin/UserDetailsModal.vue` и `frontend/src/views/Admin.vue`; добавлен shared `formatPriceCurrency` в `frontend/src/utils/price.js`, создан `frontend/src/utils/date.js` с `formatShortDate` и `formatDateTime`.
+  - [F003] В `UserDetailsModal.vue` внутри `v-for` по заказам `data-testid` стали уникальными: `user-detail-order-id-${order.id}`, `user-detail-order-total-${order.id}`, `user-detail-order-date-${order.id}`.
+  - [F004] В `UserDetailsModal.vue` в `watch` на `props.userId` добавлена ветка: если `isGuest.value` становится true при открытой модалке, вызывается `reset()` и очищается `detail`.
+  Проверки:
+  - `make -C /home/evgeniy/project/my_shop_backend/.worktrees/admin-user-order-details test-frontend` — 246/246 ✅
+  - `make -C /home/evgeniy/project/my_shop_backend/.worktrees/admin-user-order-details lint-frontend` — чисто ✅
+  Git:
+  - Branch: `feature/admin-user-order-details`
+  - Worktree: `/home/evgeniy/project/my_shop_backend/.worktrees/admin-user-order-details`
+  - Issue: https://github.com/AutonomaCo/promelectron/issues/52
+  Блокер: Нет.
+
+### 2026-07-02 21:19 | backend-dev | admin-user-order-details — backend endpoint for user details
+  Роли: backend-dev.
+  Запрос: реализовать backend endpoint `GET /api/v1/admin/users/{user_id}/` для задачи #39/#52 — детальная информация о пользователе в админке.
+  Выполнено:
+  - Добавлена схема `SocialAccountOut` и `AdminUserDetailOut` в `backend/src/app/schemas/admin.py` (расширяет `UserOut`, включает `is_active`, `social_accounts`, `orders`).
+  - Добавлен метод `AdminService.get_user_detail(user_id, db)` в `backend/src/app/services/admin_service.py` с `selectinload` для `social_accounts` и заказов (`items`, `recipient`, `cdek_order.status_history`).
+  - Добавлен endpoint `GET /api/v1/admin/users/{user_id}/` в `backend/src/app/api/admin.py`, защищённый `get_current_active_admin`, с trailing slash.
+  - Добавлен класс `TestAdminUserDetail` в `backend/tests/test_admin.py`: админ получает 200 и корректную структуру, обычный пользователь — 403, несуществующий пользователь — 404, `hashed_password` отсутствует в ответе.
+  Проверки:
+  - `make -C /home/evgeniy/project/my_shop_backend/.worktrees/admin-user-order-details test-backend` — 335/335 ✅
+  - `ruff check backend/src/ backend/tests/` (локальный venv) — чисто ✅
+  - `make lint-backend` не отработал: target запускает `docker compose run api ruff check src/`, но `backend/docker-entrypoint.sh` игнорирует переданную команду и стартует uvicorn, поэтому make падает по таймауту. Это infrastructure/tooling issue, не связанный с кодом фичи.
+  Git:
+  - Branch: `feature/admin-user-order-details`
+  - Worktree: `/home/evgeniy/project/my_shop_backend/.worktrees/admin-user-order-details`
+  - Issue: https://github.com/AutonomaCo/promelectron/issues/52
+  Блокер: `make lint-backend` сломан из-за `docker-entrypoint.sh`, который не поддерживает override command. Линтер сам по себе чистый при запуске вне Docker.
+
+### 2026-07-02 20:30 | frontend-dev | admin-user-order-details — frontend implementation
+  Роли: frontend-dev.
+  Запрос: реализовать frontend-часть задачи #39/#52 — детальная информация о пользователе в админке (Users / Orders).
+  Выполнено:
+  - Создан компонент `frontend/src/components/admin/UserDetailsModal.vue` с вкладками «Профиль» и «Заказы» для авторизованных пользователей и упрощённым видом для гостевых данных.
+  - Добавлен API-хелпер `getAdminUserDetail` в `frontend/src/api/admin.js` (`GET /admin/users/{user_id}/`).
+  - Во вкладке «Пользователи» `frontend/src/views/Admin.vue` добавлена кнопка «Подробнее» в каждую строку таблицы.
+  - Во вкладке «Заказы» заменён сырой `user_id` на кликабельное имя/email пользователя (fallback на гостевые данные); для `user_id === null` API не вызывается, в модалку передаются `guestData`.
+  - Добавлены `data-testid` для новых элементов модалки, табов, email/телефона, таблицы заказов и кнопок.
+  - Обновлены unit-тесты `frontend/src/__tests__/Admin.spec.js`: открытие модалки из вкладок Users/Orders, гостевой заказ без API-вызова.
+  Проверки:
+  - `make -C /home/evgeniy/project/my_shop_backend/.worktrees/admin-user-order-details test-frontend` — 245/245 ✅
+  - `make -C /home/evgeniy/project/my_shop_backend/.worktrees/admin-user-order-details lint-frontend` — чисто ✅
+  Git:
+  - Branch: `feature/admin-user-order-details`
+  - Worktree: `/home/evgeniy/project/my_shop_backend/.worktrees/admin-user-order-details`
+  - Issue: https://github.com/AutonomaCo/promelectron/issues/52
+  Блокер: Нет (backend endpoint `GET /admin/users/{user_id}/` требуется для полной работы фичи, реализуется в рамках backend-части задачи).
+
 ### 2026-06-30 04:44 | orchestrator / backend-dev | fix-register-email-blocking — deploy E2E regression fix
   Роли: orchestrator, backend-dev.
   Запрос: проверить упавшие deploy-тесты после #40, подтвердить PR #42, устранить причину.
@@ -1657,3 +1728,18 @@
   - Coordination plane: `.agent/runs/disable-test-email-smtp/`
   Блокер: Нет.
   Примечание: полный прогон `make test-backend` невозможен без PostgreSQL; SQLite fallback ломается на `DROP SCHEMA` в `conftest.py`.
+
+### 2026-07-02 21:04 | backend-dev | admin-user-order-details — backend review fixes (iteration 1)
+  Роли: backend-dev.
+  Запрос: устранить OPEN-находки из `review/findings-backend.md` для задачи #39/#52.
+  Выполнено:
+  - [F001] В `backend/src/app/services/admin_service.py` импорт `HTTPException` перенесён на верхний уровень файла; убраны локальные импорты внутри методов `get_user_detail` и `toggle_user_active`.
+  - [F002] В `backend/src/app/services/admin_service.py` убрана мутация ORM-объекта `User` через `user.orders = ...`. Добавлен прокси `_UserDetailResult`, который делегирует чтение полей к экземпляру `User`, но хранит `orders` отдельно. Роут `get_admin_user_detail` в `backend/src/app/api/admin.py` адаптирован: `AdminUserDetailOut.model_validate(user_detail)`.
+  Проверки:
+  - `make -C /home/evgeniy/project/my_shop_backend/.worktrees/admin-user-order-details test-backend` — 335/335 ✅
+  - `ruff check src/ tests/` — чисто ✅
+  Git:
+  - Branch: `feature/admin-user-order-details`
+  - Worktree: `/home/evgeniy/project/my_shop_backend/.worktrees/admin-user-order-details`
+  - Issue: https://github.com/AutonomaCo/promelectron/issues/52
+  Блокер: Нет.

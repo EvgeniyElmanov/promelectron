@@ -1,14 +1,14 @@
 ---
 sprint: "Sprint 1"
 sprint_dates: "2026-06-29 — 2026-07-12"
-last_update: "2026-06-30"
-last_commit: "4dd041e"
-commit_message: "fix(auth): send verification email asynchronously to avoid blocking registration"
+last_update: "2026-07-02"
+last_commit: "feature/admin-user-order-details"
+commit_message: "feat(admin): add GET /admin/users/{user_id}/ endpoint with orders"
 blockers_count: 2
 blockers_p0: 0
 blockers_p1: 2
-backend_tests: "320/320"
-frontend_tests: "243/243"
+backend_tests: "335/335"
+frontend_tests: "245/245"
 e2e_tests: "108/108"
 ---
 
@@ -170,6 +170,8 @@ Product.price → Numeric      →  Product variants / Seller payouts
 | GET | `/api/v1/admin/products/` | ✅ | Список товаров (admin) |
 | POST | `/api/v1/admin/products/` | ✅ | Создать товар |
 | GET | `/api/v1/admin/orders/` | ✅ | Список заказов (admin) |
+| GET | `/api/v1/admin/users/` | ✅ | Список пользователей (admin) |
+| GET | `/api/v1/admin/users/{user_id}/` | ✅ | Детали пользователя + его заказы (admin only) |
 | GET | `/api/v1/admin/feature-flags` | ✅ | Список feature flags (admin) |
 | PATCH | `/api/v1/admin/feature-flags/{flag}` | ✅ | Переключить feature flag (admin) |
 
