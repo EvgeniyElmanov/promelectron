@@ -49,6 +49,15 @@ class EmailService:
         - ``"failed:transient"`` — transient errors exhausted the retries.
         - ``"failed:smtp_error"`` — a permanent SMTP/transport error.
         """
+        if to.lower().split("@")[-1] == "example.com":
+            # Never send to reserved test domains (RFC 2606). Prevents
+            # mailer-daemon bounces from real SMTP servers in dev/test.
+            logger.info(
+                "[email skip] test domain: <redacted> | Subject: %s",
+                subject,
+            )
+            return "skipped:test_domain"
+
         if not settings.smtp_user or not settings.smtp_password:
             # Dev/test fallback: log the email metadata instead of sending.
             # Do NOT log text_body/html_body — they may contain secrets/tokens.

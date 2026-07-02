@@ -73,7 +73,7 @@ class TestEmailService:
 
         with caplog.at_level("INFO"):
             result = await EmailService.send_email(
-                to="user@example.com",
+                to="user@realmail.test",
                 subject="Test",
                 html_body="<p>Hi</p>",
                 text_body="secret-token-body",
@@ -82,9 +82,28 @@ class TestEmailService:
         assert result == "skipped:no_credentials"
         assert "email fallback" in caplog.text
         assert "To: <redacted>" in caplog.text
-        assert "user@example.com" not in caplog.text
+        assert "user@realmail.test" not in caplog.text
         # S-001: message body (which may contain secrets) must not be logged.
         assert "secret-token-body" not in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_send_email_skips_example_com(self, monkeypatch, caplog):
+        """Адреса на example.com не отправляются реальным SMTP-сервером."""
+        new_settings = _make_settings(smtp_user="real", smtp_password="real")
+        monkeypatch.setattr(
+            "src.app.services.email_service.settings", new_settings
+        )
+
+        with caplog.at_level("INFO"):
+            result = await EmailService.send_email(
+                to="test_1782826586794_w3@example.com",
+                subject="Test",
+                html_body="<p>Hi</p>",
+            )
+
+        assert result == "skipped:test_domain"
+        assert "email skip" in caplog.text
+        assert "test_1782826586794_w3@example.com" not in caplog.text
 
     @pytest.mark.asyncio
     async def test_send_email_returns_sent_on_success(self, monkeypatch):
@@ -96,7 +115,7 @@ class TestEmailService:
 
         with patch("src.app.services.email_service.send", new=AsyncMock()):
             result = await EmailService.send_email(
-                to="user@example.com", subject="Test", html_body="<p>Hi</p>"
+                to="user@realmail.test", subject="Test", html_body="<p>Hi</p>"
             )
 
         assert result == "sent"
@@ -114,7 +133,7 @@ class TestEmailService:
         failing = AsyncMock(side_effect=SMTPException("smtp down"))
         with patch("src.app.services.email_service.send", new=failing):
             result = await EmailService.send_email(
-                to="user@example.com", subject="Test", html_body="<p>Hi</p>"
+                to="user@realmail.test", subject="Test", html_body="<p>Hi</p>"
             )
 
         assert result == "failed:smtp_error"
@@ -131,7 +150,7 @@ class TestEmailService:
 
         with patch("src.app.services.email_service.send", new=AsyncMock()) as mock_send:
             await EmailService.send_email(
-                to="user@example.com", subject="Test", html_body="<p>Hi</p>"
+                to="user@realmail.test", subject="Test", html_body="<p>Hi</p>"
             )
 
         assert mock_send.called
@@ -151,7 +170,7 @@ class TestEmailService:
 
         with patch("src.app.services.email_service.send", new=AsyncMock()) as mock_send:
             await EmailService.send_email(
-                to="user@example.com", subject="Test", html_body="<p>Hi</p>"
+                to="user@realmail.test", subject="Test", html_body="<p>Hi</p>"
             )
 
         assert mock_send.called
@@ -174,7 +193,7 @@ class TestEmailService:
 
         with patch("src.app.services.email_service.send", new=AsyncMock()) as mock_send:
             await EmailService.send_email(
-                to="user@example.com", subject="Test", html_body="<p>Hi</p>"
+                to="user@realmail.test", subject="Test", html_body="<p>Hi</p>"
             )
 
         assert mock_send.called
@@ -201,7 +220,7 @@ class TestEmailService:
             "src.app.services.email_service.send", new=AsyncMock(side_effect=side_effects)
         ) as mock_send:
             await EmailService.send_email(
-                to="user@example.com", subject="Test", html_body="<p>Hi</p>"
+                to="user@realmail.test", subject="Test", html_body="<p>Hi</p>"
             )
 
         # First transient error retried, second non-transient stops.
@@ -225,7 +244,7 @@ class TestEmailService:
         ):
             with caplog.at_level("WARNING"):
                 await EmailService.send_email(
-                    to="user@example.com", subject="Test", html_body="<p>Hi</p>"
+                    to="user@realmail.test", subject="Test", html_body="<p>Hi</p>"
                 )
 
         assert "Failed to send email to <redacted>" in caplog.text

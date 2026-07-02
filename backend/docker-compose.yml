@@ -60,6 +60,16 @@ services:
       MINIO_BUCKET: promelectron-uploads
       MINIO_SECURE: "false"
       ACCESS_TOKEN_EXPIRE_MINUTES: "1440"
+      # Email disabled in dev containers: avoid mailer-daemon bounces when
+      # test data contains *@example.com addresses.
+      SMTP_HOST: smtp.yandex.ru
+      SMTP_PORT: "465"
+      SMTP_USER: ""
+      SMTP_PASSWORD: ""
+      SMTP_FROM: noreply@myshop.ru
+      SMTP_FROM_NAME: MyShop
+      SMTP_USE_TLS: "true"
+      SMTP_STARTTLS: "false"
       YOOKASSA_SHOP_ID: ${YOOKASSA_SHOP_ID:-}
       YOOKASSA_SECRET_KEY: ${YOOKASSA_SECRET_KEY:-}
       YOOKASSA_TEST_MODE: ${YOOKASSA_TEST_MODE:-true}
@@ -103,6 +113,16 @@ services:
       MINIO_BUCKET: promelectron-uploads
       MINIO_SECURE: "false"
       ACCESS_TOKEN_EXPIRE_MINUTES: "1440"
+      # Email disabled in dev containers: avoid mailer-daemon bounces when
+      # test data contains *@example.com addresses.
+      SMTP_HOST: smtp.yandex.ru
+      SMTP_PORT: "465"
+      SMTP_USER: ""
+      SMTP_PASSWORD: ""
+      SMTP_FROM: noreply@myshop.ru
+      SMTP_FROM_NAME: MyShop
+      SMTP_USE_TLS: "true"
+      SMTP_STARTTLS: "false"
       YOOKASSA_SHOP_ID: ${YOOKASSA_SHOP_ID:-}
       YOOKASSA_SECRET_KEY: ${YOOKASSA_SECRET_KEY:-}
       YOOKASSA_TEST_MODE: ${YOOKASSA_TEST_MODE:-true}
@@ -145,6 +165,16 @@ services:
       MINIO_BUCKET: promelectron-uploads
       MINIO_SECURE: "false"
       ACCESS_TOKEN_EXPIRE_MINUTES: "1440"
+      # Email disabled in dev containers: avoid mailer-daemon bounces when
+      # test data contains *@example.com addresses.
+      SMTP_HOST: smtp.yandex.ru
+      SMTP_PORT: "465"
+      SMTP_USER: ""
+      SMTP_PASSWORD: ""
+      SMTP_FROM: noreply@myshop.ru
+      SMTP_FROM_NAME: MyShop
+      SMTP_USE_TLS: "true"
+      SMTP_STARTTLS: "false"
       YOOKASSA_SHOP_ID: ${YOOKASSA_SHOP_ID:-}
       YOOKASSA_SECRET_KEY: ${YOOKASSA_SECRET_KEY:-}
       YOOKASSA_TEST_MODE: ${YOOKASSA_TEST_MODE:-true}

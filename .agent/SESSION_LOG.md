@@ -1640,3 +1640,20 @@
   - Backend-находки F001–F006, F010–F014 закрыты.
   - H001 (GET verify-email сразу потребляет токен) остаётся accepted risk для MVP.
   Блокер: Нет
+
+
+### 2026-07-02 | backend-dev | disable-test-email-smtp — guard against sending to example.com in dev/test
+  Роль: backend-dev.
+  Запрос: перестать спамить SMTP-аккаунт dadeko.aleksandr@yandex.ru bounce-уведомлениями при тестах из-за отправки на *@example.com.
+  Выполнено:
+  - В `backend/src/app/services/email_service.py` добавлен guard в `send_email`: если домен получателя `example.com`, возвращается `skipped:test_domain` без попытки SMTP-отправки.
+  - В `backend/docker-compose.yml` для сервисов `api`, `worker`, `job-worker` явно заданы пустые `SMTP_USER`/`SMTP_PASSWORD`, чтобы dev-контейнеры не подхватывали credentials хоста.
+  - В `backend/tests/test_email.py` добавлен `test_send_email_skips_example_com`; старые unit-тесты `send_email` переведены на `user@realmail.test`.
+  Проверки:
+  - `python -m pytest tests/test_email.py::TestEmailService -k "send_email"`: 9/9 passed ✅
+  - `python -m ruff check src/app/services/email_service.py tests/test_email.py`: чисто ✅
+  Git:
+  - Branch: main (изменения в рабочей директории, worktree не создавался — задача мелкая и уже была начата).
+  - Coordination plane: `.agent/runs/disable-test-email-smtp/`
+  Блокер: Нет.
+  Примечание: полный прогон `make test-backend` невозможен без PostgreSQL; SQLite fallback ломается на `DROP SCHEMA` в `conftest.py`.
