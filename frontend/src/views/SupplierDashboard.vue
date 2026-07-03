@@ -166,6 +166,7 @@
 import { ref, computed, onMounted } from 'vue';
 import api from '@/services/api';
 import { useToast } from '@/composables/useToast';
+import { formatShortDate } from '@/utils/date';
 
 const { add: toast } = useToast();
 
@@ -229,11 +230,6 @@ const maxOrders = computed(() => {
 
 function getBarHeight(orders) {
   return `${(orders / maxOrders.value) * 100}%`;
-}
-
-function formatShortDate(dateStr) {
-  const d = new Date(dateStr);
-  return `${d.getDate()}.${d.getMonth() + 1}`;
 }
 
 function formatPrice(value) {

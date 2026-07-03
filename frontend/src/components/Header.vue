@@ -42,7 +42,7 @@
             >
               <div class="notif-dropdown__item-title">{{ n.title }}</div>
               <div class="notif-dropdown__item-msg">{{ n.message }}</div>
-              <div class="notif-dropdown__item-time">{{ formatTime(n.created_at) }}</div>
+              <div class="notif-dropdown__item-time">{{ formatDateTime(n.created_at) }}</div>
             </div>
           </div>
           <router-link to="/notifications" class="notif-dropdown__footer" @click="closeNotif">Все уведомления</router-link>
@@ -112,6 +112,7 @@ import { useRouter } from 'vue-router';
 import { useAuth } from '@/composables/useAuth';
 import { useCart } from '@/composables/useCart';
 import { useNotifications } from '@/composables/useNotifications';
+import { formatDateTime } from '@/utils/date';
 import ToastContainer from '@/components/ToastContainer.vue';
 import SearchBar from '@/components/SearchBar.vue';
 import api from '@/services/api';
@@ -171,12 +172,6 @@ function onNotifClick(n) {
   if (n.order_id) {
     router.push(`/orders/${n.order_id}`);
   }
-}
-
-function formatTime(dateStr) {
-  if (!dateStr) return '';
-  const d = new Date(dateStr);
-  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
 // Simple click-outside directive (captures, so it runs before bubble)

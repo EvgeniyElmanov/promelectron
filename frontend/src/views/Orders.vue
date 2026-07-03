@@ -65,6 +65,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import api from '@/services/api';
+import { formatDate } from '@/utils/date';
 import SkeletonOrderCard from '@/components/SkeletonOrderCard.vue';
 
 const orders = ref([]);
@@ -80,17 +81,6 @@ const statusLabel = (status) => {
     cancelled: 'Отменён',
   };
   return labels[status] || status;
-};
-
-const formatDate = (dateString) => {
-  if (!dateString) return '';
-  return new Date(dateString).toLocaleDateString('ru-RU', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
 };
 
 const fetchOrders = async () => {

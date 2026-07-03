@@ -38,7 +38,7 @@
         <div class="notification-item__content">
           <div class="notification-item__title">{{ n.title }}</div>
           <div class="notification-item__message">{{ n.message }}</div>
-          <div class="notification-item__time">{{ formatTime(n.created_at) }}</div>
+          <div class="notification-item__time">{{ formatDateTime(n.created_at) }}</div>
         </div>
         <button class="notification-item__delete" @click.stop="remove(n.id)">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -55,6 +55,7 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '@/services/api';
+import { formatDateTime } from '@/utils/date';
 
 const router = useRouter();
 const notifications = ref([]);
@@ -112,12 +113,6 @@ const remove = async (id) => {
     // ignore
   }
 };
-
-function formatTime(dateStr) {
-  if (!dateStr) return '';
-  const d = new Date(dateStr);
-  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
-}
 
 onMounted(fetchNotifications);
 </script>

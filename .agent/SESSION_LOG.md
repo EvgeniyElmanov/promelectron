@@ -1,3 +1,28 @@
+### 2026-07-03 13:57 | frontend-dev | task-0703 — unify date/time formatting
+  Роли: frontend-dev.
+  Запрос: привести отображение дат и времени к форматам ДД.ММ.ГГГГ и ЧЧ:ММ:SS, вынести логику в `frontend/src/utils/date.js`, покрыть unit-тестами (issue #54).
+  Выполнено:
+  - Обновлён `frontend/src/utils/date.js`: реализованы `formatShortDate` (DD.MM), `formatDate` (DD.MM.YYYY), `formatTime` (HH:MM:SS), `formatDateTime` (DD.MM.YYYY, HH:MM:SS) с ведущими нулями и `'—'` для falsy/invalid input.
+  - Заменено inline форматирование `toLocaleDateString` на утилиты в:
+    - `frontend/src/views/Orders.vue` → `formatDate`
+    - `frontend/src/views/OrderDetail.vue` → `formatDate`
+    - `frontend/src/views/Notifications.vue` → `formatDateTime`
+    - `frontend/src/components/Header.vue` → `formatDateTime`
+    - `frontend/src/views/Profile.vue` → `formatDate`
+    - `frontend/src/views/ProductDetail.vue` → `formatDate`
+    - `frontend/src/views/SupplierOrders.vue` → `formatDate`
+    - `frontend/src/views/SupplierDashboard.vue` → `formatShortDate`
+  - Проверено, что `frontend/src/views/Admin.vue` и `frontend/src/components/admin/UserDetailsModal.vue` продолжают использовать утилиты из `date.js` после обновления.
+  - Создан `frontend/src/__tests__/date.spec.js` с тестами всех четырёх функций (корректные входы, ведущие нули, невалидные/falsy входы, склейка даты и времени).
+  Проверки:
+  - `make -C /home/evgeniy/project/my_shop_backend/.worktrees/task-0703 test-frontend` — 259/259 ✅
+  - `make -C /home/evgeniy/project/my_shop_backend/.worktrees/task-0703 lint-frontend` — чисто ✅
+  Git:
+  - Branch: `feature/task-0703`
+  - Worktree: `/home/evgeniy/project/my_shop_backend/.worktrees/task-0703`
+  - Issue: https://github.com/AutonomaCo/promelectron/issues/54
+  Блокер: Нет.
+
 ### 2026-07-02 21:34 | frontend-dev | admin-user-order-details — frontend nit fixes (iteration 2)
   Роли: frontend-dev.
   Запрос: устранить non-blocking observations из `review/findings-frontend-r2.md`.

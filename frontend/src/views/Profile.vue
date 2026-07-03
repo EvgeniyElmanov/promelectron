@@ -197,6 +197,7 @@ import { useRouter } from 'vue-router';
 import SkeletonProfile from '@/components/SkeletonProfile.vue';
 import api from '@/services/api';
 import { useAuth } from '@/composables/useAuth';
+import { formatDate } from '@/utils/date';
 
 const router = useRouter();
 const { user: authUser, logout, isAdmin, isSupplier, resendVerification } = useAuth();
@@ -234,15 +235,6 @@ const roleLabel = computed(() => {
   const map = { user: 'Покупатель', admin: 'Администратор', supplier: 'Поставщик' };
   return map[user.value?.role] || user.value?.role;
 });
-
-const formatDate = (dateString) => {
-  if (!dateString) return '—';
-  return new Date(dateString).toLocaleDateString('ru-RU', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
-};
 
 const fetchUserProfile = async () => {
   try {

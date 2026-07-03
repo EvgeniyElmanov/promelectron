@@ -180,6 +180,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import api from '@/services/api';
+import { formatDate } from '@/utils/date';
 import { useToast } from '@/composables/useToast';
 import { cancelOrder } from '@/api/orders';
 
@@ -241,12 +242,6 @@ const isStepCompleted = (stepValue) => {
   const currentIdx = stepOrder.indexOf(order.value?.status);
   const stepIdx = stepOrder.indexOf(stepValue);
   return stepIdx <= currentIdx && currentIdx >= 0;
-};
-
-const formatDate = (dateStr) => {
-  if (!dateStr) return '';
-  const d = new Date(dateStr);
-  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 };
 
 const formatPrice = (price) => {

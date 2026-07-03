@@ -153,6 +153,7 @@ import { useCart } from '@/composables/useCart';
 import { useToast } from '@/composables/useToast';
 import SkeletonProductDetail from '@/components/SkeletonProductDetail.vue';
 import { getImageUrl } from '@/composables/useImageUrl';
+import { formatDate } from '@/utils/date';
 
 const route = useRoute();
 const router = useRouter();
@@ -256,12 +257,6 @@ const submitReview = async () => {
   } finally {
     reviewLoading.value = false;
   }
-};
-
-const formatDate = (dateStr) => {
-  if (!dateStr) return '';
-  const d = new Date(dateStr);
-  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
 };
 
 onMounted(fetchProduct);
