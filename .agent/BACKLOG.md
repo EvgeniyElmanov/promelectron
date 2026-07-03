@@ -221,3 +221,4 @@
 | task-id | Issue | Title | Date |
 |---------|-------|-------|------|
 | — | [#5](https://github.com/AutonomaCo/promelectron/issues/5) | Кнопка «Отменить заказ» для пользователя | — |
+| task-0703 | [#54](https://github.com/AutonomaCo/promelectron/issues/54) | Проверить формат даты и времени | 2026-07-03 |
