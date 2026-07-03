@@ -186,14 +186,15 @@ jobs:
           KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
         run: |
           set -euo pipefail
+          NAMESPACE=promelectron-test
           kubectl run manage-admin-users-${{ github.run_id }} \
-            --namespace promelectron-test \
+            --namespace "$NAMESPACE" \
             --rm -i --restart=Never \
             --image=${{ env.API_IMAGE }}:${{ github.sha }} \
-            --env="DATABASE_URL=${{ secrets.DATABASE_URL }}" \
-            --env="ADMIN_PASSWORD_ELMANOV21=$(kubectl get secret promelectron-secrets -n promelectron-test -o jsonpath='{.data.ADMIN_PASSWORD_ELMANOV21}' | base64 -d)" \
-            --env="ADMIN_PASSWORD_DADEKO_ALEKSANDR=$(kubectl get secret promelectron-secrets -n promelectron-test -o jsonpath='{.data.ADMIN_PASSWORD_DADEKO_ALEKSANDR}' | base64 -d)" \
-            -- python scripts/manage_admin_users.py \
+            --env="DATABASE_URL=$(kubectl get secret promelectron-secrets -n "$NAMESPACE" -o jsonpath='{.data.DATABASE_URL}' | base64 -d)" \
+            --env="ADMIN_PASSWORD_ELMANOV21=$(kubectl get secret promelectron-secrets -n "$NAMESPACE" -o jsonpath='{.data.ADMIN_PASSWORD_ELMANOV21}' | base64 -d)" \
+            --env="ADMIN_PASSWORD_DADEKO_ALEKSANDR=$(kubectl get secret promelectron-secrets -n "$NAMESPACE" -o jsonpath='{.data.ADMIN_PASSWORD_DADEKO_ALEKSANDR}' | base64 -d)" \
+            --command -- python scripts/manage_admin_users.py \
               --add elmanov21@yandex.ru dadeko.aleksandr@yandex.ru \
               --remove seed-admin@example.com \
               --ci
@@ -322,14 +323,15 @@ jobs:
           KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
         run: |
           set -euo pipefail
+          NAMESPACE=promelectron
           kubectl run manage-admin-users-${{ github.run_id }} \
-            --namespace promelectron \
+            --namespace "$NAMESPACE" \
             --rm -i --restart=Never \
             --image=${{ env.API_IMAGE }}:${{ github.sha }} \
-            --env="DATABASE_URL=${{ secrets.DATABASE_URL }}" \
-            --env="ADMIN_PASSWORD_ELMANOV21=$(kubectl get secret promelectron-secrets -n promelectron -o jsonpath='{.data.ADMIN_PASSWORD_ELMANOV21}' | base64 -d)" \
-            --env="ADMIN_PASSWORD_DADEKO_ALEKSANDR=$(kubectl get secret promelectron-secrets -n promelectron -o jsonpath='{.data.ADMIN_PASSWORD_DADEKO_ALEKSANDR}' | base64 -d)" \
-            -- python scripts/manage_admin_users.py \
+            --env="DATABASE_URL=$(kubectl get secret promelectron-secrets -n "$NAMESPACE" -o jsonpath='{.data.DATABASE_URL}' | base64 -d)" \
+            --env="ADMIN_PASSWORD_ELMANOV21=$(kubectl get secret promelectron-secrets -n "$NAMESPACE" -o jsonpath='{.data.ADMIN_PASSWORD_ELMANOV21}' | base64 -d)" \
+            --env="ADMIN_PASSWORD_DADEKO_ALEKSANDR=$(kubectl get secret promelectron-secrets -n "$NAMESPACE" -o jsonpath='{.data.ADMIN_PASSWORD_DADEKO_ALEKSANDR}' | base64 -d)" \
+            --command -- python scripts/manage_admin_users.py \
               --add elmanov21@yandex.ru dadeko.aleksandr@yandex.ru \
               --remove seed-admin@example.com \
               --ci
