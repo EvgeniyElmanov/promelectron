@@ -7,7 +7,6 @@ COPY pyproject.toml requirements.txt requirements-dev.txt ./
 RUN python -m pip install --no-cache-dir -r requirements.txt
 
 COPY src/ ./src/
-COPY scripts/ ./scripts/
 COPY main.py alembic.ini seed_data.py docker-entrypoint.sh ./
 COPY alembic/ ./alembic/
 

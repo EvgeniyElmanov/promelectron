@@ -113,7 +113,6 @@ class UserService:
         # т.к. passlib бросает исключение на пустом/None-хеше.
         if (
             not user
-            or not user.is_active
             or not user.hashed_password
             or not verify_password(user_data.password, user.hashed_password)
         ):

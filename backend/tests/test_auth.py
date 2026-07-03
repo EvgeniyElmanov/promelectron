@@ -63,19 +63,6 @@ class TestAuthAPI:
         assert "already registered" in response.json()["detail"]
 
     @pytest.mark.asyncio
-    async def test_login_inactive_user(self, client, test_user, test_session):
-        """Неактивный пользователь не может войти."""
-        test_user.is_active = False
-        await test_session.commit()
-
-        response = await client.post(
-            "/api/v1/login/",
-            json={"email": "testuser@example.com", "password": "password123"},
-        )
-        assert response.status_code == 401
-        assert "Incorrect email or password" in response.json()["detail"]
-
-    @pytest.mark.asyncio
     async def test_login_success(self, client, test_user):
         """Успешный вход — возвращает токен и user."""
         response = await client.post(

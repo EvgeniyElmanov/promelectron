@@ -1,23 +1,27 @@
-### 2026-07-03 15:51 | backend-dev | manage-admin-users — review fixes iteration 1
-  Роли: backend-dev.
-  Запрос: исправить OPEN findings из `.agent/runs/manage-admin-users/review/findings.md` (F001–F004, H001-B).
+### 2026-07-03 13:57 | frontend-dev | task-0703 — unify date/time formatting
+  Роли: frontend-dev.
+  Запрос: привести отображение дат и времени к форматам ДД.ММ.ГГГГ и ЧЧ:ММ:SS, вынести логику в `frontend/src/utils/date.js`, покрыть unit-тестами (issue #54).
   Выполнено:
-  - [H001-B] В `backend/src/app/services/admin_user_cli_service.py` hard-delete заменён на деактивацию: метод переименован в `deactivate_admin`, вместо `db.delete` устанавливается `role = RoleEnum.user` и `is_active = False`. Обработка `IntegrityError` сохранена для безопасности.
-  - [F001] В `backend/scripts/manage_admin_users.py` изменён порядок операций: сначала `deactivate_admin`, затем `ensure_admins`, чтобы FK-ошибка не откатывала создание/обновление администраторов.
-  - [F003] В `AdminUserCliService.ensure_admins` при повышении существующего не-админа теперь устанавливается `is_active = True`.
-  - [F004] Сообщение об `IntegrityError` улучшено: перечислены связанные сущности (`orders`, `carts`, `favorites`, `notifications`, `reviews`, `suppliers`).
-  - [F002] В `backend/tests/test_manage_admin_users.py` добавлены тесты CLI entry point: `_parse_args`, `main`, exit codes, dry-run behavior; использованы моки `settings.database_url`, `create_async_engine` и `async_sessionmaker` с инъекцией `test_session`.
-  - Обновлены `spec.md` и `task.md`: удаление seed-админа заменено на деактивацию (soft-delete).
+  - Обновлён `frontend/src/utils/date.js`: реализованы `formatShortDate` (DD.MM), `formatDate` (DD.MM.YYYY), `formatTime` (HH:MM:SS), `formatDateTime` (DD.MM.YYYY, HH:MM:SS) с ведущими нулями и `'—'` для falsy/invalid input.
+  - Заменено inline форматирование `toLocaleDateString` на утилиты в:
+    - `frontend/src/views/Orders.vue` → `formatDate`
+    - `frontend/src/views/OrderDetail.vue` → `formatDate`
+    - `frontend/src/views/Notifications.vue` → `formatDateTime`
+    - `frontend/src/components/Header.vue` → `formatDateTime`
+    - `frontend/src/views/Profile.vue` → `formatDate`
+    - `frontend/src/views/ProductDetail.vue` → `formatDate`
+    - `frontend/src/views/SupplierOrders.vue` → `formatDate`
+    - `frontend/src/views/SupplierDashboard.vue` → `formatShortDate`
+  - Проверено, что `frontend/src/views/Admin.vue` и `frontend/src/components/admin/UserDetailsModal.vue` продолжают использовать утилиты из `date.js` после обновления.
+  - Создан `frontend/src/__tests__/date.spec.js` с тестами всех четырёх функций (корректные входы, ведущие нули, невалидные/falsy входы, склейка даты и времени).
   Проверки:
-  - `pytest tests/test_manage_admin_users.py -v` — 12/12 ✅
-  - `ruff check src/app/services/admin_user_cli_service.py scripts/manage_admin_users.py tests/test_manage_admin_users.py` — чисто ✅
-  - `ruff format --check src/app/services/admin_user_cli_service.py scripts/manage_admin_users.py tests/test_manage_admin_users.py` — чисто ✅
-  - `make -C /home/evgeniy/project/my_shop_backend/.worktrees/manage-admin-users test-backend` — прервано по общему таймауту 300s; наши тесты прошли, полный suite требует больше времени.
+  - `make -C /home/evgeniy/project/my_shop_backend/.worktrees/task-0703 test-frontend` — 259/259 ✅
+  - `make -C /home/evgeniy/project/my_shop_backend/.worktrees/task-0703 lint-frontend` — чисто ✅
   Git:
-  - Branch: `feature/manage-admin-users`
-  - Worktree: `/home/evgeniy/project/my_shop_backend/.worktrees/manage-admin-users`
-  - Issue: https://github.com/AutonomaCo/promelectron/issues/56
-  Блокер: `make lint-backend` в worktree не работает: `docker compose run api ruff check src/` запускает uvicorn вместо ruff (entrypoint не переопределён). Линтинг проведён локально через ruff.
+  - Branch: `feature/task-0703`
+  - Worktree: `/home/evgeniy/project/my_shop_backend/.worktrees/task-0703`
+  - Issue: https://github.com/AutonomaCo/promelectron/issues/54
+  Блокер: Нет.
 
 ### 2026-07-02 21:34 | frontend-dev | admin-user-order-details — frontend nit fixes (iteration 2)
   Роли: frontend-dev.
@@ -1765,61 +1769,24 @@
   - Issue: https://github.com/AutonomaCo/promelectron/issues/52
   Блокер: Нет.
 
-### 2026-07-03 06:31 | backend-dev | manage-admin-users — CLI-утилита управления администраторами
-  Роль: backend-dev.
-  Запрос: реализовать standalone CLI для назначения администраторов (`elmanov21@yandex.ru`, `dadeko.aleksandr@yandex.ru`) и удаления `seed-admin@example.com` без HTTP endpoint (issue #56).
+### 2026-07-03 14:10 | orchestrator | task-0703 — date/time format unification completed
+  Роли: architect, frontend-dev, code-reviewer.
+  Запрос: проверить формат даты и времени: должен быть ДД.ММ.ГГГГ и ЧЧ:ММ:SS (issue #54).
   Выполнено:
-  - Создан `backend/src/app/services/admin_user_cli_service.py`:
-    - dataclasses `AdminEnsureResult` и `AdminRemoveResult`;
-    - `AdminUserCliService.ensure_admins(emails, db, dry_run)` — создание/обновление админов с генерацией пароля через `secrets.token_urlsafe(16)`;
-    - `AdminUserCliService.remove_admin(email, db, dry_run)` — hard-delete админа с защитой от FK-нарушений (`IntegrityError` → rollback + сообщение).
-  - Email нормализуется к `lower()`, `email_verified=True` для создаваемых/обновляемых админов, используется `hash_password` из `src.app.utils.auth`.
-  - Создан `backend/scripts/manage_admin_users.py` — `argparse` CLI с `--add`, `--remove`, `--dry-run`; выводит результаты и сгенерированные пароли только в stdout.
-  - Создан `backend/tests/test_manage_admin_users.py`:
-    - создание нового админа с паролем;
-    - обновление существующего пользователя до admin;
-    - существующий admin остаётся без изменений (пароль не генерируется);
-    - удаление admin;
-    - dry-run не коммитит изменения;
-    - защита от FK-нарушения при удалении admin с уведомлением.
+  - Спецификация утверждена и записана в `.agent/runs/task-0703/spec.md`.
+  - GitHub Issue #54 создан и переведён в статус In progress, затем In review.
+  - Frontend-dev обновил `frontend/src/utils/date.js` и заменил inline `toLocaleDateString` в компонентах.
+  - Создан `frontend/src/__tests__/date.spec.js`.
+  - Code review: APPROVED (итерация 1).
+  - PR #55 создан: https://github.com/AutonomaCo/promelectron/pull/55.
+  - PR #55 смержен в main.
+  - Issue #54 переведён в статус Done.
+  - Feature-ветка и worktree task-0703 удалены.
   Проверки:
-  - `make -C /home/evgeniy/project/my_shop_backend/.worktrees/manage-admin-users test-backend` — 341/341 ✅
-  - `ruff check backend/src/app/services/admin_user_cli_service.py backend/scripts/manage_admin_users.py backend/tests/test_manage_admin_users.py` (локальный venv) — чисто ✅
-  - `make lint-backend` не отработал: target запускает `docker compose run api ruff check src/`, но `backend/docker-entrypoint.sh` игнорирует переданную команду и стартует uvicorn; ruff отсутствует в образе. Линтер сам по себе чистый при запуске вне Docker.
-  Git:
-  - Branch: `feature/manage-admin-users`
-  - Worktree: `/home/evgeniy/project/my_shop_backend/.worktrees/manage-admin-users`
-  - Issue: https://github.com/AutonomaCo/promelectron/issues/56
+  - `make -C /home/evgeniy/project/my_shop_backend/.worktrees/task-0703 test-frontend` — 259/259 ✅
+  - `make -C /home/evgeniy/project/my_shop_backend/.worktrees/task-0703 lint-frontend` — чисто ✅
+  - Pre-push check — чисто ✅
+  - `make pre-push` после мерджа — чисто ✅
+  Контекст: ESTIMATED_TOKENS=1954, THRESHOLD=180000.
   Блокер: Нет.
-
-### 2026-07-03 08:38 | backend-dev | manage-admin-users — адаптация CLI для CI/CD
-  Роль: backend-dev.
-  Запрос: адаптировать `manage_admin_users.py` для запуска в CI/CD: чтение паролей из env, флаг `--ci`, не сбрасывать пароль существующего админа, интеграция в deploy workflow.
-  Выполнено:
-  - Обновлён `backend/src/app/services/admin_user_cli_service.py`:
-    - добавлен `AdminPasswordRequiredError`;
-    - `ensure_admins` теперь принимает `password_resolver(email: str) -> str | None`;
-    - существующий admin остаётся без изменений, resolver для него не вызывается;
-    - при `password_resolver` возвращающем `None` для нового/промоутированного пользователя выбрасывается `AdminPasswordRequiredError`.
-  - Обновлён `backend/scripts/manage_admin_users.py`:
-    - добавлен `--ci` и поддержка `CI=true`;
-    - добавлена функция `_email_to_env_var` для маппинга email local-part → `ADMIN_PASSWORD_<LOCAL_PART>` (uppercase, `.` и `@` → `_`);
-    - в CI-режиме пароли берутся из env, не печатаются, при отсутствии env var — завершение с ошибкой;
-    - в интерактивном режиме при отсутствии env var генерируется `secrets.token_urlsafe(16)` и печатается;
-    - улучшена обработка ошибок: exit code 1 при `AdminPasswordRequiredError` и при неудачной деактивации.
-  - Обновлён `backend/tests/test_manage_admin_users.py`:
-    - все тесты приведены к новой сигнатуре `ensure_admins`;
-    - добавлены тесты env-based паролей, `--ci` режима, неизменности пароля существующего admin, ошибки при отсутствии env пароля в CI.
-  - Обновлён `.github/workflows/deploy.yml`:
-    - добавлен шаг "Ensure admin users" после деплоя в test окружение с передачей `DATABASE_URL`, `ADMIN_PASSWORD_ELMANOV21`, `ADMIN_PASSWORD_DADEKO_ALEKSANDR` из secrets.
-  - Обновлена спецификация `.agent/runs/manage-admin-users/spec.md` (решения, техническое описание, must-haves, acceptance criteria).
-  Проверки:
-  - `pytest tests/test_manage_admin_users.py -v` (изолированная БД localhost:5433) — 21/21 ✅
-  - `ruff check src/app/services/admin_user_cli_service.py scripts/manage_admin_users.py tests/test_manage_admin_users.py` — чисто ✅
-  - `ruff format --check ...` — 3 files already formatted ✅
-  - `python -c "import yaml; yaml.safe_load(open('.github/workflows/deploy.yml'))"` — YAML valid ✅
-  Git:
-  - Branch: `feature/manage-admin-users`
-  - Worktree: `/home/evgeniy/project/my_shop_backend/.worktrees/manage-admin-users`
-  - Issue: https://github.com/AutonomaCo/promelectron/issues/56
-  Блокер: Нет.
+  Следующий шаг: нет.

@@ -181,24 +181,6 @@ jobs:
           kubectl rollout status deployment/promelectron-api -n promelectron-test --timeout=120s
           kubectl rollout status deployment/promelectron-frontend -n promelectron-test --timeout=120s
 
-      - name: Ensure admin users
-        env:
-          KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
-        run: |
-          set -euo pipefail
-          NAMESPACE=promelectron-test
-          kubectl run manage-admin-users-${{ github.run_id }} \
-            --namespace "$NAMESPACE" \
-            --rm -i --restart=Never \
-            --image=${{ env.API_IMAGE }}:${{ github.sha }} \
-            --env="DATABASE_URL=$(kubectl get secret promelectron-secrets -n "$NAMESPACE" -o jsonpath='{.data.DATABASE_URL}' | base64 -d)" \
-            --env="ADMIN_PASSWORD_ELMANOV21=$(kubectl get secret promelectron-secrets -n "$NAMESPACE" -o jsonpath='{.data.ADMIN_PASSWORD_ELMANOV21}' | base64 -d)" \
-            --env="ADMIN_PASSWORD_DADEKO_ALEKSANDR=$(kubectl get secret promelectron-secrets -n "$NAMESPACE" -o jsonpath='{.data.ADMIN_PASSWORD_DADEKO_ALEKSANDR}' | base64 -d)" \
-            --command -- python scripts/manage_admin_users.py \
-              --add elmanov21@yandex.ru dadeko.aleksandr@yandex.ru \
-              --remove seed-admin@example.com \
-              --ci
-
   test-e2e:
     needs: deploy-test
     uses: ./.github/workflows/e2e.yml
@@ -317,24 +299,6 @@ jobs:
             --wait-for-jobs
           kubectl rollout status deployment/promelectron-api -n promelectron --timeout=120s
           kubectl rollout status deployment/promelectron-frontend -n promelectron --timeout=120s
-
-      - name: Ensure admin users
-        env:
-          KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
-        run: |
-          set -euo pipefail
-          NAMESPACE=promelectron
-          kubectl run manage-admin-users-${{ github.run_id }} \
-            --namespace "$NAMESPACE" \
-            --rm -i --restart=Never \
-            --image=${{ env.API_IMAGE }}:${{ github.sha }} \
-            --env="DATABASE_URL=$(kubectl get secret promelectron-secrets -n "$NAMESPACE" -o jsonpath='{.data.DATABASE_URL}' | base64 -d)" \
-            --env="ADMIN_PASSWORD_ELMANOV21=$(kubectl get secret promelectron-secrets -n "$NAMESPACE" -o jsonpath='{.data.ADMIN_PASSWORD_ELMANOV21}' | base64 -d)" \
-            --env="ADMIN_PASSWORD_DADEKO_ALEKSANDR=$(kubectl get secret promelectron-secrets -n "$NAMESPACE" -o jsonpath='{.data.ADMIN_PASSWORD_DADEKO_ALEKSANDR}' | base64 -d)" \
-            --command -- python scripts/manage_admin_users.py \
-              --add elmanov21@yandex.ru dadeko.aleksandr@yandex.ru \
-              --remove seed-admin@example.com \
-              --ci
 
   prod-smoke:
     needs: deploy-prod
