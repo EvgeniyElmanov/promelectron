@@ -63,6 +63,19 @@ class TestAuthAPI:
         assert "already registered" in response.json()["detail"]
 
     @pytest.mark.asyncio
+    async def test_login_inactive_user(self, client, test_user, test_session):
+        """Неактивный пользователь не может войти."""
+        test_user.is_active = False
+        await test_session.commit()
+
+        response = await client.post(
+            "/api/v1/login/",
+            json={"email": "testuser@example.com", "password": "password123"},
+        )
+        assert response.status_code == 401
+        assert "Incorrect email or password" in response.json()["detail"]
+
+    @pytest.mark.asyncio
     async def test_login_success(self, client, test_user):
         """Успешный вход — возвращает токен и user."""
         response = await client.post(
@@ -204,7 +217,9 @@ class TestAuthAPI:
             {"patronymic": "Иванович!"},
         ],
     )
-    async def test_update_profile_invalid_pii(self, client, test_user, user_token, payload):
+    async def test_update_profile_invalid_pii(
+        self, client, test_user, user_token, payload
+    ):
         """Невалидные PII-поля профиля отклоняются с 422."""
         response = await client.patch(
             "/api/v1/me/",
@@ -639,7 +654,10 @@ class TestOAuth:
             "/api/v1/auth/callback?code=fake-code&state=totally-bogus-state"
         )
         assert response.status_code == 400
-        assert "истек" in response.json()["detail"].lower() or "недействительна" in response.json()["detail"].lower()
+        assert (
+            "истек" in response.json()["detail"].lower()
+            or "недействительна" in response.json()["detail"].lower()
+        )
 
     @pytest.mark.asyncio
     async def test_oauth_callback_when_state_missing_should_return_422(self, client):
@@ -824,7 +842,10 @@ class TestOAuth:
 # Tests for code-review findings #1–#10
 # ---------------------------------------------------------------------------
 
-def _make_fake_async_client(token_resp_data, user_info_data, token_status=200, user_info_status=200):
+
+def _make_fake_async_client(
+    token_resp_data, user_info_data, token_status=200, user_info_status=200
+):
     """Factory for a minimal httpx.AsyncClient fake."""
 
     class FakeResponse:
@@ -902,24 +923,31 @@ class TestOAuthHardeningFindings:
 
         # Re-execute _load_secret_key directly without re-importing the module
         from src.app.core.config import _load_secret_key, _DEV_SECRET_PLACEHOLDER
+
         # Temporarily set SECRET_KEY to placeholder
         monkeypatch.setenv("SECRET_KEY", _DEV_SECRET_PLACEHOLDER)
         import pytest
+
         with pytest.raises(RuntimeError, match="SECRET_KEY"):
             _load_secret_key()
 
     def test_config_when_production_and_empty_key_should_raise(self, monkeypatch):
         """Finding #2: RuntimeError raised when SECRET_KEY empty in prod."""
         from src.app.core.config import _load_secret_key
+
         monkeypatch.setenv("ENVIRONMENT", "production")
         monkeypatch.setenv("SECRET_KEY", "")
         import pytest
+
         with pytest.raises(RuntimeError, match="SECRET_KEY"):
             _load_secret_key()
 
-    def test_config_when_development_and_placeholder_key_should_succeed(self, monkeypatch):
+    def test_config_when_development_and_placeholder_key_should_succeed(
+        self, monkeypatch
+    ):
         """Finding #2: dev placeholder is allowed outside production."""
         from src.app.core.config import _load_secret_key, _DEV_SECRET_PLACEHOLDER
+
         monkeypatch.setenv("ENVIRONMENT", "development")
         monkeypatch.setenv("SECRET_KEY", _DEV_SECRET_PLACEHOLDER)
         key = _load_secret_key()
@@ -958,7 +986,10 @@ class TestOAuthHardeningFindings:
             json={"old_password": "anything", "new_password": "newpass123"},
         )
         assert response.status_code == 400
-        assert "соцсеть" in response.json()["detail"].lower() or "пароля" in response.json()["detail"].lower()
+        assert (
+            "соцсеть" in response.json()["detail"].lower()
+            or "пароля" in response.json()["detail"].lower()
+        )
 
     # -------------------------------------------------------------------
     # Finding #4 — state survives transient token exchange failure
@@ -989,9 +1020,7 @@ class TestOAuthHardeningFindings:
         state = await create_state("google", "test-verifier")
 
         # First attempt: provider fails → 400
-        resp1 = await client.get(
-            f"/api/v1/auth/callback?code=fake-code&state={state}"
-        )
+        resp1 = await client.get(f"/api/v1/auth/callback?code=fake-code&state={state}")
         assert resp1.status_code == 400
 
         # State must still be in Redis — user can retry
@@ -1291,9 +1320,7 @@ class TestOAuthHardeningFindings:
                 )
             return await original_commit(self_session)
 
-        monkeypatch.setattr(
-            test_session.__class__, "commit", patched_commit
-        )
+        monkeypatch.setattr(test_session.__class__, "commit", patched_commit)
 
         FakeClient = _make_fake_async_client(
             token_resp_data={"access_token": "fake-token"},
@@ -1416,7 +1443,9 @@ class TestHardeningDeferred:
         assert resp.json()["message"] == "Logged out"
 
     @pytest.mark.asyncio
-    async def test_logout_does_not_revoke_other_tokens(self, client, test_user, test_admin):
+    async def test_logout_does_not_revoke_other_tokens(
+        self, client, test_user, test_admin
+    ):
         """Logging out one token does not affect another user's valid token."""
         # Login as regular user
         user_resp = await client.post(

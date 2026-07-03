@@ -29,7 +29,8 @@ def _token_for_user(user: User) -> str:
     # F-10: sub is the stable numeric user id, not email.
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     return create_access_token(
-        data={"sub": str(user.id), "role": user.role.value}, expires_delta=access_token_expires
+        data={"sub": str(user.id), "role": user.role.value},
+        expires_delta=access_token_expires,
     )
 
 
@@ -50,9 +51,7 @@ class UserService:
         # M-2: normalise email to lowercase before duplicate-check and storage
         # so "Alice@x.com" and "alice@x.com" are treated as one account.
         email = user_data.email.lower()
-        result = await db.execute(
-            select(User).where(func.lower(User.email) == email)
-        )
+        result = await db.execute(select(User).where(func.lower(User.email) == email))
         user = result.scalars().first()
         if user:
             raise HTTPException(status_code=400, detail="Email already registered")
@@ -91,7 +90,9 @@ class UserService:
             verification_token = await UserService.create_email_verification_token(
                 user_id=new_user.id, db=db
             )
-            await _schedule_verification_email(to=new_user.email, token=verification_token, db=db)
+            await _schedule_verification_email(
+                to=new_user.email, token=verification_token, db=db
+            )
         except Exception:
             # Email delivery is best-effort; registration must not fail.
             pass
@@ -112,6 +113,7 @@ class UserService:
         # т.к. passlib бросает исключение на пустом/None-хеше.
         if (
             not user
+            or not user.is_active
             or not user.hashed_password
             or not verify_password(user_data.password, user.hashed_password)
         ):
@@ -182,7 +184,9 @@ class UserService:
 
         if user_data.shipping_address is not None:
             user.shipping_address = (
-                user_data.shipping_address.model_dump() if user_data.shipping_address else None
+                user_data.shipping_address.model_dump()
+                if user_data.shipping_address
+                else None
             )
 
         await db.commit()
@@ -277,7 +281,9 @@ class UserService:
             await db.refresh(new_user)
         except IntegrityError:
             await db.rollback()
-            result = await db.execute(select(User).where(func.lower(User.email) == email))
+            result = await db.execute(
+                select(User).where(func.lower(User.email) == email)
+            )
             existing_user = result.scalars().first()
             if existing_user:
                 updated = False
@@ -306,7 +312,10 @@ class UserService:
             raise
 
         if not phone:
-            raise HTTPException(status_code=400, detail="Phone is required to create user from guest order")
+            raise HTTPException(
+                status_code=400,
+                detail="Phone is required to create user from guest order",
+            )
 
         # Создаём получателя по умолчанию из данных заказа
         default_recipient = Recipient(
@@ -324,7 +333,9 @@ class UserService:
         return new_user, True, temp_password
 
     @staticmethod
-    async def save_address(user_id: int, address_data: UserAddressCreate, db: AsyncSession) -> UserAddress:
+    async def save_address(
+        user_id: int, address_data: UserAddressCreate, db: AsyncSession
+    ) -> UserAddress:
         result = await db.execute(select(User).where(User.id == user_id))
         user = result.scalars().first()
         if not user:
@@ -403,7 +414,9 @@ class UserService:
                 if reset_token.is_expired():
                     raise HTTPException(status_code=400, detail="Token expired")
 
-                user_result = await db.execute(select(User).where(User.id == reset_token.user_id))
+                user_result = await db.execute(
+                    select(User).where(User.id == reset_token.user_id)
+                )
                 user = user_result.scalars().first()
                 if not user:
                     raise HTTPException(status_code=404, detail="User not found")
@@ -427,9 +440,7 @@ class UserService:
         raise HTTPException(status_code=400, detail="Invalid or expired token")
 
     @staticmethod
-    async def create_email_verification_token(
-        user_id: int, db: AsyncSession
-    ) -> str:
+    async def create_email_verification_token(user_id: int, db: AsyncSession) -> str:
         """Создать одноразовый токен подтверждения email. Возвращает plaintext токен."""
         now = datetime.now(timezone.utc)
         # Invalidate all unused tokens for this user before creating a new one.
@@ -528,9 +539,7 @@ class UserService:
         return user
 
     @staticmethod
-    async def resend_verification_email(
-        user: User, db: AsyncSession
-    ) -> None:
+    async def resend_verification_email(user: User, db: AsyncSession) -> None:
         """Инвалидировать старые токены, создать новый и отправить письмо (в фоне)."""
         token = await UserService.create_email_verification_token(
             user_id=user.id, db=db
