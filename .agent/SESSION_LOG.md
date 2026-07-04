@@ -1,3 +1,45 @@
+### 2026-07-04 06:20 | orchestrator | cart-select-items-for-payment — QA, review, PR
+  Роль: orchestrator.
+  Запрос: завершить реализацию задачи #61 (выбор товаров в корзине для оплаты + автоподстановка default recipient/address).
+  Выполнено:
+  - Code review прошёл 3 итерации; все findings закрыты (VERIFIED).
+  - QA gate: backend `pytest tests/test_cart.py tests/test_orders.py` — 34 passed; frontend `make test-frontend` — 280 passed; `make lint-frontend` — clean; `ruff check src/ tests/` — clean; Alembic downgrade/upgade — passed.
+  - Создан PR #62: https://github.com/AutonomaCo/promelectron/pull/62
+  - GitHub Issue #61 переведён в статус **In review**.
+  Git:
+  - Branch: `feature/cart-select-items-for-payment`
+  - Worktree: `/home/evgeniy/project/my_shop_backend/.worktrees/cart-select-items-for-payment`
+  - PR: https://github.com/AutonomaCo/promelectron/pull/62
+  - Issue: https://github.com/AutonomaCo/promelectron/issues/61
+  Блокер: `make lint-backend` / `make test-backend` в Makefile работают некорректно из-за `docker-entrypoint.sh`; линт и тесты запущены вручную с `--entrypoint ""`.
+
+
+### 2026-07-04 05:10 | backend-dev | cart-select-items-for-payment — backend implementation
+  Роль: backend-dev.
+  Запрос: реализовать backend-часть выбора товаров в корзине для оплаты и автоподстановку default recipient/address для авторизованных пользователей (issue #61).
+  Выполнено:
+  - Добавлено поле `selected` в модель `CartItem` (`backend/src/app/models/cart.py`).
+  - Создана Alembic-миграция `9614c59dd5a3_add_cart_item_selected` с `server_default=sa.true()` для backfill существующих записей.
+  - Обновлены схемы (`backend/src/app/schemas/cart.py`): `CartItemOut.selected`, `CartItemSelect`, `CartOut.default_recipient`/`default_address`.
+  - Обновлен `CartService` (`backend/src/app/services/cart_service.py`): `set_selected`, `select_all`, `deselect_all`, `get_cart` с default recipient/address.
+  - Обновлен API корзины (`backend/src/app/api/cart.py`): `PATCH /select/{item_id}/`, `POST /select-all/`, `POST /deselect-all/`.
+  - Обновлен `OrderService.create_order` (`backend/src/app/services/order_service.py`): заказ формируется только из `selected=True`, невыбранные остаются в корзине, 400 при отсутствии выбранных товаров.
+  - Добавлены/обновлены backend-тесты в `backend/tests/test_cart.py` и `backend/tests/test_orders.py`.
+  Проверки:
+  - `pytest tests/test_cart.py tests/test_orders.py -v` — 31/31 passed ✅
+  - `ruff check src/ tests/` (в контейнере api с установкой ruff) — чисто ✅
+  - `alembic downgrade -1 && alembic upgrade head` — проходит ✅
+  Git:
+  - Branch: `feature/cart-select-items-for-payment`
+  - Worktree: `/home/evgeniy/project/my_shop_backend/.worktrees/cart-select-items-for-payment`
+  - Issue: https://github.com/AutonomaCo/promelectron/issues/61
+  Блокер: `make lint-backend` и `make test-backend` в Makefile работают некорректно из-за `docker-entrypoint.sh` и длительного runtime полного suite; линт и релевантные тесты запущены вручную. Frontend-изменения в working tree присутствуют, но не были сделаны в этой сессии.
+
+
+### 2026-07-03 15:51 | backend-dev | manage-admin-users — review fixes iteration 1
+  Роли: backend-dev.
+  Запрос: исправить OPEN findings из `.agent/runs/manage-admin-users/review/findings.md` (F001–F004, H001-B).
+
 ### 2026-07-03 13:57 | frontend-dev | task-0703 — unify date/time formatting
   Роли: frontend-dev.
   Запрос: привести отображение дат и времени к форматам ДД.ММ.ГГГГ и ЧЧ:ММ:SS, вынести логику в `frontend/src/utils/date.js`, покрыть unit-тестами (issue #54).
@@ -1789,4 +1831,85 @@
   - `make pre-push` после мерджа — чисто ✅
   Контекст: ESTIMATED_TOKENS=1954, THRESHOLD=180000.
   Блокер: Нет.
+<<<<<<< HEAD
+
+### 2026-07-04 05:25 | frontend-dev | cart-select-items-for-payment — frontend-реализация
+  Роль: frontend-dev.
+  Запрос: реализовать frontend-часть задачи cart-select-items-for-payment: выбор товаров в корзине, оформление только выбранных, автоподстановка default recipient/address для авторизованных пользователей.
+  Выполнено:
+  - Создан API-слой `frontend/src/api/cart.js`:
+    - `selectCartItem`, `selectAllCartItems`, `deselectAllCartItems`.
+  - Обновлён `frontend/src/composables/useCart.js`:
+    - Новые гостевые товары сохраняют `selected: true`.
+    - Fallback `selected=true` для старых записей в `localStorage`.
+    - Добавлены `selectItem`, `selectAll`, `deselectAll`, `getSelectedGuestCartItems`.
+  - Обновлён `frontend/src/views/Cart.vue`:
+    - Чекбокс "Выбрать все" и чекбокс у каждого товара.
+    - `selectedItems` computed; `itemCount`, `itemsTotal`, `orderTotal` считаются только по выбранным.
+    - В CDEK-виджет передаются только выбранные товары.
+    - Кнопка "Оформить заказ" disabled при отсутствии выбранных товаров или незаполненных обязательных полей.
+    - Автоподстановка `default_recipient`/`default_address` из ответа `GET /api/v1/cart/`; изменения не сохраняются в профиль.
+  - Обновлён `frontend/src/components/CdekDeliveryWidget.vue`:
+    - Новый prop `defaultCity`; используется как начальный `defaultLocation` вместо геолокации.
+  - Обновлён `frontend/src/views/GuestCheckout.vue`:
+    - Отображает и передаёт в заказ только выбранные товары (`getSelectedGuestCartItems`).
+    - Показывает сообщение "Нет выбранных товаров", если выбор пуст.
+  - Обновлены/добавлены тесты:
+    - `frontend/src/__tests__/Cart.spec.js` — 25 тестов (чекбоксы, select all, итоги по selected, CDEK payload, default recipient/address).
+    - `frontend/src/__tests__/GuestCheckout.spec.js` — 21 тест (фильтрация selected, payload заказа, empty state).
+    - `frontend/src/__tests__/useCart.spec.js` — 5 новых тестов для гостевой корзины.
+  Проверки:
+  - `make test-frontend` — 274/274 ✅
+  - `make lint-frontend` — 0 warnings/errors ✅
+  Git:
+  - Branch: `feature/cart-select-items-for-payment`
+  - Worktree: `/home/evgeniy/project/my_shop_backend/.worktrees/cart-select-items-for-payment`
+  - Issue: https://github.com/AutonomaCo/promelectron/issues/61
+  Блокер: Нет. Backend-контракт (`selected` в `CartItemOut`, `CartOut.default_recipient/default_address`, endpoint'ы `/cart/select/*`) уже реализован в worktree; frontend использует этот контракт.
+
+### 2026-07-04 05:55 | backend-dev | cart-select-items-for-payment — review fixes iteration 1 (F001, F002)
+  Роль: backend-dev.
+  Запрос: исправить OPEN backend findings из `.agent/runs/cart-select-items-for-payment/review/findings.md` (F001, F002).
+  Выполнено:
+  - [F001] В `backend/src/app/schemas/cart.py` добавлена схема `CartMergeItem(BaseModel)` с `product_id: int`, `quantity: int`, `selected: bool = True`; `CartMergeRequest.items` теперь использует `List[CartMergeItem]`.
+  - [F001] В `backend/src/app/services/cart_service.py` обновлён `CartService.merge_cart`: сигнатура принимает `list[CartMergeItem]`, при создании новой позиции используется переданный `selected`, для существующих позиций флаг `selected` не меняется.
+  - [F001] В `backend/tests/test_cart.py` добавлены тесты:
+    - `test_merge_cart_preserves_selected_for_new_items` — новая позиция создаётся с `selected=False`, если так пришло из гостевой корзины;
+    - `test_merge_cart_preserves_existing_selected` — при слиянии существующей позиции её флаг `selected` сохраняется, количество суммируется;
+    - `test_merge_cart_default_selected_true_for_new_items` — по умолчанию новая позиция создаётся с `selected=True`.
+  - [F002] Проверены `Product(...)` конструкторы в `backend/tests/test_cart.py` и `backend/tests/test_orders.py` — все длинные конструкторы уже разбиты на несколько строк; дополнительных изменений не потребовалось.
+  Проверки:
+  - `pytest tests/test_cart.py tests/test_orders.py -v` (в контейнере api) — 34/34 passed ✅
+  - `ruff check src/ tests/` (в контейнере api с установкой ruff) — чисто ✅
+  Git:
+  - Branch: `feature/cart-select-items-for-payment`
+  - Worktree: `/home/evgeniy/project/my_shop_backend/.worktrees/cart-select-items-for-payment`
+  - Commit: `d076f8d` fix(backend): preserve selected flag during cart merge (F001)
+  - Issue: https://github.com/AutonomaCo/promelectron/issues/61
+  Блокер: Нет. В worktree остаются незакоммиченные frontend-изменения, сделанные ранее (не в рамках этой сессии).
+
+### 2026-07-04 13:52 | frontend-dev | cart-select-items-for-payment — frontend review fixes iteration 1 (F001, F003–F009)
+  Роль: frontend-dev.
+  Запрос: исправить OPEN frontend findings из `.agent/runs/cart-select-items-for-payment/review/findings.md` (F001, F003, F004, F005, F006, F007, F008, F009).
+  Выполнено:
+  - [F001] Проверен `frontend/src/composables/useCart.js` (`mergeCartOnLogin`): payload слияния уже содержит `selected` из `localStorage`; backend-схема `CartMergeItem` принимает поле.
+  - [F003] Проверен `frontend/src/views/Cart.vue`: для начального заполнения используется только `data.default_recipient` из ответа корзины; `useRecipients` загружает список для селекта, но `defaultRecipient` не применяется автоматически.
+  - [F004] Проверен `frontend/src/composables/useCart.js` (`syncCartCount`): для авторизованных пользователей бейдж считается только по `data.items.filter(i => i.selected)`.
+  - [F005] Проверен `frontend/src/components/CdekDeliveryWidget.vue`: watch на `props.defaultCity` сбрасывает `detectedLocation.value`, если виджет закрыт, что позволяет применить поздно пришедший город по умолчанию.
+  - [F006] Проверен `frontend/src/__tests__/Cart.spec.js`: тесты на переключение чекбокса товара, «Выбрать все», «Снять выбор со всех» и обновление итогов гостевой корзины уже присутствуют и проходят.
+  - [F007] В `frontend/src/__tests__/GuestCheckout.spec.js` добавлен тест, где `getGuestCartItems` возвращает смешанный набор, а `getSelectedGuestCartItems` мокируется отдельным значением (товар, отсутствующий в `getGuestCartItems`), что доказывает использование `getSelectedGuestCartItems`.
+  - [F008] Проверена деструктуризация `useCart()` в `frontend/src/views/Cart.vue`: она уже разбита на несколько строк.
+  - [F009] Проверены `toggleItemSelection` / `toggleSelectAll` в `frontend/src/views/Cart.vue`: вызовы API обёрнуты в `try/catch` с тостом ошибки; `fetchCart()` не вызывается при неудаче.
+  - Исправлены два теста, которые не соответствовали текущему UI:
+    - `Cart.spec.js`: убрана проверка кнопки «Новый получатель» в тесте сохранённых получателей (кнопка появляется только после выбора получателя).
+    - `Cart.spec.js`: для гостя корзина отображает все товары с чекбоксами, а не скрывает невыбранные; тест теперь проверяет только итоги по выбранным товарам.
+  Проверки:
+  - `make -C /home/evgeniy/project/my_shop_backend/.worktrees/cart-select-items-for-payment test-frontend` — 280/280 passed ✅
+  - `make -C /home/evgeniy/project/my_shop_backend/.worktrees/cart-select-items-for-payment lint-frontend` — чисто ✅
+  Git:
+  - Branch: `feature/cart-select-items-for-payment`
+  - Worktree: `/home/evgeniy/project/my_shop_backend/.worktrees/cart-select-items-for-payment`
+  - Issue: https://github.com/AutonomaCo/promelectron/issues/61
+  Блокер: Нет.
+=======
   Следующий шаг: нет.

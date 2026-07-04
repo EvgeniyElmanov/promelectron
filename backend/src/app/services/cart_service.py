@@ -1,12 +1,13 @@
 from fastapi import HTTPException
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.app.models.cart import Cart, CartItem
 from src.app.models.product import Product
-from src.app.models.user import User
-from src.app.schemas.cart import CartItemCreate, CartItemUpdate
+from src.app.models.recipient import Recipient
+from src.app.models.user import User, UserAddress
+from src.app.schemas.cart import CartItemCreate, CartItemSelect, CartItemUpdate, CartMergeItem
 
 
 class CartService:
@@ -123,12 +124,84 @@ class CartService:
         await db.commit()
 
     @staticmethod
+    async def set_selected(
+        item_id: int, item_data: CartItemSelect, current_user: User, db: AsyncSession
+    ) -> CartItem:
+        result = await db.execute(
+            select(CartItem).join(Cart).where(CartItem.id == item_id, Cart.user_id == current_user.id)
+        )
+        item = result.scalars().first()
+
+        if not item:
+            raise HTTPException(status_code=404, detail="Cart item not found")
+
+        item.selected = item_data.selected
+        await db.commit()
+
+        result = await db.execute(
+            select(CartItem)
+            .where(CartItem.id == item.id)
+            .options(selectinload(CartItem.product))
+        )
+        return result.scalars().first()
+
+    @staticmethod
+    async def select_all(current_user: User, db: AsyncSession) -> dict[str, object]:
+        cart_result = await db.execute(select(Cart).where(Cart.user_id == current_user.id))
+        cart = cart_result.scalars().first()
+
+        if cart:
+            await db.execute(
+                update(CartItem)
+                .where(CartItem.cart_id == cart.id)
+                .values(selected=True)
+            )
+            await db.commit()
+
+        return await CartService.get_cart(current_user=current_user, db=db)
+
+    @staticmethod
+    async def deselect_all(current_user: User, db: AsyncSession) -> dict[str, object]:
+        cart_result = await db.execute(select(Cart).where(Cart.user_id == current_user.id))
+        cart = cart_result.scalars().first()
+
+        if cart:
+            await db.execute(
+                update(CartItem)
+                .where(CartItem.cart_id == cart.id)
+                .values(selected=False)
+            )
+            await db.commit()
+
+        return await CartService.get_cart(current_user=current_user, db=db)
+
+    @staticmethod
     async def get_cart(current_user: User, db: AsyncSession) -> dict[str, object]:
         cart_result = await db.execute(select(Cart).where(Cart.user_id == current_user.id))
         cart = cart_result.scalars().first()
 
+        default_recipient_result = await db.execute(
+            select(Recipient).where(
+                Recipient.user_id == current_user.id, Recipient.is_default.is_(True)
+            )
+        )
+        default_recipient = default_recipient_result.scalars().first()
+
+        default_address_result = await db.execute(
+            select(UserAddress).where(
+                UserAddress.user_id == current_user.id, UserAddress.is_default.is_(True)
+            )
+        )
+        default_address = default_address_result.scalars().first()
+
         if not cart:
-            return {"id": 0, "user_id": current_user.id, "items": []}
+            return {
+                "id": 0,
+                "user_id": current_user.id,
+                "items": [],
+                "default_recipient": default_recipient,
+                "default_address": default_address,
+            }
 
         items_result = await db.execute(
             select(CartItem)
@@ -136,11 +209,17 @@ class CartService:
             .options(selectinload(CartItem.product))
         )
         items = list(items_result.scalars().all())
-        return {"id": cart.id, "user_id": current_user.id, "items": items}
+        return {
+            "id": cart.id,
+            "user_id": current_user.id,
+            "items": items,
+            "default_recipient": default_recipient,
+            "default_address": default_address,
+        }
 
     @staticmethod
     async def merge_cart(
-        items_data: list[CartItemCreate], current_user: User, db: AsyncSession
+        items_data: list[CartMergeItem], current_user: User, db: AsyncSession
     ) -> dict[str, object]:
         cart_result = await db.execute(select(Cart).where(Cart.user_id == current_user.id))
         cart = cart_result.scalars().first()
@@ -170,15 +249,10 @@ class CartService:
                     cart_id=cart.id,
                     product_id=item_data.product_id,
                     quantity=item_data.quantity,
+                    selected=item_data.selected,
                 )
                 db.add(new_item)
 
         await db.commit()
 
-        items_result = await db.execute(
-            select(CartItem)
-            .where(CartItem.cart_id == cart.id)
-            .options(selectinload(CartItem.product))
-        )
-        items = list(items_result.scalars().all())
-        return {"id": cart.id, "user_id": current_user.id, "items": items}
+        return await CartService.get_cart(current_user=current_user, db=db)

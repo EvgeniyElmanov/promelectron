@@ -482,3 +482,114 @@ class TestOrdersAPI:
         assert len(cart_data["items"]) == 1
         assert cart_data["items"][0]["product_id"] == test_product.id
         assert cart_data["items"][0]["quantity"] == 1
+
+    @pytest.mark.asyncio
+    async def test_create_order_only_selected_items(
+        self, client, test_user, user_token, test_product, test_category, test_session, test_supplier, cdek_delivery_payload
+    ):
+        """Заказ создаётся только из выбранных товаров; невыбранные остаются в корзине."""
+        from src.app.models.product import Product
+        from src.app.models.supplier import Supplier
+
+        result = await test_session.execute(
+            select(Supplier).where(Supplier.user_id == test_supplier.id)
+        )
+        supplier = result.scalars().first()
+
+        product2 = Product(
+            name="Second Product",
+            price=199.99,
+            stock=5,
+            category_id=test_category.id,
+            supplier_id=supplier.id,
+            is_active=True,
+        )
+        test_session.add(product2)
+        await test_session.commit()
+        await test_session.refresh(product2)
+
+        await client.post(
+            "/api/v1/cart/add",
+            json={"product_id": test_product.id, "quantity": 1},
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        await client.post(
+            "/api/v1/cart/add",
+            json={"product_id": product2.id, "quantity": 2},
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+
+        cart_resp = await client.get(
+            "/api/v1/cart/",
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        items = cart_resp.json()["items"]
+        assert len(items) == 2
+        deselected_item_id = next(item["id"] for item in items if item["product_id"] == product2.id)
+
+        await client.patch(
+            f"/api/v1/cart/select/{deselected_item_id}/",
+            json={"selected": False},
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+
+        order_resp = await client.post(
+            "/api/v1/orders/create/",
+            json={
+                "cdek_delivery": cdek_delivery_payload,
+                "recipient_first_name": "Тест",
+                "recipient_last_name": "Пользователь",
+                "recipient_phone": "+79990001122",
+            },
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert order_resp.status_code == 200
+        order_data = order_resp.json()
+        assert len(order_data["items"]) == 1
+        assert order_data["items"][0]["product_id"] == test_product.id
+
+        cart_resp = await client.get(
+            "/api/v1/cart/",
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        cart_data = cart_resp.json()
+        assert len(cart_data["items"]) == 1
+        assert cart_data["items"][0]["product_id"] == product2.id
+        assert cart_data["items"][0]["quantity"] == 2
+        assert cart_data["items"][0]["selected"] is False
+
+    @pytest.mark.asyncio
+    async def test_create_order_no_selected_items(
+        self, client, test_user, user_token, test_product, cdek_delivery_payload
+    ):
+        """Если нет выбранных товаров, создание заказа возвращает 400."""
+        await client.post(
+            "/api/v1/cart/add",
+            json={"product_id": test_product.id, "quantity": 1},
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+
+        cart_resp = await client.get(
+            "/api/v1/cart/",
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        item_id = cart_resp.json()["items"][0]["id"]
+
+        await client.patch(
+            f"/api/v1/cart/select/{item_id}/",
+            json={"selected": False},
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+
+        order_resp = await client.post(
+            "/api/v1/orders/create/",
+            json={
+                "cdek_delivery": cdek_delivery_payload,
+                "recipient_first_name": "Тест",
+                "recipient_last_name": "Пользователь",
+                "recipient_phone": "+79990001122",
+            },
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert order_resp.status_code == 400
+        assert "No items selected" in order_resp.json()["detail"]
