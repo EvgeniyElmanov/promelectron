@@ -20,9 +20,10 @@ vi.mock('@/composables/useToast', () => ({
 }));
 
 const mockGuestItems = ref([
-  { product_id: 1, quantity: 2, name: 'Товар А', price: 1000, stock: 5, images: [], supplier_id: 1 },
-  { product_id: 2, quantity: 1, name: 'Товар Б', price: 2000, stock: 3, images: [], supplier_id: 1 },
+  { product_id: 1, quantity: 2, selected: true, name: 'Товар А', price: 1000, stock: 5, images: [], supplier_id: 1 },
+  { product_id: 2, quantity: 1, selected: true, name: 'Товар Б', price: 2000, stock: 3, images: [], supplier_id: 1 },
 ]);
+const mockSelectedGuestItems = ref(null);
 let mockCleared = false;
 let storedGuestEmail = null;
 
@@ -33,6 +34,7 @@ vi.mock('@/api/cdek', () => ({
 vi.mock('@/composables/useCart', () => ({
   useCart: () => ({
     getGuestCartItems: () => mockGuestItems.value,
+    getSelectedGuestCartItems: () => mockSelectedGuestItems.value ?? mockGuestItems.value.filter((i) => i.selected !== false),
     clearGuestCart: () => { mockCleared = true; },
   }),
 }));
@@ -67,9 +69,10 @@ describe('GuestCheckout.vue', () => {
     vi.clearAllMocks();
     mockCleared = false;
     storedGuestEmail = null;
+    mockSelectedGuestItems.value = null;
     mockGuestItems.value = [
-      { product_id: 1, quantity: 2, name: 'Товар А', price: 1000, stock: 5, images: [] },
-      { product_id: 2, quantity: 1, name: 'Товар Б', price: 2000, stock: 3, images: [] },
+      { product_id: 1, quantity: 2, selected: true, name: 'Товар А', price: 1000, stock: 5, images: [] },
+      { product_id: 2, quantity: 1, selected: true, name: 'Товар Б', price: 2000, stock: 3, images: [] },
     ];
     getSupplierCityCode.mockResolvedValue(44);
     mockGet.mockResolvedValue({ data: {} });
@@ -444,5 +447,100 @@ describe('GuestCheckout.vue', () => {
       guest_phone: '+79990001122',
       recipient_phone: '+79990001122',
     }));
+  });
+
+  it('отображает только выбранные товары', async () => {
+    mockGuestItems.value = [
+      { product_id: 1, quantity: 2, selected: true, name: 'Товар А', price: 1000, stock: 5, images: [] },
+      { product_id: 2, quantity: 1, selected: false, name: 'Товар Б', price: 2000, stock: 3, images: [] },
+    ];
+
+    const wrapper = mount(GuestCheckout, { global: { plugins: [router] } });
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Товар А');
+    expect(wrapper.text()).not.toContain('Товар Б');
+    expect(wrapper.text()).toContain('2 000');
+  });
+
+  it('передаёт в заказ только выбранные товары', async () => {
+    mockPost.mockImplementation((url) => {
+      if (url === '/orders/create-guest/') {
+        return Promise.resolve({
+          data: { id: 42, guest_email: 'test@example.com', total_price: 2000 },
+        });
+      }
+      return Promise.resolve({ data: {} });
+    });
+
+    mockGuestItems.value = [
+      { product_id: 1, quantity: 2, selected: true, name: 'Товар А', price: 1000, stock: 5, images: [] },
+      { product_id: 2, quantity: 1, selected: false, name: 'Товар Б', price: 2000, stock: 3, images: [] },
+    ];
+
+    const wrapper = mount(GuestCheckout, { global: { plugins: [router] } });
+    await flushPromises();
+
+    await wrapper.find('[data-testid="guest-email"]').setValue('test@example.com');
+    await wrapper.find('[data-testid="guest-first-name"]').setValue('Иван');
+    await wrapper.find('[data-testid="guest-last-name"]').setValue('Иванов');
+    await wrapper.find('[data-testid="guest-patronymic"]').setValue('Иванович');
+    await wrapper.find('[data-testid="guest-phone"]').setValue('+79990001122');
+    wrapper.vm.selectedDelivery = selectedDelivery;
+    await flushPromises();
+
+    await wrapper.find('[data-testid="guest-checkout-submit"]').trigger('click');
+    await flushPromises();
+
+    expect(mockPost).toHaveBeenCalledWith('/orders/create-guest/', expect.objectContaining({
+      items: [{ product_id: 1, quantity: 2 }],
+    }));
+  });
+
+  it('показывает сообщение, когда нет выбранных товаров', async () => {
+    mockGuestItems.value = [
+      { product_id: 1, quantity: 2, selected: false, name: 'Товар А', price: 1000, stock: 5, images: [] },
+    ];
+
+    const wrapper = mount(GuestCheckout, { global: { plugins: [router] } });
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Нет выбранных товаров');
+    expect(wrapper.find('[data-testid="guest-checkout-submit"]').exists()).toBe(false);
+  });
+
+  it('использует getSelectedGuestCartItems, а не getGuestCartItems', async () => {
+    mockGuestItems.value = [
+      { product_id: 1, quantity: 2, selected: true, name: 'Товар А', price: 1000, stock: 5, images: [] },
+      { product_id: 2, quantity: 1, selected: false, name: 'Товар Б', price: 2000, stock: 3, images: [] },
+    ];
+    mockSelectedGuestItems.value = [
+      { product_id: 1, quantity: 2, selected: true, name: 'Товар А', price: 1000, stock: 5, images: [] },
+    ];
+
+    const wrapper = mount(GuestCheckout, { global: { plugins: [router] } });
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Товар А');
+    expect(wrapper.text()).not.toContain('Товар Б');
+    expect(wrapper.text()).toContain('2\u00A0000');
+  });
+
+  it('доказывает использование getSelectedGuestCartItems при расхождении списков', async () => {
+    mockGuestItems.value = [
+      { product_id: 1, quantity: 2, selected: true, name: 'Товар А', price: 1000, stock: 5, images: [] },
+      { product_id: 2, quantity: 1, selected: false, name: 'Товар Б', price: 2000, stock: 3, images: [] },
+    ];
+    mockSelectedGuestItems.value = [
+      { product_id: 3, quantity: 1, selected: false, name: 'Только из selected', price: 5000, stock: 5, images: [] },
+    ];
+
+    const wrapper = mount(GuestCheckout, { global: { plugins: [router] } });
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Только из selected');
+    expect(wrapper.text()).not.toContain('Товар А');
+    expect(wrapper.text()).not.toContain('Товар Б');
+    expect(wrapper.text()).toContain('5\u00A0000');
   });
 });

@@ -43,13 +43,14 @@
 </template>
 
 <script setup>
-import { ref, computed, onUnmounted } from 'vue';
+import { ref, computed, onUnmounted, watch } from 'vue';
 
 const props = defineProps({
   items: { type: Array, required: true },
   modelValue: { type: Object, default: null },
   supplierCityCode: { type: Number, default: 44 },
   isFallback: { type: Boolean, default: false },
+  defaultCity: { type: String, default: '' },
 });
 
 const emit = defineEmits(['update:modelValue']);
@@ -65,6 +66,12 @@ const scriptLoaded = ref(false);
 const loadError = ref(false);
 const isLoading = ref(false);
 const detectedLocation = ref(null);
+
+watch(() => props.defaultCity, (newCity, oldCity) => {
+  if (newCity !== oldCity && !widgetInstance.value) {
+    detectedLocation.value = null;
+  }
+});
 
 function formatPrice(price) {
   return Number(price).toLocaleString('ru-RU');
@@ -136,6 +143,9 @@ function buildWidgetOptions() {
 }
 
 function detectUserLocation() {
+  if (props.defaultCity) {
+    return Promise.resolve(props.defaultCity);
+  }
   return new Promise((resolve) => {
     if (!navigator.geolocation) {
       resolve(DEFAULT_LOCATION);
