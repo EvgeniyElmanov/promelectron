@@ -1,7 +1,8 @@
+import logging
 import os
 import uuid
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, Request
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from src.app.utils.rate_limiter import conditional_limit
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,6 +12,7 @@ from src.app.models.supplier import Supplier
 from src.app.models.user import User
 from src.app.schemas.supplier import SupplierOut, SupplierUpdate
 from src.app.schemas.user import (
+    AvatarUploadOut,
     PasswordChange,
     UserAddressCreate,
     UserAddressOut,
@@ -27,6 +29,9 @@ from src.app.utils.auth import (
 )
 
 AVATAR_ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
+AVATAR_MAX_SIZE = 5 * 1024 * 1024
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -116,9 +121,8 @@ async def update_supplier_profile(
     return supplier
 
 
-@router.post("/me/avatar")
+@router.post("/me/avatar/", response_model=AvatarUploadOut)
 async def upload_avatar(
-    request: Request,
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -130,12 +134,27 @@ async def upload_avatar(
             detail=f"Invalid file type. Allowed: {', '.join(AVATAR_ALLOWED_EXTENSIONS)}",
         )
 
-    # Remove old avatar file if exists (including variants)
+    content = await file.read()
+    if len(content) > AVATAR_MAX_SIZE:
+        raise HTTPException(
+            status_code=413,
+            detail="File too large. Max 5 MB",
+        )
+
+    # Remove old avatar file if exists (including variants). Failures are
+    # logged but must not block the new upload.
     if current_user.avatar_url:
-        await storage.delete_image(current_user.avatar_url)
+        try:
+            await storage.delete_image(current_user.avatar_url)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "Failed to delete old avatar for user %s: %s",
+                current_user.id,
+                exc,
+            )
 
     key = f"avatars/{current_user.id}/{uuid.uuid4().hex}{ext}"
-    result = await storage.upload_image(key, file)
+    result = await storage.upload_image(key, file, content=content)
 
     user = await UserService.update_profile(
         user_id=current_user.id,
