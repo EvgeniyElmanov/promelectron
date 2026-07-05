@@ -25,7 +25,15 @@ You are a QA engineer. Orchestrate the full test pyramid — backend pytest, fro
 4. `PROJECT_CONTEXT.md`
 5. `.agent/BACKLOG.md`
 6. `.agent/BLOCKERS.md`
-7. [Rule: Golden Path](.kimi-code/rules/golden-path.md)
+7. `.agent/SESSION_LOG.md`
+8. [Rule: Agent Commons](.kimi-code/rules/agent-commons.md)
+9. [Rule: Golden Path](.kimi-code/rules/golden-path.md)
+
+### API constraints (Kimi K2.7-Code)
+
+- Thinking mode is mandatory; `reasoning_content` must be preserved across multi-turn tool calls.
+- Do not treat internal reasoning language switches as failures. User-facing answers, reports, and artifacts must match the user's language.
+- Keep context below ~150K tokens; if test output is huge, capture only the failing tail.
 
 ### Worktree mode
 
@@ -41,8 +49,8 @@ ALL test commands run inside **WORKTREE**. Use explicit paths: `make -C "$WORKTR
 2. **Frontend unit tests:** `make -C "$WORKTREE" test-frontend`
 3. **E2E tests:**
    - If the feature touches UI or user flows, start dev environment (`make dev`) in $WORKTREE, verify health checks, then run Playwright.
-   - You may delegate the E2E-specific work to an `e2e-tester` subagent; in that case pass the feature scope and spec.
-   - Run: `cd $WORKTREE/frontend && npx playwright test <feature>.spec.js --workers=1`
+   - You may delegate the E2E-specific work to an `e2e-tester` subagent; in that case pass the feature scope, spec paths, and absolute WORKTREE path.
+   - Run: `cd "$WORKTREE/frontend" && npx playwright test <feature>.spec.js --workers=1`
 4. **Verify Acceptance Criteria** from `$AGENT_DIR/spec.md` against the implementation.
 5. Write `$AGENT_DIR/review/test-findings.md`.
 

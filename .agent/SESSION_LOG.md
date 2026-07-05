@@ -1,3 +1,36 @@
+### 2026-07-05 07:00 | auditor | agent-pipeline-audit — массовый аудит и исправление агентской системы
+  Роль: auditor / orchestrator.
+  Запрос: изучить документацию Kimi K2.7, провести профессиональный аудит агентского пайплайна Promelectron, найти причину переключения агента на английский во время размышлений, исправить всё нужное и удалить не нужное.
+  Выполнено:
+  - Изучена документация Kimi K2.7 Code: 256K context, mandatory thinking mode, необходимость сохранения `reasoning_content`.
+  - Причина языкового переключения: Kimi K2.7-Code работает с принудительным thinking mode; язык внутреннего reasoning промптом не управляется надёжно. Критичен язык ответов и артефактов, а не reasoning.
+  - Исправлены критические инфраструктурные файлы:
+    - `infra/helm/templates/migrate-job.yaml`: hook изменён на `pre-install,pre-upgrade`.
+    - `.github/workflows/e2e.yml`: убран fallback secret `YOOKASSA_SECRET_KEY` в plaintext.
+  - Обновлены shared rules:
+    - `agent-commons.md`: усилена языковая преамбула, добавлено сохранение `reasoning_content`, порог 150K.
+    - `pre-edit-checklist.md`: убран `/yolo`, добавлен Security, обязательный контекст, `make pre-push`, корректная проверка Alembic.
+    - `golden-path.md`: актуализированы роуты `/api/v1/`.
+    - `security.md`: переведён на русский, добавлены project-specific риски.
+    - `dependency-map.md`: убраны несуществующие директории, добавлены `main.py`, `models/__init__.py`, E2E.
+    - `planning.md`: синхронизирован с `.agent/BACKLOG.md`.
+    - `task-template.md`: добавлен YAML frontmatter.
+    - Удалён устаревший `language-rule.md`.
+  - Обновлены workflow skills: `implement`, `fix`, `review`, `qa-gate`, `ship`, `spec`, `context-sync`, `promelectron`, `plan-maintainer`, `deploy`.
+  - Усилены все role skills (`backend-dev`, `frontend-dev`, `code-reviewer`, `security-reviewer`, `qa`, `e2e-tester`, `devops`, `architect`, `dispatcher`, `project-manager`, `integration-dev`):
+    - добавлена ссылка на [Rule: Agent Commons] в Required context;
+    - добавлен блок API constraints (mandatory thinking, reasoning_content, 150K);
+    - исправлен путь к `SESSION_LOG` (project root, не worktree);
+    - унифицированы ссылки на shared rules.
+  - Исправлен `scripts/audit-agents.sh`: устранён баг с subshell при подсчёте broken links (`broken_found` не прокидывался из `echo ... | while`).
+  - Исправлены broken links в `.kimi-code/skills/fix/SKILL.md` и `.kimi-code/skills/spec/SKILL.md` (неверный относительный путь к `task-template.md`).
+  - Обновлён `.kimi-code/AGENTS.md`: добавлен [Rule: Agent Commons] в Required context.
+  Проверки:
+  - `bash scripts/audit-agents.sh` — ✅ 0 ошибок, 0 предупреждений.
+  - `python3 -m py_compile scripts/implement-pipeline.py` — ✅.
+  - `ruff check scripts/implement-pipeline.py` — ✅.
+  Блокер: Нет.
+
 ### 2026-07-04 06:20 | orchestrator | cart-select-items-for-payment — QA, review, PR
   Роль: orchestrator.
   Запрос: завершить реализацию задачи #61 (выбор товаров в корзине для оплаты + автоподстановка default recipient/address).

@@ -8,90 +8,98 @@ disableModelInvocation: true
 
 # Rule: planning
 
-Rules for maintaining project plans, roadmaps, task prioritization, and the Definition of Done.
+> Правила ведения планов, приоритизации задач и Definition of Done для Promelectron.
+> Follow [Rule: Agent Commons](agent-commons.md) > Language Rule.
 
 ## Single Source of Truth
 
-`.agent/PLANNING_HANDOFF.md` is the only authoritative plan. `ROADMAP.md` is historical reference only.
+`.agent/PLANNING_HANDOFF.md` — единственный авторитетный план. `ROADMAP.md` — историческая справка.
 
-- When updating plans, always edit `.agent/PLANNING_HANDOFF.md` first.
-- If `ROADMAP.md` contradicts `.agent/PLANNING_HANDOFF.md`, `.agent/PLANNING_HANDOFF.md` wins.
-- After updating `.agent/PLANNING_HANDOFF.md`, update `ROADMAP.md` only if explicitly requested.
+- При обновлении планов сначала редактируй `.agent/PLANNING_HANDOFF.md`.
+- Если `ROADMAP.md` противоречит `.agent/PLANNING_HANDOFF.md`, побеждает `.agent/PLANNING_HANDOFF.md`.
+- Обновляй `ROADMAP.md` только по явному запросу пользователя.
 
 ## Task Format
 
-Every task in `.agent/PLANNING_HANDOFF.md` and `.agent/BACKLOG.md` should follow this format:
+Задачи в `.agent/PLANNING_HANDOFF.md` и `.agent/BACKLOG.md` используют формат, совместимый с таблицей бэклога:
 
 ```markdown
-- [ ] **ID-XXX** Task title (S|M|L) — risk: low|medium|high
-  - **Why:** Business or technical justification
-  - **What:** Concrete deliverables
-  - **Depends on:** IDs of blocking tasks
-  - **Blocked by:** IDs of tasks that block this one
-  - **Acceptance:** How to verify completion
+| ID | Задача | Issue | Агент | Приоритет | Статус | Зависимости | Оценка | Блокер |
+```
+
+Где:
+- **ID** — `#N`, `task-slug` или `ID-XXX`
+- **Приоритет** — `P0` / `P1` / `P2` / `P3`
+- **Статус** — `todo`, `in_progress`, `in_review`, `done`, `blocked`
+- **Оценка** — дни/недели или `(S|M|L)`
+
+Для подробного описания в `.agent/PLANNING_HANDOFF.md` допустим формат:
+
+```markdown
+- **ID-XXX** Task title (S|M|L) — risk: low|medium|high
+  - **Why:** Обоснование
+  - **What:** Конкретные результаты
+  - **Depends on:** ID зависимых задач
+  - **Acceptance:** Как проверить выполнение
 ```
 
 ## Status Definitions
 
-| Status | Symbol | Meaning |
-|--------|--------|---------|
-| Not started | `[ ]` | No code written |
-| In progress | `[/]` | Active work, not committed |
-| In review | `[?]` | PR open or pending review |
-| Done | `[x]` | Merged to main, verified |
-| Blocked | `[!]` | External dependency or blocker |
-| Deferred | `[-]` | Intentionally postponed |
-
-> **Примечание:** Значки статусов (`[ ] [/] [?] [x] [!] [-]`) относятся к стратегическому роадмапу/бэклогу (`.agent/PLANNING_HANDOFF.md`, `.agent/BACKLOG.md`). Статусы задач в активной разработке ведутся на доске GitHub Project (In progress → In review → Done).
+| Статус | Значение | Применение |
+|--------|----------|------------|
+| `todo` | Не начато | В бэклоге, но не в работе |
+| `in_progress` | В работе | Активная разработка |
+| `in_review` | На ревью | PR открыт |
+| `done` | Готово | Влито в `main`, проверено |
+| `blocked` | Заблокировано | Есть внешний блокер |
 
 ## Prioritization Matrix
 
-Rank tasks by:
-
-1. **Production blocker** — breaks live environment (P0)
-2. **Security risk** — vulnerability or data exposure (P0)
-3. **Regression** — breaks existing functionality (P1)
-4. **Feature blocker** — blocks other planned work (P1)
-5. **Business value** — directly impacts users/revenue (P2)
-6. **Tech debt** — slows future development (P3)
+1. **P0 — Production blocker / Security risk** — ломает прод или уязвимость
+2. **P1 — Regression / Feature blocker** — ломает существующее или блокирует другие задачи
+3. **P2 — Business value** — напрямую влияет на пользователей/выручку
+4. **P3 — Tech debt** — замедляет будущую разработку
 
 ## Sprint Boundaries
 
-- A sprint is 1 week max.
-- Each sprint has at most 1 P0 and 2 P1 tasks.
-- Everything else is P2/P3 and can spill over.
-- At sprint end, update `.agent/PLANNING_HANDOFF.md` and `.agent/BACKLOG.md` with:
-  - What was completed
-  - What was not and why
-  - New blockers discovered
-  - Next sprint proposal
+- Спринт = 2 недели (как в `.agent/BACKLOG.md`).
+- В спринте не более 2 задач P0 и 3 задач P1.
+- В конце спринта обнови `.agent/PLANNING_HANDOFF.md` и `.agent/BACKLOG.md`:
+  - Что выполнено
+  - Что не выполнено и почему
+  - Новые блокеры
+  - Предложение по следующему спринту
 
 ## Dependency Rules
 
-- Never start a task whose dependencies are not Done.
-- If a dependency is Blocked, escalate immediately.
-- Document cross-team dependencies (infra, design, 3rd party APIs).
+- Не начинай задачу, пока её зависимости не в статусе `done`.
+- Если зависимость `blocked` — эскалируй немедленно.
+- Фиксируй кросс-командные зависимости (infra, design, 3rd party APIs).
 
 ## Assumption Tracking
 
-Every estimate carries assumptions. Document them:
+Каждая оценка содержит допущения. Фиксируй их:
 
 ```markdown
 **Assumptions:**
-- MinIO is already deployed in K8s cluster (confirmed: yes)
-- `API_BASE_URL` env var will be added by DevOps (owner: @devops)
-- No schema changes needed for this task
+- MinIO уже развёрнут в K8s (подтверждено: да)
+- `API_BASE_URL` добавит DevOps (owner: @devops)
+- Schema changes не нужны
 ```
 
-When an assumption turns out false, re-estimate immediately.
+Если допущение оказывается неверным — переоценивай задачу немедленно.
 
 ## Definition of Done
 
-A task is Done only when:
+Задача считается Done только когда:
 
-- [ ] Code is written and committed
-- [ ] Tests pass (backend + frontend + E2E if UI)
-- [ ] No new lint/security errors
-- [ ] Feature works in local environment
-- [ ] `.agent/BACKLOG.md` is updated with status
-- [ ] No follow-up tasks created without explicit user approval
+- [ ] Код написан, протестирован и влит в `main`
+- [ ] Тесты проходят: backend + frontend + E2E (если UI)
+- [ ] Линтер и security-чеклист чисты
+- [ ] Фича работает в local/dev окружении
+- [ ] GitHub Issue закрыт, статус в GitHub Project board — Done
+- [ ] `.agent/BACKLOG.md` / `.agent/SESSION_LOG.md` / `PROJECT_CONTEXT.md` обновлены
+- [ ] `.agent/BLOCKERS.md` обновлён, если были блокеры
+- [ ] Новые follow-up задачи созданы только с explicit approval пользователя
+
+---

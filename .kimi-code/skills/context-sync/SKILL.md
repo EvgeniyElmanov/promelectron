@@ -12,86 +12,121 @@ arguments: "[--full] [--backlog-only] [--blockers-only] [--quick]"
 disableModelInvocation: false
 ---
 
-# /skill:context-sync — Update Project Context
+# /skill:context-sync — Синхронизация контекста проекта
 
-Synchronize `PROJECT_CONTEXT.md`, `BACKLOG.md`, `BLOCKERS.md` with reality.
+> **ЯЗЫК / LANGUAGE:** Пользователь общается на русском. Все ответы пользователю, отчёты и обновления контекстных файлов пиши на русском. Стремись рассуждать на русском, но если reasoning уходит на английский — это не ошибка; главное, чтобы финальные ответы и артефакты были на русском. Код, команды, идентификаторы, пути и технические термины оставляй в оригинале.
 
-## Language
+Синхронизируй `PROJECT_CONTEXT.md`, `.agent/BACKLOG.md`, `.agent/BLOCKERS.md` с реальностью.
 
-Follow [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule. All Russian-language requirements and subagent prompt preambles live there.
+## Language / Язык
+
+Следуй [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule / Языковое правило. При русскоязычном пользователе пиши reports и обновления контекста на русском.
 
 ---
 
-## Step 1: Read Current State
+## Поведение флагов
 
-Read:
+- `--full` — запустить все проверки, включая E2E и валидацию Helm.
+- `--backlog-only` — обновить только `.agent/BACKLOG.md`.
+- `--blockers-only` — обновить только `.agent/BLOCKERS.md`.
+- `--quick` — пропустить долгие тесты и E2E; использовать только git status + recent log.
+
+---
+
+## Step 1: Чтение текущего состояния
+
+Прочитай параллельно:
 1. `PROJECT_CONTEXT.md`
 2. `.agent/BACKLOG.md`
 3. `.agent/BLOCKERS.md`
 4. `.agent/SESSION_LOG.md`
-5. `.agent/PLANNING_HANDOFF.md` if exists
+5. `.agent/PLANNING_HANDOFF.md`
 
-Record `last_update` from PROJECT_CONTEXT.md frontmatter.
-
----
-
-## Step 2: Check Active Task Context Size (Kimi K2.7-Code)
-
-For each active task directory in `.agent/`, follow [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Context Size Check.
+Запиши `last_update` из frontmatter PROJECT_CONTEXT.md.
 
 ---
 
-## Step 3: Analyze Git History
+## Step 2: Проверка размера контекста активных задач (Kimi K2.7-Code)
+
+Для каждой активной директории задачи в `.agent/runs/<task-id>/` следуй [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Context Size Check.
+
+```bash
+for d in .agent/runs/*/; do
+  task_id="$(basename "$d")"
+  python scripts/implement-pipeline.py check-context "$task_id"
+done
+```
+
+---
+
+## Step 3: Анализ истории Git
 
 ```bash
 git log --since="<last_update>" --oneline --no-merges
 git log --oneline -30
 ```
 
-Look for:
-- New features (`feat:`)
-- Fixes (`fix:`)
-- Refactors (`refactor:`)
-- Infra changes (`infra:`, `deploy:`)
-- New migrations
+Ищи:
+- Новые фичи (`feat:`)
+- Исправления (`fix:`)
+- Рефакторинги (`refactor:`)
+- Инфра-изменения (`infra:`, `deploy:`)
+- Новые миграции
 
 ---
 
-## Step 4: Check Test Status
+## Step 4: Проверка статуса тестов
+
+По умолчанию (если не `--quick`):
 
 ```bash
-make test-backend 2>/dev/null || echo "Backend tests not runnable"
-make test-frontend 2>/dev/null || echo "Frontend tests not runnable"
+make test-backend 2>&1 | tail -20
+make test-frontend 2>&1 | tail -20
 ```
 
----
-
-## Step 5: Scan Blockers
-
-For each blocker in `BLOCKERS.md`:
-- grep the code — maybe already fixed?
-- check deadlines > 2 days → mark escalated
-
----
-
-## Step 6: Check for New Blockers
+Если `--full`:
 
 ```bash
-make migrate-history 2>/dev/null || echo "Alembic issue"
-make lint-backend 2>/dev/null || echo "Import/lint error"
+make pre-push 2>&1 | tail -40
 ```
 
-New blockers:
-- Migration fails
-- Tests fail on main
-- CI workflow broken
-- Missing env var in `.env.example`
+Если тесты не могут запуститься (например, нет Docker), зафиксируй блокер.
 
 ---
 
-## Step 7: Update PROJECT_CONTEXT.md
+## Step 5: Сканирование блокеров
 
-Update frontmatter:
+Для каждого блокера в `BLOCKERS.md`:
+- `grep` по коду — возможно, уже исправлен?
+- Проверь дедлайны > 2 дней → отметь как escalated
+- Проверь владельца и статус
+
+---
+
+## Step 6: Поиск новых блокеров
+
+Запусти быстрые health checks (пропусти при `--quick`):
+
+```bash
+# Alembic: проверка консистентности модели и БД (read-only)
+cd backend && alembic check 2>&1 || echo "Alembic drift detected"
+
+# Lint
+make lint-backend 2>&1 | tail -10
+```
+
+Новые блокеры:
+- `alembic check` сообщает о drift
+- Тесты падают на main
+- CI workflow сломан
+- Отсутствует env var в `.env.example`
+
+---
+
+## Step 7: Обновление PROJECT_CONTEXT.md
+
+Обнови frontmatter:
+
 ```yaml
 ---
 sprint: "<current>"
@@ -104,56 +139,70 @@ blockers_p0: <N>
 blockers_p1: <N>
 backend_tests: "<X/Y>"
 frontend_tests: "<X/Y>"
-e2e_tests: "<X/Y>"
+e2e_tests: "<X/Y or N/A>"
 ---
 ```
 
-Update sections:
+Обнови разделы:
 - What works now
 - What is in progress
 - Active blockers
 
-Append a brief changelog at the bottom.
+Добавь краткий changelog внизу.
 
 ---
 
-## Step 8: Update BACKLOG.md
+## Step 8: Обновление BACKLOG.md
 
-For each sprint task:
-- Code exists? grep
-- Tests exist? find
-- Routes registered? check main.py
-- Frontend linked? check views/router/API calls
-- Env vars set? check config.py, .env.example
+Для каждой задачи спринта:
+- Код существует? `grep` / `find`
+- Тесты есть? `find`
+- Роуты зарегистрированы? проверь `backend/src/app/main.py`
+- Frontend связан? проверь views/router/API calls
+- Env vars заданы? проверь `config.py`, `.env.example`
+- CI/CD покрывает? проверь `.github/workflows/`
 
-Mark `[x]` only with evidence (commit or file). Add `(commit: abc1234)` when marking done.
-
----
-
-## Step 9: Update BLOCKERS.md
-
-- Move resolved blockers to "Resolved"
-- Update deadlines
-- Mark escalated (>2 days)
-- Add new blockers from Step 6
+Отмечай done только с доказательством (commit или файл). Добавляй `(commit: abc1234)` при отметке done.
 
 ---
 
-## Step 10: Report
+## Step 9: Обновление BLOCKERS.md
 
-Report:
-- What was updated
-- Key changes since last_update
-- Test results
-- New/resolved/escalated blockers
-- Sprint readiness
+- Перенеси разрешённые блокеры в "Resolved"
+- Обнови дедлайны
+- Отметь escalated (>2 дней)
+- Добавь новые блокеры из Step 6
 
 ---
 
-## Rules
+## Step 10: Обновление SESSION_LOG.md
+
+Добавь сводку по сессии context sync:
+- Дата
+- Ключевые изменения с last_update
+- Результаты тестов
+- Новые/разрешённые/escalated блокеры
+
+---
+
+## Step 11: Отчёт
+
+Сообщи пользователю на русском:
+- Что было обновлено
+- Ключевые изменения с last_update
+- Результаты тестов
+- Новые/разрешённые/escalated блокеры
+- Готовность спринта
+
+---
+
+## Rules / Правила
 
 - Evidence first — only facts from code and git.
 - Do not delete completed tasks — move to "Completed".
 - Date every status change.
 - Preserve history — append-only changelog.
 - If BACKLOG.md conflicts with code, code wins.
+- Do not move the GitHub Project board.
+
+---

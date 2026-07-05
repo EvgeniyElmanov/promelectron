@@ -52,7 +52,8 @@ Required:
 2. `.agent/BACKLOG.md`
 3. `.agent/BLOCKERS.md`
 4. `.agent/SESSION_LOG.md`
-5. [Rule: Pre-edit Checklist](.kimi-code/rules/pre-edit-checklist.md) (before code changes)
+5. [Rule: Agent Commons](.kimi-code/rules/agent-commons.md)
+6. [Rule: Pre-edit Checklist](.kimi-code/rules/pre-edit-checklist.md) (before code changes)
 
 ### Step 4: Execute
 

@@ -1,23 +1,13 @@
 import { ref, computed, watch } from 'vue';
 import api from '@/services/api';
 import { useAuth } from '@/composables/useAuth';
-import {
-  selectCartItem as apiSelectCartItem,
-  selectAllCartItems as apiSelectAllCartItems,
-  deselectAllCartItems as apiDeselectAllCartItems,
-} from '@/api/cart';
 
 const GUEST_CART_KEY = 'guest_cart';
-
-const ensureSelected = (item) => ({
-  ...item,
-  selected: item.selected === undefined ? true : Boolean(item.selected),
-});
 
 const loadGuestCart = () => {
   try {
     const raw = localStorage.getItem(GUEST_CART_KEY);
-    return raw ? JSON.parse(raw).map(ensureSelected) : [];
+    return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
   }
@@ -28,9 +18,7 @@ const saveGuestCart = (items) => {
 };
 
 const getGuestCartCount = () => {
-  return loadGuestCart()
-    .filter((item) => item.selected !== false)
-    .reduce((sum, item) => sum + (item.quantity || 0), 0);
+  return loadGuestCart().reduce((sum, item) => sum + (item.quantity || 0), 0);
 };
 
 const cartCount = ref(getGuestCartCount());
@@ -62,7 +50,6 @@ export const useCart = () => {
         items.push({
           product_id: productId,
           quantity,
-          selected: true,
           name: product?.name || '',
           price: product?.price || 0,
           stock: product?.stock || 0,
@@ -95,40 +82,7 @@ export const useCart = () => {
     }
   };
 
-  const selectItem = async (itemId, selected) => {
-    if (isAuthenticated.value) {
-      await apiSelectCartItem(itemId, selected);
-      return;
-    }
-    const items = loadGuestCart();
-    const item = items.find((i) => i.product_id === itemId);
-    if (item) {
-      item.selected = Boolean(selected);
-      saveGuestCart(items);
-    }
-  };
-
-  const selectAll = async () => {
-    if (isAuthenticated.value) {
-      await apiSelectAllCartItems();
-      return;
-    }
-    const items = loadGuestCart().map((item) => ({ ...item, selected: true }));
-    saveGuestCart(items);
-  };
-
-  const deselectAll = async () => {
-    if (isAuthenticated.value) {
-      await apiDeselectAllCartItems();
-      return;
-    }
-    const items = loadGuestCart().map((item) => ({ ...item, selected: false }));
-    saveGuestCart(items);
-  };
-
   const getGuestCartItems = () => loadGuestCart();
-
-  const getSelectedGuestCartItems = () => loadGuestCart().filter((item) => item.selected);
 
   const clearGuestCart = () => {
     localStorage.removeItem(GUEST_CART_KEY);
@@ -138,11 +92,7 @@ export const useCart = () => {
   const mergeCartOnLogin = async () => {
     const items = loadGuestCart();
     if (items.length === 0) return;
-    const payload = items.map((i) => ({
-      product_id: i.product_id,
-      quantity: i.quantity,
-      selected: i.selected,
-    }));
+    const payload = items.map((i) => ({ product_id: i.product_id, quantity: i.quantity }));
     await api.post('/cart/merge', { items: payload });
     clearGuestCart();
     await syncCartCount();
@@ -152,9 +102,7 @@ export const useCart = () => {
     if (isAuthenticated.value) {
       try {
         const { data } = await api.get('/cart/');
-        const count = (data.items || [])
-          .filter((item) => item.selected)
-          .reduce((sum, item) => sum + (item.quantity || 0), 0);
+        const count = (data.items || []).reduce((sum, item) => sum + (item.quantity || 0), 0);
         cartCount.value = count;
       } catch {
         cartCount.value = 0;
@@ -177,11 +125,7 @@ export const useCart = () => {
     addToCart,
     removeFromCart,
     updateQuantity,
-    selectItem,
-    selectAll,
-    deselectAll,
     getGuestCartItems,
-    getSelectedGuestCartItems,
     clearGuestCart,
     mergeCartOnLogin,
     syncCartCount,

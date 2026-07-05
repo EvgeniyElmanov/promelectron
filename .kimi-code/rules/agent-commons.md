@@ -30,10 +30,7 @@ Load this reference in subagents when needed instead of duplicating the full tex
 Запуская субагента при русскоязычном пользователе, добавь эту директиву в **начало
 и в конец** его промпта (единая формулировка, не изобретай свою):
 
-> ЯЗЫК / LANGUAGE: Пользователь общается на русском. Отвечай родительскому агенту и
-> пиши все артефакты (spec, findings, отчёты, SESSION_LOG) на русском. Стремись
-> рассуждать на русском. Код, команды, идентификаторы, пути и технические термины
-> оставляй в оригинале.
+> ЯЗЫК / LANGUAGE: Пользователь общается на русском. Ключевые инструкции этой задачи — на русском. Отвечай родительскому агенту и пиши все артефакты (spec, findings, отчёты, SESSION_LOG) на русском. Стремись рассуждать на русском, но если reasoning уходит на английский — это не ошибка; главное, чтобы финальные ответы и артефакты были на русском. При multi-step tool calling обязательно сохраняй `reasoning_content` из ассистентских сообщений в истории. Код, команды, идентификаторы, пути и технические термины оставляй в оригинале.
 
 ---
 
@@ -64,7 +61,7 @@ Before launching subagents, estimate task context size:
 python scripts/implement-pipeline.py check-context <task-id>
 ```
 
-- If `ESTIMATED_TOKENS` >= 180000, read `.agent/runs/<task-id>/CONTEXT_SUMMARY.md` instead of the full history.
+- If `ESTIMATED_TOKENS` >= 150000, read `.agent/runs/<task-id>/CONTEXT_SUMMARY.md` instead of the full history.
 - Log the estimated token count in `.agent/SESSION_LOG.md`.
 
-Kimi K2.7-Code has a 256K context window with mandatory thinking mode. Staying below 180K leaves room for `reasoning_content`, tool outputs, and system instructions.
+Kimi K2.7-Code has a 256K context window with mandatory thinking mode. The conservative 150K threshold leaves ~100K for system prompt, reasoning_content, tool outputs, and response generation; the old 180K threshold was too tight for long Russian tool outputs.

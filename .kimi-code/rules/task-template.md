@@ -6,26 +6,78 @@ type: prompt
 disableModelInvocation: true
 ---
 
-> Используйте этот шаблон для содержимого `.agent/runs/<task-id>/task.md` (task-id — kebab-case), который создаёт пайплайн для любой задачи.
-> Примечание: формат `.agent/tasks/TASK_XXX.md` — устаревший (легаси); актуальная схема — `.agent/runs/<task-id>/task.md`.
+> Это reference-шаблон для `.agent/runs/<task-id>/task.md` (task-id — kebab-case).  
+> Пайплайн создаёт этот файл автоматически; агенты читают его в начале задачи.
+> Follow [Rule: Agent Commons](agent-commons.md) > Language Rule.
+
+```yaml
+---
+task-id: <kebab-case-slug>
+github_issue: #N
+status: todo | in_progress | in_review | done
+branch: feature/<task-id>
+worktree: /abs/path/to/.worktrees/<task-id>
+date: YYYY-MM-DD
+flags: --quick | --backend-only | --frontend-only | --serial | --qa
+estimated_tokens: 0
+security_review: yes | no
+---
+```
+
+## ЯЗЫК / LANGUAGE
+
+Пользователь общается на русском. Все артефакты (spec, findings, отчёты, SESSION_LOG) — на русском. Код, команды, идентификаторы, пути и технические термины — в оригинале.
 
 ## ЗАДАЧА
+
 [Краткое название, 3-7 слов]
 
+## ОПИСАНИЕ
+
+[Полное описание задачи]
+
 ## КОНТЕКСТ
+
 - Что уже сделано:
 - Где в коде смотреть (файлы, компоненты, таблицы):
 - Связанные задачи / фичи:
 - Текущий статус проекта по этой фиче:
 
 ## ЦЕЛЬ
+
 [Что должно работать после выполнения. Одно конкретное предложение.]
 
+## MUST-HAVES
+
+- [ ] Конкретный обязательный результат 1
+- [ ] Конкретный обязательный результат 2
+
+## ACCEPTANCE CRITERIA
+
+- [ ] Критерий приёмки 1
+- [ ] Критерий приёмки 2
+
+## OUT OF SCOPE
+
+- [ ] Что явно НЕ делаем в этой задаче
+
 ## ОГРАНИЧЕНИЯ
+
 - [ ] Не трогать: ...
 - [ ] Не менять архитектурные решения без согласования
 - [ ] Не удалять старый код, пока новый не работает
 - [ ] Не добавлять новые зависимости без обоснования
+
+## ОБЯЗАТЕЛЬНЫЙ КОНТЕКСТ (прочитать)
+
+- [ ] `PROJECT_CONTEXT.md`
+- [ ] `.agent/BACKLOG.md`
+- [ ] `.agent/BLOCKERS.md`
+- [ ] `.agent/SESSION_LOG.md`
+- [ ] `.kimi-code/skills/<role>/SKILL.md`
+- [ ] [Rule: Pre-edit Checklist](pre-edit-checklist.md)
+- [ ] [Rule: Agent Commons](agent-commons.md)
+- [ ] [Rule: Security](security.md) — если затрагивает auth/payments/PII/uploads
 
 ## КОНТЕКСТНЫЙ ПАКЕТ (для рабочего агента)
 
@@ -38,7 +90,7 @@ disableModelInvocation: true
 ### Для frontend-dev:
 - [ ] Ссылка на компонент-родитель (где вставлять)
 - [ ] API контракт (какие поля приходят с бэка)
-- [ ] Pinia store — создавать новый или использовать существующий?
+- [ ] Composable — создавать новый или использовать существующий?
 - [ ] Дизайн-референс (скриншот / описание / макет)
 - [ ] `data-testid` для E2E — добавить?
 
@@ -53,36 +105,27 @@ disableModelInvocation: true
 - [ ] URL, на котором проверять
 
 ## ПРОВЕРКА (Definition of Done)
-- [ ] `pytest` проходит (backend) / `vitest` проходит (frontend)
-- [ ] `ruff check` не ругается
+
+- [ ] `make test-backend` / `make test-frontend` проходят
+- [ ] `make lint` не ругается
+- [ ] `make pre-push` проходит (lint + unit + E2E)
 - [ ] Ручная проверка: `curl ...` или скриншот UI
 - [ ] E2E тест проходит (если затрагивает пользовательский сценарий)
 - [ ] Документация обновлена (если API меняется)
 - [ ] `.env.example` обновлён (если новые env vars)
 
 ## ОТЧЁТ ПО ЗАВЕРШЕНИЮ
+
 Агент должен сообщить:
 1. **Список изменённых файлов** (с путями)
 2. **Результат проверки** (тесты, линтер, ручная проверка)
 3. **Риски / технический долг** (если оставили)
 4. **Блокеры** (если что-то мешает двигаться дальше)
 
-## Пример заполнения
+## PR / MERGE
 
-```markdown
-## ЗАДАЧА
-API гостевой корзины
+- PR URL:
+- Review status: APPROVED / FIXES_NEEDED
+- Merge approved by user: yes / no
 
-## КОНТЕКСТ
-- Уже есть корзина для авторизованных (Pinia store: `cart.ts`, таблица `carts`).
-- ЮKassa ещё не интегрирована — не трогать оплату.
-- Файлы: `backend/src/app/api/cart.py`, `backend/src/app/services/cart.py`
-
-## ЦЕЛЬ
-POST `/api/v1/guest-cart` принимает `{items: [...]}` и возвращает `cart_id`.
-
-## ОГРАНИЧЕНИЯ
-- [ ] Не менять существующую таблицу `carts`.
-- [ ] Создать новую таблицу `guest_carts`.
-- [ ] Не трогать авторизованный flow.
-```
+---

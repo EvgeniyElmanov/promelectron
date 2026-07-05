@@ -34,9 +34,6 @@ vi.mock('@/composables/useAuth', () => ({
 const mockGuestItems = ref([]);
 const mockCartCount = ref(0);
 const mockSyncCartCount = vi.hoisted(() => vi.fn());
-const mockSelectItem = vi.hoisted(() => vi.fn());
-const mockSelectAll = vi.hoisted(() => vi.fn());
-const mockDeselectAll = vi.hoisted(() => vi.fn());
 
 vi.mock('@/api/cdek', () => ({
   getSupplierCityCode: vi.fn(() => Promise.resolve(44)),
@@ -61,11 +58,7 @@ vi.mock('@/composables/useCart', () => ({
     addToCart: vi.fn(),
     removeFromCart: vi.fn(),
     updateQuantity: vi.fn(),
-    selectItem: mockSelectItem,
-    selectAll: mockSelectAll,
-    deselectAll: mockDeselectAll,
     getGuestCartItems: () => mockGuestItems.value,
-    getSelectedGuestCartItems: () => mockGuestItems.value.filter((i) => i.selected !== false),
     clearGuestCart: vi.fn(),
     mergeCartOnLogin: vi.fn(),
     syncCartCount: mockSyncCartCount,
@@ -84,7 +77,7 @@ vi.mock('@/components/CdekDeliveryWidget.vue', () => ({
   default: {
     name: 'CdekDeliveryWidget',
     template: '<div data-testid="cdek-delivery-widget"><span v-if="isFallback" data-testid="cdek-fallback-hint">fallback</span><button @click="select">Select delivery</button></div>',
-    props: ['modelValue', 'items', 'isFallback', 'defaultCity'],
+    props: ['modelValue', 'items', 'isFallback'],
     methods: {
       select() {
         this.$emit('update:modelValue', { tariff_code: 136, price: 350, delivery_mode: 'PVZ' });
@@ -106,7 +99,6 @@ const mockCartWithItems = {
       id: 101,
       product_id: 1,
       quantity: 2,
-      selected: true,
       product: {
         id: 1,
         name: 'Смартфон Pro',
@@ -120,7 +112,6 @@ const mockCartWithItems = {
       id: 102,
       product_id: 2,
       quantity: 1,
-      selected: true,
       product: {
         id: 2,
         name: 'Наушники Wireless',
@@ -255,6 +246,7 @@ describe('Cart.vue', () => {
     expect(select.html()).toContain('Иванов Иван Иванович');
     expect(select.html()).toContain('Петров Пётр');
     expect(select.html()).not.toContain('Новый получатель');
+    expect(wrapper.find('[data-testid="recipient-new-button"]').exists()).toBe(true);
   });
 
   it('не показывает селект, если нет сохранённых получателей', async () => {
@@ -371,210 +363,6 @@ describe('Cart.vue', () => {
     expect(widget.props('isFallback')).toBe(true);
     expect(wrapper.find('[data-testid="cdek-fallback-hint"]').exists()).toBe(true);
   });
-
-  it('отображает чекбокс выбора для каждого товара', async () => {
-    const wrapper = mount(Cart, { global: { plugins: [router] } });
-    await flushPromises();
-
-    const checkboxes = wrapper.findAll('[data-testid="cart-item-checkbox"] input');
-    expect(checkboxes.length).toBe(2);
-    expect(checkboxes[0].element.checked).toBe(true);
-    expect(checkboxes[1].element.checked).toBe(true);
-  });
-
-  it('отображает чекбокс "Выбрать все"', async () => {
-    const wrapper = mount(Cart, { global: { plugins: [router] } });
-    await flushPromises();
-
-    const selectAll = wrapper.find('[data-testid="cart-select-all"]');
-    expect(selectAll.exists()).toBe(true);
-    expect(selectAll.find('input').element.checked).toBe(true);
-  });
-
-  it('считает итоги только по выбранным товарам', async () => {
-    const unselectedCart = {
-      ...mockCartWithItems,
-      items: mockCartWithItems.items.map((item, index) => ({
-        ...item,
-        selected: index === 0,
-      })),
-    };
-    mockGet.mockImplementation((url) => {
-      if (url === '/cart/') return Promise.resolve({ data: unselectedCart });
-      if (url === '/auth/profile') return Promise.resolve({ data: {} });
-      if (url === '/delivery-methods/') return Promise.resolve({ data: [] });
-      if (url === '/me/recipients/') return Promise.resolve({ data: mockSavedRecipients });
-      return Promise.resolve({ data: {} });
-    });
-
-    const wrapper = mount(Cart, { global: { plugins: [router] } });
-    await flushPromises();
-
-    // Only first item selected: 29990 * 2 = 59980
-    expect(wrapper.text()).toContain('59 980');
-    expect(wrapper.text()).not.toContain('64 970');
-  });
-
-  it('disabled кнопку оформления, когда нет выбранных товаров', async () => {
-    const emptySelectionCart = {
-      ...mockCartWithItems,
-      items: mockCartWithItems.items.map((item) => ({ ...item, selected: false })),
-    };
-    mockGet.mockImplementation((url) => {
-      if (url === '/cart/') return Promise.resolve({ data: emptySelectionCart });
-      if (url === '/auth/profile') return Promise.resolve({ data: {} });
-      if (url === '/delivery-methods/') return Promise.resolve({ data: [] });
-      if (url === '/me/recipients/') return Promise.resolve({ data: mockSavedRecipients });
-      return Promise.resolve({ data: {} });
-    });
-
-    const wrapper = mount(Cart, { global: { plugins: [router] } });
-    await flushPromises();
-
-    const btn = wrapper.find('[data-testid="checkout-button"]');
-    expect(btn.attributes('disabled')).toBeDefined();
-  });
-
-  it('передаёт в CDEK-виджет только выбранные товары', async () => {
-    const unselectedCart = {
-      ...mockCartWithItems,
-      items: [
-        { ...mockCartWithItems.items[0], selected: true },
-        { ...mockCartWithItems.items[1], selected: false },
-      ],
-    };
-    mockGet.mockImplementation((url) => {
-      if (url === '/cart/') return Promise.resolve({ data: unselectedCart });
-      if (url === '/auth/profile') return Promise.resolve({ data: {} });
-      if (url === '/delivery-methods/') return Promise.resolve({ data: [] });
-      if (url === '/me/recipients/') return Promise.resolve({ data: mockSavedRecipients });
-      return Promise.resolve({ data: {} });
-    });
-
-    const wrapper = mount(Cart, { global: { plugins: [router] } });
-    await flushPromises();
-
-    const widget = wrapper.findComponent({ name: 'CdekDeliveryWidget' });
-    expect(widget.props('items').length).toBe(1);
-    expect(widget.props('items')[0].product.name).toBe('Смартфон Pro');
-  });
-
-  it('подставляет получателя и город по умолчанию из корзины', async () => {
-    const cartWithDefaults = {
-      ...mockCartWithItems,
-      default_recipient: {
-        id: 10,
-        first_name: 'Пётр',
-        last_name: 'Петров',
-        patronymic: 'Петрович',
-        phone: '+79990005566',
-        country_code: 'RU',
-      },
-      default_address: {
-        city: 'Санкт-Петербург',
-      },
-    };
-    mockGet.mockImplementation((url) => {
-      if (url === '/cart/') return Promise.resolve({ data: cartWithDefaults });
-      if (url === '/auth/profile') return Promise.resolve({ data: {} });
-      if (url === '/delivery-methods/') return Promise.resolve({ data: [] });
-      if (url === '/me/recipients/') return Promise.resolve({ data: mockSavedRecipients });
-      return Promise.resolve({ data: {} });
-    });
-
-    const wrapper = mount(Cart, { global: { plugins: [router] } });
-    await flushPromises();
-
-    expect(wrapper.find('[data-testid="recipient-first-name"]').element.value).toBe('Пётр');
-    expect(wrapper.find('[data-testid="recipient-last-name"]').element.value).toBe('Петров');
-    expect(wrapper.find('[data-testid="recipient-phone"]').element.value).toBe('+79990005566');
-    const widget = wrapper.findComponent({ name: 'CdekDeliveryWidget' });
-    expect(widget.props('defaultCity')).toBe('Санкт-Петербург');
-  });
-
-  it('позволяет изменить подставленного получателя без сохранения в профиль', async () => {
-    const cartWithDefaults = {
-      ...mockCartWithItems,
-      default_recipient: {
-        id: 10,
-        first_name: 'Пётр',
-        last_name: 'Петров',
-        patronymic: 'Петрович',
-        phone: '+79990005566',
-        country_code: 'RU',
-      },
-    };
-    mockGet.mockImplementation((url) => {
-      if (url === '/cart/') return Promise.resolve({ data: cartWithDefaults });
-      if (url === '/auth/profile') return Promise.resolve({ data: {} });
-      if (url === '/delivery-methods/') return Promise.resolve({ data: [] });
-      if (url === '/me/recipients/') return Promise.resolve({ data: mockSavedRecipients });
-      return Promise.resolve({ data: {} });
-    });
-
-    const wrapper = mount(Cart, { global: { plugins: [router] } });
-    await flushPromises();
-
-    await wrapper.find('[data-testid="recipient-first-name"]').setValue('Иван');
-    await flushPromises();
-
-    expect(wrapper.find('[data-testid="recipient-first-name"]').element.value).toBe('Иван');
-    expect(mockPost).not.toHaveBeenCalled();
-  });
-
-  it('переключает выбор товара и перезагружает корзину', async () => {
-    const wrapper = mount(Cart, { global: { plugins: [router] } });
-    await flushPromises();
-
-    const initialCalls = mockGet.mock.calls.length;
-    const checkboxes = wrapper.findAll('[data-testid="cart-item-checkbox"] input');
-    await checkboxes[0].setValue(false);
-    await flushPromises();
-
-    expect(mockSelectItem).toHaveBeenCalledWith(101, false);
-    expect(mockGet.mock.calls.length).toBeGreaterThan(initialCalls);
-  });
-
-  it('выбирает все товары при клике на "Выбрать все"', async () => {
-    const mixedCart = {
-      ...mockCartWithItems,
-      items: [
-        { ...mockCartWithItems.items[0], selected: true },
-        { ...mockCartWithItems.items[1], selected: false },
-      ],
-    };
-    mockGet.mockImplementation((url) => {
-      if (url === '/cart/') return Promise.resolve({ data: mixedCart });
-      if (url === '/auth/profile') return Promise.resolve({ data: {} });
-      if (url === '/delivery-methods/') return Promise.resolve({ data: [] });
-      if (url === '/me/recipients/') return Promise.resolve({ data: mockSavedRecipients });
-      return Promise.resolve({ data: {} });
-    });
-
-    const wrapper = mount(Cart, { global: { plugins: [router] } });
-    await flushPromises();
-
-    const initialCalls = mockGet.mock.calls.length;
-    const selectAll = wrapper.find('[data-testid="cart-select-all"] input');
-    await selectAll.setValue(true);
-    await flushPromises();
-
-    expect(mockSelectAll).toHaveBeenCalled();
-    expect(mockGet.mock.calls.length).toBeGreaterThan(initialCalls);
-  });
-
-  it('снимает выбор со всех товаров при клике на "Выбрать все"', async () => {
-    const wrapper = mount(Cart, { global: { plugins: [router] } });
-    await flushPromises();
-
-    const initialCalls = mockGet.mock.calls.length;
-    const selectAll = wrapper.find('[data-testid="cart-select-all"] input');
-    await selectAll.setValue(false);
-    await flushPromises();
-
-    expect(mockDeselectAll).toHaveBeenCalled();
-    expect(mockGet.mock.calls.length).toBeGreaterThan(initialCalls);
-  });
 });
 
 describe('Cart.vue — гостевая корзина', () => {
@@ -586,7 +374,6 @@ describe('Cart.vue — гостевая корзина', () => {
       {
         product_id: 10,
         quantity: 3,
-        selected: true,
         name: 'Гостевой товар',
         price: 1500,
         stock: 8,
@@ -635,20 +422,5 @@ describe('Cart.vue — гостевая корзина', () => {
 
     expect(wrapper.text()).not.toContain('Способ доставки');
     expect(wrapper.find('[data-testid="address-form"]').exists()).toBe(false);
-  });
-
-  it('считает итоги только по выбранным товарам для гостя', async () => {
-    mockGuestItems.value = [
-      { product_id: 11, quantity: 2, selected: true, name: 'Выбранный товар', price: 1000, stock: 5, images: [] },
-      { product_id: 12, quantity: 1, selected: false, name: 'Невыбранный товар', price: 2000, stock: 3, images: [] },
-    ];
-    mockCartCount.value = 2;
-
-    const wrapper = mount(Cart, { global: { plugins: [router] } });
-    await flushPromises();
-
-    expect(wrapper.text()).toContain('Выбранный товар');
-    expect(wrapper.text()).toContain('Невыбранный товар');
-    expect(wrapper.text()).toContain('2\u00A0000');
   });
 });

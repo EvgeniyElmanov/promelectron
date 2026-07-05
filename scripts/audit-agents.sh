@@ -217,7 +217,7 @@ while IFS= read -r -d '' f; do
     plain_links=$(grep -oP "(?:(?<=^)|(?<=[\\s'\"\\x60]))(?:(?:\\.agent|\\.kimi-code|backend|frontend|scripts|infra)/|/|\\.\\./)[^ )\\x60]+?\\.md" "$f" 2>/dev/null || true)
     links=$(printf '%s\n%s\n' "$md_links" "$plain_links" | sort -u)
     if [ -n "$links" ]; then
-        echo "$links" | while read -r link; do
+        while IFS= read -r link; do
             # Пропускаем пустые строки и шаблонные placeholder'ы
             if [ -z "$link" ] || [[ "$link" == *'<'*'>'* ]] || [[ "$link" == *'XXX'* ]]; then
                 continue
@@ -239,7 +239,7 @@ while IFS= read -r -d '' f; do
                 echo "  ❌ $f → $link (НЕ НАЙДЕН)"
                 broken_found=1
             fi
-        done
+        done < <(echo "$links")
     fi
 done < <(find AGENTS.md .kimi-code/AGENTS.md .kimi-code/BUNDLE.md .kimi-code/rules .kimi-code/skills -type f -name '*.md' -print0)
 

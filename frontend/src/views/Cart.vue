@@ -6,19 +6,6 @@
         Корзина
         <span v-if="itemCount > 0" class="cart__count">{{ itemCount }}</span>
       </h1>
-      <label
-        v-if="cart.items && cart.items.length > 0"
-        class="cart__select-all"
-        data-testid="cart-select-all"
-      >
-        <input
-          type="checkbox"
-          :checked="areAllSelected"
-          :disabled="cart.items.length === 0"
-          @change="toggleSelectAll"
-        />
-        <span>Выбрать все</span>
-      </label>
     </div>
 
     <!-- Loading -->
@@ -52,15 +39,6 @@
           @touchmove="handleTouchMove($event, item.id)"
           @touchend="handleTouchEnd(item.id)"
         >
-          <!-- Item selection checkbox -->
-          <label class="cart-item__checkbox" data-testid="cart-item-checkbox">
-            <input
-              type="checkbox"
-              :checked="item.selected !== false"
-              @change="toggleItemSelection(item)"
-            />
-          </label>
-
           <!-- Product Image -->
           <div class="cart-item__image" @click="goToProduct(item.product?.id)">
             <img
@@ -151,10 +129,9 @@
         <div v-if="isAuthenticated" class="cart__summary-section">
           <CdekDeliveryWidget
             v-model="selectedDelivery"
-            :items="selectedItems"
+            :items="cart.items"
             :supplier-city-code="supplierCityCode"
             :is-fallback="isFallback"
-            :default-city="defaultAddressCity"
           />
 
           <div class="cart__recipient">
@@ -269,7 +246,7 @@
       <button
         class="cart__checkout-btn"
         data-testid="checkout-button"
-        :disabled="creatingOrder || selectedItems.length === 0 || (isAuthenticated && (!isDeliveryValid || !isRecipientValid))"
+        :disabled="creatingOrder || (isAuthenticated && (!isDeliveryValid || !isRecipientValid))"
         @click="createOrder"
       >
         {{ creatingOrder ? 'Оформление...' : 'Оформить заказ' }}
@@ -310,48 +287,11 @@ const recipientCountryCode = ref('RU');
 const recipientError = ref('');
 const supplierCityCode = ref(44);
 const isFallback = ref(false);
-const defaultAddress = ref(null);
-const hasAppliedDefaults = ref(false);
 const router = useRouter();
 const { add: toast } = useToast();
 const { isAuthenticated } = useAuth();
-const {
-  getGuestCartItems,
-  selectItem: selectCartItemLocal,
-  selectAll: selectAllCartItemsLocal,
-  deselectAll: deselectAllCartItemsLocal,
-  updateQuantity: updateGuestQuantity,
-  removeFromCart: removeGuestItem,
-  syncCartCount,
-} = useCart();
-
-const toggleItemSelection = async (item) => {
-  const newValue = !item.selected;
-  try {
-    if (isAuthenticated.value) {
-      await selectCartItemLocal(item.id, newValue);
-    } else {
-      await selectCartItemLocal(item.product_id, newValue);
-    }
-    await fetchCart();
-  } catch {
-    toast('Не удалось изменить выбор товара', 'error');
-  }
-};
-
-const toggleSelectAll = async () => {
-  try {
-    if (areAllSelected.value) {
-      await deselectAllCartItemsLocal();
-    } else {
-      await selectAllCartItemsLocal();
-    }
-    await fetchCart();
-  } catch {
-    toast('Не удалось изменить выбор товаров', 'error');
-  }
-};
-const { recipients, loading: recipientsLoading, loadRecipients } = useRecipients();
+const { getGuestCartItems, updateQuantity: updateGuestQuantity, removeFromCart: removeGuestItem, syncCartCount } = useCart();
+const { recipients, loading: recipientsLoading, loadRecipients, defaultRecipient } = useRecipients();
 
 // Swipe state
 const touchStartX = ref(0);
@@ -378,7 +318,7 @@ const isRecipientValid = computed(() => {
 });
 
 const supplierId = computed(() => {
-  const firstItem = selectedItems.value?.[0];
+  const firstItem = cart.value.items?.[0];
   return firstItem?.product?.supplier_id ?? null;
 });
 
@@ -403,16 +343,12 @@ const loadSupplierCityCode = async () => {
   }
 };
 
-const selectedItems = computed(() => {
-  return (cart.value.items || []).filter((item) => item.selected !== false);
-});
-
 const itemCount = computed(() => {
-  return selectedItems.value.reduce((sum, item) => sum + (item.quantity || 0), 0);
+  return cart.value.items.reduce((sum, item) => sum + (item.quantity || 0), 0);
 });
 
 const itemsTotal = computed(() => {
-  return selectedItems.value.reduce((total, item) => {
+  return cart.value.items.reduce((total, item) => {
     return total + (item.product?.price || 0) * (item.quantity || 0);
   }, 0);
 });
@@ -422,13 +358,6 @@ const deliveryPrice = computed(() => {
 });
 
 const orderTotal = computed(() => itemsTotal.value + deliveryPrice.value);
-
-const defaultAddressCity = computed(() => defaultAddress.value?.city || '');
-
-const areAllSelected = computed(() => {
-  const items = cart.value.items || [];
-  return items.length > 0 && items.every((item) => item.selected !== false);
-});
 
 const applyRecipient = (recipient) => {
   if (!recipient) {
@@ -457,6 +386,18 @@ watch(selectedRecipientId, (id) => {
   applyRecipient(recipient);
 });
 
+watch(defaultRecipient, (recipient) => {
+  if (
+    recipient &&
+    selectedRecipientId.value === null &&
+    recipients.value.length > 0 &&
+    !hasUserSelectedRecipient.value
+  ) {
+    selectedRecipientId.value = recipient.id;
+    applyRecipient(recipient);
+  }
+}, { immediate: false });
+
 const fetchCart = async () => {
   loading.value = true;
   try {
@@ -464,14 +405,9 @@ const fetchCart = async () => {
       const { data } = await api.get('/cart/');
       cart.value = data;
       await loadRecipients();
-      if (!hasAppliedDefaults.value) {
-        if (data?.default_recipient && !hasUserSelectedRecipient.value) {
-          applyRecipient(data.default_recipient);
-        }
-        if (data?.default_address) {
-          defaultAddress.value = data.default_address;
-        }
-        hasAppliedDefaults.value = true;
+      if (defaultRecipient.value && !hasUserSelectedRecipient.value) {
+        selectedRecipientId.value = defaultRecipient.value.id;
+        applyRecipient(defaultRecipient.value);
       }
     } else {
       const items = getGuestCartItems();
@@ -482,7 +418,6 @@ const fetchCart = async () => {
           id: `guest-${item.product_id}`,
           product_id: item.product_id,
           quantity: item.quantity,
-          selected: item.selected !== false,
           product: {
             id: item.product_id,
             name: item.name,
@@ -563,10 +498,6 @@ const createOrder = async () => {
   if (creatingOrder.value) return;
   if (!isAuthenticated.value) {
     router.push('/guest-checkout');
-    return;
-  }
-  if (selectedItems.value.length === 0) {
-    toast('Выберите товары для оформления', 'error');
     return;
   }
   if (!isDeliveryValid.value) {
@@ -659,35 +590,6 @@ watch(supplierId, () => {
   border-radius: 12px;
 }
 
-.cart__select-all {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 8px;
-  font-size: 14px;
-  color: var(--color-text);
-  cursor: pointer;
-}
-
-.cart__select-all input {
-  width: 18px;
-  height: 18px;
-  accent-color: var(--color-primary);
-  flex-shrink: 0;
-}
-
-@media (min-width: 768px) {
-  .cart__header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .cart__select-all {
-    margin-top: 0;
-  }
-}
-
 /* Loading */
 .cart__loading {
   text-align: center;
@@ -753,21 +655,6 @@ watch(supplierId, () => {
   border-radius: 14px;
   overflow: hidden;
   transition: transform 0.2s ease;
-}
-
-.cart-item__checkbox {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  padding-top: 24px;
-}
-
-.cart-item__checkbox input {
-  width: 20px;
-  height: 20px;
-  accent-color: var(--color-primary);
-  cursor: pointer;
 }
 
 .cart-item--swiped {

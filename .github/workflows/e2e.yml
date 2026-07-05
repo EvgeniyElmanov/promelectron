@@ -19,8 +19,8 @@ on:
 
 env:
   # YooKassa test credentials for E2E (test card 5555 5555 5555 4444)
-  YOOKASSA_SHOP_ID: ${{ vars.YOOKASSA_SHOP_ID || '54401' }}
-  YOOKASSA_SECRET_KEY: ${{ secrets.YOOKASSA_SECRET_KEY || 'test_Fh8hUAVVBGUGbjmlzba6TB0iyUbos_lueTHE-axOwM0' }}
+  YOOKASSA_SHOP_ID: ${{ vars.YOOKASSA_SHOP_ID }}
+  YOOKASSA_SECRET_KEY: ${{ secrets.YOOKASSA_SECRET_KEY }}
   YOOKASSA_TEST_MODE: ${{ vars.YOOKASSA_TEST_MODE || 'true' }}
 
 jobs:

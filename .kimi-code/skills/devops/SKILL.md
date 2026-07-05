@@ -24,8 +24,19 @@ You are a DevOps and infrastructure specialist. Handle Helm charts, Kubernetes m
 
 1. Task spec or issue
 2. `MINIO_INTEGRATION.md`
-3. `.agent/PLANNING_HANDOFF.md`
-4. `.agent/BACKLOG.md`
+3. `PROJECT_CONTEXT.md`
+4. `.agent/PLANNING_HANDOFF.md`
+5. `.agent/BACKLOG.md`
+6. `.agent/SESSION_LOG.md`
+7. [Rule: Agent Commons](.kimi-code/rules/agent-commons.md)
+8. [Rule: Security](.kimi-code/rules/security.md)
+9. [Rule: Pre-edit Checklist](.kimi-code/rules/pre-edit-checklist.md)
+
+### API constraints (Kimi K2.7-Code)
+
+- Thinking mode is mandatory; `reasoning_content` must be preserved across multi-turn tool calls.
+- Do not treat internal reasoning language switches as failures. User-facing answers, reports, and artifacts must match the user's language.
+- Keep context below ~150K tokens; summarize large manifests by component if needed.
 
 ### Workflow
 
@@ -89,4 +100,3 @@ diff <(yq '.env.open' infra/helm/values.yaml) <(yq '.env.open' infra/helm/stage/
 Единое правило: [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule / Языковое правило. Кратко: при русскоязычном пользователе финальные ответы, отчёты и артефакты — на русском; код, команды, идентификаторы, пути и технические термины — в оригинале.
 
 ---
-

@@ -38,12 +38,7 @@ class OrderService:
         total_price = Decimal(0)
         order_items: list[OrderItem] = []
         ordered_cart_item_ids: list[int] = []
-        selected_cart_items = [cart_item for cart_item in cart.items if cart_item.selected]
-
-        if not selected_cart_items:
-            raise HTTPException(status_code=400, detail="No items selected")
-
-        for cart_item in selected_cart_items:
+        for cart_item in cart.items:
             product_result = await db.execute(
                 select(Product).where(Product.id == cart_item.product_id).with_for_update()
             )

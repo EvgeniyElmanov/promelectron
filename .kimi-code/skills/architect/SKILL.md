@@ -26,9 +26,16 @@ You are the solution architect. You analyze the user's task, read project contex
 4. `.agent/SESSION_LOG.md` — recent changes
 5. `$AGENT_DIR/task.md` and `$AGENT_DIR/research/*.md` if present
 6. Existing code related to the task (models, services, API, frontend)
-7. [Rule: pre-edit-checklist](.kimi-code/rules/pre-edit-checklist.md)
-8. [Rule: golden-path](.kimi-code/rules/golden-path.md)
-9. [Rule: security](.kimi-code/rules/security.md)
+7. [Rule: Agent Commons](.kimi-code/rules/agent-commons.md)
+8. [Rule: Pre-edit Checklist](.kimi-code/rules/pre-edit-checklist.md)
+9. [Rule: Golden Path](.kimi-code/rules/golden-path.md)
+10. [Rule: Security](.kimi-code/rules/security.md)
+
+### API constraints (Kimi K2.7-Code)
+
+- Thinking mode is mandatory; `reasoning_content` must be preserved across multi-turn tool calls.
+- Do not treat internal reasoning language switches as failures. User-facing answers, reports, and artifacts must match the user's language.
+- Keep context below ~150K tokens; if the codebase exploration is large, summarize by module.
 
 ### Worktree mode
 
@@ -107,4 +114,3 @@ Feature | Bug Fix | Refactoring
 Единое правило: [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule / Языковое правило. Кратко: при русскоязычном пользователе финальные ответы, отчёты и артефакты — на русском; код, команды, идентификаторы, пути и технические термины — в оригинале.
 
 ---
-

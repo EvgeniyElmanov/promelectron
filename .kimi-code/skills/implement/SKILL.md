@@ -11,47 +11,49 @@ arguments: "<task description> [--quick] [--backend-only] [--frontend-only] [--s
 disableModelInvocation: false
 ---
 
-# /skill:implement — Full Development Cycle
+# /skill:implement — Полный цикл разработки
 
-Implement a new feature from idea to tested code using isolated git worktrees, plan-mode architecture, review loops, E2E tests, and a GitHub Pull Request.
+> **ЯЗЫК / LANGUAGE:** Пользователь общается на русском. Все ответы пользователю, отчёты и артефакты (task.md, spec.md, findings, test-findings, SESSION_LOG, комментарии к PR) пиши на русском. Стремись рассуждать на русском, но если внутреннее reasoning уходит на английский — это не ошибка; главное, чтобы финальные ответы и артефакты были на русском. Код, команды, идентификаторы, пути и технические термины оставляй в оригинале.
 
-## Language
+Реализуй новую фичу от идеи до протестированного кода: изолированный git worktree, архитектура в plan mode, цикл ревью, E2E-тесты и GitHub Pull Request.
 
-Follow [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule. All Russian-language requirements and subagent prompt preambles live there.
+## Language / Язык
 
-Also: write `task.md`, `spec.md`, findings, reports, and `SESSION_LOG.md` entries in Russian when the user is Russian.
+Следуй [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule / Языковое правило. Все требования к русскому языку и преамбулы для субагентов живут там.
+
+При русскоязычном пользователе пиши `task.md`, `spec.md`, findings, reports и записи `SESSION_LOG.md` на русском.
 
 ---
 
-## Step 0: Setup — coordination plane and worktree
+## Step 0: Подготовка — координационная плоскость и worktree
 
-Record the repo root once:
+Запиши корень репозитория:
 
 ```bash
 PROJECT_ROOT="$(git rev-parse --show-toplevel)"
 ```
 
-### 0.1 Pre-flight checks
+### 0.1 Предварительные проверки
 
-Verify GitHub CLI access before starting — backlog automation depends on it:
+Проверь доступ к GitHub CLI — автоматизация бэклога зависит от него:
 
 ```bash
 gh auth status
 gh project view 1 --owner AutonomaCo
 ```
 
-If either fails, stop and ask the user to run `gh auth login` or grant `project` scope.
+Если что-то не так — остановись и попроси пользователя выполнить `gh auth login` или выдать scope `project`.
 
-Generate `<task-id>`: short kebab-case slug, e.g. `add-promo-codes`, `fix-cart-stock`.
+Сгенерируй `<task-id>`: короткий slug в kebab-case, например `add-promo-codes`, `fix-cart-stock`.
 
-Create the transient coordination plane and the worktree root:
+Создай временную координационную плоскость и корень worktree:
 
 ```bash
 mkdir -p "$PROJECT_ROOT/.agent/runs/<task-id>/review"
 mkdir -p "$PROJECT_ROOT/.worktrees"
 ```
 
-Paths for the rest of the pipeline:
+Пути для остального пайплайна:
 
 ```text
 AGENT_DIR = $PROJECT_ROOT/.agent/runs/<task-id>       (gitignored coordination plane)
@@ -59,18 +61,18 @@ WORKTREE  = $PROJECT_ROOT/.worktrees/<task-id>        (per-task code checkout)
 BRANCH    = feature/<task-id>
 ```
 
-> **Important:** `.agent/runs/<task-id>/` is gitignored. Never write transient pipeline files into the committed `.agent/` planning dir (`BACKLOG.md`, `PLANNING_HANDOFF.md`, `tasks/`, etc.).
+> **Важно:** `.agent/runs/<task-id>/` — в `.gitignore`. Никогда не пиши временные файлы пайплайна в закоммиченную планировочную директорию `.agent/` (`BACKLOG.md`, `PLANNING_HANDOFF.md`, `tasks/` и т.д.).
 
-Write `$AGENT_DIR/task.md`:
+Напиши `$AGENT_DIR/task.md`:
 
 ```markdown
 # Task: <task-id>
 
 ## Description
-<full task description>
+<полное описание задачи>
 
 ## Flags
-<active flags or "none">
+<активные флаги или "none">
 
 ## Date
 <YYYY-MM-DD>
@@ -78,148 +80,149 @@ Write `$AGENT_DIR/task.md`:
 
 ---
 
-## Step 1: Create the isolated worktree
+## Step 1: Создание изолированного worktree
 
-Do this **before** any agent touches code, in normal (non-plan) mode — `git worktree add` is a disk mutation plan mode blocks.
+Сделай это **до** того, как любой агент коснётся кода, в обычном (не plan) режиме — `git worktree add` — это изменение на диске, который plan mode блокирует.
 
 ```bash
 git -C "$PROJECT_ROOT" fetch origin
 git -C "$PROJECT_ROOT" worktree add "$WORKTREE" -b "$BRANCH" origin/main
 ```
 
-- **Always branch from `origin/main`.** Never from the current branch.
-- If the worktree already exists (re-run), reuse it — check `git -C "$PROJECT_ROOT" worktree list`.
-- A worktree is a fresh checkout: copy gitignored local files the build needs. Honor `.worktreeinclude` if present, else copy `.env` / `backend/.env` / `frontend/.env` when they exist.
+- **Всегда ветвись от `origin/main`.** Никогда не от текущей ветки.
+- Если worktree уже существует (повторный запуск) — переиспользуй его; проверь `git -C "$PROJECT_ROOT" worktree list`.
+- Worktree — свежий checkout: скопируй gitignored локальные файлы, нужные для сборки. Учитывай `.worktreeinclude`, если он есть; иначе копируй `.env` / `backend/.env` / `frontend/.env`, если они существуют.
 
-You may use the helper script:
+Можно использовать вспомогательный скрипт:
 
 ```bash
-python scripts/implement-pipeline.py setup "<description>" --flags "<flags>"
+python scripts/implement-pipeline.py setup "<описание>" --flags "<флаги>"
 python scripts/implement-pipeline.py create-worktree <task-id>
 ```
 
 ---
 
-## Step 2: Context Size Check (Kimi K2.7-Code)
+## Step 2: Проверка размера контекста (Kimi K2.7-Code)
 
-Follow [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Context Size Check before launching subagents.
+Следуй [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Context Size Check перед запуском субагентов.
 
 ```bash
 python scripts/implement-pipeline.py check-context <task-id>
 ```
 
-If `ESTIMATED_TOKENS >= 180000`, read `$AGENT_DIR/CONTEXT_SUMMARY.md` instead of the full history.
+Если `ESTIMATED_TOKENS >= 150000`, читай `$AGENT_DIR/CONTEXT_SUMMARY.md` вместо полной истории.
 
 ---
 
-## Step 3: Retry Policy
+## Step 3: Политика повторных попыток
 
-Follow [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Retry Policy when launching subagents.
+Следуй [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Retry Policy при запуске субагентов.
 
 ---
 
-## Step 4: Architect Phase (skip if --quick)
+## Step 4: Фаза архитектора (пропустить при --quick)
 
-The spec is written by the **`architect` agent** — you (the orchestrator) only drive the loop and talk to the user. Do not write the spec yourself.
+Спецификацию пишет **агент `architect`** — ты (оркестратор) только управляешь циклом и общаешься с пользователем. Не пиши spec сам.
 
-### 4.1 Research fan-out (parallel, optional)
+### 4.1 Research fan-out (параллельно, опционально)
 
-For non-trivial tasks, launch read-only research sub-agents (`coder` with read-only instructions) concurrently in a single message — one per axis that applies (libraries, best-practices, codebase integration) — each writing `$AGENT_DIR/research/<axis>.md`. Skip for small internal changes.
+Для нетривиальных задач запускай read-only research субагентов (`coder` с read-only инструкциями) параллельно в одном сообщении — один на ось (libraries, best-practices, codebase integration) — каждый пишет `$AGENT_DIR/research/<axis>.md`. Для мелких внутренних изменений пропусти.
 
-### 4.2 Invoke the architect
+### 4.2 Запуск архитектора
 
-Launch an architect subagent via `Agent` tool with `subagent_type: plan`. Apply the retry policy from Step 3.
+Запусти субагента architect через инструмент `Agent` с `subagent_type: plan`. Применяй политику повторных попыток из Step 3.
 
 ```text
-ЯЗЫК / LANGUAGE: Пользователь общается на русском. Отвечай родительскому агенту и пиши все артефакты (spec, findings, отчёты, SESSION_LOG) на русском. Стремись рассуждать на русском. Код, команды, идентификаторы, пути и технические термины оставляй в оригинале.
+ЯЗЫК / LANGUAGE: Пользователь общается на русском. Ключевые инструкции этой задачи — на русском. Ты — архитектор Promelectron. Отвечай родительскому агенту и пиши все артефакты (spec, findings, отчёты, SESSION_LOG) на русском. Стремись рассуждать на русском. При multi-step tool calling сохраняй `reasoning_content` из ассистентских сообщений в истории. Код, команды, идентификаторы, пути и технические термины оставляй в оригинале.
 
-You are the architect for Promelectron.
-Important: Kimi K2.7-Code uses mandatory thinking mode. Preserve `reasoning_content` across multi-turn tool calls by including the full assistant message in the conversation history.
+Important: Kimi K2.7-Code uses mandatory thinking mode (`thinking={"type":"enabled"}`), with fixed `temperature=1.0`, `top_p=0.95`, `n=1`, `presence_penalty=0.0`, `frequency_penalty=0.0`. `tool_choice` may only be `"auto"` or `"none"`.
 
-Read:
+Прочитай (параллельно, где возможно):
 1. $AGENT_DIR/task.md
-2. $AGENT_DIR/research/*.md (if present) and synthesize into $AGENT_DIR/research.md
+2. $AGENT_DIR/research/*.md (если есть) и синтезируй в $AGENT_DIR/research.md
 3. PROJECT_CONTEXT.md
 4. .agent/BACKLOG.md
 5. .agent/BLOCKERS.md
 6. .agent/SESSION_LOG.md
 7. `.kimi-code/skills/architect/SKILL.md`
 8. [Rule: Pre-edit Checklist](.kimi-code/rules/pre-edit-checklist.md)
+9. [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) — язык, retry policy, API constraints
 
 Ты уже запущен как `plan`-субагент — контекст plan уже отключает shell и включает планирование, поэтому НЕ вызывай EnterPlanMode повторно. Пиши спецификацию прямо в plan-файл, предоставленный контекстом plan-субагента, затем вызови ExitPlanMode.
 
-Then:
-1. Load as much relevant context as possible in **parallel**: read task files, existing code in $WORKTREE, and external docs/WebSearch results simultaneously.
-2. Explore the codebase with Read/Grep/Glob (run multiple reads/searches in parallel) to understand how the feature fits.
-3. Use WebSearch/FetchURL if you need external documentation, API docs, or library examples.
-4. Ask the user clarifying questions via AskUserQuestion if requirements are unclear.
-5. Write a technical specification to the plan file. Include:
+Затем:
+1. Загрузи как можно больше релевантного контекста **параллельно**: читай task-файлы, существующий код в $WORKTREE, внешнюю документацию/WebSearch.
+2. Исследуй кодовую базу через Read/Grep/Glob (запускай несколько чтений/поисков параллельно), чтобы понять, как фича вписывается.
+3. Используй WebSearch/FetchURL, если нужна внешняя документация, API docs или примеры библиотек.
+4. Задай уточняющие вопросы пользователю через AskUserQuestion, если требования неясны.
+5. Напиши техническую спецификацию в plan-файл. Включи:
    - Task Type
    - Analysis
    - Decisions (D-01, D-02, ...)
    - Components Affected (backend/frontend/infra)
+   - Parallelization Plan
    - Technical Design
    - API Changes
    - Must-haves
    - Acceptance Criteria
    - Out of Scope
-6. Call ExitPlanMode.
+6. Вызови ExitPlanMode.
 
 Do NOT write implementation code, tests, or migrations.
 
 НАПОМИНАНИЕ: ответы и артефакты — на русском; технические токены (код, пути, команды) — в оригинале.
 ```
 
-### 4.3 Copy the plan to the coordination plane
+### 4.3 Копирование плана в координационную плоскость
 
-After the user approves the plan, copy the plan file content to `$AGENT_DIR/spec.md`.
+После одобрения плана пользователем скопируй содержимое plan-файла в `$AGENT_DIR/spec.md`.
 
-If the user rejects or requests revisions, send the architect back to revise the plan.
+Если пользователь отклонил или попросил доработки — отправь архитектора на доработку.
 
 ---
 
-## Step 4.5: Publish to GitHub backlog
+## Step 4.5: Публикация в GitHub backlog
 
-Every task entering development MUST have a linked GitHub Issue on the Promelectron project board. This step runs **after spec approval** and **before any developer subagent**.
+Каждая задача, выходящая на разработку, ДОЛЖНА иметь связанный GitHub Issue на проектной доске Promelectron. Этот шаг выполняется **после одобрения spec** и **до запуска любого developer-субагента**.
 
-### 4.5.1 Check for existing issue
+### 4.5.1 Проверка существующего issue
 
-Read `$AGENT_DIR/task.md`:
+Прочитай `$AGENT_DIR/task.md`:
 
-- If it already contains `github_issue: #N` (e.g. user invoked `/skill:implement #5`) → skip creation, only ensure the issue status is **In progress**.
-- Otherwise → create a new issue.
+- Если там уже есть `github_issue: #N` (например, пользователь вызвал `/skill:implement #5`) — пропусти создание, только убедись, что статус issue — **In progress**.
+- Иначе — создай новый issue.
 
-### 4.5.2 Build issue draft from spec
+### 4.5.2 Формирование черновика issue из spec
 
-Use `$AGENT_DIR/spec.md` to build a concise issue:
+Используй `$AGENT_DIR/spec.md`, чтобы составить краткий issue:
 
-- **Title:** max 120 chars, derived from the task description or spec heading.
+- **Title:** не более 120 символов, из описания задачи или заголовка spec.
 - **Body:** Summary, Must-haves, Acceptance Criteria, Out of Scope, plus link to `.agent/runs/<task-id>/spec.md`.
 
-### 4.5.3 Confirm with user
+### 4.5.3 Подтверждение у пользователя
 
-Show the draft title/body via `AskUserQuestion`:
+Покажи черновик title/body через `AskUserQuestion`:
 
-> "Spec approved. I will create/link GitHub Issue and move it to **In progress** on the board. Proceed?"
+> "Спецификация одобрена. Я создам/свяжу GitHub Issue и переведу его в **In progress** на доске. Продолжить?"
 
-Wait for explicit approval before publishing.
+Дождись явного одобрения перед публикацией.
 
-### 4.5.4 Create/link issue and project item
+### 4.5.4 Создание/связывание issue и project item
 
-Use the helper script:
+Используй вспомогательный скрипт:
 
 ```bash
 python scripts/implement-pipeline.py create-issue <task-id> --status in-progress
 ```
 
-This command:
-- Creates or updates the GitHub Issue via `gh issue create` / `gh issue edit`.
-- Adds the issue to the GitHub Project board.
-- Sets the project status to `In progress`.
-- Writes `github_issue` / `issue_url` back to `task.md` and `spec.md`.
-- Appends a linked row to `.agent/BACKLOG.md`.
+Эта команда:
+- Создаёт или обновляет GitHub Issue через `gh issue create` / `gh issue edit`.
+- Добавляет issue на GitHub Project board.
+- Устанавливает статус проекта `In progress`.
+- Пишет `github_issue` / `issue_url` обратно в `task.md` и `spec.md`.
+- Добавляет связанную строку в `.agent/BACKLOG.md`.
 
-Capture the printed values:
+Захвати выведенные значения:
 
 ```text
 ISSUE_URL=https://github.com/AutonomaCo/promelectron/issues/N
@@ -227,35 +230,34 @@ ISSUE_NUMBER=N
 STATUS=in-progress
 ```
 
-### 4.5.5 On failure
+### 4.5.5 При ошибке
 
-If `gh issue create` or project update fails:
-- Report the exact error to the user.
-- Do NOT start development until the issue is linked.
-- Escalate if `gh auth` scope is missing.
+Если `gh issue create` или обновление проекта не удалось:
+- Сообщи пользователю точную ошибку.
+- НЕ начинай разработку, пока issue не связан.
+- Эскалируй, если не хватает scope `gh auth`.
 
 ---
 
-## Step 5: Development — PARALLEL by default
+## Step 5: Разработка — по умолчанию PARALLEL
 
-Read `Components Affected` and `Parallelization Plan` from `$AGENT_DIR/spec.md`. All code work targets `WORKTREE` (use `git -C`, `make -C`, explicit paths — a sub-agent's `cd` does not persist).
+Прочитай `Components Affected` и `Parallelization Plan` из `$AGENT_DIR/spec.md`. Вся работа с кодом ведётся в `WORKTREE` (используй `git -C`, `make -C`, явные пути — `cd` субагента не сохраняется).
 
-**If both backend and frontend are affected, independent, and neither `--backend-only`/`--frontend-only`/`--serial` is set:**
-Launch `backend-dev` and `frontend-dev` **in the same message** so they run concurrently. They edit disjoint trees (`backend/` vs `frontend/`) and both build against the spec's **API Contract**.
+**Если затронуты и backend, и frontend, они независимы, и не заданы `--backend-only`/`--frontend-only`/`--serial`:**
+Запусти `backend-dev` и `frontend-dev` **в одном сообщении**, чтобы они работали параллельно. Они редактируют непересекающиеся деревья (`backend/` и `frontend/`) и оба ориентируются на **API Contract** из spec.
 
-**If `--serial` is set:** run backend first, then frontend in the same worktree.
+**Если задан `--serial`:** сначала backend, затем frontend в том же worktree.
 
-**If only one side is affected or flags restrict it:** run only the relevant developer(s).
+**Если затронута только одна сторона или флаги ограничивают область:** запускай только нужных разработчиков.
 
-Prompt for each developer:
+Промпт для каждого разработчика:
 
 ```text
-ЯЗЫК / LANGUAGE: Пользователь общается на русском. Отвечай родительскому агенту и пиши все артефакты (spec, findings, отчёты, SESSION_LOG) на русском. Стремись рассуждать на русском. Код, команды, идентификаторы, пути и технические термины оставляй в оригинале.
+ЯЗЫК / LANGUAGE: Пользователь общается на русском. Ключевые инструкции этой задачи — на русском. Ты — <ROLE> для Promelectron. Отвечай родительскому агенту и пиши все артефакты (spec, findings, отчёты, SESSION_LOG) на русском. Стремись рассуждать на русском. При multi-step tool calling сохраняй `reasoning_content` из ассистентских сообщений в истории. Код, команды, идентификаторы, пути и технические термины оставляй в оригинале.
 
-You are <ROLE> for Promelectron.
-Important: Kimi K2.7-Code uses mandatory thinking mode. Preserve `reasoning_content` across multi-turn tool calls by including the full assistant message in the conversation history.
+Important: Kimi K2.7-Code uses mandatory thinking mode (`thinking={"type":"enabled"}`), with fixed `temperature=1.0`, `top_p=0.95`, `n=1`, `presence_penalty=0.0`, `frequency_penalty=0.0`. `tool_choice` may only be `"auto"` or `"none"`.
 
-Read:
+Прочитай (параллельно, где возможно):
 1. $AGENT_DIR/task.md
 2. $AGENT_DIR/spec.md
 3. PROJECT_CONTEXT.md
@@ -264,10 +266,12 @@ Read:
 6. .agent/SESSION_LOG.md
 7. `.kimi-code/skills/<ROLE>/SKILL.md`
 8. [Rule: Pre-edit Checklist](.kimi-code/rules/pre-edit-checklist.md)
+9. [Rule: Agent Commons](.kimi-code/rules/agent-commons.md)
+10. [Rule: Security](.kimi-code/rules/security.md) — если задача касается auth/payments/PII/uploads
 
 Setup:
-1. Work ONLY inside $WORKTREE (branch $BRANCH).
-2. Use explicit paths: git -C "$WORKTREE" ..., make -C "$WORKTREE" ..., Read/Edit/Write files under $WORKTREE.
+1. Работай ТОЛЬКО внутри $WORKTREE (ветка $BRANCH).
+2. Используй явные пути: git -C "$WORKTREE" ..., make -C "$WORKTREE" ..., Read/Edit/Write файлов под $WORKTREE.
 
 Implement strictly per the spec and your role workflow:
 - backend-dev: model → schema → service → route handler → tests
@@ -280,11 +284,12 @@ Rules:
 - Every model change must have an Alembic migration.
 - Use trailing slash in FastAPI endpoints.
 - Do NOT commit to main. You may commit to $BRANCH in the worktree.
+- For OPEN findings from previous review: fix them and update the finding status to FIXED in $AGENT_DIR/review/findings.md.
 
 Before finishing:
 1. Run the role-specific tests in $WORKTREE (e.g. make -C "$WORKTREE" test-backend; make -C "$WORKTREE" test-frontend).
 2. Run lint (make -C "$WORKTREE" lint-backend / make -C "$WORKTREE" lint-frontend) in $WORKTREE.
-3. Update $WORKTREE/.agent/SESSION_LOG.md.
+3. Update $PROJECT_ROOT/.agent/SESSION_LOG.md (do NOT write session log only inside worktree).
 
 Report:
 - Changed files
@@ -296,38 +301,38 @@ Report:
 
 ---
 
-## Step 6: Code Review Loop (max 3 iterations)
+## Step 6: Цикл Code Review (максимум 3 итерации)
 
-### Determine review scope
+### Определение scope ревью
 
-Based on the spec and flags (`--backend-only`, `--frontend-only`):
+На основе spec и флагов (`--backend-only`, `--frontend-only`):
 
-- **Backend only or frontend only** → run one reviewer subagent.
-- **Mixed (backend + frontend)** → run two reviewer subagents in parallel via `AgentSwarm`.
-- **Security-sensitive work** (auth, payments, orders) → add `security-reviewer` to the parallel batch.
+- **Только backend или только frontend** → запусти одного reviewer-субагента.
+- **Смешанный (backend + frontend)** → запусти двух reviewer-субагентов параллельно через `AgentSwarm`.
+- **Security-sensitive работа** (auth, payments, orders) → добавь `security-reviewer` в параллельную партию.
 
 ### Single-component review
 
-Launch one reviewer subagent via `Agent` tool with `subagent_type: coder`. Apply the retry policy from Step 3.
+Запусти одного reviewer-субагента через `Agent` с `subagent_type: coder`. Применяй политику повторных попыток из Step 3.
 
 ```text
-ЯЗЫК / LANGUAGE: Пользователь общается на русском. Отвечай родительскому агенту и пиши все артефакты (spec, findings, отчёты, SESSION_LOG) на русском. Стремись рассуждать на русском. Код, команды, идентификаторы, пути и технические термины оставляй в оригинале.
+ЯЗЫК / LANGUAGE: Пользователь общается на русском. Ключевые инструкции этой задачи — на русском. Ты — code-reviewer для Promelectron. Отвечай родительскому агенту и пиши все артефакты (spec, findings, отчёты, SESSION_LOG) на русском. Стремись рассуждать на русском. При multi-step tool calling сохраняй `reasoning_content` из ассистентских сообщений в истории. Код, команды, идентификаторы, пути и технические термины оставляй в оригинале.
 
-You are the code-reviewer for Promelectron.
-Important: Kimi K2.7-Code uses mandatory thinking mode. Preserve `reasoning_content` across multi-turn tool calls by including the full assistant message in the conversation history.
+Important: Kimi K2.7-Code uses mandatory thinking mode (`thinking={"type":"enabled"}`), with fixed `temperature=1.0`, `top_p=0.95`, `n=1`, `presence_penalty=0.0`, `frequency_penalty=0.0`. `tool_choice` may only be `"auto"` or `"none"`.
 
-Read:
+Прочитай (параллельно, где возможно):
 1. $AGENT_DIR/task.md
 2. $AGENT_DIR/spec.md
 3. `.kimi-code/skills/code-reviewer/SKILL.md`
 4. [Rule: Security](.kimi-code/rules/security.md)
+5. [Rule: Agent Commons](.kimi-code/rules/agent-commons.md)
 
-Then:
-1. Read the implementation in $WORKTREE (use Read/Grep/Glob in parallel).
-2. Obtain the diff: git -C "$WORKTREE" diff origin/main...HEAD
-3. Compare against the spec and Decisions (D-01, D-02, ...).
-4. Check: logic, security, architecture, business rules, tests, golden path impact.
-5. Write findings to $AGENT_DIR/review/findings.md using this format:
+Затем:
+1. Прочитай реализацию в $WORKTREE (используй Read/Grep/Glob параллельно).
+2. Получи diff: git -C "$WORKTREE" --no-pager diff --no-color origin/main...HEAD
+3. Сравни со спецификацией и Decisions (D-01, D-02, ...).
+4. Проверь: логику, безопасность, архитектуру, бизнес-правила, тесты, влияние на golden path.
+5. Запиши findings в $AGENT_DIR/review/findings.md в формате:
 
 # Code Review: <task-id>
 - **Status:** FIXES_NEEDED | APPROVED
@@ -338,38 +343,43 @@ Then:
 - **File:** path/to/file.py:42
 - **Problem:** ...
 - **Fix:** ...
-- **Status:** OPEN
+- **Status:** OPEN | FIXED | VERIFIED
 
 ## Human Decisions (if any)
 ### [H001] ...
+
+Жизненный цикл finding'а:
+- `OPEN` — найден ревьюером, требует исправления разработчиком.
+- `FIXED` — разработчик исправил и обновил статус (не ревьюер).
+- `VERIFIED` — ревьюер на повторной проверке подтвердил исправление.
 
 Do NOT edit source code. Only write findings.
 
 НАПОМИНАНИЕ: ответы и артефакты — на русском; технические токены (код, пути, команды) — в оригинале.
 ```
 
-### Mixed review (backend + frontend in parallel)
+### Смешанное ревью (backend + frontend параллельно)
 
-Launch reviewer subagents via `AgentSwarm` tool with `subagent_type: coder`. Apply the retry policy from Step 3.
+Запусти reviewer-субагентов через инструмент `AgentSwarm` с `subagent_type: coder`. Применяй политику повторных попыток из Step 3.
 
 ```text
-ЯЗЫК / LANGUAGE: Пользователь общается на русском. Отвечай родительскому агенту и пиши все артефакты (spec, findings, отчёты, SESSION_LOG) на русском. Стремись рассуждать на русском. Код, команды, идентификаторы, пути и технические термины оставляй в оригинале.
+ЯЗЫК / LANGUAGE: Пользователь общается на русском. Ключевые инструкции этой задачи — на русском. Ты — code-reviewer для Promelectron (фокус: {{item}}). Отвечай родительскому агенту и пиши все артефакты (spec, findings, отчёты, SESSION_LOG) на русском. Стремись рассуждать на русском. При multi-step tool calling сохраняй `reasoning_content` из ассистентских сообщений в истории. Код, команды, идентификаторы, пути и технические термины оставляй в оригинале.
 
-You are the code-reviewer for Promelectron (focus: {{item}}).
-Important: Kimi K2.7-Code uses mandatory thinking mode. Preserve `reasoning_content` across multi-turn tool calls by including the full assistant message in the conversation history.
+Important: Kimi K2.7-Code uses mandatory thinking mode (`thinking={"type":"enabled"}`), with fixed `temperature=1.0`, `top_p=0.95`, `n=1`, `presence_penalty=0.0`, `frequency_penalty=0.0`. `tool_choice` may only be `"auto"` or `"none"`.
 
-Read:
+Прочитай (параллельно, где возможно):
 1. $AGENT_DIR/task.md
 2. $AGENT_DIR/spec.md
 3. `.kimi-code/skills/code-reviewer/SKILL.md`
 4. [Rule: Security](.kimi-code/rules/security.md)
+5. [Rule: Agent Commons](.kimi-code/rules/agent-commons.md)
 
-Then:
-1. Read only {{item}} implementation files in $WORKTREE (use Read/Grep/Glob in parallel).
-2. Obtain the diff: git -C "$WORKTREE" diff origin/main...HEAD
-3. Compare against the spec and Decisions (D-01, D-02, ...).
-4. Check: logic, security, architecture, business rules, tests, golden path impact for {{item}}.
-5. Write findings to $AGENT_DIR/review/findings-{{item}}.md using this format:
+Затем:
+1. Читай только {{item}}-файлы реализации в $WORKTREE (используй Read/Grep/Glob параллельно).
+2. Получи diff: git -C "$WORKTREE" --no-pager diff --no-color origin/main...HEAD
+3. Сравни со спецификацией и Decisions (D-01, D-02, ...).
+4. Проверь: логику, безопасность, архитектуру, бизнес-правила, тесты, влияние на golden path для {{item}}.
+5. Запиши findings в $AGENT_DIR/review/findings-{{item}}.md в формате:
 
 # Code Review: <task-id> ({{item}})
 - **Status:** FIXES_NEEDED | APPROVED
@@ -381,7 +391,7 @@ Then:
 - **File:** path/to/file.py:42
 - **Problem:** ...
 - **Fix:** ...
-- **Status:** OPEN
+- **Status:** OPEN | FIXED | VERIFIED
 
 ## Human Decisions (if any)
 ### [H001] ...
@@ -393,46 +403,47 @@ Do NOT edit source code. Only write findings.
 
 items: `["backend", "frontend"]`
 
-**After `AgentSwarm` returns:**
-1. Read `$AGENT_DIR/review/findings-backend.md` and `$AGENT_DIR/review/findings-frontend.md`.
-2. Merge them into `$AGENT_DIR/review/findings.md`:
-   - Overall **Status** is `FIXES_NEEDED` if any sub-report is `FIXES_NEEDED`; otherwise `APPROVED`.
-   - Preserve **Iteration** number.
-   - Combine findings lists; renumber if needed so IDs are unique across backend and frontend.
-   - Preserve Human Decisions from both reports.
-3. Delete the temporary `findings-backend.md` and `findings-frontend.md` or keep them for debugging.
+**После возврата `AgentSwarm`:**
+1. Прочитай `$AGENT_DIR/review/findings-backend.md` и `$AGENT_DIR/review/findings-frontend.md`.
+2. Смержи их в `$AGENT_DIR/review/findings.md`:
+   - Общий **Status** — `FIXES_NEEDED`, если хотя бы один sub-report `FIXES_NEEDED`; иначе `APPROVED`.
+   - Сохрани номер **Iteration**.
+   - Объедини списки findings; при необходимости перенумеруй, чтобы ID были уникальными across backend и frontend.
+   - Сохрани Human Decisions из обоих отчётов.
+3. Удали временные `findings-backend.md` и `findings-frontend.md` или оставь для отладки.
 
-### Review loop continuation
+### Продолжение цикла ревью
 
-1. Read `$AGENT_DIR/review/findings.md`.
-2. If `APPROVED` → go to Step 7.
-3. If `FIXES_NEEDED`:
-   - Show the user a summary of findings.
-   - For H-items, wait for user decision.
-   - Launch the developer subagent again to fix OPEN findings and mark them FIXED.
-   - **Before repeating review, re-run the relevant tests** in `$WORKTREE` (backend: `make -C "$WORKTREE" test-backend`; frontend: `make -C "$WORKTREE" test-frontend`). If tests fail, fix them first.
-   - Repeat review.
-4. After 3 iterations still `FIXES_NEEDED` → stop and ask the user how to proceed.
+1. Прочитай `$AGENT_DIR/review/findings.md`.
+2. Если `APPROVED` → переходи к Step 7.
+3. Если `FIXES_NEEDED`:
+   - Покажи пользователю сводку findings.
+   - Для H-items дождись решения пользователя.
+   - Запусти developer-субагента повторно для исправления OPEN findings.
+   - Разработчик **должен** отредактировать `$AGENT_DIR/review/findings.md` и изменить статус исправленных пунктов с `OPEN` на `FIXED` (с краткой заметкой, что изменено).
+   - **Перед повторным ревью перезапусти релевантные тесты** в `$WORKTREE` (backend: `make -C "$WORKTREE" test-backend`; frontend: `make -C "$WORKTREE" test-frontend`). Если тесты падают — сначала исправь их.
+   - Запусти reviewer повторно. Reviewer проверяет FIXED и меняет статус на `VERIFIED`; если не исправлено — переоткрывает как `OPEN` с пояснением.
+   - Повторяй ревью.
+4. После 3 итераций, если всё ещё `FIXES_NEEDED` — остановись и спроси пользователя, как поступить.
 
 ---
 
-## Step 7: QA / Test Pyramid
+## Step 7: QA / Пирамида тестов
 
-### Light QA (default)
+### Лёгкая QA (по умолчанию)
 
-If `--qa` is **not** set, rely on the developers' own test runs and skip the dedicated QA gate.
+Если `--qa` **не** задан, полагайся на тесты, запущенные разработчиками, и пропусти выделенный QA gate.
 
-### Full QA gate (run if --qa)
+### Полный QA gate (запускать при --qa)
 
-After code review passes, launch a `qa` subagent via `Agent` tool with `subagent_type: coder`. Apply the retry policy from Step 3.
+После прохождения code review запусти субагента `qa` через `Agent` с `subagent_type: coder`. Применяй политику повторных попыток из Step 3.
 
 ```text
-ЯЗЫК / LANGUAGE: Пользователь общается на русском. Отвечай родительскому агенту и пиши все артефакты (spec, findings, отчёты, SESSION_LOG) на русском. Стремись рассуждать на русском. Код, команды, идентификаторы, пути и технические термины оставляй в оригинале.
+ЯЗЫК / LANGUAGE: Пользователь общается на русском. Ключевые инструкции этой задачи — на русском. Ты — QA-инженер для Promelectron. Отвечай родительскому агенту и пиши все артефакты (spec, findings, отчёты, SESSION_LOG) на русском. Стремись рассуждать на русском. При multi-step tool calling сохраняй `reasoning_content` из ассистентских сообщений в истории. Код, команды, идентификаторы, пути и технические термины оставляй в оригинале.
 
-You are the qa engineer for Promelectron.
-Important: Kimi K2.7-Code uses mandatory thinking mode. Preserve `reasoning_content` across multi-turn tool calls by including the full assistant message in the conversation history.
+Important: Kimi K2.7-Code uses mandatory thinking mode (`thinking={"type":"enabled"}`), with fixed `temperature=1.0`, `top_p=0.95`, `n=1`, `presence_penalty=0.0`, `frequency_penalty=0.0`. `tool_choice` may only be `"auto"` or `"none"`.
 
-Read:
+Прочитай (параллельно, где возможно):
 1. $AGENT_DIR/task.md
 2. $AGENT_DIR/spec.md
 3. $AGENT_DIR/review/findings.md
@@ -441,92 +452,94 @@ Read:
 6. .agent/BLOCKERS.md
 7. `.kimi-code/skills/qa/SKILL.md`
 8. [Rule: Golden Path](.kimi-code/rules/golden-path.md)
+9. [Rule: Agent Commons](.kimi-code/rules/agent-commons.md)
 
-Then:
-1. Run backend tests: make -C "$WORKTREE" test-backend
-2. Run frontend unit tests: make -C "$WORKTREE" test-frontend
-3. If the feature touches UI or user flows, run E2E tests. You may delegate the E2E-specific work to an e2e-tester subagent; if you do, pass the feature scope and spec explicitly.
-4. Verify each Acceptance Criterion from $AGENT_DIR/spec.md.
-5. Write results to $AGENT_DIR/review/test-findings.md.
+Затем:
+1. Запусти backend-тесты: make -C "$WORKTREE" test-backend
+2. Запусти frontend unit-тесты: make -C "$WORKTREE" test-frontend
+3. Если фича затрагивает UI или пользовательские сценарии — запусти E2E: make -C "$WORKTREE" test-e2e. При необходимости делегируй E2E-специфичную часть e2e-tester субагенту, передав scope, spec и пути $AGENT_DIR / $WORKTREE.
+4. Проверь каждый Acceptance Criterion из $AGENT_DIR/spec.md.
+5. Запиши результаты в $AGENT_DIR/review/test-findings.md.
+6. Обнови $PROJECT_ROOT/.agent/SESSION_LOG.md.
 
 НАПОМИНАНИЕ: ответы и артефакты — на русском; технические токены (код, пути, команды) — в оригинале.
 ```
 
-The `qa` subagent may launch an `e2e-tester` subagent for the browser-automation part if needed.
+Субагент `qa` может запустить субагента `e2e-tester` для браузерной автоматизации, если нужно.
 
-If `test-findings.md` status is `TESTS_FAILED`, show failures, invoke the affected developer(s) to fix, then return to Step 6 (code changed → re-review). Max 2 QA iterations, then escalate to the user.
+Если статус `test-findings.md` — `TESTS_FAILED`, покажи ошибки, вызови затронутого разработчика для исправления, затем вернись к Step 6 (изменён код → повторное ревью). Максимум 2 QA-итерации, затем эскалация пользователю.
 
-CI already runs E2E on the test environment (`promelectron-test`) after deploy.
+E2E в CI уже запускается на test-окружении (`promelectron-test`) после деплоя.
 
 ---
 
-## Step 8: Create the Pull Request
+## Step 8: Создание Pull Request
 
-All git ops target the worktree.
+Все git-операции — в worktree.
 
-1. Push the branch:
+1. Запушь ветку:
    ```bash
    git -C "$WORKTREE" push -u origin "$BRANCH"
    ```
-2. Create the PR:
+2. Создай PR:
    ```bash
    gh pr create --base main --head "$BRANCH" \
-     --title "<concise description>" \
+     --title "<краткое описание>" \
      --body "$(cat <<'EOF'
    ## Summary
-   <what was done>
+   <что сделано>
 
    ## Spec
-   .agent/runs/<task-id>/spec.md — chosen approach + API contract
+   .agent/runs/<task-id>/spec.md — выбранный подход + API contract
 
    ## Changes
-   <changed files/components>
+   <изменённые файлы/компоненты>
 
    ## Test Results
    - Backend: pytest X/Y · Frontend: vitest X/Y
 
    ## Acceptance Criteria
-   <checked list from test-findings.md>
+   <checked list из test-findings.md>
    EOF
    )"
    ```
-3. Post open Human-Decision items as PR comments:
+3. Опубликуй открытые Human-Decision пункты как комментарии к PR:
    ```bash
-   gh pr comment "$BRANCH" --body "[H-xxx] <the open human-decision item>"
+   gh pr comment "$BRANCH" --body "[H-xxx] <открытый human-decision пункт>"
    ```
-4. Move the linked GitHub Issue to **In review**:
+4. Переведи связанный GitHub Issue в **In review**:
    ```bash
    python scripts/implement-pipeline.py set-status <task-id> in-review
    ```
-5. Capture the PR URL for the report.
+5. Захвати URL PR для отчёта.
 
 ---
 
-## Step 9: Final Report
+## Step 9: Итоговый отчёт
 
-After all phases:
+После завершения всех фаз:
 
-1. Run `python scripts/implement-pipeline.py check-context <task-id>` to capture final estimated tokens.
-2. Read `.agent/SESSION_LOG.md` and append a summary including estimated tokens and iteration count.
-3. Report to the user:
+1. Запусти `python scripts/implement-pipeline.py check-context <task-id>`, чтобы зафиксировать итоговый размер контекста.
+2. Прочитай `.agent/SESSION_LOG.md` и допиши сводку: estimated tokens, количество итераций ревью, результат QA.
+3. Сообщи пользователю на русском:
    - Task ID
-   - Worktree path: `$WORKTREE`
+   - Путь к worktree: `$WORKTREE`
    - Feature branch: `$BRANCH`
-   - PR URL (if created)
-   - Changed files
-   - Test results (backend, frontend, e2e)
-   - Review status
-   - Estimated tokens and iteration count
-   - Open findings or H-items (if any)
-4. Ask: **"Merge `$BRANCH` into main?"** (do NOT merge or push main without explicit approval).
-5. If the user approves merge and the merge completes, move the linked GitHub Issue to **Done**:
+   - URL PR (если создан)
+   - Изменённые файлы
+   - Результаты тестов (backend, frontend, e2e)
+   - Статус ревью
+   - Estimated tokens и количество итераций
+   - Открытые findings или H-items (если есть)
+4. Спроси: **"Влить `$BRANCH` в main?"** — НЕ мержи и НЕ пушь в main без явного одобрения.
+5. Если пользователь одобрил merge и merge выполнен, переведи связанный GitHub Issue в **Done**:
    ```bash
    python scripts/implement-pipeline.py set-status <task-id> done
    ```
 
 ---
 
-## Rules
+## Rules / Правила
 
 - NEVER push directly to `main`.
 - NEVER merge automatically — a human reviews and merges.

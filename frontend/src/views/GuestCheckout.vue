@@ -25,7 +25,7 @@
     <div class="guest-checkout__card">
       <div class="guest-checkout__section-title">Товары</div>
       <div v-if="items.length === 0" class="guest-checkout__empty">
-        Нет выбранных товаров. <router-link to="/cart">Вернуться в корзину</router-link>
+        Корзина пуста. <router-link to="/">В каталог</router-link>
       </div>
       <div v-else class="guest-checkout__items">
         <div v-for="item in items" :key="item.product_id" class="guest-checkout__item">
@@ -168,7 +168,7 @@ const GUEST_EMAIL_KEY = 'guest_checkout_email';
 
 const router = useRouter();
 const { add: toast } = useToast();
-const { getSelectedGuestCartItems, clearGuestCart } = useCart();
+const { getGuestCartItems, clearGuestCart } = useCart();
 const { submitting, submitGuestCheckout, validateGuestForm } = useGuestCheckout();
 
 const items = ref([]);
@@ -234,7 +234,7 @@ const canSubmit = computed(() => {
 });
 
 const loadItems = () => {
-  items.value = getSelectedGuestCartItems();
+  items.value = getGuestCartItems();
 };
 
 watch(supplierId, () => {

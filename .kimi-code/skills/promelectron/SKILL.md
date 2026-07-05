@@ -23,7 +23,11 @@ This skill is your single source of truth. Follow it strictly.
 
 ## Language
 
-Follow [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule. All Russian-language requirements and subagent prompt preambles live there.
+Follow [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule / Языковое правило.
+All Russian-language requirements and subagent prompt preambles live there.
+
+Kimi K2.7-Code runs in **mandatory thinking mode**; `reasoning_content` must be preserved across multi-turn tool calls.
+If internal reasoning occasionally switches to English, **do not treat it as a failure** — the only hard requirement is that user-facing answers, reports, and artifacts match the user's language.
 
 ---
 
@@ -41,11 +45,10 @@ Follow [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule.
 | `architect` | design, architecture, spec, technical design, trade-off | Design | context → questions → trade-offs → spec |
 | `qa` | test all, acceptance criteria, full check | Whole project | pytest + vitest + playwright → report |
 | `integration-dev` | dev environment, services won't start, ports, health check | Local env | start → diagnose → stop |
-| `dispatcher` | ad-hoc, unknown role, mixed quick task | Any | analyze → route → execute |
 
 **Mixed tasks:**
 - "API + UI" → use `/skill:implement` workflow skill (full cycle).
-- "Deploy + backend" → `/skill:deploy` then backend-dev.
+- "Deploy + backend" → `/skill:devops` then backend-dev.
 - "Security audit" → security-reviewer → fixes → code-reviewer.
 
 ---
@@ -81,6 +84,8 @@ Shared rules (reference markdown, not skills):
 - Security: [Rule: Security](.kimi-code/rules/security.md)
 - Prompt format: [Rule: Prompt Format](.kimi-code/rules/prompt-format.md)
 - Task template: [Rule: Task Template](.kimi-code/rules/task-template.md)
+- Planning: [Rule: Planning](.kimi-code/rules/planning.md)
+- Known pitfalls: [Rule: Known Pitfalls](.kimi-code/rules/known-pitfalls.md)
 
 `.kimi-code/AGENTS.md` — активный индекс инвариантов проекта (загружается автоматически). Роли живут в плоских скиллах `.kimi-code/skills/<role>/`.
 
@@ -94,7 +99,8 @@ Before any code change, read:
 3. `.agent/BLOCKERS.md` — active blockers
 4. `.agent/SESSION_LOG.md` — recent sessions
 5. The `<role>` skill in `.kimi-code/skills/<role>/SKILL.md` — role instructions
-6. [Rule: Pre-edit Checklist](.kimi-code/rules/pre-edit-checklist.md) — pre-edit checks
+6. [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) — language, retry policy, context handling
+7. [Rule: Pre-edit Checklist](.kimi-code/rules/pre-edit-checklist.md) — pre-edit checks
 
 ---
 
@@ -106,10 +112,10 @@ Before launching subagents, estimate task context size:
 python scripts/implement-pipeline.py check-context <task-id>
 ```
 
-- If `ESTIMATED_TOKENS` >= 180000, read `.agent/runs/<task-id>/CONTEXT_SUMMARY.md` instead of full history.
+- If `ESTIMATED_TOKENS` >= 150000, read `.agent/runs/<task-id>/CONTEXT_SUMMARY.md` instead of full history.
 - Log the estimated token count in `.agent/SESSION_LOG.md`.
 
-Kimi K2.7-Code has a 256K context window with mandatory thinking mode. Staying below 180K leaves room for `reasoning_content`, tool outputs, and system instructions.
+Kimi K2.7-Code has a 256K context window with mandatory thinking mode. Staying below 150K leaves room for `reasoning_content`, tool outputs, and system instructions.
 
 ---
 
@@ -140,9 +146,12 @@ For complex multi-step processes use the dedicated skill:
 |---------|---------|
 | `/skill:implement` | New feature: architect → dev → review → QA → e2e |
 | `/skill:fix` | Bug: analyze → reproduce → fix → test |
-| `/skill:deploy` | Deploy to test/prod via GitHub Actions |
 | `/skill:review` | Code review current changes |
+| `/skill:qa-gate` | Re-run QA for an existing task |
 | `/skill:context-sync` | Update PROJECT_CONTEXT.md, BACKLOG.md, BLOCKERS.md |
+| `/skill:plan-maintainer` | Operational backlog operations |
+| `/skill:spec` | Standalone technical specification |
+| `/skill:ship` | Open PR for a finished feature branch |
 
 ---
 

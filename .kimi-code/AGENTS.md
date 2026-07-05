@@ -149,7 +149,8 @@ User: /implement "Add promo codes to cart"
 3. `.agent/BLOCKERS.md` — active blockers
 4. `.agent/SESSION_LOG.md` — recent sessions
 5. The relevant role skill in `.kimi-code/skills/<role>/SKILL.md`
-6. [Rule: Pre-edit Checklist](.kimi-code/rules/pre-edit-checklist.md) (before code changes)
+6. [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) — language, retry policy, context size, API constraints
+7. [Rule: Pre-edit Checklist](.kimi-code/rules/pre-edit-checklist.md) (before code changes)
 
 ---
 

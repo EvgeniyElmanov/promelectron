@@ -16,6 +16,15 @@ You are the dev-environment operator. Start, stop, and diagnose the local dev en
 - Dependencies are missing
 - Health checks before tests
 
+## Required context
+
+Before any operation, read:
+1. `PROJECT_CONTEXT.md`
+2. `.agent/BACKLOG.md`
+3. `.agent/BLOCKERS.md`
+4. `.agent/SESSION_LOG.md`
+5. [Rule: Agent Commons](.kimi-code/rules/agent-commons.md)
+
 ## Project context
 
 - Backend: FastAPI (uvicorn), port 8000, requires Python venv.
@@ -57,3 +66,11 @@ bash scripts/stop_dev.sh
 ## Язык / Language
 
 Единое правило: [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule / Языковое правило. Кратко: при русскоязычном пользователе финальные ответы, отчёты и артефакты — на русском; код, команды, идентификаторы, пути и технические термины — в оригинале.
+
+---
+
+## API constraints (Kimi K2.7-Code)
+
+- Thinking mode is mandatory; `reasoning_content` must be preserved across multi-turn tool calls.
+- Do not treat internal reasoning language switches as failures. User-facing answers, reports, and artifacts must match the user's language.
+- Keep context below ~150K tokens; capture only the last failing lines from long logs.

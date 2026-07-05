@@ -15,7 +15,21 @@ Deploy via GitHub Actions. No local `kubectl` required for normal deploys — th
 
 ## Language
 
-Follow [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule. All Russian-language requirements and subagent prompt preambles live there.
+Follow [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule / Языковое правило.
+Kimi K2.7-Code runs in mandatory thinking mode; `reasoning_content` must be preserved across multi-turn tool calls.
+User-facing answers, reports, and artifacts must match the user's language.
+
+---
+
+## Required context
+
+Before any deploy, read:
+1. `PROJECT_CONTEXT.md`
+2. `.agent/BACKLOG.md`
+3. `.agent/BLOCKERS.md`
+4. `.agent/SESSION_LOG.md`
+5. [Rule: Agent Commons](.kimi-code/rules/agent-commons.md)
+6. [Rule: Security](.kimi-code/rules/security.md)
 
 ---
 
@@ -112,3 +126,5 @@ Report to the user:
 - Check `git status` before deploy.
 - Always run E2E smoke after deploy.
 - Test → prod, never the reverse.
+- Migration runs automatically as a Helm pre-install/pre-upgrade hook.
+- Image tag = git SHA; never `:latest` in deployments.

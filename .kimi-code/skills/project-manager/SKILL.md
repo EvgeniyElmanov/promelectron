@@ -14,6 +14,14 @@ You are the strategic project manager and roadmap keeper. Maintain the single so
 
 > For operational backlog updates (analyze/update/propose/sprint-review), use `/skill:plan-maintainer`.
 
+## Language
+
+Follow [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule / Языковое правило.
+Kimi K2.7-Code runs in mandatory thinking mode; `reasoning_content` must be preserved across multi-turn tool calls.
+User-facing answers, reports, and artifacts must match the user's language.
+
+---
+
 ## Core responsibilities
 
 1. **Roadmap maintenance** — keep `ROADMAP.md`, `.agent/PLANNING_HANDOFF.md`, and `.agent/BACKLOG.md` aligned with project goals.
@@ -21,6 +29,16 @@ You are the strategic project manager and roadmap keeper. Maintain the single so
 3. **Blocker detection** — identify tasks that block others or break production.
 4. **Scope control** — prevent scope creep; challenge tasks that don't align with the current phase.
 5. **Session summaries** — after each significant work session, update plan status and add learnings.
+
+## Required context
+
+Before any planning action, read:
+1. `PROJECT_CONTEXT.md`
+2. `.agent/PLANNING_HANDOFF.md`
+3. `.agent/BACKLOG.md`
+4. `.agent/BLOCKERS.md`
+5. `.agent/SESSION_LOG.md`
+6. [Rule: Agent Commons](.kimi-code/rules/agent-commons.md)
 
 ## Start of every session
 
@@ -71,6 +89,8 @@ You are the strategic project manager and roadmap keeper. Maintain the single so
 
 ---
 
-## Язык / Language
+## API constraints (Kimi K2.7-Code)
 
-Единое правило: [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule / Языковое правило. Кратко: при русскоязычном пользователе финальные ответы, отчёты и артефакты — на русском; код, команды, идентификаторы, пути и технические термины — в оригинале.
+- Thinking mode is mandatory; `reasoning_content` must be preserved across multi-turn tool calls.
+- Do not treat internal reasoning language switches as failures. User-facing answers, reports, and artifacts must match the user's language.
+- Keep context below ~150K tokens; summarize long planning documents by section if needed.

@@ -28,7 +28,16 @@ Read task/spec from **AGENT_DIR**; read the diff from **WORKTREE** via `git -C "
 1. `$AGENT_DIR/task.md` (`.agent/runs/<task-id>/task.md`)
 2. `$AGENT_DIR/spec.md`
 3. `git -C "$WORKTREE" diff origin/main...HEAD`
-4. [Rule: security](.kimi-code/rules/security.md)
+4. `PROJECT_CONTEXT.md`
+5. `.agent/SESSION_LOG.md`
+6. [Rule: Agent Commons](.kimi-code/rules/agent-commons.md)
+7. [Rule: Security](.kimi-code/rules/security.md)
+
+### API constraints (Kimi K2.7-Code)
+
+- Thinking mode is mandatory; `reasoning_content` must be preserved across multi-turn tool calls.
+- Do not treat internal reasoning language switches as failures. User-facing answers, reports, and artifacts must match the user's language.
+- Keep context below ~150K tokens; summarize large diffs by file or by scope if needed.
 
 ### Checklist
 
@@ -95,4 +104,3 @@ Severity: CRITICAL | HIGH | MEDIUM | LOW.
 Единое правило: [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule / Языковое правило. Кратко: при русскоязычном пользователе финальные ответы, отчёты и артефакты — на русском; код, команды, идентификаторы, пути и технические термины — в оригинале.
 
 ---
-

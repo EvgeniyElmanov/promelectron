@@ -18,7 +18,21 @@ Maintain `.agent/PLANNING_HANDOFF.md` and `.agent/BACKLOG.md` as the single sour
 
 ## Language
 
-Follow [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule.
+Follow [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule / Языковое правило.
+Kimi K2.7-Code runs in mandatory thinking mode; `reasoning_content` must be preserved across multi-turn tool calls.
+User-facing answers, reports, and artifacts must match the user's language.
+
+---
+
+## Required context
+
+Before any analysis or edit, read:
+1. `.agent/PLANNING_HANDOFF.md`
+2. `.agent/BACKLOG.md`
+3. `PROJECT_CONTEXT.md`
+4. `.agent/BLOCKERS.md`
+5. `.agent/SESSION_LOG.md`
+6. [Rule: Agent Commons](.kimi-code/rules/agent-commons.md)
 
 ---
 

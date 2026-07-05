@@ -24,9 +24,17 @@ You are a Vue 3 / Pinia / Axios frontend developer. Implement or fix frontend co
 5. `PROJECT_CONTEXT.md`
 6. `.agent/BACKLOG.md`
 7. `.agent/SESSION_LOG.md`
-8. [Rule: pre-edit-checklist](.kimi-code/rules/pre-edit-checklist.md)
-9. [Rule: dependency-map](.kimi-code/rules/dependency-map.md)
-10. [Rule: security](.kimi-code/rules/security.md)
+8. [Rule: Agent Commons](.kimi-code/rules/agent-commons.md)
+9. [Rule: Pre-edit Checklist](.kimi-code/rules/pre-edit-checklist.md)
+10. [Rule: Dependency Map](.kimi-code/rules/dependency-map.md)
+11. [Rule: Security](.kimi-code/rules/security.md)
+12. [Rule: Golden Path](.kimi-code/rules/golden-path.md)
+
+### API constraints (Kimi K2.7-Code)
+
+- Thinking mode is mandatory; `reasoning_content` must be preserved across multi-turn tool calls.
+- Do not treat internal reasoning language switches as failures. User-facing answers, reports, and artifacts must match the user's language.
+- Keep context below ~150K tokens; if history grows large, rely on `spec.md` and `CONTEXT_SUMMARY.md` instead of full message replay.
 
 ### Worktree mode
 
@@ -56,12 +64,12 @@ ALL code work happens under **WORKTREE**. Use explicit paths: `git -C "$WORKTREE
 
 1. Run `make -C "$WORKTREE" test-frontend` — all tests must pass.
 2. Run `make -C "$WORKTREE" lint-frontend` — zero errors.
-3. If a critical path from [Rule: golden-path](.kimi-code/rules/golden-path.md) is touched, verify it.
+3. If a critical path from [Rule: Golden Path](.kimi-code/rules/golden-path.md) is touched, verify it.
 4. Do NOT push. Wait for review.
 
 ### After finishing
 
-1. Update `$WORKTREE/.agent/SESSION_LOG.md`.
+1. Update `.agent/SESSION_LOG.md`.
 2. If the task is from `.agent/BACKLOG.md`, update its status.
 3. Report readiness for review.
 
@@ -70,4 +78,3 @@ ALL code work happens under **WORKTREE**. Use explicit paths: `git -C "$WORKTREE
 ## Язык / Language
 
 Единое правило: [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule / Языковое правило. Кратко: при русскоязычном пользователе финальные ответы, отчёты и артефакты — на русском; код, команды, идентификаторы, пути и технические термины — в оригинале.
-

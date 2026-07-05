@@ -13,19 +13,27 @@ arguments: "<task-id|slug> [--e2e]"
 disableModelInvocation: false
 ---
 
-# /skill:qa-gate — Standalone QA Stage
+# /skill:qa-gate — Автономный QA Gate
 
-Run the **QA gate** for a single task and write its results to `.agent/runs/<task-id>/review/test-findings.md`.
+> **ЯЗЫК / LANGUAGE:** Пользователь общается на русском. Все ответы пользователю и артефакты (findings, reports, test-findings, SESSION_LOG) пиши на русском. Стремись рассуждать на русском, но если reasoning уходит на английский — это не ошибка; главное, чтобы финальные ответы и артефакты были на русском. Код, команды, идентификаторы, пути и технические термины оставляй в оригинале.
 
-Use this when the code is already written and you want to re-run tests / verify acceptance criteria without invoking the full `/skill:implement` pipeline.
+Запусти **QA gate** для одной задачи и запиши результаты в `.agent/runs/<task-id>/review/test-findings.md`.
 
-## Language
+Используй этот скилл, когда код уже написан и нужно перезапустить тесты / проверить acceptance criteria без полного пайплайна `/skill:implement`.
 
-Follow [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule.
+## Language / Язык
+
+Следуй [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule / Языковое правило. При русскоязычном пользователе пиши reports и findings на русском.
 
 ---
 
-## Step 1: Locate the workspace
+## Step 0: Валидация task-id
+
+`task-id` должен соответствовать `^[a-z0-9-]+$`. Если содержит `..`, shell-метасимволы или пробелы — остановись и попроси пользователя ввести корректный task-id.
+
+---
+
+## Step 1: Локализация рабочего пространства
 
 ```bash
 PROJECT_ROOT="$(git rev-parse --show-toplevel)"
@@ -33,45 +41,74 @@ AGENT_DIR="$PROJECT_ROOT/.agent/runs/<task-id>"
 WORKTREE="$PROJECT_ROOT/.worktrees/<task-id>"
 ```
 
-- If `$AGENT_DIR` is missing — stop and tell the user to run `/skill:spec <task-id>` or `/skill:implement <task-id>` first.
-- If `$WORKTREE` is missing — stop and tell the user the worktree was removed; re-create it with `/skill:implement <task-id>`.
-- If `$AGENT_DIR/spec.md` is missing — warn that there is no spec; the QA agent still runs the test suites.
+- Если `$AGENT_DIR` отсутствует — остановись и скажи пользователю сначала запустить `/skill:spec <task-id>` или `/skill:implement <task-id>`.
+- Если `$WORKTREE` отсутствует — остановись и скажи пользователю, что worktree удалён; пересоздай его через `/skill:implement <task-id>`.
+- Если `$AGENT_DIR/spec.md` отсутствует — предупреди, что spec нет; QA-агент всё равно запускает тестовые suites.
+
+Создай директорию review, если её нет:
+
+```bash
+mkdir -p "$AGENT_DIR/review"
+```
 
 ---
 
-## Step 2: Invoke the qa subagent
+## Step 2: Проверка размера контекста (Kimi K2.7-Code)
 
-Launch a `qa` subagent via `Agent` tool with `subagent_type: coder`.
+Следуй [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Context Size Check перед запуском субагентов.
+
+```bash
+python scripts/implement-pipeline.py check-context <task-id>
+```
+
+Если `ESTIMATED_TOKENS` >= 150000, читай `$AGENT_DIR/CONTEXT_SUMMARY.md` вместо полной истории.
+
+---
+
+## Step 3: Запуск qa-субагента
+
+Запусти субагента `qa` через инструмент `Agent` с `subagent_type: coder`.
 
 ```text
-ЯЗЫК / LANGUAGE: Пользователь общается на русском. Отвечай родительскому агенту и пиши все артефакты (spec, findings, отчёты, SESSION_LOG) на русском. Стремись рассуждать на русском. Код, команды, идентификаторы, пути и технические термины оставляй в оригинале.
+ЯЗЫК / LANGUAGE: Пользователь общается на русском. Ключевые инструкции этой задачи — на русском. Ты — QA-инженер для Promelectron. Отвечай родительскому агенту и пиши все артефакты (spec, findings, отчёты, SESSION_LOG) на русском. Стремись рассуждать на русском. При multi-step tool calling сохраняй `reasoning_content` из ассистентских сообщений в истории. Код, команды, идентификаторы, пути и технические термины оставляй в оригинале.
 
-You are the qa engineer for Promelectron.
-Important: Kimi K2.7-Code uses mandatory thinking mode. Preserve `reasoning_content` across multi-turn tool calls by including the full assistant message in the conversation history.
+Important: Kimi K2.7-Code uses mandatory thinking mode (`thinking={"type":"enabled"}`), with fixed `temperature=1.0`, `top_p=0.95`, `n=1`, `presence_penalty=0.0`, `frequency_penalty=0.0`. `tool_choice` may only be `"auto"` or `"none"`.
 
-Read:
+Paths:
+- AGENT_DIR = /abs/path/to/.agent/runs/<task-id>
+- WORKTREE = /abs/path/to/.worktrees/<task-id>
+- E2E flag: <yes|no>
+
+Прочитай (параллельно, где возможно):
 1. $AGENT_DIR/task.md
-2. $AGENT_DIR/spec.md (if present)
-3. $AGENT_DIR/review/findings.md (if present)
+2. $AGENT_DIR/spec.md (если есть)
+3. $AGENT_DIR/review/findings.md (если есть)
 4. PROJECT_CONTEXT.md
 5. .agent/BACKLOG.md
 6. .agent/BLOCKERS.md
 7. `.kimi-code/skills/qa/SKILL.md`
 8. [Rule: Golden Path](.kimi-code/rules/golden-path.md)
+9. [Rule: Agent Commons](.kimi-code/rules/agent-commons.md)
 
-Then:
-1. Run backend tests in $WORKTREE: make -C "$WORKTREE" test-backend
-2. Run frontend unit tests in $WORKTREE: make -C "$WORKTREE" test-frontend
-3. If the feature touches UI or user flows (or --e2e was passed), run E2E tests. You may delegate the E2E-specific work to an e2e-tester subagent.
-4. Verify each Acceptance Criterion from $AGENT_DIR/spec.md.
-5. Write results to $AGENT_DIR/review/test-findings.md.
+Затем:
+1. Запусти backend-тесты в $WORKTREE: make -C "$WORKTREE" test-backend
+2. Запусти frontend unit-тесты в $WORKTREE: make -C "$WORKTREE" test-frontend
+3. Если фича затрагивает UI или пользовательские сценарии, или передан флаг --e2e — запусти E2E: make -C "$WORKTREE" test-e2e. При необходимости делегируй E2E-специфичную часть e2e-tester субагенту, передав:
+   - feature scope из spec.md
+   - $AGENT_DIR и $WORKTREE
+   - Acceptance Criteria из spec.md
+4. Проверь каждый Acceptance Criterion из $AGENT_DIR/spec.md.
+5. Запиши результаты в $AGENT_DIR/review/test-findings.md.
+6. Обнови $PROJECT_ROOT/.agent/SESSION_LOG.md.
+
+Do NOT edit source code.
 
 НАПОМИНАНИЕ: ответы и артефакты — на русском; технические токены (код, пути, команды) — в оригинале.
 ```
 
 ---
 
-## Step 3: Report
+## Step 4: Report
 
 Read `$AGENT_DIR/review/test-findings.md` and report to the user:
 - Status: `TESTS_PASSED` or `TESTS_FAILED`
@@ -88,3 +125,6 @@ If `TESTS_FAILED`, suggest invoking `/skill:implement <task-id>` or the relevant
 - The QA agent never edits source code — only writes findings.
 - Do not move the GitHub Project board.
 - Keep all reads/writes under `.agent/runs/<task-id>/` and `.worktrees/<task-id>/`.
+- Always update `$PROJECT_ROOT/.agent/SESSION_LOG.md` after the QA gate.
+
+---

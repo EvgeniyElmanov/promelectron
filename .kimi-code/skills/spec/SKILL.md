@@ -5,7 +5,7 @@ description: >
   Use when the user wants just the spec without running the full /skill:implement pipeline —
   to discuss an approach, share it with teammates, or do research-heavy planning before committing to a build.
   Fetches/creates the task in .agent/runs/<task-id>/, invokes the architect agent to write spec.md,
-  drives the clarifications loop with the user, and presents the result.
+  drives the clarifications loop with the user, copies the plan to spec.md, and presents the result.
   Planning only — runs no development, creates no worktree, opens no PR.
 type: prompt
 whenToUse: When the user asks for a spec, technical design, architecture decision, or wants to plan a feature before implementation.
@@ -13,76 +13,111 @@ arguments: "<task description | issue#>"
 disableModelInvocation: false
 ---
 
-# /skill:spec — Standalone Technical Spec
+# /skill:spec — Автономная техническая спецификация
 
-Produce a technical specification via the **`architect` agent**. Writes `.agent/runs/<task-id>/spec.md`.
+> **ЯЗЫК / LANGUAGE:** Пользователь общается на русском. Все ответы пользователю и артефакты (task.md, spec.md, reports, SESSION_LOG) пиши на русском. Стремись рассуждать на русском, но если reasoning уходит на английский — это не ошибка; главное, чтобы финальные ответы и артефакты были на русском. Код, команды, идентификаторы, пути и технические термины оставляй в оригинале.
 
-Use this command when you want **just the spec** without running the full `/skill:implement` pipeline — to discuss an approach, share it with teammates, or do research-heavy planning before committing to a build.
+Подготовь техническую спецификацию через агента **`architect`**. Пишет `.agent/runs/<task-id>/spec.md`.
 
-## Language
+Используй эту команду, когда нужна **только спецификация** без полного пайплайна `/skill:implement` — чтобы обсудить подход, поделиться с командой или провести research-heavy планирование перед разработкой.
 
-Follow [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule.
+## Language / Язык
+
+Следуй [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule / Языковое правило. При русскоязычном пользователе пиши `task.md`, `spec.md` и reports на русском.
 
 ---
 
-## Step 1: Setup
+## Step 0: Предварительные проверки
 
-Record the repo root:
+Проверь доступ к GitHub CLI, если входные данные могут ссылаться на GitHub Issue:
+
+```bash
+gh auth status
+```
+
+Если не работает — остановись и попроси пользователя выполнить `gh auth login`.
+
+---
+
+## Step 1: Подготовка
+
+Запиши корень репозитория:
 
 ```bash
 PROJECT_ROOT="$(git rev-parse --show-toplevel)"
 ```
 
-Generate `<task-id>`: short kebab-case slug from the description.
+Сгенерируй `<task-id>`: короткий slug в kebab-case из описания.
 
-Create the coordination plane:
+Создай координационную плоскость:
 
 ```bash
 mkdir -p "$PROJECT_ROOT/.agent/runs/<task-id>/research"
 ```
 
-Set `AGENT_DIR = $PROJECT_ROOT/.agent/runs/<task-id>`.
+Установи `AGENT_DIR = $PROJECT_ROOT/.agent/runs/<task-id>`.
 
-Write `$AGENT_DIR/task.md` if it does not exist.
+Напиши `$AGENT_DIR/task.md` по шаблону из [Rule: Task Template](.kimi-code/rules/task-template.md), если он ещё не существует.
 
-If the input is a GitHub Issue reference (`#5`, `gh-5`, `5`), fetch it with `gh issue view` and populate `task.md` accordingly.
-
----
-
-## Step 2: Research fan-out (optional)
-
-For non-trivial tasks, launch read-only research sub-agents in parallel, each writing `$AGENT_DIR/research/<axis>.md`.
+Если входные данные — ссылка на GitHub Issue (`#5`, `gh-5`, `5`):
+- Получи его через `gh issue view`.
+- Заполни `task.md` из тела issue.
+- Запиши `github_issue: #N` в `task.md`.
 
 ---
 
-## Step 3: Invoke the architect subagent
+## Step 2: Проверка размера контекста (Kimi K2.7-Code)
 
-Launch an architect subagent via `Agent` tool with `subagent_type: plan`.
+Следуй [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Context Size Check перед запуском субагентов.
+
+```bash
+python scripts/implement-pipeline.py check-context <task-id>
+```
+
+Если `ESTIMATED_TOKENS` >= 150000, читай `$AGENT_DIR/CONTEXT_SUMMARY.md` вместо полной истории.
+
+---
+
+## Step 3: Research fan-out (опционально)
+
+Для нетривиальных задач запусти read-only research субагентов параллельно, каждый пишет `$AGENT_DIR/research/<axis>.md`.
+
+Оси: `libraries`, `best-practices`, `codebase-integration`, `external-api-docs`.
+
+Архитектор синтезирует research-файлы в `$AGENT_DIR/research.md`.
+
+---
+
+## Step 4: Запуск архитектора
+
+Запусти субагента architect через инструмент `Agent` с `subagent_type: plan`.
 
 ```text
-ЯЗЫК / LANGUAGE: Пользователь общается на русском. Отвечай родительскому агенту и пиши все артефакты (spec, findings, отчёты, SESSION_LOG) на русском. Стремись рассуждать на русском. Код, команды, идентификаторы, пути и технические термины оставляй в оригинале.
+ЯЗЫК / LANGUAGE: Пользователь общается на русском. Ключевые инструкции этой задачи — на русском. Ты — архитектор Promelectron. Отвечай родительскому агенту и пиши все артефакты (spec, findings, отчёты, SESSION_LOG) на русском. Стремись рассуждать на русском. При multi-step tool calling сохраняй `reasoning_content` из ассистентских сообщений в истории. Код, команды, идентификаторы, пути и технические термины оставляй в оригинале.
 
-You are the architect for Promelectron.
-Important: Kimi K2.7-Code uses mandatory thinking mode. Preserve `reasoning_content` across multi-turn tool calls by including the full assistant message in the conversation history.
+Important: Kimi K2.7-Code uses mandatory thinking mode (`thinking={"type":"enabled"}`), with fixed `temperature=1.0`, `top_p=0.95`, `n=1`, `presence_penalty=0.0`, `frequency_penalty=0.0`. `tool_choice` may only be `"auto"` or `"none"`.
 
-Read:
+Прочитай (параллельно, где возможно):
 1. $AGENT_DIR/task.md
-2. $AGENT_DIR/research/*.md (if present) and synthesize into $AGENT_DIR/research.md
+2. $AGENT_DIR/research/*.md (если есть) и синтезируй в $AGENT_DIR/research.md
 3. PROJECT_CONTEXT.md
 4. .agent/BACKLOG.md
 5. .agent/BLOCKERS.md
 6. .agent/SESSION_LOG.md
 7. `.kimi-code/skills/architect/SKILL.md`
 8. [Rule: Pre-edit Checklist](.kimi-code/rules/pre-edit-checklist.md)
+9. [Rule: Planning](.kimi-code/rules/planning.md)
+10. [Rule: Agent Commons](.kimi-code/rules/agent-commons.md)
 
 Ты уже запущен как `plan`-субагент — контекст plan уже отключает shell и включает планирование, поэтому НЕ вызывай EnterPlanMode повторно. Пиши спецификацию прямо в plan-файл, предоставленный контекстом plan-субагента, затем вызови ExitPlanMode.
 
-Then:
-1. Explore the codebase in $PROJECT_ROOT to understand integration points.
-2. Brainstorm 2–3 approaches if valid alternatives exist.
-3. Write a technical specification to the plan file. Include: Task Type, Analysis, Decisions (D-01, D-02, ...), Components Affected, Technical Design, API Changes, Must-haves, Acceptance Criteria, Out of Scope, Risks.
-4. If a requirement is ambiguous and changes the design, set Status: NEEDS_CLARIFICATION and list open questions.
-5. Call ExitPlanMode.
+Затем:
+1. Исследуй кодовую базу в $PROJECT_ROOT, чтобы понять точки интеграции.
+2. Предложи 2–3 альтернативных подхода, если они имеют смысл.
+3. Напиши техническую спецификацию в plan-файл. Включи: Task Type, Analysis, Decisions (D-01, D-02, ...), Components Affected, Parallelization Plan, Technical Design, API Changes, Must-haves, Acceptance Criteria, Out of Scope, Risks.
+4. Если требование неоднозначно и влияет на дизайн, установи Status: NEEDS_CLARIFICATION и перечисли открытые вопросы.
+5. Иначе установи Status: READY.
+6. Вызови ExitPlanMode.
 
 Do NOT write implementation code, tests, migrations, or config files.
 
@@ -91,19 +126,38 @@ Do NOT write implementation code, tests, migrations, or config files.
 
 ---
 
-## Step 4: Clarification loop
+## Step 5: Копирование плана в координационную плоскость
 
-Read `$AGENT_DIR/spec.md`.
+После того как архитектор вызовет `ExitPlanMode`, скопируй содержимое plan-файла в `$AGENT_DIR/spec.md`.
 
-- **If `Status: NEEDS_CLARIFICATION`:** present open questions to the user via `AskUserQuestion`, append answers to `## Clarifications` in `$AGENT_DIR/task.md`, then re-invoke the architect to update `spec.md`.
-- **If `Status: READY`:** show a tight summary — chosen approach, API Contract, Must-haves, D-numbers.
-
-Ask the user: **"Spec ready. Start implementation with `/skill:implement <task-id>`?"**
+Если пользователь отклонил или попросил доработки — отправь архитектора на доработку.
 
 ---
 
-## Rules
+## Step 6: Цикл уточнений
 
-- Planning only — no worktree, no code, no PR.
-- Never write transient files into the committed `.agent/` planning dir.
-- The architect owns the spec; you only drive the loop.
+Прочитай `$AGENT_DIR/spec.md`.
+
+- **Если `Status: NEEDS_CLARIFICATION`:** покажи открытые вопросы пользователю через `AskUserQuestion`, допиши ответы в `## Clarifications` в `$AGENT_DIR/task.md`, затем перезапусти архитектора для обновления плана и скопируй его в `spec.md`.
+- **Если `Status: READY`:** покажи краткое резюме — выбранный подход, API Contract, Must-haves, D-numbers.
+
+Спроси пользователя: **"Спецификация готова. Начать реализацию через `/skill:implement <task-id>`?"**
+
+---
+
+## Step 7: Post-work updates
+
+Обнови `$PROJECT_ROOT/.agent/SESSION_LOG.md` сводкой по сессии спецификации.
+
+Если задача из спринта, обнови `.agent/BACKLOG.md` статусом `ready` или `in_progress`.
+
+---
+
+## Rules / Правила
+
+- Только планирование — никакого worktree, кода или PR.
+- Никогда не пиши временные файлы в закоммиченную планировочную директорию `.agent/`.
+- Спецификация принадлежит архитектору; ты только управляешь циклом.
+- Всегда копируй plan-файл в `$AGENT_DIR/spec.md` перед циклом уточнений.
+
+---
