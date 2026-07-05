@@ -219,5 +219,6 @@ describe('ProfileEdit.vue', () => {
     expect(wrapper.find('[data-testid="avatar-upload-error"]').text()).toContain('Недопустимый формат файла')
     expect(mockToast).toHaveBeenCalledWith('Недопустимый формат файла', 'error')
     expect(wrapper.find('.edit-card--avatar .error-msg').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="password-error"]').exists()).toBe(false)
   })
 })

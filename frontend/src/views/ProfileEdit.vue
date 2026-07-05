@@ -248,7 +248,7 @@
         </form>
 
         <p v-if="passwordSuccess" class="success-msg">Пароль успешно изменён</p>
-        <p v-if="passwordError" class="error-msg">{{ passwordError }}</p>
+        <p v-if="passwordError" class="error-msg" data-testid="password-error">{{ passwordError }}</p>
       </div>
     </div>
   </div>
@@ -311,7 +311,12 @@ const initials = computed(() => {
 const onAvatarChange = async (e) => {
   const file = e.target.files[0];
   if (!file) return;
-  if (!file.type.startsWith('image/')) return;
+  if (!file.type.startsWith('image/')) {
+    avatarError.value = 'Выберите файл изображения';
+    toast(avatarError.value, 'error');
+    e.target.value = '';
+    return;
+  }
 
   avatarUploading.value = true;
   avatarProgress.value = 0;
@@ -326,6 +331,7 @@ const onAvatarChange = async (e) => {
     avatarUrl.value = data.avatar_url || data.original || '';
     // Update auth user
     setAuth(localStorage.getItem('access_token'), data);
+    setUser(data);
     toast('Фото профиля обновлено', 'success');
   } catch (err) {
     avatarError.value = err.response?.data?.detail || 'Не удалось загрузить фото';

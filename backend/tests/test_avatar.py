@@ -91,11 +91,12 @@ class TestAvatarUpload:
 
     @pytest.mark.asyncio
     async def test_upload_avatar_deletes_old_avatar(
-        self, client, test_user, user_token, monkeypatch
+        self, client, test_user, user_token, test_session, monkeypatch
     ):
         """Old avatar deletion is triggered when user already has one."""
         old_avatar_url = "/uploads/avatars/old.png"
         test_user.avatar_url = old_avatar_url
+        await test_session.commit()
 
         deleted_keys = []
 
@@ -124,10 +125,13 @@ class TestAvatarUpload:
 
     @pytest.mark.asyncio
     async def test_upload_avatar_deletion_failure_does_not_block_upload(
-        self, client, test_user, user_token, monkeypatch
+        self, client, test_user, user_token, test_session, monkeypatch
     ):
         """If deleting the old avatar fails, the new upload still succeeds."""
         test_user.avatar_url = "/uploads/avatars/old.png"
+        await test_session.commit()
+
+        deleted_keys = []
 
         class FailingDeleteStorage:
             async def upload_image(self, key, file, content=None):
@@ -140,6 +144,7 @@ class TestAvatarUpload:
                 }
 
             async def delete_image(self, key):
+                deleted_keys.append(key)
                 raise RuntimeError("storage unavailable")
 
         monkeypatch.setattr("src.app.api.users.storage", FailingDeleteStorage())
@@ -150,6 +155,7 @@ class TestAvatarUpload:
             files={"file": ("avatar.png", io.BytesIO(b"fake-image-content"), "image/png")},
         )
         assert response.status_code == 200
+        assert deleted_keys
         assert response.json()["avatar_url"]
 
     @pytest.mark.asyncio
