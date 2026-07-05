@@ -151,7 +151,7 @@ test.describe('Profile & Edit Profile', () => {
 
     // Wait for success toast and preview update
     await expect(page.locator('[data-testid="toast-message"]')).toContainText('Фото профиля обновлено', { timeout: 10000 });
-    await expect(page.locator('.avatar__img')).toBeVisible();
+    await expect(page.locator('.avatar-preview__img')).toBeVisible();
 
     // Verify avatar persists on profile page after reload
     await page.goto('/profile');
