@@ -5,6 +5,14 @@ function uniqueEmail() {
   return `test_${Date.now()}_w${test.info().workerIndex}@example.com`;
 }
 
+function createAvatarPng() {
+  // 1x1 transparent PNG
+  return Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    'base64'
+  );
+}
+
 async function fillAddress(page, prefix) {
   await page.fill(`[data-testid="${prefix}region"]`, 'Московская область');
   await page.fill(`[data-testid="${prefix}district"]`, 'Одинцовский район');
@@ -115,5 +123,38 @@ test.describe('Profile & Edit Profile', () => {
     await page.fill('[data-testid="login-password"]', newPassword);
     await page.click('[data-testid="login-submit"]');
     await expect(page).toHaveURL('/');
+  });
+
+  test('user can upload avatar and see it on profile', async ({ page }) => {
+    const email = uniqueEmail();
+    const password = 'TestPassword123!';
+
+    // Register
+    await page.goto('/register');
+    await page.fill('[data-testid="register-name"]', 'Avatar User');
+    await page.fill('[data-testid="register-email"]', email);
+    await page.fill('[data-testid="register-password"]', password);
+    await page.fill('[data-testid="register-password-confirm"]', password);
+    await page.click('[data-testid="register-submit"]');
+    await expect(page).toHaveURL('/');
+
+    // Go to edit profile
+    await page.goto('/profile/edit');
+
+    // Upload avatar
+    const fileInput = page.locator('.edit-card--avatar input[type="file"]');
+    await fileInput.setInputFiles({
+      name: 'avatar.png',
+      mimeType: 'image/png',
+      buffer: createAvatarPng(),
+    });
+
+    // Wait for success toast and preview update
+    await expect(page.locator('[data-testid="toast-message"]')).toContainText('Фото профиля обновлено', { timeout: 10000 });
+    await expect(page.locator('.avatar-preview__img')).toBeVisible();
+
+    // Verify avatar persists on profile page after reload
+    await page.goto('/profile');
+    await expect(page.locator('.avatar-preview__img')).toBeVisible();
   });
 });

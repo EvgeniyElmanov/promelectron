@@ -37,6 +37,7 @@
           </div>
           <span class="avatar-progress__text">{{ avatarProgress }}%</span>
         </div>
+        <p v-if="avatarError" class="error-msg" data-testid="avatar-upload-error">{{ avatarError }}</p>
       </div>
 
       <!-- Personal Data Card -->
@@ -256,10 +257,14 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import api from '@/services/api';
+import { uploadAvatar } from '@/api/users';
 import { useAuth } from '@/composables/useAuth';
+import { useToast } from '@/composables/useToast';
 import { normalizePhone, PHONE_REGEX, NAME_REGEX } from '@/composables/useGuestCheckout';
 import AddressForm from '@/components/AddressForm.vue';
 import SkeletonProfile from '@/components/SkeletonProfile.vue';
+
+const { add: toast } = useToast();
 
 const { setAuth, setUser, emailVerified } = useAuth();
 
@@ -289,6 +294,7 @@ const showConfirm = ref(false);
 const avatarUrl = ref('');
 const avatarUploading = ref(false);
 const avatarProgress = ref(0);
+const avatarError = ref('');
 const originalEmail = ref('');
 
 const emailChanged = computed(() => form.value.email.trim() !== originalEmail.value);
@@ -309,23 +315,21 @@ const onAvatarChange = async (e) => {
 
   avatarUploading.value = true;
   avatarProgress.value = 0;
+  avatarError.value = '';
   try {
-    const formData = new FormData();
-    formData.append('file', file);
-    const { data } = await api.post('/me/avatar', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      onUploadProgress: (progressEvent) => {
-        const percent = progressEvent.total
-          ? Math.round((progressEvent.loaded * 100) / progressEvent.total)
-          : 0;
-        avatarProgress.value = percent;
-      },
+    const { data } = await uploadAvatar(file, (progressEvent) => {
+      const percent = progressEvent.total
+        ? Math.round((progressEvent.loaded * 100) / progressEvent.total)
+        : 0;
+      avatarProgress.value = percent;
     });
-    avatarUrl.value = data.avatar_url || '';
+    avatarUrl.value = data.avatar_url || data.original || '';
     // Update auth user
     setAuth(localStorage.getItem('access_token'), data);
+    toast('Фото профиля обновлено', 'success');
   } catch (err) {
-    passwordError.value = err.response?.data?.detail || 'Ошибка загрузки фото';
+    avatarError.value = err.response?.data?.detail || 'Не удалось загрузить фото';
+    toast(avatarError.value, 'error');
   } finally {
     // Доводим до 100% и показываем минимум 500мс, даже если загрузка моментальная
     avatarProgress.value = 100;
