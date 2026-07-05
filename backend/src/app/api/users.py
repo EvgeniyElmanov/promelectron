@@ -134,6 +134,12 @@ async def upload_avatar(
             detail=f"Invalid file type. Allowed: {', '.join(AVATAR_ALLOWED_EXTENSIONS)}",
         )
 
+    if not (file.content_type and file.content_type.startswith("image/")):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid file type. Only image files are allowed.",
+        )
+
     content = await file.read()
     # The whole file is loaded into memory; the endpoint is capped at 5 MB,
     # which is acceptable for avatar uploads. Additional server-level limits

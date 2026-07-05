@@ -159,6 +159,17 @@ class TestAvatarUpload:
         assert response.json()["avatar_url"]
 
     @pytest.mark.asyncio
+    async def test_upload_avatar_invalid_content_type(self, client, test_user, user_token):
+        """Valid extension but non-image content_type returns 400."""
+        response = await client.post(
+            "/api/v1/me/avatar/",
+            headers={"Authorization": f"Bearer {user_token}"},
+            files={"file": ("avatar.png", io.BytesIO(b"not an image"), "application/octet-stream")},
+        )
+        assert response.status_code == 400
+        assert "Invalid file type" in response.json()["detail"]
+
+    @pytest.mark.asyncio
     async def test_upload_avatar_requires_trailing_slash(self, client, test_user, user_token):
         """FastAPI redirects missing trailing slash, but multipart POST loses body."""
         response = await client.post(
@@ -166,5 +177,7 @@ class TestAvatarUpload:
             headers={"Authorization": f"Bearer {user_token}"},
             files={"file": ("avatar.png", io.BytesIO(b"fake-image-content"), "image/png")},
         )
-        # Without trailing slash the response is a redirect, not the successful upload.
-        assert response.status_code != 200
+        # FastAPI returns a 307/308 redirect for missing trailing slash; the
+        # Location header points to the slash-terminated path.
+        assert response.status_code in (307, 308)
+        assert response.headers.get("location").endswith("/api/v1/me/avatar/")
