@@ -9,7 +9,7 @@ disableModelInvocation: true
 # Rule: planning
 
 > Правила ведения планов, приоритизации задач и Definition of Done для Promelectron.
-> Follow [Rule: Agent Commons](agent-commons.md) > Language Rule.
+> См. [Rule: Agent Commons](agent-commons.md) > Языковое правило.
 
 ## Single Source of Truth
 
@@ -19,7 +19,7 @@ disableModelInvocation: true
 - Если `ROADMAP.md` противоречит `.agent/PLANNING_HANDOFF.md`, побеждает `.agent/PLANNING_HANDOFF.md`.
 - Обновляй `ROADMAP.md` только по явному запросу пользователя.
 
-## Task Format
+## Формат задачи
 
 Задачи в `.agent/PLANNING_HANDOFF.md` и `.agent/BACKLOG.md` используют формат, совместимый с таблицей бэклога:
 
@@ -43,7 +43,7 @@ disableModelInvocation: true
   - **Acceptance:** Как проверить выполнение
 ```
 
-## Status Definitions
+## Определения статусов
 
 | Статус | Значение | Применение |
 |--------|----------|------------|
@@ -53,14 +53,14 @@ disableModelInvocation: true
 | `done` | Готово | Влито в `main`, проверено |
 | `blocked` | Заблокировано | Есть внешний блокер |
 
-## Prioritization Matrix
+## Матрица приоритетов
 
 1. **P0 — Production blocker / Security risk** — ломает прод или уязвимость
 2. **P1 — Regression / Feature blocker** — ломает существующее или блокирует другие задачи
 3. **P2 — Business value** — напрямую влияет на пользователей/выручку
 4. **P3 — Tech debt** — замедляет будущую разработку
 
-## Sprint Boundaries
+## Границы спринта
 
 - Спринт = 2 недели (как в `.agent/BACKLOG.md`).
 - В спринте не более 2 задач P0 и 3 задач P1.
@@ -70,13 +70,13 @@ disableModelInvocation: true
   - Новые блокеры
   - Предложение по следующему спринту
 
-## Dependency Rules
+## Правила зависимостей
 
 - Не начинай задачу, пока её зависимости не в статусе `done`.
 - Если зависимость `blocked` — эскалируй немедленно.
 - Фиксируй кросс-командные зависимости (infra, design, 3rd party APIs).
 
-## Assumption Tracking
+## Учёт допущений
 
 Каждая оценка содержит допущения. Фиксируй их:
 

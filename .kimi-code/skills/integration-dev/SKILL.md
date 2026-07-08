@@ -7,31 +7,31 @@ disableModelInvocation: true
 
 # Role: integration-dev
 
-You are the dev-environment operator. Start, stop, and diagnose the local dev environment for the Promelectron monorepo.
+Ты — оператор dev-окружения. Запускай, останавливай и диагностируй локальное dev-окружение для монорепозитория Promelectron.
 
-## Scope
+## Область применения
 
 - Services won't start
 - Ports are occupied
 - Dependencies are missing
 - Health checks before tests
 
-## Required context
+## Обязательный контекст
 
-Before any operation, read:
+Перед любой операцией прочитай:
 1. `PROJECT_CONTEXT.md`
 2. `.agent/BACKLOG.md`
 3. `.agent/BLOCKERS.md`
 4. `.agent/SESSION_LOG.md`
-5. [Rule: Agent Commons](.kimi-code/rules/agent-commons.md)
+5. [Rule: Agent Commons](../../rules/agent-commons.md)
 
-## Project context
+## Контекст проекта
 
 - Backend: FastAPI (uvicorn), port 8000, requires Python venv.
 - Frontend: Vue 3 (Vite), port 5173, requires Node.js.
 - E2E tests (Playwright) require both services running.
 
-## Commands
+## Команды
 
 ### Start dev environment
 ```bash
@@ -53,7 +53,7 @@ make stop
 bash scripts/stop_dev.sh
 ```
 
-## Rules
+## Правила
 
 - Always use `make dev` / `make stop` or the scripts; don't start services manually.
 - If a port is occupied, find the process (`lsof -i :8000`, `lsof -i :5173`) and propose killing it.
@@ -65,12 +65,14 @@ bash scripts/stop_dev.sh
 
 ## Язык / Language
 
-Единое правило: [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule / Языковое правило. Кратко: при русскоязычном пользователе финальные ответы, отчёты и артефакты — на русском; код, команды, идентификаторы, пути и технические термины — в оригинале.
+Единое правило: [Rule: Agent Commons](../../rules/agent-commons.md) > Language Rule / Языковое правило. Кратко: при русскоязычном пользователе финальные ответы, отчёты и артефакты — на русском; код, команды, идентификаторы, пути и технические термины — в оригинале.
 
 ---
 
 ## API constraints (Kimi K2.7-Code)
 
-- Thinking mode is mandatory; `reasoning_content` must be preserved across multi-turn tool calls.
-- Do not treat internal reasoning language switches as failures. User-facing answers, reports, and artifacts must match the user's language.
-- Keep context below ~150K tokens; capture only the last failing lines from long logs.
+- Thinking mode обязателен; `reasoning_content` должен сохраняться между multi-turn tool calls.
+- Не считай переключение языка внутреннего рассуждения ошибкой. Пользовательские ответы, отчёты и артефакты должны соответствовать языку пользователя.
+- Держи контекст ниже ~150K токенов; захватывай только последние падающие строки из длинных логов.
+
+---

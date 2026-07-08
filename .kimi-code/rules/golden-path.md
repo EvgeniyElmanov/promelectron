@@ -12,7 +12,7 @@ disableModelInvocation: true
 > Проверяй только в dev/test окружении, никогда против production.
 > Не обязательно писать тест, достаточно ручной проверки (curl / UI / Playwright).
 >
-> Follow [Rule: Agent Commons](agent-commons.md) > Language Rule.
+> См. [Rule: Agent Commons](agent-commons.md) > Языковое правило.
 
 ### Сценарий 1: Полный путь покупки (авторизованный)
 

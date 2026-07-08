@@ -1,21 +1,21 @@
 # 🤖 AI Agent System — Promelectron
 
-> Project-level instructions for Kimi Code CLI.  
-> Loaded automatically from `.kimi-code/AGENTS.md` for every session in this project.
+> Проектные инструкции для Kimi Code CLI.  
+> Загружаются автоматически из `.kimi-code/AGENTS.md` для каждой сессии в этом проекте.
 
-> **Note:** Role-specific instructions live in flat Kimi skills under `.kimi-code/skills/<role>/`.  
-> Shared conventions live in `.kimi-code/rules/` (reference markdown, not skills).  
-> This file is the master index and contains only project-wide invariants.
-
----
-
-## Skill and rule registry
-
-For the consolidated registry of role skills, workflow skills, and shared rules, see `.kimi-code/BUNDLE.md`.
+> **Примечание:** инструкции, специфичные для ролей, находятся в flat Kimi skills в `.kimi-code/skills/<role>/`.  
+> Общие конвенции живут в `.kimi-code/rules/` (reference markdown, не skills).  
+> Этот файл — мастер-индекс и содержит только проектные инварианты.
 
 ---
 
-## 🚨 GOLDEN RULE: язык ответов / ЗОЛОТОЕ ПРАВИЛО
+## Реестр навыков и правил
+
+Консолидированный реестр ролевых навыков, workflow-навыков и общих правил см. в `.kimi-code/BUNDLE.md`.
+
+---
+
+## 🚨 ЗОЛОТОЕ ПРАВИЛО: язык ответов
 
 Когда пользователь общается на русском:
 
@@ -29,152 +29,152 @@ For the consolidated registry of role skills, workflow skills, and shared rules,
 - Код, команды, идентификаторы, пути к файлам и технические термины оставляй в оригинале.
 
 Единый источник истины о языке (формулировка правила и точная преамбула для субагентов):
-[Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule / Языковое правило.
+[Rule: Agent Commons](./rules/agent-commons.md) > Language Rule / Языковое правило.
 
-## Subagent boundary
+## Границы субагентов
 
-- Subagents launched via the `Agent` tool run in isolated context and **cannot schedule further nested subagents**.
-- Only the main Agent (or a top-level skill invocation) may call `Agent` or `AgentSwarm`.
-- For parallel work (e.g., review backend + frontend simultaneously), the **main agent** uses `AgentSwarm`; a single subagent must not try to spawn peers.
+- Субагенты, запущенные через инструмент `Agent`, работают в изолированном контексте и **не могут запускать вложенные субагентов**.
+- Только основной агент (или top-level вызов skill) может вызывать `Agent` или `AgentSwarm`.
+- Для параллельной работы (например, одновременно review backend + frontend) **основной агент** использует `AgentSwarm`; один субагент не должен пытаться порождать пиров.
 
 ---
 
-## Quick start
+## Быстрый старт
 
 ```bash
-# Implement a new feature (full cycle)
+# Реализовать новую фичу (полный цикл)
 /skill:implement "Add promo codes to cart"
 
-# Write a spec without coding
+# Написать спецификацию без кодирования
 /skill:spec "Add promo codes to cart"
 
-# Fix a bug or failing tests
+# Исправить баг или упавшие тесты
 /skill:fix "Race condition in cart add"
 
-# Review current changes
+# Ревью текущих изменений
 /skill:review
 
-# Re-run QA for an existing task
+# Перезапустить QA для существующей задачи
 /skill:qa-gate add-promo-codes-to-cart-0624
 
-# Open a PR for the current branch
+# Открыть PR для текущей ветки
 /skill:ship
 
-# Deploy to test or prod
+# Деплой в test или prod
 /skill:deploy test
 
-# Sync project context
+# Синхронизировать контекст проекта
 /skill:context-sync
 
-# Maintain plans
+# Поддержка планов
 /skill:plan-maintainer analyze
 ```
 
 ---
 
-## Where things live
+## Где что лежит
 
-| Path | Purpose |
-|------|---------|
-| `.kimi-code/skills/` | Flat Kimi skills for roles and workflows |
-| `.kimi-code/AGENTS.md` | This file — project-wide invariants only |
-| `.kimi-code/rules/` | Shared conventions and reference docs |
-| `.kimi-code/mcp.json` | MCP server configuration |
-| `.kimi-code/config.example.toml` | Example user-level config |
-| `scripts/implement-pipeline.py` | Helper for task IDs, git worktrees, review loops |
-| `.agent/runs/<task-id>/` | Gitignored per-task coordination plane (`task.md`, `spec.md`, `review/findings.md`, `review/test-findings.md`) |
-| `.worktrees/<task-id>/` | Isolated git worktree for the feature branch |
+| Путь | Назначение |
+|------|------------|
+| `.kimi-code/skills/` | Flat Kimi skills для ролей и workflow |
+| `.kimi-code/AGENTS.md` | Этот файл — только проектные инварианты |
+| `.kimi-code/rules/` | Общие конвенции и reference-документы |
+| `.kimi-code/mcp.json` | Конфигурация MCP-серверов |
+| `.kimi-code/config.example.toml` | Пример пользовательской конфигурации |
+| `scripts/implement-pipeline.py` | Хелпер для task ID, git worktrees, review loops |
+| `.agent/runs/<task-id>/` | Gitignored coordination plane для задачи (`task.md`, `spec.md`, `review/findings.md`, `review/test-findings.md`) |
+| `.worktrees/<task-id>/` | Изолированный git worktree для feature-ветки |
 
 ---
 
-## Workflow overview
+## Обзор workflow
 
 ```
-User: /implement "Add promo codes to cart"
+Пользователь: /implement "Add promo codes to cart"
         │
         ▼
-   Create .agent/runs/<task-id>/
+   Создать .agent/runs/<task-id>/
         │
         ▼
    git worktree add .worktrees/<task-id> -b feature/<task-id>
         │
         ▼
-   Architect subagent (plan mode) → spec.md → user approves
+   Субагент architect (plan mode) → spec.md → пользователь одобряет
         │
         ▼
-   Developer subagent(s) in the worktree (backend-dev / frontend-dev / devops)
+   Субагент(ы) developer в worktree (backend-dev / frontend-dev / devops)
         │
         ▼
-   Code reviewer subagent(s) (max 3 iterations)
+   Субагент(ы) code reviewer (максимум 3 итерации)
         │
         ▼
-   QA subagent (pytest + vitest + Playwright, verifies Acceptance Criteria)
+   Субагент QA (pytest + vitest + Playwright, проверяет Acceptance Criteria)
         │
         ▼
-   Open PR via gh pr create → post [H-xxx] comments
+   Открыть PR через gh pr create → оставить комментарии [H-xxx]
         │
         ▼
-   Report to user → merge only with explicit approval
+   Отчёт пользователю → merge только с явным одобрением
 ```
 
-### Flags
+### Флаги
 
-- `--quick` — skip the architect/spec phase.
-- `--backend-only` — only backend development.
-- `--frontend-only` — only frontend development.
-- `--serial` — run backend then frontend sequentially (default is parallel).
-- `--qa` — run the dedicated QA gate before opening the PR.
-
----
-
-## Hard rules
-
-- **NEVER** continue the previous role for a new task.
-- **NEVER** mix roles in one task.
-- **NEVER** create a DB model without a migration.
-- **NEVER** write an endpoint without tests.
-- **NEVER** commit without explicit user approval.
-- **ALWAYS** use trailing slash in FastAPI endpoints (`/items/`, not `/items`).
-- **ALWAYS** run tests before reporting done.
-- **ALWAYS** link a GitHub Issue before starting development in `/skill:implement`.
-- **ALWAYS** update the GitHub Project board status at phase boundaries: spec approved → In progress, PR open → In review, merged → Done.
-- **NEVER** create duplicate GitHub Issues for the same `task-id`; reuse existing `github_issue` from `task.md`.
+- `--quick` — пропустить фазу architect/spec.
+- `--backend-only` — только backend-разработка.
+- `--frontend-only` — только frontend-разработка.
+- `--serial` — запускать backend, затем frontend последовательно (по умолчанию параллельно).
+- `--qa` — запустить dedicated QA gate перед открытием PR.
 
 ---
 
-## Required context (read before every task)
+## Жёсткие правила
 
-1. `PROJECT_CONTEXT.md` — stack, feature status, blockers, API inventory
-2. `.agent/BACKLOG.md` — current sprint
-3. `.agent/BLOCKERS.md` — active blockers
-4. `.agent/SESSION_LOG.md` — recent sessions
-5. The relevant role skill in `.kimi-code/skills/<role>/SKILL.md`
-6. [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) — language, retry policy, context size, API constraints
-7. [Rule: Pre-edit Checklist](.kimi-code/rules/pre-edit-checklist.md) (before code changes)
-
----
-
-## Post-work updates
-
-After finishing any task:
-
-1. Update `.agent/SESSION_LOG.md`.
-2. Update `.agent/BACKLOG.md` if the task is from the sprint.
-3. Update `.agent/BLOCKERS.md` if a new blocker appeared.
-4. Update `PROJECT_CONTEXT.md` if architecture changed.
+- **NEVER** продолжать предыдущую роль для новой задачи.
+- **NEVER** смешивать роли в одной задаче.
+- **NEVER** создавать DB model без миграции.
+- **NEVER** писать endpoint без тестов.
+- **NEVER** коммитить без явного одобрения пользователя.
+- **ALWAYS** использовать trailing slash в FastAPI endpoints (`/items/`, not `/items`).
+- **ALWAYS** запускать тесты перед отчётом о завершении.
+- **ALWAYS** привязывать GitHub Issue перед началом разработки в `/skill:implement`.
+- **ALWAYS** обновлять статус GitHub Project board на границах фаз: spec approved → In progress, PR open → In review, merged → Done.
+- **NEVER** создавать дублирующие GitHub Issues для одного и того же `task-id`; переиспользуй существующий `github_issue` из `task.md`.
 
 ---
 
-## Permissions
+## Обязательный контекст (читать перед каждой задачей)
 
-**Allowed:**
+1. `PROJECT_CONTEXT.md` — стек, статус фич, блокеры, инвентарь API
+2. `.agent/BACKLOG.md` — текущий спринт
+3. `.agent/BLOCKERS.md` — активные блокеры
+4. `.agent/SESSION_LOG.md` — недавние сессии
+5. Соответствующий ролевой skill в `.kimi-code/skills/<role>/SKILL.md`
+6. [Rule: Agent Commons](./rules/agent-commons.md) — язык, retry policy, размер контекста, ограничения API
+7. [Rule: Pre-edit Checklist](./rules/pre-edit-checklist.md) (перед изменением кода)
+
+---
+
+## Обновления после работы
+
+После завершения любой задачи:
+
+1. Обновить `.agent/SESSION_LOG.md`.
+2. Обновить `.agent/BACKLOG.md`, если задача из спринта.
+3. Обновить `.agent/BLOCKERS.md`, если появился новый блокер.
+4. Обновить `PROJECT_CONTEXT.md`, если изменилась архитектура.
+
+---
+
+## Разрешения
+
+**Разрешено:**
 - `make *`, `pytest *`, `alembic *`, `ruff *`
-- `git status`, `git diff`, `git log`, `git worktree *`, `git commit *` (feature branches only)
+- `git status`, `git diff`, `git log`, `git worktree *`, `git commit *` (только feature-ветки)
 - `npm *`, `npx *`
 - `docker *`, `kubectl *`, `helm *`
 - `gh workflow run *`, `gh run *`
 
-**Forbidden:**
+**Запрещено:**
 - `rm -rf *`
 - `git push --force *`
 - `git reset --hard *`
@@ -182,20 +182,20 @@ After finishing any task:
 
 ---
 
-## Before push
+## Перед push
 
-Run `make pre-push` (lint + unit tests + E2E) before pushing a feature branch.
+Запустить `make pre-push` (lint + unit tests + E2E) перед push feature-ветки.
 
-Push rules:
-- Pushing `feature/*` and `bugfix/*` branches to origin is auto-approved via permission rules in `~/.kimi-code/config.toml`.
-- Pushing to `main` requires explicit user approval (permission rule uses `decision = "ask"`).
+Правила push:
+- Push веток `feature/*` и `bugfix/*` в origin авто-одобряется через правила разрешений в `~/.kimi-code/config.toml`.
+- Push в `main` требует явного одобрения пользователя (permission rule использует `decision = "ask"`).
 
-CI runs the E2E suite on the `promelectron-test` environment after deploy.
+CI запускает E2E suite в окружении `promelectron-test` после деплоя.
 
 ---
 
-## See also
+## См. также
 
-- [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) — language rule, retry policy, context size handling
-- [Rule: Planning & Definition of Done](.kimi-code/rules/planning.md) — task format, prioritization, Definition of Done
-- [Rule: Known Pitfalls](.kimi-code/rules/known-pitfalls.md) — real issues that have already happened
+- [Rule: Agent Commons](./rules/agent-commons.md) — языковое правило, retry policy, обработка размера контекста
+- [Rule: Planning & Definition of Done](./rules/planning.md) — формат задачи, приоритизация, Definition of Done
+- [Rule: Known Pitfalls](./rules/known-pitfalls.md) — реальные проблемы, которые уже случались

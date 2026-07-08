@@ -1,20 +1,20 @@
-# 📘 HOWTO — Working with Promelectron agents in Kimi Code CLI
+# 📘 HOWTO — работа с агентами Promelectron в Kimi Code CLI
 
-> Practical guide: how to route tasks, keep context clean, and pick the right workflow.
+> Практическое руководство: как маршрутизировать задачи, поддерживать чистый контекст и выбирать правильный workflow.
 
-## Language note
+## Языковое примечание
 
-When the user communicates in Russian, the main agent and all subagents must reason and think in Russian. The parent agent must explicitly tell subagents that the original user communicates in Russian so they also reason in Russian.
+Когда пользователь общается на русском языке, основной агент и все субагенты должны рассуждать и думать на русском. Родительский агент должен явно сообщать субагентам, что исходный пользователь общается на русском, чтобы они тоже рассуждали на русском.
 
-## 1. Problem we solved
+## 1. Какую проблему мы решили
 
-Kimi Code CLI discovers project skills from `.kimi-code/skills/`. We moved all workflow skills there so `/skill:implement`, `/skill:fix`, `/skill:review`, and `/skill:deploy` work out of the box.
+Kimi Code CLI обнаруживает проектные навыки из `.kimi-code/skills/`. Мы вынесли все workflow-навыки туда, чтобы `/skill:implement`, `/skill:fix`, `/skill:review` и `/skill:deploy` работали из коробки.
 
-## 2. Three ways to work
+## 2. Три способа работы
 
-### Way A: Workflow skills (recommended)
+### Способ A: workflow-навыки (рекомендуется)
 
-Use for full feature cycles, bug fixes, reviews, and deploys.
+Используй для полных циклов разработки фич, исправления багов, ревью и деплоев.
 
 ```
 /skill:implement "Add promo codes to cart"
@@ -23,46 +23,46 @@ Use for full feature cycles, bug fixes, reviews, and deploys.
 /skill:deploy test
 ```
 
-The skill spawns subagents and manages the pipeline for you.
+Skill сам порождает субагентов и управляет pipeline.
 
-### Way B: Fixed role
+### Способ B: фиксированная роль
 
-Use if you work in one role all day.
+Используй, если работаешь в одной роли весь день.
 
 ```
 Role: backend-dev. Task: add email validation to registration.
 
 Read PROJECT_CONTEXT.md, BACKLOG.md, BLOCKERS.md, SESSION_LOG.md.
-Load `/skill:backend-dev` or read `.kimi-code/skills/backend-dev/SKILL.md` and [Rule: Pre-edit Checklist](.kimi-code/rules/pre-edit-checklist.md).
+Load `/skill:backend-dev` or read `.kimi-code/skills/backend-dev/SKILL.md` and [Rule: Pre-edit Checklist](./rules/pre-edit-checklist.md).
 After work update SESSION_LOG.md.
 ```
 
-### Way C: Dispatcher (ad-hoc tasks)
+### Способ C: dispatcher (ad-hoc задачи)
 
-Use when you don't know the role and don't need a full workflow.
+Используй, когда не знаешь роль и не нужен полный workflow.
 
 ```
 Load `/skill:dispatcher` or read `.kimi-code/skills/dispatcher/SKILL.md` and follow its instructions strictly.
 Task: Create an API for promo codes.
 ```
 
-## 3. How `/skill:implement` works
+## 3. Как работает `/skill:implement`
 
-1. Creates `.agent/runs/<task-id>/` (gitignored coordination plane)
-2. Creates git worktree `.worktrees/<task-id>` on branch `feature/<task-id>`
-3. Spawns architect subagent in plan mode → writes `spec.md` → waits for approval
-4. Spawns developer subagent(s) in the worktree
-5. Spawns code reviewer subagent → writes `review/findings.md` (max 3 iterations)
-6. Spawns QA/e2e-tester subagent → writes `review/test-findings.md`
-7. Opens a GitHub PR via `gh pr create` and posts open `[H-xxx]` items as PR comments
-8. Reports to user; merge only with explicit approval
+1. Создаёт `.agent/runs/<task-id>/` (gitignored coordination plane)
+2. Создаёт git worktree `.worktrees/<task-id>` на ветке `feature/<task-id>`
+3. Порождает субагента architect в plan mode → пишет `spec.md` → ждёт одобрения
+4. Порождает субагента(ов) developer в worktree
+5. Порождает субагента code reviewer → пишет `review/findings.md` (максимум 3 итерации)
+6. Порождает субагента QA/e2e-tester → пишет `review/test-findings.md`
+7. Открывает GitHub PR через `gh pr create` и публикует открытые пункты `[H-xxx]` как комментарии PR
+8. Отчитывается пользователю; merge только с явным одобрением
 
-## 4. Bash helpers
+## 4. Bash-хелперы
 
 ```bash
 make check            # lint + test
-make dev              # start the stack
-make stop             # stop the stack
+make dev              # запустить стек
+make stop             # остановить стек
 make test-backend     # backend tests (PostgreSQL in Docker)
 make test-frontend    # frontend unit tests
 make test-e2e         # Playwright E2E tests
@@ -77,13 +77,13 @@ python scripts/implement-pipeline.py create-worktree <task-id>
 python scripts/implement-pipeline.py cleanup <task-id>
 ```
 
-## 5. How to tell the role switched
+## 5. Как понять, что роль переключилась
 
-When using the dispatcher or a workflow skill, the subagent should state its role at the start. If the agent answers in the wrong style, reload the skill or start a new session.
+При использовании dispatcher или workflow-навыка субагент должен заявлять свою роль в начале. Если агент отвечает в неправильном стиле, перезагрузи skill или начни новую сессию.
 
-## 6. Roles and zones
+## 6. Роли и зоны
 
-| Role | Zone |
+| Роль | Зона |
 |------|------|
 | `backend-dev` | `backend/src/app/`, `backend/tests/` |
 | `frontend-dev` | `frontend/src/` |
@@ -91,52 +91,52 @@ When using the dispatcher or a workflow skill, the subagent should state its rol
 | `e2e-tester` | `frontend/e2e/` |
 | `code-reviewer` | diff → findings |
 | `security-reviewer` | security findings |
-| `project-manager` | plans, backlog, roadmap |
-| `qa` | full test pyramid |
-| `integration-dev` | local dev environment |
+| `project-manager` | планы, бэклог, роадмап |
+| `qa` | полная пирамида тестирования |
+| `integration-dev` | локальное dev-окружение |
 
-## 7. Required files
+## 7. Обязательные файлы
 
-Agents read:
+Агенты читают:
 - `PROJECT_CONTEXT.md`
 - `.agent/BACKLOG.md`
 - `.agent/BLOCKERS.md`
 - `.agent/SESSION_LOG.md`
-- `.kimi-code/skills/<role>/SKILL.md` — role instructions (flat Kimi skill)
-- [Rule: Pre-edit Checklist](.kimi-code/rules/pre-edit-checklist.md)
+- `.kimi-code/skills/<role>/SKILL.md` — инструкции роли (flat Kimi skill)
+- [Rule: Pre-edit Checklist](./rules/pre-edit-checklist.md)
 
-Agents update:
+Агенты обновляют:
 - `.agent/SESSION_LOG.md`
 - `.agent/BACKLOG.md`
 - `.agent/BLOCKERS.md`
-- `PROJECT_CONTEXT.md` (if architecture changed)
+- `PROJECT_CONTEXT.md` (если изменилась архитектура)
 
-## 8. Troubleshooting
+## 8. Решение проблем
 
-### Skill is not recognized
-- Verify `.kimi-code/skills/` exists and contains `SKILL.md` files.
-- Kimi Code CLI loads skills automatically from `.kimi-code/skills/`.
+### Skill не распознаётся
+- Проверь, что `.kimi-code/skills/` существует и содержит файлы `SKILL.md`.
+- Kimi Code CLI загружает навыки автоматически из `.kimi-code/skills/`.
 
-### Agent doesn't switch role
-1. Reload the workflow skill: `/skill:implement ...`
-2. Start a new Kimi CLI session
-3. Explicitly specify the role: `Role: frontend-dev. Task: ...`
+### Агент не переключает роль
+1. Перезагрузи workflow skill: `/skill:implement ...`
+2. Начни новую сессию Kimi CLI
+3. Явно укажи роль: `Role: frontend-dev. Task: ...`
 
-### `make task` / `make ask` removed
-The old `make task`, `make ask`, `make auto`, and `make task-compact` helpers were removed. Use workflow skills instead:
+### `make task` / `make ask` удалены
+Старые хелперы `make task`, `make ask`, `make auto` и `make task-compact` удалены. Вместо них используй workflow-навыки:
 ```
 /skill:implement "Add promo codes to cart"
 /skill:fix "Race condition in cart add"
 /skill:promelectron
 ```
 
-### Agent didn't update SESSION_LOG.md
-In workflow skills this is part of the subagent prompt. In fixed-role mode, add it explicitly:
+### Агент не обновил SESSION_LOG.md
+В workflow-навыках это часть промпта субагента. В режиме фиксированной роли добавь явно:
 ```
 After work update SESSION_LOG.md.
 ```
 
-## 9. Task format (5 elements)
+## 9. Формат задачи (5 элементов)
 
 ```
 [ROLE] Task: [one sentence]
@@ -146,21 +146,21 @@ Do not break: [boundaries]
 Verify: [how to confirm it works]
 ```
 
-See [Rule: Prompt Format](.kimi-code/rules/prompt-format.md) for details.
+Подробнее см. [Rule: Prompt Format](./rules/prompt-format.md).
 
-## 10. Quick-start checklist
+## 10. Чеклист быстрого старта
 
-- [ ] Open Kimi CLI in the project root
-- [ ] Run `/skill:implement "<feature description>"`
-- [ ] Approve the architect's spec
-- [ ] Let the pipeline run
-- [ ] After completion check `.agent/SESSION_LOG.md`
+- [ ] Открыть Kimi CLI в корне проекта
+- [ ] Запустить `/skill:implement "<описание фичи>"`
+- [ ] Одобрить спецификацию architect
+- [ ] Дать pipeline отработать
+- [ ] После завершения проверить `.agent/SESSION_LOG.md`
 
-## 11. Where to read more
+## 11. Где почитать ещё
 
-- [SESSION_START.md](/SESSION_START.md) — session entry templates
-- [AGENTS.md](/AGENTS.md) — agent index and high-level workflow
-- [.kimi-code/AGENTS.md](/.kimi-code/AGENTS.md) — active index of project invariants (loaded automatically)
-- [.kimi-code/skills/promelectron/SKILL.md](/.kimi-code/skills/promelectron/SKILL.md) — master skill / role index
-- [ROUTER.md](/ROUTER.md) — routing documentation
-- [Rule: Pre-edit Checklist](.kimi-code/rules/pre-edit-checklist.md) — checks before editing code
+- [SESSION_START.md](../SESSION_START.md) — шаблоны входа в сессию
+- [AGENTS.md](../AGENTS.md) — индекс агентов и high-level workflow
+- [.kimi-code/AGENTS.md](./AGENTS.md) — активный индекс проектных инвариантов (загружается автоматически)
+- [.kimi-code/skills/promelectron/SKILL.md](./skills/promelectron/SKILL.md) — мастер-skill / индекс ролей
+- [ROUTER.md](../ROUTER.md) — документация по маршрутизации
+- [Rule: Pre-edit Checklist](./rules/pre-edit-checklist.md) — проверки перед редактированием кода

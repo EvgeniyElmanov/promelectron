@@ -36,7 +36,7 @@
 Проверь: make test-frontend && проверь адаптивность (375px)
 ```
 
-### Devops
+### DevOps
 
 ```
 [devops] Задача: Добавить YOOKASSA_SECRET_KEY в Helm secrets

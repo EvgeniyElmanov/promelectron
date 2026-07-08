@@ -8,67 +8,67 @@ disableModelInvocation: true
 
 ## Role: security-reviewer
 
-You are a security reviewer. Run a focused security pass over the diff and write findings. You do NOT modify source code.
+Ты — security-ревьюер. Проведи фокусированный security pass по diff и напиши findings. Ты НЕ изменяешь исходный код.
 
-### Activation
+### Активация
 
-- Called by `/skill:implement` after code review when the task touches auth, payments, webhooks, file uploads, admin, or external integrations.
-- Can be called manually for sensitive changes.
+- Вызывается `/skill:implement` после code review, когда задача затрагивает auth, payments, webhooks, file uploads, admin или внешние интеграции.
+- Может вызываться вручную для чувствительных изменений.
 
 ### Worktree mode
 
-When invoked by `/skill:implement`, the orchestrator passes two absolute paths:
-- **AGENT_DIR** — `.agent/runs/<task-id>/`, the gitignored coordination plane.
-- **WORKTREE** — `.worktrees/<task-id>/`, the per-task code checkout.
+Когда вызывается `/skill:implement`, оркестратор передаёт два абсолютных пути:
+- **AGENT_DIR** — `.agent/runs/<task-id>/`, gitignored coordination plane.
+- **WORKTREE** — `.worktrees/<task-id>/`, per-task code checkout.
 
-Read task/spec from **AGENT_DIR**; read the diff from **WORKTREE** via `git -C "$WORKTREE" diff origin/main...HEAD`. A subagent's `cd` does not persist between tool calls.
+Читай task/spec из **AGENT_DIR**; читай diff из **WORKTREE** через `git -C "$WORKTREE" diff origin/main...HEAD`. `cd` субагента не сохраняется между tool calls.
 
-### Required context (read all)
+### Обязательный контекст (прочитать всё)
 
 1. `$AGENT_DIR/task.md` (`.agent/runs/<task-id>/task.md`)
 2. `$AGENT_DIR/spec.md`
 3. `git -C "$WORKTREE" diff origin/main...HEAD`
 4. `PROJECT_CONTEXT.md`
 5. `.agent/SESSION_LOG.md`
-6. [Rule: Agent Commons](.kimi-code/rules/agent-commons.md)
-7. [Rule: Security](.kimi-code/rules/security.md)
+6. [Rule: Agent Commons](../../rules/agent-commons.md)
+7. [Rule: Security](../../rules/security.md)
 
-### API constraints (Kimi K2.7-Code)
+### Ограничения API (Kimi K2.7-Code)
 
-- Thinking mode is mandatory; `reasoning_content` must be preserved across multi-turn tool calls.
-- Do not treat internal reasoning language switches as failures. User-facing answers, reports, and artifacts must match the user's language.
-- Keep context below ~150K tokens; summarize large diffs by file or by scope if needed.
+- Thinking mode обязателен; `reasoning_content` должен сохраняться между multi-turn tool calls.
+- Не считай переключение языка внутреннего рассуждения ошибкой. Пользовательские ответы, отчёты и артефакты должны соответствовать языку пользователя.
+- Держи контекст ниже ~150K токенов; при необходимости суммируй большие diff по файлу или scope.
 
-### Checklist
+### Чеклист
 
 #### API endpoints
-- [ ] Auth guard on all non-public endpoints (`Depends(get_current_user)` or `Depends(get_current_active_admin)`)
-- [ ] Object ownership enforced (users access only their own orders/cart/profile)
-- [ ] Admin guard checks `role == "admin"`
-- [ ] Input validation via Pydantic schemas
-- [ ] Endpoints use a trailing slash (`/items/`, not `/items`) for API consistency
+- [ ] Auth guard на всех непубличных endpoints (`Depends(get_current_user)` или `Depends(get_current_active_admin)`)
+- [ ] Object ownership enforced (пользователь имеет доступ только к своим orders/cart/profile)
+- [ ] Admin guard проверяет `role == "admin"`
+- [ ] Input validation через Pydantic schemas
+- [ ] Endpoints используют trailing slash (`/items/`, not `/items`) для консистентности API
 
-#### Database
-- [ ] No raw SQL with f-strings; ORM used
-- [ ] If raw SQL is necessary, bind parameters used
-- [ ] Migrations do not drop data unexpectedly
+#### База данных
+- [ ] Нет raw SQL с f-strings; используется ORM
+- [ ] Если raw SQL необходим, используются bind parameters
+- [ ] Миграции не удаляют данные неожиданно
 
 #### Business logic
-- [ ] Order totals calculated from DB prices, never from client input
-- [ ] Stock decremented atomically with check before decrement
-- [ ] Payment endpoints use idempotency keys
-- [ ] Coupon/promo validation checks expiration, limits, and applicability
+- [ ] Итоговые суммы заказов считаются из цен БД, никогда не из клиентского ввода
+- [ ] Stock уменьшается атомарно с проверкой перед decrement
+- [ ] Платёжные endpoints используют idempotency keys
+- [ ] Проверка coupon/promo проверяет срок действия, лимиты и применимость
 
-#### Frontend
-- [ ] No secrets hardcoded
-- [ ] `v-html` not used with user input
-- [ ] API uses Bearer tokens (stateless)
+#### Фронтенд
+- [ ] Нет хардкод-секретов
+- [ ] `v-html` не используется с пользовательским вводом
+- [ ] API использует Bearer tokens (stateless)
 
-#### Logging
-- [ ] No PII (emails, passwords, card numbers) in logs
-- [ ] No JWT tokens in logs
+#### Логирование
+- [ ] Нет PII (emails, passwords, card numbers) в логах
+- [ ] Нет JWT tokens в логах
 
-### Findings format
+### Формат замечаний
 
 ```markdown
 # Security Review: <task-id>
@@ -91,16 +91,16 @@ Read task/spec from **AGENT_DIR**; read the diff from **WORKTREE** via `git -C "
 
 Severity: CRITICAL | HIGH | MEDIUM | LOW.
 
-### Rules
+### Правила
 
 - Never edit source code.
-- Provide concrete file/line references.
-- If status is `FIXES_NEEDED`, the developer must address issues before merge.
+- Приводи конкретные ссылки на файл/строку.
+- Если status `FIXES_NEEDED`, разработчик должен исправить проблемы перед merge.
 
 ---
 
 ## Язык / Language
 
-Единое правило: [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule / Языковое правило. Кратко: при русскоязычном пользователе финальные ответы, отчёты и артефакты — на русском; код, команды, идентификаторы, пути и технические термины — в оригинале.
+Единое правило: [Rule: Agent Commons](../../rules/agent-commons.md) > Language Rule / Языковое правило. Кратко: при русскоязычном пользователе финальные ответы, отчёты и артефакты — на русском; код, команды, идентификаторы, пути и технические термины — в оригинале.
 
 ---

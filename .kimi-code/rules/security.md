@@ -10,7 +10,7 @@ disableModelInvocation: true
 
 > **Правило:** Применяй этот чеклист к каждому изменению кода, особенно если задача касается auth, payments, загрузки файлов, внешних интеграций или PII.
 > При русскоязычном пользователе пиши findings и отчёты на русском.
-> Follow [Rule: Agent Commons](agent-commons.md) > Language Rule.
+> См. [Rule: Agent Commons](agent-commons.md) > Языковое правило.
 
 ### API Endpoints
 
@@ -21,13 +21,13 @@ disableModelInvocation: true
 - [ ] **Rate limiting**: Чувствительные endpoint'ы (login, register, password-reset) защищены лимитами
 - [ ] **Trailing slash**: Endpoint'ы используют trailing slash (см. [Rule: Known Pitfalls](known-pitfalls.md))
 
-### Database
+### База данных
 
 - [ ] **No raw SQL with f-strings**: Используй ORM-запросы. Если raw SQL необходим — только `text()` с bind-параметрами
 - [ ] **Migration safety**: Миграции не удаляют данные без явного `op.execute` и backup
 - [ ] **SELECT FOR UPDATE**: Для критичных операций со stock и платежами
 
-### Business Logic
+### Бизнес-логика
 
 - [ ] **Price from DB**: Итоговая сумма заказа считается из цен в БД, клиент не доверяется
 - [ ] **Stock check**: Уменьшение stock атомарно, с проверкой до decrement
@@ -35,14 +35,14 @@ disableModelInvocation: true
 - [ ] **Coupon validation**: Проверка срока, лимитов использования, применимости
 - [ ] **State machine**: Статусы заказа/платежа меняются допустимыми переходами
 
-### Frontend
+### Фронтенд
 
 - [ ] **No secrets in code**: API keys, tokens не захардкожены
 - [ ] **JWT storage**: Текущий проект использует localStorage (известный риск, планируется HttpOnly cookies + refresh tokens)
 - [ ] **XSS prevention**: `v-html` используется только с доверенным HTML
 - [ ] **CSRF**: Stateless Bearer; для OAuth callback обязателен `state` параметр
 
-### Logging
+### Логирование
 
 - [ ] **No PII in logs**: Не логировать emails, passwords, card numbers, phone
 - [ ] **No tokens in logs**: Не логировать JWT, OAuth tokens, API keys

@@ -223,3 +223,6 @@
 | — | [#5](https://github.com/AutonomaCo/promelectron/issues/5) | Кнопка «Отменить заказ» для пользователя | — |
 | task-0703 | [#54](https://github.com/AutonomaCo/promelectron/issues/54) | Проверить формат даты и времени | 2026-07-03 |
 | — | Technical Specification: cart-select-items-for-payment | [#61](https://github.com/AutonomaCo/promelectron/issues/61) | backend-dev + frontend-dev | P1 | **done** ✅ | — | — | [#62](https://github.com/AutonomaCo/promelectron/pull/62) |
+| — | Technical Specification: fix-avatar-upload-notification | [#63](https://github.com/AutonomaCo/promelectron/issues/63) | backend-dev + frontend-dev | P1 | **in_progress** | — | — | — |
+| yookassa-test-card-scenarios | [#65](https://github.com/AutonomaCo/promelectron/issues/65) | ЮKassa: покрытие тестовыми сценариями банковских карт (test mode) | 2026-07-06 |
+| — | Specification: onec-integration | [#66](https://github.com/AutonomaCo/promelectron/issues/66) | — | P1 | **backlog** | — | — | — |

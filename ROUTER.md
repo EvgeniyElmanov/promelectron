@@ -1,72 +1,72 @@
-# ROUTER — Agent routing for Promelectron
+# ROUTER — маршрутизация агентов для Promelectron
 
-> Describe the task — the system picks the right agent, gathers context, and starts working.
+> Опиши задачу — система выберет нужного агента, соберёт контекст и начнёт работать.
 
-## Language note
+## Языковое правило
 
-When the user communicates in Russian, the main agent and all subagents must reason and think in Russian. The parent agent must explicitly tell subagents that the original user communicates in Russian so they also reason in Russian. Final replies to the user must be in Russian, while code, commands, identifiers, file paths, and technical terms stay in their original form.
+Когда пользователь общается на русском языке, основной агент и все субагенты должны рассуждать и думать на русском. Родительский агент должен явно сообщать субагентам, что исходный пользователь общается на русском, чтобы они тоже рассуждали на русском. Финальные ответы пользователю должны быть на русском языке, при этом код, команды, идентификаторы, пути к файлам и технические термины остаются в оригинальном виде.
 
-## Quick start
+## Быстрый старт
 
-### Option 1: Workflow skills (recommended)
+### Вариант 1: Workflow-навыки (рекомендуется)
 
 ```
-/skill:implement "Add promo codes to cart"     # full feature cycle
-/skill:fix "Race condition in cart add"        # bug-fix workflow
-/skill:deploy test                             # deploy via GitHub Actions
-/skill:review                                  # code review current changes
-/skill:context-sync                            # update project context files
+/skill:implement "Add promo codes to cart"     # полный цикл разработки фичи
+/skill:fix "Race condition in cart add"        # workflow исправления бага
+/skill:deploy test                             # деплой через GitHub Actions
+/skill:review                                  # код-ревью текущих изменений
+/skill:context-sync                            # обновить файлы контекста проекта
 ```
 
-### Option 2: Fixed role (when you know who you need)
+### Вариант 2: Фиксированная роль (когда знаешь, кто нужен)
 
 ```
 Role: backend-dev. Task: add email validation to registration.
 ```
 
-### Option 3: Dispatcher (ad-hoc tasks)
+### Вариант 3: Диспетчер (ad-hoc задачи)
 
 ```
 Load `/skill:dispatcher` or read `.kimi-code/skills/dispatcher/SKILL.md` and follow its instructions strictly.
 Task: Create an API for promo codes.
 ```
 
-## How routing works
+## Как работает маршрутизация
 
-| Role | Keywords in task | When to choose |
-|------|------------------|----------------|
-| `implement` | New feature, API, page, component | Full cycle: architect → dev → review → QA |
-| `fix` | Bug, error, crash, not working | Analyze → reproduce → fix → test |
-| `deploy` | Deploy, release, production | GitHub Actions → watch → E2E smoke test |
-| `backend-dev` | API, endpoint, backend, model, schema, service, route, migration, alembic, SQLAlchemy, FastAPI, pytest, DB, table, webhook, JWT, OAuth (backend), payment, order, cart (API), auth (backend), admin (API) | Backend-only tasks |
-| `frontend-dev` | frontend, Vue, component, page, view, Pinia, store, composable, UI, UX, form, responsive, CSS, Axios, router, localStorage, cart (UI), login (UI), checkout (UI) | Frontend-only tasks |
-| `devops` | Docker, K8s, Kubernetes, Helm, nginx, CI/CD, deploy, infra, SSL, VPN, backup, Sentry, monitoring, pod, container, GitHub Actions, workflow, secret, config | Infrastructure tasks |
-| `e2e-tester` | E2E, Playwright, test scenario, browser, click, end-to-end, regression, spec | E2E scenarios |
-| `code-reviewer` | review, code review, findings, quality | Code review |
-| `security-reviewer` | security, audit, vulnerability, SQL injection, XSS, CSRF | Security audit |
-| `project-manager` | roadmap, plan, sprint, prioritize, backlog, estimate, planning | Planning |
-| `qa` | test, acceptance criteria, full check, qa | Full test pyramid |
-| `integration-dev` | dev environment, services won't start, ports, health check | Local environment ops |
+| Роль | Ключевые слова в задаче | Когда выбирать |
+|------|-------------------------|----------------|
+| `implement` | Новая фича, API, страница, компонент | Полный цикл: architect → dev → review → QA |
+| `fix` | Баг, ошибка, краш, не работает | Анализ → воспроизведение → фикс → тест |
+| `deploy` | Деплой, релиз, продакшн | GitHub Actions → наблюдение → E2E smoke test |
+| `backend-dev` | API, endpoint, backend, model, schema, service, route, migration, alembic, SQLAlchemy, FastAPI, pytest, DB, table, webhook, JWT, OAuth (backend), payment, order, cart (API), auth (backend), admin (API) | Только backend-задачи |
+| `frontend-dev` | frontend, Vue, component, page, view, Pinia, store, composable, UI, UX, form, responsive, CSS, Axios, router, localStorage, cart (UI), login (UI), checkout (UI) | Только frontend-задачи |
+| `devops` | Docker, K8s, Kubernetes, Helm, nginx, CI/CD, deploy, infra, SSL, VPN, backup, Sentry, monitoring, pod, container, GitHub Actions, workflow, secret, config | Инфраструктурные задачи |
+| `e2e-tester` | E2E, Playwright, test scenario, browser, click, end-to-end, regression, spec | E2E-сценарии |
+| `code-reviewer` | review, code review, findings, quality | Код-ревью |
+| `security-reviewer` | security, audit, vulnerability, SQL injection, XSS, CSRF | Security-аудит |
+| `project-manager` | roadmap, plan, sprint, prioritize, backlog, estimate, planning | Планирование |
+| `qa` | test, acceptance criteria, full check, qa | Полная пирамида тестирования |
+| `integration-dev` | dev environment, services won't start, ports, health check | Операции локального окружения |
 
-**Mixed tasks** (e.g. "API and frontend for promos"):
-1. `/skill:implement` picks the primary role and may run backend + frontend sequentially.
-2. For ad-hoc mixed work, use the dispatcher.
+**Смешанные задачи** (например, "API и фронтенд для промокодов"):
+1. `/skill:implement` выбирает основную роль и может запускать backend + frontend последовательно.
+2. Для ad-hoc смешанной работы используй dispatcher.
 
-## Architecture
+## Архитектура
 
 ```
-User describes task
+Пользователь описывает задачу
        │
        ▼
 ┌─────────────────────────────┐
-│  /skill:implement or /skill:fix skill   │
-│  (in .kimi-code/skills/)    │
+│  /skill:implement или /skill:fix skill   │
+│  (в .kimi-code/skills/)     │
 └─────────────┬───────────────┘
               │
        ┌──────┴──────┐
        ▼             ▼
   ┌─────────┐  ┌──────────┐
-  │ Reads   │  │ Reads    │
+  │ Читает  │  │ Читает   │
   │PROJECT_ │  │BACKLOG,  │
   │CONTEXT  │  │BLOCKERS  │
   └────┬────┘  └────┬─────┘
@@ -74,38 +74,38 @@ User describes task
        └─────┬──────┘
              ▼
   ┌──────────────────────┐
-  │ Spawns subagent      │
+  │ Создаёт субагента    │
   │ (architect/dev/QA)   │
   └──────────┬───────────┘
              ▼
   ┌──────────────────────┐
-  │ Writes task artifacts│
+  │ Пишет артефакты      │
   │ (spec, findings)     │
   └──────────────────────┘
 ```
 
-## Files
+## Файлы
 
-| File | Purpose |
-|------|---------|
-| `.kimi-code/skills/promelectron/SKILL.md` | Master skill with agent registry and golden rules |
-| `.kimi-code/skills/implement/SKILL.md` | Full feature cycle |
-| `.kimi-code/skills/fix/SKILL.md` | Bug-fix workflow |
-| `.kimi-code/skills/review/SKILL.md` | Code review workflow |
-| `.kimi-code/skills/deploy/SKILL.md` | Deployment workflow |
-| `.kimi-code/skills/context-sync/SKILL.md` | Context synchronization |
-| `.kimi-code/skills/plan-maintainer/SKILL.md` | Backlog/planning maintenance |
-| `.kimi-code/skills/<role>/SKILL.md` | Role instructions (flat Kimi skills) |
-| `.kimi-code/rules/*.md` | Shared conventions (reference markdown) |
-| `PROJECT_CONTEXT.md` | Single source of truth |
-| `.agent/BACKLOG.md` | Current sprint |
-| `.agent/BLOCKERS.md` | Active blockers |
-| `.agent/SESSION_LOG.md` | Session log |
+| Файл | Назначение |
+|------|------------|
+| `.kimi-code/skills/promelectron/SKILL.md` | Главный skill с реестром агентов и золотыми правилами |
+| `.kimi-code/skills/implement/SKILL.md` | Полный цикл разработки фичи |
+| `.kimi-code/skills/fix/SKILL.md` | Workflow исправления бага |
+| `.kimi-code/skills/review/SKILL.md` | Workflow код-ревью |
+| `.kimi-code/skills/deploy/SKILL.md` | Workflow деплоя |
+| `.kimi-code/skills/context-sync/SKILL.md` | Синхронизация контекста |
+| `.kimi-code/skills/plan-maintainer/SKILL.md` | Поддержка бэклога/планирования |
+| `.kimi-code/skills/<role>/SKILL.md` | Инструкции ролей (flat Kimi skills) |
+| `.kimi-code/rules/*.md` | Общие конвенции (reference markdown) |
+| `PROJECT_CONTEXT.md` | Единый источник истины |
+| `.agent/BACKLOG.md` | Текущий спринт |
+| `.agent/BLOCKERS.md` | Активные блокеры |
+| `.agent/SESSION_LOG.md` | Лог сессий |
 
-## Adding a new role
+## Добавление новой роли
 
-1. Create a new flat skill under `.kimi-code/skills/<role>/SKILL.md`
-2. Add the role to `.kimi-code/skills/promelectron/SKILL.md` (master index)
-3. Add keywords to `.kimi-code/skills/dispatcher/SKILL.md`
-4. Update `ROUTER.md` and `SESSION_START.md`
-5. If the role is part of `/skill:implement`, update `.kimi-code/skills/implement/SKILL.md`
+1. Создать новый flat skill в `.kimi-code/skills/<role>/SKILL.md`
+2. Добавить роль в `.kimi-code/skills/promelectron/SKILL.md` (мастер-индекс)
+3. Добавить ключевые слова в `.kimi-code/skills/dispatcher/SKILL.md`
+4. Обновить `ROUTER.md` и `SESSION_START.md`
+5. Если роль участвует в `/skill:implement`, обновить `.kimi-code/skills/implement/SKILL.md`

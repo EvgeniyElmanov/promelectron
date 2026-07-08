@@ -1,13 +1,13 @@
 # 🤖 AI Agent System — Promelectron
 
-This project uses **Kimi Code CLI** with project-level instructions in `.kimi-code/AGENTS.md`, workflow skills in `.kimi-code/skills/`, and the consolidated skill/rule registry in `.kimi-code/BUNDLE.md`.
+Этот проект использует **Kimi Code CLI** с проектными инструкциями в `.kimi-code/AGENTS.md`, workflow-навыками в `.kimi-code/skills/` и консолидированным реестром навыков/правил в `.kimi-code/BUNDLE.md`.
 
-## Documentation
+## Документация
 
-- **`.kimi-code/AGENTS.md`** — project-wide invariants, workflow overview, permissions, and post-work rules.
-- **`.kimi-code/BUNDLE.md`** — consolidated registry of role skills, workflow skills, and shared rules.
-- **`.kimi-code/HOWTO.md`** — practical guide: routing tasks, workflows, and troubleshooting.
-- **`.kimi-code/LESSONS_LEARNED.md`** — E2E CI lessons learned.
-- **`PROJECT_CONTEXT.md`** — single source of truth for stack, features, blockers, and API inventory.
-- **`SESSION_START.md`** — session entry templates and daily workflow.
-- **`ROUTER.md`** — agent routing documentation.
+- **`.kimi-code/AGENTS.md`** — проектные инварианты, обзор workflow, разрешения и правила пост-работы.
+- **`.kimi-code/BUNDLE.md`** — консолидированный реестр ролевых и workflow-навыков, а также общих правил.
+- **`.kimi-code/HOWTO.md`** — практическое руководство: маршрутизация задач, workflow и решение проблем.
+- **`.kimi-code/LESSONS_LEARNED.md`** — уроки по E2E CI.
+- **`PROJECT_CONTEXT.md`** — единый источник истины по стеку, фичам, блокерам и API-инвентарю.
+- **`SESSION_START.md`** — шаблоны входа в сессию и ежедневный workflow.
+- **`ROUTER.md`** — документация по маршрутизации агентов.

@@ -21,7 +21,7 @@ disableModelInvocation: false
 
 ## Language / Язык
 
-Следуй [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule / Языковое правило. При русскоязычном пользователе пиши findings и reports на русском.
+Следуй [Rule: Agent Commons](../../rules/agent-commons.md) > Language Rule / Языковое правило. При русскоязычном пользователе пиши findings и reports на русском.
 
 ---
 
@@ -56,7 +56,7 @@ mkdir -p "$AGENT_DIR/review"
 
 ## Step 1: Проверка размера контекста (Kimi K2.7-Code)
 
-Следуй [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Context Size Check.
+Следуй [Rule: Agent Commons](../../rules/agent-commons.md) > Context Size Check.
 
 ```bash
 python scripts/implement-pipeline.py check-context <task-id>
@@ -82,24 +82,24 @@ git -C "$WORKTREE" --no-pager diff --no-color origin/main...HEAD -- <files>
 
 ---
 
-## Step 3: Determine review scope
+## Step 3: Определение scope ревью
 
-Based on changed files:
+На основе изменённых файлов:
 
-- **Backend only** → run one `code-reviewer` subagent.
-- **Frontend only** → run one `code-reviewer` subagent.
-- **Mixed (backend + frontend)** → run two `code-reviewer` subagents in parallel via `AgentSwarm` with `focus: backend` / `focus: frontend`, then merge findings.
-- **Security-sensitive work** (auth, payments, orders, uploads) or `--security-only` → add `security-reviewer` to the parallel batch.
+- **Только backend** → запусти одного `code-reviewer` субагента.
+- **Только frontend** → запусти одного `code-reviewer` субагента.
+- **Смешанный (backend + frontend)** → запусти двух `code-reviewer` субагентов параллельно через `AgentSwarm` с `focus: backend` / `focus: frontend`, затем смержи findings.
+- **Security-sensitive работа** (auth, payments, orders, uploads) или `--security-only` → добавь `security-reviewer` в параллельную партию.
 
-`--quick` flag: skip research/extensive checks, focus on obvious bugs and regressions.
+Флаг `--quick`: пропустить research/расширенные проверки, сфокусироваться на очевидных багах и регрессиях.
 
 ---
 
-## Step 4: Launch reviewer subagent(s)
+## Step 4: Запуск reviewer-субагента(ов)
 
 ### Single-component review
 
-Launch one `code-reviewer` subagent via `Agent` tool with `subagent_type: coder`.
+Запусти одного `code-reviewer` субагента через инструмент `Agent` с `subagent_type: coder`.
 
 ```text
 ЯЗЫК / LANGUAGE: Пользователь общается на русском. Ключевые инструкции этой задачи — на русском. Ты — code-reviewer для Promelectron. Отвечай родительскому агенту и пиши все артефакты (spec, findings, отчёты, SESSION_LOG) на русском. Стремись рассуждать на русском. При multi-step tool calling сохраняй `reasoning_content` из ассистентских сообщений в истории. Код, команды, идентификаторы, пути и технические термины оставляй в оригинале.
@@ -110,8 +110,8 @@ Important: Kimi K2.7-Code uses mandatory thinking mode (`thinking={"type":"enabl
 1. $AGENT_DIR/task.md (если есть)
 2. $AGENT_DIR/spec.md (если есть)
 3. `.kimi-code/skills/code-reviewer/SKILL.md`
-4. [Rule: Security](.kimi-code/rules/security.md)
-5. [Rule: Agent Commons](.kimi-code/rules/agent-commons.md)
+4. [Rule: Security](../../rules/security.md)
+5. [Rule: Agent Commons](../../rules/agent-commons.md)
 
 Затем:
 1. Прочитай реализацию в $WORKTREE (используй Read/Grep/Glob параллельно).
@@ -139,11 +139,11 @@ Do NOT edit source code. Only write findings.
 НАПОМИНАНИЕ: ответы и артефакты — на русском; технические токены (код, пути, команды) — в оригинале.
 ```
 
-### Mixed review (backend + frontend in parallel)
+### Смешанное ревью (backend + frontend параллельно)
 
-Use `AgentSwarm` with `subagent_type: coder`.
+Используй `AgentSwarm` с `subagent_type: coder`.
 
-Prompt template:
+Шаблон промпта:
 
 ```text
 ЯЗЫК / LANGUAGE: Пользователь общается на русском. Ключевые инструкции этой задачи — на русском. Ты — code-reviewer для Promelectron (фокус: {{item}}). Отвечай родительскому агенту и пиши все артефакты (spec, findings, отчёты, SESSION_LOG) на русском. Стремись рассуждать на русском. При multi-step tool calling сохраняй `reasoning_content` из ассистентских сообщений в истории. Код, команды, идентификаторы, пути и технические термины оставляй в оригинале.
@@ -154,8 +154,8 @@ Important: Kimi K2.7-Code uses mandatory thinking mode (`thinking={"type":"enabl
 1. $AGENT_DIR/task.md (если есть)
 2. $AGENT_DIR/spec.md (если есть)
 3. `.kimi-code/skills/code-reviewer/SKILL.md`
-4. [Rule: Security](.kimi-code/rules/security.md)
-5. [Rule: Agent Commons](.kimi-code/rules/agent-commons.md)
+4. [Rule: Security](../../rules/security.md)
+5. [Rule: Agent Commons](../../rules/agent-commons.md)
 
 Затем:
 1. Читай только {{item}}-файлы реализации в $WORKTREE (используй Read/Grep/Glob параллельно).
@@ -186,32 +186,32 @@ Do NOT edit source code. Only write findings.
 
 items: `["backend", "frontend"]`
 
-**After `AgentSwarm` returns:**
-1. Read `$AGENT_DIR/review/findings-backend.md` and `$AGENT_DIR/review/findings-frontend.md`.
-2. Merge them into `$AGENT_DIR/review/findings.md`:
-   - Overall **Status** is `FIXES_NEEDED` if any sub-report is `FIXES_NEEDED`; otherwise `APPROVED`.
-   - Preserve **Iteration** number.
-   - Combine findings lists; renumber if needed so IDs are unique.
-   - Preserve Human Decisions from both reports.
-3. Delete the temporary `findings-backend.md` and `findings-frontend.md` or keep them for debugging.
+**После возврата `AgentSwarm`:**
+1. Прочитай `$AGENT_DIR/review/findings-backend.md` и `$AGENT_DIR/review/findings-frontend.md`.
+2. Смержи их в `$AGENT_DIR/review/findings.md`:
+   - Общий **Status** — `FIXES_NEEDED`, если хотя бы один sub-report `FIXES_NEEDED`; иначе `APPROVED`.
+   - Сохрани номер **Iteration**.
+   - Объедини списки findings; при необходимости перенумеруй, чтобы ID были уникальными.
+   - Сохрани Human Decisions из обоих отчётов.
+3. Удали временные `findings-backend.md` и `findings-frontend.md` или оставь для отладки.
 
 ---
 
-## Step 5: Report
+## Step 5: Отчёт
 
-Read `$AGENT_DIR/review/findings.md` and report to the user:
+Прочитай `$AGENT_DIR/review/findings.md` и отчитайся пользователю:
 - Status: APPROVED | FIXES_NEEDED
-- Number of issues by severity
-- File paths with findings
-- Open Human Decisions (if any)
+- Количество проблем по severity
+- Пути файлов с findings
+- Открытые Human Decisions (если есть)
 
 ---
 
-## Rules
+## Правила
 
-- NEVER edit source code.
-- NEVER mark findings VERIFIED — only the reviewer does after re-checking a developer's fix.
-- Delegate the actual review logic to `code-reviewer`.
-- Always ensure `$AGENT_DIR/review` exists before launching subagents.
+- NEVER редактировать исходный код.
+- NEVER отмечать findings как VERIFIED — только reviewer делает это после повторной проверки исправления разработчика.
+- Делегировать фактическую логику ревью `code-reviewer`.
+- Всегда убедись, что `$AGENT_DIR/review` существует перед запуском субагентов.
 
 ---

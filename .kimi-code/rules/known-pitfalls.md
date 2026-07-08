@@ -8,48 +8,50 @@ disableModelInvocation: true
 
 # Known pitfalls (Promelectron)
 
-> Real issues that have already happened. Check before committing.
+> Реальные проблемы, которые уже случались. Проверь перед коммитом.
 
 ## 1. Tests must not touch dev/prod DB
 
-`conftest.py` uses a separate test database. Always run `make test-backend` (PostgreSQL in Docker), never `pytest` locally on SQLite.
+`conftest.py` использует отдельную тестовую базу данных. Всегда запускай `make test-backend` (PostgreSQL in Docker), никогда `pytest` локально на SQLite.
 
-## 2. Rate limiting breaks tests
+## 2. Rate limiting ломает тесты
 
-Reset the limiter in the `client` fixture.
+Сбрасывай limiter в фикстуре `client`.
 
 ## 3. SQLite ≠ PostgreSQL
 
-Foreign keys, unique constraints, and SQL syntax differ. Test against PostgreSQL.
+Foreign keys, unique constraints и SQL syntax отличаются. Тестируй на PostgreSQL.
 
 ## 4. Trailing slash in FastAPI
 
-`api.get('/categories/')` matches `@router.get("/")`. Missing trailing slash causes 307/CORS issues.
+`api.get('/categories/')` matchится с `@router.get("/")`. Отсутствие trailing slash вызывает 307/CORS проблемы.
 
-## 5. Docker `node_modules` permissions
+## 5. Права доступа Docker `node_modules`
 
-After `npm install` in a container, fix ownership with `sudo chown -R $(whoami):$(whoami) frontend/node_modules`.
+После `npm install` в контейнере почини владельца: `sudo chown -R $(whoami):$(whoami) frontend/node_modules`.
 
-## 6. `docker-entrypoint.sh` executable bit
+## 6. Бит исполняемости `docker-entrypoint.sh`
 
-Run `chmod +x backend/docker-entrypoint.sh` before starting.
+Запусти `chmod +x backend/docker-entrypoint.sh` перед стартом.
 
-## 7. `docker-entrypoint.sh` ignores arguments
+## 7. `docker-entrypoint.sh` игнорирует аргументы
 
-Use `--entrypoint ""` for one-off commands: `docker compose run --rm --entrypoint "" api alembic upgrade head`.
+Используй `--entrypoint ""` для one-off команд: `docker compose run --rm --entrypoint "" api alembic upgrade head`.
 
-## 8. Vite proxy hostname in Docker
+## 8. Vite proxy hostname в Docker
 
-Use service name: `proxy: { '/api': { target: 'http://api:8000', changeOrigin: true } }`.
+Используй имя сервиса: `proxy: { '/api': { target: 'http://api:8000', changeOrigin: true } }`.
 
-## 9. Alembic version without tables
+## 9. Версия Alembic без таблиц
 
-If `drop_all` removed tables but `alembic_version` remains, run `DELETE FROM alembic_version;` then `alembic upgrade head`.
+Если `drop_all` удалил таблицы, но `alembic_version` осталась, выполни `DELETE FROM alembic_version;`, затем `alembic upgrade head`.
 
-## 10. Duplicate route without guard
+## 10. Дублирующий route без guard
 
-Keep only one route definition with the correct `meta` guards.
+Оставляй только одно определение route с правильными `meta` guards.
 
-## 11. Path traversal in filename
+## 11. Path traversal в имени файла
 
-Sanitize filenames with `os.path.basename` and `os.path.realpath` checks.
+Санитизируй имена файлов через `os.path.basename` и проверки `os.path.realpath`.
+
+---

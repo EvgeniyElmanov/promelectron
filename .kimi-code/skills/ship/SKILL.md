@@ -20,7 +20,7 @@ disableModelInvocation: false
 
 ## Language / Язык
 
-Следуй [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule / Языковое правило. Title и body PR пиши на русском при русскоязычном пользователе.
+Следуй [Rule: Agent Commons](../../rules/agent-commons.md) > Language Rule / Языковое правило. Title и body PR пиши на русском при русскоязычном пользователе.
 
 ---
 
@@ -81,52 +81,52 @@ git -C "$ANY_ROOT" log origin/main..HEAD --oneline
 git -C "$ANY_ROOT" diff origin/main...HEAD --stat
 ```
 
-If there are no commits to ship, tell the user and stop.
+Если нет коммитов для ship — сообщи пользователю и остановись.
 
 ---
 
-## Step 2: Ensure the branch is up-to-date with origin/main
+## Step 2: Актуализация ветки относительно основной ветки
 
 ```bash
 git -C "$ANY_ROOT" fetch origin main
 git -C "$ANY_ROOT" log HEAD..origin/main --oneline
 ```
 
-If `origin/main` has commits not in the current branch, warn the user and ask whether to rebase/merge before shipping.
+Если в `origin/main` есть коммиты, которых нет в текущей ветке, предупреди пользователя и спроси, нужно ли rebase/merge перед shipping.
 
 ---
 
-## Step 3: Run pre-push checks
+## Step 3: Запуск преддеплойных проверок
 
-`AGENTS.md` requires `make pre-push` (lint + unit tests + E2E) before pushing a feature branch.
+`AGENTS.md` требует `make pre-push` (lint + unit tests + E2E) перед push feature-ветки.
 
 ```bash
 make -C "$ANY_ROOT" pre-push
 ```
 
-If pre-push fails, stop and report failures. Do NOT open a PR with failing checks.
+Если pre-push падает — остановись и сообщи об ошибках. НЕ открывай PR с падающими проверками.
 
 ---
 
-## Step 4: Ensure everything is pushed
+## Step 4: Убедиться, что всё отправлено в удалённый репозиторий
 
-1. `git -C "$ANY_ROOT" status --porcelain` — if there are uncommitted changes, stop and tell the user to commit or stash first. `/skill:ship` does not commit code.
-2. Check for unpushed commits: `git -C "$ANY_ROOT" log @{u}..HEAD --oneline 2>/dev/null` (or `origin/<branch>..HEAD` if no upstream). If there are unpushed commits — or no upstream — push:
+1. `git -C "$ANY_ROOT" status --porcelain` — если есть незакоммиченные изменения, остановись и скажи пользователю сначала закоммитить или stash. `/skill:ship` не коммитит код.
+2. Проверь unpushed commits: `git -C "$ANY_ROOT" log @{u}..HEAD --oneline 2>/dev/null` (или `origin/<branch>..HEAD`, если нет upstream). Если есть unpushed commits — или нет upstream — запушь:
    ```bash
    git -C "$ANY_ROOT" push -u origin "$BRANCH"
    ```
 
 ---
 
-## Step 5: Gather the PR body
+## Step 5: Формирование описания запроса на слияние
 
-Read `$AGENT_DIR/spec.md` if it exists and pull its **Must-haves** and **Acceptance Criteria** into the PR body. Read `$AGENT_DIR/review/test-findings.md` if present for Test Results. If there is no spec, derive Summary and Changes from the commit log and `--stat` diff.
+Прочитай `$AGENT_DIR/spec.md`, если он есть, и вынеси его **Must-haves** и **Acceptance Criteria** в body PR. Прочитай `$AGENT_DIR/review/test-findings.md`, если есть, для раздела Результаты тестов. Если spec нет, выведи Описание и Изменения из commit log и `--stat` diff.
 
-Always add a **Testing Notes** (Заметки для тестирования) section — main scenario, edge cases, out-of-scope.
+Всегда добавляй раздел **Заметки для тестирования** — основной сценарий, edge cases, вне скоупа.
 
 ---
 
-## Step 6: Create the Pull Request
+## Step 6: Создание запроса на слияние
 
 ```bash
 gh pr create --base main --head "$BRANCH" \
@@ -135,7 +135,7 @@ gh pr create --base main --head "$BRANCH" \
 ## Описание
 <что сделано — 1-3 предложения>
 
-## Spec
+## Спецификация
 .agent/runs/<task-id>/spec.md — выбранный подход + API-контракт
 <!-- опустить, если spec.md нет -->
 
@@ -158,50 +158,50 @@ EOF
 )"
 ```
 
-Capture the PR URL. If `gh pr create` fails, stop and report the error; do not attempt to post comments or update board status.
+Захвати URL PR. Если `gh pr create` падает — остановись и сообщи об ошибке; не пытайся оставлять комментарии или обновлять статус доски.
 
 ---
 
-## Step 7: Post open Human-Decision items as PR comments
+## Step 7: Публикация открытых вопросов, требующих решения человека
 
-If `$AGENT_DIR/review/findings.md` exists and has open `[H-xxx]` items, post each one as a PR comment:
+Если `$AGENT_DIR/review/findings.md` существует и содержит открытые пункты `[H-xxx]`, опубликуй каждый как комментарий к PR:
 
 ```bash
-gh pr comment "$BRANCH" --body "[H-xxx] <the open human-decision item>"
+gh pr comment "$BRANCH" --body "[H-xxx] <открытый human-decision пункт>"
 ```
 
 ---
 
-## Step 8: Move the GitHub Issue to In review
+## Step 8: Перевести задачу GitHub в статус "На ревью"
 
-Per the invariant "PR open → In review", move the linked issue on the board **only if** `$AGENT_DIR/task.md` exists and contains a linked issue:
+Согласно инварианту "PR open → In review", переведи связанный issue на доске **только если** `$AGENT_DIR/task.md` существует и содержит связанный issue:
 
 ```bash
 python scripts/implement-pipeline.py set-status <task-id> in-review
 ```
 
-If `set-status` fails, report the error but do not block on it.
+Если `set-status` падает, сообщи об ошибке, но не блокируйся на этом.
 
 ---
 
-## Step 9: Report
+## Step 9: Итоговый отчёт
 
-Give the user a tight report:
+Сообщи пользователю краткий отчёт:
 - PR URL
-- Branch
-- Pre-push results
-- Number of H-items posted (if any)
+- Ветка
+- Результаты pre-push
+- Количество опубликованных H-items (если есть)
 
 ---
 
-## Rules
+## Правила
 
-- Never merge automatically.
-- Never push to `main`; never ship from `main`.
-- Never commit code. If the tree is dirty, stop and ask the user to commit first.
-- Always run `make pre-push` before opening PR.
-- Russian PR title + body.
-- Coordination files live in the gitignored `.agent/runs/<task-id>/`; never write the committed `.agent/` planner.
-- Handle `gh pr create` errors gracefully.
+- Никогда не мержи автоматически.
+- Никогда не пушь в `main`; никогда не ship из `main`.
+- Никогда не коммить код. Если рабочее дерево dirty — остановись и попроси пользователя сначала закоммитить.
+- Всегда запускай `make pre-push` перед открытием PR.
+- Title и body PR на русском.
+- Coordination files живут в gitignored `.agent/runs/<task-id>/`; никогда не пиши в закоммиченную планировочную директорию `.agent/`.
+- Обрабатывай ошибки `gh pr create` корректно.
 
 ---

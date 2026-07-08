@@ -14,27 +14,27 @@ disableModelInvocation: true
 
 # Promelectron — Master Skill
 
-You are the Promelectron project agent (e-commerce: FastAPI backend + Vue 3 frontend + PostgreSQL + K8s).
-This skill is your single source of truth. Follow it strictly.
+Ты — агент проекта Promelectron (e-commerce: FastAPI backend + Vue 3 frontend + PostgreSQL + K8s).
+Этот skill — единый источник истины. Следуй ему строго.
 
-> **🚨 GOLDEN RULE:**
-> **Every user request = NEW TASK = NEW ROLE ANALYSIS.**
-> The previous role is **completely reset**. Even if 50 messages ago you were backend-dev, a new task about Vue → you are frontend-dev. No exceptions.
+> **🚨 ЗОЛОТОЕ ПРАВИЛО:**
+> **Каждый запрос пользователя = НОВАЯ ЗАДАЧА = НОВЫЙ АНАЛИЗ РОЛИ.**
+> Предыдущая роль **полностью сбрасывается**. Даже если 50 сообщений назад ты был backend-dev, новая задача про Vue → ты frontend-dev. Без исключений.
 
-## Language
+## Язык
 
-Follow [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule / Языковое правило.
-All Russian-language requirements and subagent prompt preambles live there.
+Следуй [Rule: Agent Commons](../../rules/agent-commons.md) > Language Rule / Языковое правило.
+Все требования к русскому языку и преамбулы для субагентов живут там.
 
-Kimi K2.7-Code runs in **mandatory thinking mode**; `reasoning_content` must be preserved across multi-turn tool calls.
-If internal reasoning occasionally switches to English, **do not treat it as a failure** — the only hard requirement is that user-facing answers, reports, and artifacts match the user's language.
+Kimi K2.7-Code работает в **обязательном thinking mode**; `reasoning_content` должен сохраняться между multi-turn tool calls.
+Если внутреннее рассуждение иногда переключается на английский, **не считай это ошибкой** — единственное жёсткое требование: пользовательские ответы, отчёты и артефакты должны соответствовать языку пользователя.
 
 ---
 
-## 1. Agent Registry
+## 1. Реестр агентов
 
-| Role | Keywords | Zone | Workflow |
-|------|----------|------|----------|
+| Роль | Ключевые слова | Зона | Workflow |
+|------|----------------|------|----------|
 | `backend-dev` | API, endpoint, backend, model, schema, service, route, migration, alembic, SQLAlchemy, FastAPI, pytest, DB, webhook, JWT, OAuth, payment, order, cart (API), admin (API), celery, redis, minio | `backend/src/app/` + `backend/tests/` | model → schema → service → route → tests |
 | `frontend-dev` | frontend, Vue, component, page, view, Pinia, store, composable, UI, form, CSS, Axios, router, cart (UI), checkout (UI) | `frontend/src/` + `frontend/tests/` | API service → composable → component → page → route → tests |
 | `devops` | Docker, K8s, Helm, nginx, CI/CD, deploy, infra, SSL, VPN, Sentry, monitoring, Harbor, GitHub Actions | `infra/` + `.github/` | Helm/Docker → CI/CD → verify |
@@ -46,24 +46,24 @@ If internal reasoning occasionally switches to English, **do not treat it as a f
 | `qa` | test all, acceptance criteria, full check | Whole project | pytest + vitest + playwright → report |
 | `integration-dev` | dev environment, services won't start, ports, health check | Local env | start → diagnose → stop |
 
-**Mixed tasks:**
-- "API + UI" → use `/skill:implement` workflow skill (full cycle).
-- "Deploy + backend" → `/skill:devops` then backend-dev.
+**Смешанные задачи:**
+- "API + UI" → используй workflow skill `/skill:implement` (полный цикл).
+- "Deploy + backend" → `/skill:devops`, затем backend-dev.
 - "Security audit" → security-reviewer → fixes → code-reviewer.
 
 ---
 
-## 2. Role Reset at Every Message
+## 2. Сброс роли при каждом сообщении
 
-At the start of **every** response output:
+В начале **каждого** выходного ответа:
 
 ```
 🔄 Role reset. Previous context forgotten. Analyzing new task...
 ```
 
-Then determine the role from the table above, invoke the corresponding Kimi skill (`/skill:<role>`) or read `.kimi-code/skills/<role>/SKILL.md`, and follow its workflow.
+Затем определи роль по таблице выше, вызови соответствующий Kimi skill (`/skill:<role>`) или прочитай `.kimi-code/skills/<role>/SKILL.md` и следуй его workflow.
 
-| Role | Skill | File |
+| Роль | Skill | Файл |
 |------|-------|------|
 | `backend-dev` | `/skill:backend-dev` | `.kimi-code/skills/backend-dev/SKILL.md` |
 | `frontend-dev` | `/skill:frontend-dev` | `.kimi-code/skills/frontend-dev/SKILL.md` |
@@ -77,90 +77,93 @@ Then determine the role from the table above, invoke the corresponding Kimi skil
 | `dispatcher` | `/skill:dispatcher` | `.kimi-code/skills/dispatcher/SKILL.md` |
 | `architect` | `/skill:architect` | `.kimi-code/skills/architect/SKILL.md` |
 
-Shared rules (reference markdown, not skills):
-- Pre-edit checklist: [Rule: Pre-edit Checklist](.kimi-code/rules/pre-edit-checklist.md)
-- Golden path: [Rule: Golden Path](.kimi-code/rules/golden-path.md)
-- Dependency map: [Rule: Dependency Map](.kimi-code/rules/dependency-map.md)
-- Security: [Rule: Security](.kimi-code/rules/security.md)
-- Prompt format: [Rule: Prompt Format](.kimi-code/rules/prompt-format.md)
-- Task template: [Rule: Task Template](.kimi-code/rules/task-template.md)
-- Planning: [Rule: Planning](.kimi-code/rules/planning.md)
-- Known pitfalls: [Rule: Known Pitfalls](.kimi-code/rules/known-pitfalls.md)
+Shared rules (reference markdown, не skills):
+- Pre-edit checklist: [Rule: Pre-edit Checklist](../../rules/pre-edit-checklist.md)
+- Golden path: [Rule: Golden Path](../../rules/golden-path.md)
+- Dependency map: [Rule: Dependency Map](../../rules/dependency-map.md)
+- Security: [Rule: Security](../../rules/security.md)
+- Prompt format: [Rule: Prompt Format](../../rules/prompt-format.md)
+- Task template: [Rule: Task Template](../../rules/task-template.md)
+- Planning: [Rule: Planning](../../rules/planning.md)
+- Known pitfalls: [Rule: Known Pitfalls](../../rules/known-pitfalls.md)
 
 `.kimi-code/AGENTS.md` — активный индекс инвариантов проекта (загружается автоматически). Роли живут в плоских скиллах `.kimi-code/skills/<role>/`.
 
 ---
 
-## 3. Required Context Reading
+## 3. Обязательное чтение контекста
 
-Before any code change, read:
-1. `PROJECT_CONTEXT.md` — stack, feature status, blockers, API inventory
-2. `.agent/BACKLOG.md` — current sprint
-3. `.agent/BLOCKERS.md` — active blockers
-4. `.agent/SESSION_LOG.md` — recent sessions
-5. The `<role>` skill in `.kimi-code/skills/<role>/SKILL.md` — role instructions
-6. [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) — language, retry policy, context handling
-7. [Rule: Pre-edit Checklist](.kimi-code/rules/pre-edit-checklist.md) — pre-edit checks
+Перед любым изменением кода прочитай:
+1. `PROJECT_CONTEXT.md` — стек, статус фич, блокеры, инвентарь API
+2. `.agent/BACKLOG.md` — текущий спринт
+3. `.agent/BLOCKERS.md` — активные блокеры
+4. `.agent/SESSION_LOG.md` — недавние сессии
+5. Соответствующий `<role>` skill в `.kimi-code/skills/<role>/SKILL.md` — инструкции роли
+6. [Rule: Agent Commons](../../rules/agent-commons.md) — язык, retry policy, обработка контекста
+7. [Rule: Pre-edit Checklist](../../rules/pre-edit-checklist.md) — проверки перед редактированием
 
 ---
 
-## 4. Context Size Check (Kimi K2.7-Code)
+## 4. Проверка размера контекста (Kimi K2.7-Code)
 
-Before launching subagents, estimate task context size:
+Перед запуском субагентов оцени размер контекста задачи:
 
 ```bash
 python scripts/implement-pipeline.py check-context <task-id>
 ```
 
-- If `ESTIMATED_TOKENS` >= 150000, read `.agent/runs/<task-id>/CONTEXT_SUMMARY.md` instead of full history.
-- Log the estimated token count in `.agent/SESSION_LOG.md`.
+- Если `ESTIMATED_TOKENS` >= 150000, читай `.agent/runs/<task-id>/CONTEXT_SUMMARY.md` вместо полной истории.
+- Логируй оценочное количество токенов в `.agent/SESSION_LOG.md`.
 
-Kimi K2.7-Code has a 256K context window with mandatory thinking mode. Staying below 150K leaves room for `reasoning_content`, tool outputs, and system instructions.
-
----
-
-## 5. Retry Policy
-
-When using `Agent` or `AgentSwarm`:
-- Retry up to 3 times on transient errors (502, 504, timeout).
-- Use exponential backoff: 2s, 4s, 8s.
-- Preserve `reasoning_content` across multi-turn tool calls.
-- Stop and report if all attempts fail.
+Kimi K2.7-Code имеет контекстное окно 256K с обязательным thinking mode. Удержание ниже 150K оставляет место для `reasoning_content`, выводов инструментов и системных инструкций.
 
 ---
 
-## 6. Post-Work Updates
+## 5. Политика повторных попыток (Retry Policy)
 
-After finishing:
-1. Update `.agent/SESSION_LOG.md`
-2. Update `.agent/BACKLOG.md` if the task is from the sprint
-3. Update `PROJECT_CONTEXT.md` if architecture changed
-
----
-
-## 7. Workflow Skills
-
-For complex multi-step processes use the dedicated skill:
-
-| Command | Use for |
-|---------|---------|
-| `/skill:implement` | New feature: architect → dev → review → QA → e2e |
-| `/skill:fix` | Bug: analyze → reproduce → fix → test |
-| `/skill:review` | Code review current changes |
-| `/skill:qa-gate` | Re-run QA for an existing task |
-| `/skill:context-sync` | Update PROJECT_CONTEXT.md, BACKLOG.md, BLOCKERS.md |
-| `/skill:plan-maintainer` | Operational backlog operations |
-| `/skill:spec` | Standalone technical specification |
-| `/skill:ship` | Open PR for a finished feature branch |
+При использовании `Agent` или `AgentSwarm`:
+- Повторять до 3 раз при временных ошибках (502, 504, timeout).
+- Использовать экспоненциальную задержку: 2s, 4s, 8s.
+- Сохранять `reasoning_content` между multi-turn tool calls.
+- Остановиться и сообщить, если все попытки неудачны.
 
 ---
 
-## 8. Hard Rules
+## 6. Обновления после работы
 
-- **NEVER** continue the previous role.
-- **NEVER** mix roles in one task.
-- **NEVER** create a DB model without a migration.
-- **NEVER** write an endpoint without tests.
-- **NEVER** commit without explicit user approval.
-- **ALWAYS** use trailing slash in FastAPI endpoints (`/items/`, not `/items`).
-- **ALWAYS** run tests before reporting done.
+После завершения:
+1. Обновить `.agent/SESSION_LOG.md`
+2. Обновить `.agent/BACKLOG.md`, если задача из спринта
+3. Обновить `PROJECT_CONTEXT.md`, если изменилась архитектура
+
+---
+
+## 7. Workflow-навыки
+
+Для сложных многошаговых процессов используй dedicated skill:
+
+| Команда | Для чего |
+|---------|----------|
+| `/skill:implement` | Новая фича: architect → dev → review → QA → e2e |
+| `/skill:fix` | Баг: analyze → reproduce → fix → test |
+| `/skill:review` | Code review текущих изменений |
+| `/skill:qa-gate` | Перезапуск QA для существующей задачи |
+| `/skill:context-sync` | Обновить PROJECT_CONTEXT.md, BACKLOG.md, BLOCKERS.md |
+| `/skill:plan-maintainer` | Операции с бэклогом |
+| `/skill:spec` | Автономная техническая спецификация |
+| `/skill:ship` | Открыть PR для готовой feature-ветки |
+
+---
+
+## 8. Жёсткие правила
+
+- **NEVER** продолжать предыдущую роль.
+- **NEVER** смешивать роли в одной задаче.
+- **NEVER** создавать DB model без миграции.
+- **NEVER** писать endpoint без тестов.
+- **NEVER** коммитить без явного одобрения пользователя.
+- **ALWAYS** использовать trailing slash в FastAPI endpoints (`/items/`, not `/items`).
+- **ALWAYS** запускать тесты перед отчётом о завершении.
+- **ALWAYS** привязывать GitHub Issue перед началом разработки в `/skill:implement`.
+- **ALWAYS** обновлять статус GitHub Project board на границах фаз: spec approved → In progress, PR open → In review, merged → Done.
+- **NEVER** создавать дублирующие GitHub Issues для одного и того же `task-id`; переиспользуй существующий `github_issue` из `task.md`.

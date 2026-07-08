@@ -9,42 +9,42 @@ whenToUse: When the user explicitly asks to deploy, release, rollout, or deploy 
 arguments: "<test|prod>"
 ---
 
-# /skill:deploy — Deploy to Kubernetes
+# /skill:deploy — Деплой в Kubernetes
 
-Deploy via GitHub Actions. No local `kubectl` required for normal deploys — the emergency rollback path below is the exception and needs `kubectl`/`helm`.
+Деплой через GitHub Actions. Для обычных деплоев не нужен локальный `kubectl` — emergency rollback ниже является исключением и требует `kubectl`/`helm`.
 
-## Language
+## Язык
 
-Follow [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule / Языковое правило.
-Kimi K2.7-Code runs in mandatory thinking mode; `reasoning_content` must be preserved across multi-turn tool calls.
-User-facing answers, reports, and artifacts must match the user's language.
+Следуй [Rule: Agent Commons](../../rules/agent-commons.md) > Language Rule / Языковое правило.
+Kimi K2.7-Code работает в обязательном thinking mode; `reasoning_content` должен сохраняться между multi-turn tool calls.
+Пользовательские ответы, отчёты и артефакты должны соответствовать языку пользователя.
 
 ---
 
-## Required context
+## Обязательный контекст
 
-Before any deploy, read:
+Перед любым деплоем прочитай:
 1. `PROJECT_CONTEXT.md`
 2. `.agent/BACKLOG.md`
 3. `.agent/BLOCKERS.md`
 4. `.agent/SESSION_LOG.md`
-5. [Rule: Agent Commons](.kimi-code/rules/agent-commons.md)
-6. [Rule: Security](.kimi-code/rules/security.md)
+5. [Rule: Agent Commons](../../rules/agent-commons.md)
+6. [Rule: Security](../../rules/security.md)
 
 ---
 
-## Pre-flight
+## Предполётная проверка
 
 ```bash
 git log -1 --oneline
 git status --short
 ```
 
-If there are uncommitted changes, warn the user and ask whether to commit first.
+Если есть незакоммиченные изменения — предупреди пользователя и спроси, нужно ли сначала закоммитить.
 
 ---
 
-## Trigger Deployment
+## Запуск деплоя
 
 ### Test / Staging
 
@@ -52,18 +52,18 @@ If there are uncommitted changes, warn the user and ask whether to commit first.
 gh workflow run deploy.yml -f environment=test
 ```
 
-Then watch:
+Затем наблюдай:
 ```bash
 gh run list --workflow=deploy.yml --limit=3
 gh run watch
 ```
 
-### Production
+### Продакшн
 
-Ask for explicit confirmation:
-> "Deploy to production? (yes/no)"
+Запроси явное подтверждение:
+> "Задеплоить в production? (yes/no)"
 
-Only after `yes`:
+Только после `yes`:
 ```bash
 gh workflow run deploy.yml -f environment=prod
 gh run watch
@@ -73,58 +73,58 @@ gh run watch
 
 ## Post-deploy: E2E Smoke Test
 
-After successful deploy:
+После успешного деплоя:
 ```bash
 gh workflow run e2e.yml -f environment=<test|prod>
 gh run watch
 ```
 
-Smoke scenarios:
-1. Homepage loads
-2. Catalog visible
-3. Login works
-4. Cart add works
-5. Checkout works (up to payment)
+Smoke-сценарии:
+1. Главная загружается
+2. Каталог виден
+3. Логин работает
+4. Добавление в корзину работает
+5. Checkout работает (до оплаты)
 
-If E2E fails, report and suggest rollback.
+Если E2E падает — отчитайся и предложи rollback.
 
 ---
 
-## Rollback (emergency)
+## Аварийный откат
 
-Only for critical issues. Requires kubectl:
+Только для критических проблем. Требуется kubectl:
 ```bash
 export KUBECONFIG=~/.kube/config
 helm rollback promelectron -n promelectron
 ```
 
-Warn the user before rolling back.
+Предупреди пользователя перед rollback.
 
 ---
 
-## Report
+## Отчёт
 
-Update `.agent/SESSION_LOG.md`:
+Обнови `.agent/SESSION_LOG.md`:
 ```markdown
-## <YYYY-MM-DD> — Deploy to <environment>
+## <YYYY-MM-DD> — Деплой в <environment>
 - Commit: <hash>
 - Status: <success|failed>
 - E2E: <passed|failed>
 ```
 
-Report to the user:
-- Environment
+Сообщи пользователю:
+- Окружение
 - Commit hash
 - GitHub Actions run URL
-- E2E result
+- Результат E2E
 
 ---
 
-## Rules
+## Правила
 
-- NEVER deploy to prod without confirmation.
-- Check `git status` before deploy.
-- Always run E2E smoke after deploy.
-- Test → prod, never the reverse.
-- Migration runs automatically as a Helm pre-install/pre-upgrade hook.
-- Image tag = git SHA; never `:latest` in deployments.
+- NEVER деплоить в prod без подтверждения.
+- Проверять `git status` перед деплоем.
+- Всегда запускать E2E smoke после деплоя.
+- Test → prod, никогда наоборот.
+- Миграция запускается автоматически как Helm pre-install/pre-upgrade hook.
+- Image tag = git SHA; никогда `:latest` в деплоях.

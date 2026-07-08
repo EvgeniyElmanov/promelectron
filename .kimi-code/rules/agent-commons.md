@@ -1,7 +1,7 @@
-# Agent Commons for Promelectron Workflow Skills
+# Agent Commons для workflow-навыков Promelectron
 
-Shared rules for all workflow skills (`implement`, `fix`, `review`, `deploy`, `context-sync`, `plan-maintainer`).
-Load this reference in subagents when needed instead of duplicating the full text in every `SKILL.md`.
+Общие правила для всех workflow-навыков (`implement`, `fix`, `review`, `deploy`, `context-sync`, `plan-maintainer`).
+Загружай эту reference в субагентах при необходимости вместо дублирования полного текста в каждом `SKILL.md`.
 
 ---
 
@@ -34,34 +34,34 @@ Load this reference in subagents when needed instead of duplicating the full tex
 
 ---
 
-## Retry Policy
+## Политика повторных попыток (Retry Policy)
 
-When using `Agent` or `AgentSwarm`:
+При использовании `Agent` или `AgentSwarm`:
 
-- Retry up to 3 times on transient errors (502, 504, timeout).
-- Use exponential backoff: 2s, 4s, 8s.
-- Preserve `reasoning_content` across multi-turn tool calls.
-- Stop and report to the user if all attempts fail.
+- Повторять до 3 раз при временных ошибках (502, 504, timeout).
+- Использовать экспоненциальную задержку: 2s, 4s, 8s.
+- Сохранять `reasoning_content` между multi-turn tool calls.
+- Остановиться и сообщить пользователю, если все попытки неудачны.
 
 ---
 
-## Model & API constraints (Kimi K2.7-Code)
+## Ограничения модели и API (Kimi K2.7-Code)
 
-The pipeline targets the **Kimi K2.7-Code** model. Fixed API parameters (any other
-value errors out): `thinking={"type":"enabled"}` (mandatory, cannot be disabled),
+Pipeline ориентирован на модель **Kimi K2.7-Code**. Фиксированные параметры API (любое другое
+значение вызовет ошибку): `thinking={"type":"enabled"}` (обязательно, нельзя отключить),
 `temperature=1.0`, `top_p=0.95`, `n=1`, `presence_penalty=0.0`,
-`frequency_penalty=0.0`; `tool_choice` may only be `"auto"` or `"none"`. You **must**
-preserve `reasoning_content` from the assistant message across multi-step tool calls.
+`frequency_penalty=0.0`; `tool_choice` может быть только `"auto"` или `"none"`. **Необходимо**
+сохранять `reasoning_content` из ассистентских сообщений между multi-step tool calls.
 
-## Context Size Check (Kimi K2.7-Code)
+## Проверка размера контекста (Kimi K2.7-Code)
 
-Before launching subagents, estimate task context size:
+Перед запуском субагентов оцени размер контекста задачи:
 
 ```bash
 python scripts/implement-pipeline.py check-context <task-id>
 ```
 
-- If `ESTIMATED_TOKENS` >= 150000, read `.agent/runs/<task-id>/CONTEXT_SUMMARY.md` instead of the full history.
-- Log the estimated token count in `.agent/SESSION_LOG.md`.
+- Если `ESTIMATED_TOKENS` >= 150000, читай `.agent/runs/<task-id>/CONTEXT_SUMMARY.md` вместо полной истории.
+- Логируй оценочное количество токенов в `.agent/SESSION_LOG.md`.
 
-Kimi K2.7-Code has a 256K context window with mandatory thinking mode. The conservative 150K threshold leaves ~100K for system prompt, reasoning_content, tool outputs, and response generation; the old 180K threshold was too tight for long Russian tool outputs.
+Kimi K2.7-Code имеет контекстное окно 256K с обязательным thinking mode. Консервативный порог 150K оставляет ~100K для system prompt, reasoning_content, выводов инструментов и генерации ответа; старый порог 180K был слишком жёстким для длинных русскоязычных выводов инструментов.

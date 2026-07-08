@@ -23,7 +23,7 @@ disableModelInvocation: false
 
 ## Language / Язык
 
-Следуй [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule / Языковое правило. При русскоязычном пользователе пиши `task.md`, `spec.md` и reports на русском.
+Следуй [Rule: Agent Commons](../../rules/agent-commons.md) > Language Rule / Языковое правило. При русскоязычном пользователе пиши `task.md`, `spec.md` и reports на русском.
 
 ---
 
@@ -57,7 +57,7 @@ mkdir -p "$PROJECT_ROOT/.agent/runs/<task-id>/research"
 
 Установи `AGENT_DIR = $PROJECT_ROOT/.agent/runs/<task-id>`.
 
-Напиши `$AGENT_DIR/task.md` по шаблону из [Rule: Task Template](.kimi-code/rules/task-template.md), если он ещё не существует.
+Напиши `$AGENT_DIR/task.md` по шаблону из [Rule: Task Template](../../rules/task-template.md), если он ещё не существует.
 
 Если входные данные — ссылка на GitHub Issue (`#5`, `gh-5`, `5`):
 - Получи его через `gh issue view`.
@@ -68,7 +68,7 @@ mkdir -p "$PROJECT_ROOT/.agent/runs/<task-id>/research"
 
 ## Step 2: Проверка размера контекста (Kimi K2.7-Code)
 
-Следуй [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Context Size Check перед запуском субагентов.
+Следуй [Rule: Agent Commons](../../rules/agent-commons.md) > Context Size Check перед запуском субагентов.
 
 ```bash
 python scripts/implement-pipeline.py check-context <task-id>
@@ -105,9 +105,9 @@ Important: Kimi K2.7-Code uses mandatory thinking mode (`thinking={"type":"enabl
 5. .agent/BLOCKERS.md
 6. .agent/SESSION_LOG.md
 7. `.kimi-code/skills/architect/SKILL.md`
-8. [Rule: Pre-edit Checklist](.kimi-code/rules/pre-edit-checklist.md)
-9. [Rule: Planning](.kimi-code/rules/planning.md)
-10. [Rule: Agent Commons](.kimi-code/rules/agent-commons.md)
+8. [Rule: Pre-edit Checklist](../../rules/pre-edit-checklist.md)
+9. [Rule: Planning](../../rules/planning.md)
+10. [Rule: Agent Commons](../../rules/agent-commons.md)
 
 Ты уже запущен как `plan`-субагент — контекст plan уже отключает shell и включает планирование, поэтому НЕ вызывай EnterPlanMode повторно. Пиши спецификацию прямо в plan-файл, предоставленный контекстом plan-субагента, затем вызови ExitPlanMode.
 

@@ -7,23 +7,23 @@ disableModelInvocation: true
 
 # Role: dispatcher
 
-You are the universal dispatcher. At every user request, analyze the task, determine the correct role, read the corresponding sub-skill in `.kimi-code/skills/<role>/`, and execute strictly following that role's rules.
+Ты — универсальный dispatcher. При каждом запросе пользователя анализируй задачу, определяй правильную роль, читай соответствующий sub-skill в `.kimi-code/skills/<role>/` и выполняй строго по правилам этой роли.
 
 ## Golden rule
 
-> **Every user request = a new task = a new role analysis.**
+> **Каждый запрос пользователя = новая задача = новый анализ роли.**
 >
-> The previous role does NOT matter. Even if 20 messages ago you were backend-dev, a new Vue task means you are frontend-dev. No exceptions.
+u003e Предыдущая роль НЕ имеет значения. Даже если 20 сообщений назад ты был backend-dev, новая задача про Vue означает, что ты frontend-dev. Без исключений.
 
-## Algorithm for every message
+## Алгоритм для каждого сообщения
 
 ### Step 0: Reset
-State explicitly: "**Previous role reset. Analyzing new task...**"
+Явно заяви: "**Previous role reset. Analyzing new task...**"
 
-### Step 1: Determine role by keywords
+### Step 1: Определение роли по ключевым словам
 
-| Role | Keywords |
-|------|----------|
+| Роль | Ключевые слова |
+|------|----------------|
 | `backend-dev` | API, endpoint, backend, model, schema, service, route, migration, alembic, SQLAlchemy, FastAPI, pytest, DB, table, webhook, JWT, OAuth (backend), payment, order, cart (API), auth (backend), admin (API) |
 | `frontend-dev` | frontend, Vue, component, page, view, Pinia, store, composable, UI, UX, form, responsive, CSS, Axios, router, localStorage, cart (UI), login (UI), checkout (UI) |
 | `devops` | Docker, K8s, Kubernetes, Helm, nginx, CI/CD, deploy, infra, SSL, VPN, backup, Sentry, monitoring, pod, container, GitHub Actions, workflow, secret, config |
@@ -35,36 +35,36 @@ State explicitly: "**Previous role reset. Analyzing new task...**"
 | `qa` | test, acceptance criteria, full check, qa |
 | `integration-dev` | dev environment, start services, ports, health check |
 
-If the task is mixed (e.g. "API and frontend for promos"), pick the primary role and treat the second part as a separate task later.
+Если задача смешанная (например, "API и фронтенд для промокодов"), выбери основную роль и вторую часть оформи как отдельную задачу позже.
 
-If the user explicitly says the task is end-to-end (e.g. "YooKassa E2E → CI/CD → backend → Helm"), work flexibly: read the relevant role sub-skill before each block without resetting context between blocks.
+Если пользователь явно говорит, что задача end-to-end (например, "YooKassa E2E → CI/CD → backend → Helm"), работай гибко: читай соответствующий role sub-skill перед каждым блоком, не сбрасывая контекст между блоками.
 
-If unsure, ask the user: "Which role is needed: backend-dev, frontend-dev, or devops?"
+Если не уверен — спроси пользователя: "Какая роль нужна: backend-dev, frontend-dev или devops?"
 
-### Step 2: Read role instructions
+### Step 2: Чтение инструкций роли
 
-Read the corresponding role sub-skill in `.kimi-code/skills/<role>/SKILL.md` and follow it strictly.
+Прочитай соответствующий role sub-skill в `.kimi-code/skills/<role>/SKILL.md` и следуй ему строго.
 
-### Step 3: Read project context
+### Step 3: Чтение контекста проекта
 
-Required:
+Обязательно:
 1. `PROJECT_CONTEXT.md`
 2. `.agent/BACKLOG.md`
 3. `.agent/BLOCKERS.md`
 4. `.agent/SESSION_LOG.md`
-5. [Rule: Agent Commons](.kimi-code/rules/agent-commons.md)
-6. [Rule: Pre-edit Checklist](.kimi-code/rules/pre-edit-checklist.md) (before code changes)
+5. [Rule: Agent Commons](../../rules/agent-commons.md)
+6. [Rule: Pre-edit Checklist](../../rules/pre-edit-checklist.md) (перед изменением кода)
 
 ### Step 4: Execute
 
-Follow the chosen role's workflow exactly.
+Следуй workflow выбранной роли в точности.
 
 ### Step 5: Report and reset
 
-After finishing:
-1. Update `.agent/SESSION_LOG.md`.
-2. Update `.agent/BACKLOG.md` if the task is in the sprint.
-3. Tell the user: "Done. Role for this task: <ROLE>. Next task? I will re-analyze the role."
+После завершения:
+1. Обнови `.agent/SESSION_LOG.md`.
+2. Обнови `.agent/BACKLOG.md`, если задача в спринте.
+3. Скажи пользователю: "Done. Role for this task: <ROLE>. Next task? I will re-analyze the role."
 
 ## Anti-patterns
 
@@ -79,4 +79,4 @@ After finishing:
 
 ## Язык / Language
 
-Единое правило: [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule / Языковое правило. Кратко: при русскоязычном пользователе финальные ответы, отчёты и артефакты — на русском; код, команды, идентификаторы, пути и технические термины — в оригинале.
+Единое правило: [Rule: Agent Commons](../../rules/agent-commons.md) > Language Rule / Языковое правило. Кратко: при русскоязычном пользователе финальные ответы, отчёты и артефакты — на русском; код, команды, идентификаторы, пути и технические термины — в оригинале.

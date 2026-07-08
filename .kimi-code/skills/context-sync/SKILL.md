@@ -20,7 +20,7 @@ disableModelInvocation: false
 
 ## Language / Язык
 
-Следуй [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule / Языковое правило. При русскоязычном пользователе пиши reports и обновления контекста на русском.
+Следуй [Rule: Agent Commons](../../rules/agent-commons.md) > Language Rule / Языковое правило. При русскоязычном пользователе пиши reports и обновления контекста на русском.
 
 ---
 
@@ -48,7 +48,7 @@ disableModelInvocation: false
 
 ## Step 2: Проверка размера контекста активных задач (Kimi K2.7-Code)
 
-Для каждой активной директории задачи в `.agent/runs/<task-id>/` следуй [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Context Size Check.
+Для каждой активной директории задачи в `.agent/runs/<task-id>/` следуй [Rule: Agent Commons](../../rules/agent-commons.md) > Context Size Check.
 
 ```bash
 for d in .agent/runs/*/; do
@@ -111,7 +111,7 @@ make pre-push 2>&1 | tail -40
 # Alembic: проверка консистентности модели и БД (read-only)
 cd backend && alembic check 2>&1 || echo "Alembic drift detected"
 
-# Lint
+# Линт
 make lint-backend 2>&1 | tail -10
 ```
 

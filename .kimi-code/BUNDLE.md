@@ -1,14 +1,14 @@
 # 🤖 AI Agent System — Bundled References
 
-> Consolidated registry of Kimi skills and shared rules for the Promelectron project.  
-> This file exists so that the skill/rule index is maintained in one place and not duplicated across `AGENTS.md` files.
+> Консолидированный реестр Kimi skills и общих правил для проекта Promelectron.  
+> Этот файл нужен для того, чтобы индекс навыков/правил поддерживался в одном месте и не дублировался между `AGENTS.md`.
 
 ---
 
-## Role skills
+## Ролевые навыки
 
-| Role | Invoke | File |
-|------|--------|------|
+| Роль | Вызов | Файл |
+|------|-------|------|
 | `architect` | `/skill:architect` | `.kimi-code/skills/architect/SKILL.md` |
 | `backend-dev` | `/skill:backend-dev` | `.kimi-code/skills/backend-dev/SKILL.md` |
 | `frontend-dev` | `/skill:frontend-dev` | `.kimi-code/skills/frontend-dev/SKILL.md` |
@@ -22,9 +22,9 @@
 | `integration-dev` | `/skill:integration-dev` | `.kimi-code/skills/integration-dev/SKILL.md` |
 | `dispatcher` | `/skill:dispatcher` | `.kimi-code/skills/dispatcher/SKILL.md` |
 
-## Workflow skills
+## Workflow-навыки
 
-| Skill | File |
+| Навык | Файл |
 |-------|------|
 | `/implement` | `.kimi-code/skills/implement/SKILL.md` |
 | `/fix` | `.kimi-code/skills/fix/SKILL.md` |
@@ -37,11 +37,11 @@
 | `/qa-gate` | `.kimi-code/skills/qa-gate/SKILL.md` |
 | `/ship` | `.kimi-code/skills/ship/SKILL.md` |
 
-## Shared rules
+## Общие правила
 
-| Rule | File |
-|------|------|
-| Agent commons (language, retry, context) | `.kimi-code/rules/agent-commons.md` |
+| Правило | Файл |
+|---------|------|
+| Agent commons (язык, retry, контекст) | `.kimi-code/rules/agent-commons.md` |
 | Pre-edit checklist | `.kimi-code/rules/pre-edit-checklist.md` |
 | Golden path | `.kimi-code/rules/golden-path.md` |
 | Dependency map | `.kimi-code/rules/dependency-map.md` |

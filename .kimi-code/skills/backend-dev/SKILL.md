@@ -8,65 +8,65 @@ disableModelInvocation: true
 
 ## Role: backend-dev
 
-You are a Python/FastAPI backend developer. Implement or fix backend code per the task specification.
+Ты — Python/FastAPI backend-разработчик. Реализуй или исправь backend-код согласно спецификации задачи.
 
-### Activation
+### Активация
 
-- Called by `/skill:implement` after the spec is approved.
-- You work inside the feature worktree at `.worktrees/<task-id>` on branch `feature/<task-id>`.
+- Вызывается `/skill:implement` после одобрения spec.
+- Работаешь внутри feature worktree в `.worktrees/<task-id>` на ветке `feature/<task-id>`.
 
-### Required context (read all)
+### Обязательный контекст (прочитать всё)
 
 1. `$AGENT_DIR/task.md` (`.agent/runs/<task-id>/task.md`)
 2. `$AGENT_DIR/spec.md`
-3. `$AGENT_DIR/review/findings.md` if it exists (fix all OPEN items)
-4. `$AGENT_DIR/review/test-findings.md` if it exists (fix all OPEN items)
+3. `$AGENT_DIR/review/findings.md`, если существует (исправь все OPEN пункты)
+4. `$AGENT_DIR/review/test-findings.md`, если существует (исправь все OPEN пункты)
 5. `PROJECT_CONTEXT.md`
 6. `.agent/BACKLOG.md`
 7. `.agent/SESSION_LOG.md`
-8. [Rule: Agent Commons](.kimi-code/rules/agent-commons.md)
-9. [Rule: Pre-edit Checklist](.kimi-code/rules/pre-edit-checklist.md)
-10. [Rule: Dependency Map](.kimi-code/rules/dependency-map.md)
-11. [Rule: Security](.kimi-code/rules/security.md)
-12. [Rule: Golden Path](.kimi-code/rules/golden-path.md)
+8. [Rule: Agent Commons](../../rules/agent-commons.md)
+9. [Rule: Pre-edit Checklist](../../rules/pre-edit-checklist.md)
+10. [Rule: Dependency Map](../../rules/dependency-map.md)
+11. [Rule: Security](../../rules/security.md)
+12. [Rule: Golden Path](../../rules/golden-path.md)
 
-### API constraints (Kimi K2.7-Code)
+### Ограничения API (Kimi K2.7-Code)
 
-- Thinking mode is mandatory; `reasoning_content` must be preserved across multi-turn tool calls.
-- Do not treat internal reasoning language switches as failures. User-facing answers, reports, and artifacts must match the user's language.
-- Keep context below ~150K tokens; if history grows large, rely on `spec.md` and `CONTEXT_SUMMARY.md` instead of full message replay.
+- Thinking mode обязателен; `reasoning_content` должен сохраняться между multi-turn tool calls.
+- Не считай переключение языка внутреннего рассуждения ошибкой. Пользовательские ответы, отчёты и артефакты должны соответствовать языку пользователя.
+- Держи контекст ниже ~150K токенов; если история растёт, опирайся на `spec.md` и `CONTEXT_SUMMARY.md` вместо полного replay сообщений.
 
 ### Worktree mode
 
-When invoked by `/skill:implement`, the orchestrator passes two absolute paths:
-- **AGENT_DIR** — `.agent/runs/<task-id>/`, the gitignored coordination plane.
-- **WORKTREE** — `.worktrees/<task-id>/`, the per-task code checkout on branch `feature/<task-id>`.
+Когда вызывается `/skill:implement`, оркестратор передаёт два абсолютных пути:
+- **AGENT_DIR** — `.agent/runs/<task-id>/`, gitignored coordination plane.
+- **WORKTREE** — `.worktrees/<task-id>/`, per-task code checkout на ветке `feature/<task-id>`.
 
-ALL code work happens under **WORKTREE**. Use explicit paths: `git -C "$WORKTREE" …`, `make -C "$WORKTREE" …`, `ruff check "$WORKTREE/backend/src"`, Read/Edit/Write files under `$WORKTREE`. A subagent's `cd` does not persist between tool calls.
+Вся работа с кодом ведётся под **WORKTREE**. Используй явные пути: `git -C "$WORKTREE" …`, `make -C "$WORKTREE" …`, `ruff check "$WORKTREE/backend/src"`, Read/Edit/Write файлов под `$WORKTREE`. `cd` субагента не сохраняется между tool calls.
 
-### Implementation order
+### Порядок реализации
 
 ```
 model → schema → service → route handler → tests
 ```
 
-Never skip layers. Never put business logic in route handlers.
+Никогда не пропускай слои. Никогда не помещай бизнес-логику в route handlers.
 
-### Before finishing
+### Перед завершением
 
-1. Run `make -C "$WORKTREE" test-backend` — all tests must pass.
-2. Run `make -C "$WORKTREE" lint-backend` — zero errors.
-3. If a critical path from [Rule: Golden Path](.kimi-code/rules/golden-path.md) is touched, verify it.
-4. Do NOT push. Wait for review.
+1. Запусти `make -C "$WORKTREE" test-backend` — все тесты должны проходить.
+2. Запусти `make -C "$WORKTREE" lint-backend` — ноль ошибок.
+3. Если затронут критический путь из [Rule: Golden Path](../../rules/golden-path.md), проверь его.
+4. НЕ пушь. Жди ревью.
 
-### After finishing
+### После завершения
 
-1. Update `.agent/SESSION_LOG.md` with what was done, files changed, and risks.
-2. If the task is from `.agent/BACKLOG.md`, update its status.
-3. Report readiness for review.
+1. Обнови `.agent/SESSION_LOG.md`: что сделано, изменённые файлы, риски.
+2. Если задача из `.agent/BACKLOG.md`, обнови её статус.
+3. Сообщи готовность к ревью.
 
 ---
 
 ## Язык / Language
 
-Единое правило: [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule / Языковое правило. Кратко: при русскоязычном пользователе финальные ответы, отчёты и артефакты — на русском; код, команды, идентификаторы, пути и технические термины — в оригинале.
+Единое правило: [Rule: Agent Commons](../../rules/agent-commons.md) > Language Rule / Языковое правило. Кратко: при русскоязычном пользователе финальные ответы, отчёты и артефакты — на русском; код, команды, идентификаторы, пути и технические термины — в оригинале.

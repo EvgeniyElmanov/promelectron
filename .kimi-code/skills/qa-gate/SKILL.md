@@ -23,7 +23,7 @@ disableModelInvocation: false
 
 ## Language / Язык
 
-Следуй [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule / Языковое правило. При русскоязычном пользователе пиши reports и findings на русском.
+Следуй [Rule: Agent Commons](../../rules/agent-commons.md) > Language Rule / Языковое правило. При русскоязычном пользователе пиши reports и findings на русском.
 
 ---
 
@@ -55,7 +55,7 @@ mkdir -p "$AGENT_DIR/review"
 
 ## Step 2: Проверка размера контекста (Kimi K2.7-Code)
 
-Следуй [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Context Size Check перед запуском субагентов.
+Следуй [Rule: Agent Commons](../../rules/agent-commons.md) > Context Size Check перед запуском субагентов.
 
 ```bash
 python scripts/implement-pipeline.py check-context <task-id>
@@ -87,8 +87,8 @@ Paths:
 5. .agent/BACKLOG.md
 6. .agent/BLOCKERS.md
 7. `.kimi-code/skills/qa/SKILL.md`
-8. [Rule: Golden Path](.kimi-code/rules/golden-path.md)
-9. [Rule: Agent Commons](.kimi-code/rules/agent-commons.md)
+8. [Rule: Golden Path](../../rules/golden-path.md)
+9. [Rule: Agent Commons](../../rules/agent-commons.md)
 
 Затем:
 1. Запусти backend-тесты в $WORKTREE: make -C "$WORKTREE" test-backend
@@ -108,21 +108,21 @@ Do NOT edit source code.
 
 ---
 
-## Step 4: Report
+## Step 4: Отчёт
 
-Read `$AGENT_DIR/review/test-findings.md` and report to the user:
+Прочитай `$AGENT_DIR/review/test-findings.md` и отчитайся пользователю:
 - Status: `TESTS_PASSED` or `TESTS_FAILED`
 - Backend / frontend / E2E counts
 - Open F-findings and H-findings
-- Path to the report file
+- Путь к report-файлу
 
-If `TESTS_FAILED`, suggest invoking `/skill:implement <task-id>` or the relevant developer role to fix and re-run `/skill:qa-gate <task-id>`.
+Если `TESTS_FAILED`, предложи вызвать `/skill:implement <task-id>` или соответствующую роль разработчика для исправления, затем повторно `/skill:qa-gate <task-id>`.
 
 ---
 
-## Rules
+## Правила
 
-- The QA agent never edits source code — only writes findings.
+- QA-агент никогда не редактирует исходный код — только пишет findings.
 - Do not move the GitHub Project board.
 - Keep all reads/writes under `.agent/runs/<task-id>/` and `.worktrees/<task-id>/`.
 - Always update `$PROJECT_ROOT/.agent/SESSION_LOG.md` after the QA gate.

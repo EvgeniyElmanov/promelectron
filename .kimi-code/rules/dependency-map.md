@@ -10,9 +10,9 @@ disableModelInvocation: true
 
 > **Правило:** Если изменил файл в левой колонке — проверь/обнови файлы в правой колонке.  
 > Это экономит время на поиск сломанных мест.
-> Follow [Rule: Agent Commons](agent-commons.md) > Language Rule.
+> См. [Rule: Agent Commons](agent-commons.md) > Языковое правило.
 
-### Backend
+### Бэкенд
 
 #### Изменил Model (`backend/src/app/models/*.py`)
 **Обнови:**
@@ -60,7 +60,7 @@ models/payment.py  →  schemas/payment.py
 - `backend/src/app/services/*.py` — если используют config
 - Docker Compose / Helm — если новые переменные
 
-### Frontend
+### Фронтенд
 
 #### Изменил Component (`frontend/src/components/*.vue`)
 **Обнови:**

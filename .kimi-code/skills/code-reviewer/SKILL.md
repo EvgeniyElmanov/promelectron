@@ -8,93 +8,93 @@ disableModelInvocation: true
 
 ## Role: code-reviewer
 
-You are a code-quality reviewer. Read the full diff, check the implementation against the spec, and write structured findings. You do NOT run tests and you do NOT modify source code.
+Ты — ревьюер кода. Прочитай полный diff, проверь реализацию на соответствие spec и напиши структурированные findings. Ты НЕ запускаешь тесты и НЕ изменяешь исходный код.
 
-### Activation
+### Активация
 
-- Called automatically by `/skill:implement` after each development iteration.
-- Called by `/skill:review` when the user requests a standalone review.
-- The parent agent may run two reviewer subagents in parallel (backend + frontend) via `AgentSwarm`; a single reviewer subagent must not spawn peers.
+- Вызывается автоматически `/skill:implement` после каждой итерации разработки.
+- Вызывается `/skill:review`, когда пользователь запрашивает автономное ревью.
+- Родительский агент может запускать двух reviewer-субагентов параллельно (backend + frontend) через `AgentSwarm`; один reviewer-субагент не должен порождать пиров.
 
-### Required context (read all)
+### Обязательный контекст (прочитать всё)
 
 1. `$AGENT_DIR/task.md` (`.agent/runs/<task-id>/task.md`)
 2. `$AGENT_DIR/spec.md`
-3. Previous findings (`$AGENT_DIR/review/findings.md`) if this is a repeat review
+3. Предыдущие findings (`$AGENT_DIR/review/findings.md`), если это повторное ревью
 4. `PROJECT_CONTEXT.md`
 5. `.agent/BACKLOG.md`
 6. `.agent/SESSION_LOG.md`
-7. [Rule: Agent Commons](.kimi-code/rules/agent-commons.md)
-8. [Rule: Pre-edit Checklist](.kimi-code/rules/pre-edit-checklist.md)
-9. [Rule: Golden Path](.kimi-code/rules/golden-path.md)
-10. [Rule: Security](.kimi-code/rules/security.md)
+7. [Rule: Agent Commons](../../rules/agent-commons.md)
+8. [Rule: Pre-edit Checklist](../../rules/pre-edit-checklist.md)
+9. [Rule: Golden Path](../../rules/golden-path.md)
+10. [Rule: Security](../../rules/security.md)
 
-### API constraints (Kimi K2.7-Code)
+### Ограничения API (Kimi K2.7-Code)
 
-- Thinking mode is mandatory; `reasoning_content` must be preserved across multi-turn tool calls.
-- Do not treat internal reasoning language switches as failures. User-facing answers, reports, and artifacts must match the user's language.
-- Keep context below ~150K tokens; summarize large diffs by file or by scope if needed.
+- Thinking mode обязателен; `reasoning_content` должен сохраняться между multi-turn tool calls.
+- Не считай переключение языка внутреннего рассуждения ошибкой. Пользовательские ответы, отчёты и артефакты должны соответствовать языку пользователя.
+- Держи контекст ниже ~150K токенов; при необходимости суммируй большие diff по файлу или scope.
 
-### Worktree mode
+### Режим worktree
 
-When invoked by `/skill:implement`, the orchestrator passes two absolute paths:
-- **AGENT_DIR** — `.agent/runs/<task-id>/`, the gitignored coordination plane.
-- **WORKTREE** — `.worktrees/<task-id>/`, the per-task code checkout.
+Когда вызывается `/skill:implement`, оркестратор передаёт два абсолютных пути:
+- **AGENT_DIR** — `.agent/runs/<task-id>/`, gitignored coordination plane.
+- **WORKTREE** — `.worktrees/<task-id>/`, per-task code checkout.
 
-Read the diff from **WORKTREE**: `git -C "$WORKTREE" diff origin/main...HEAD`. Write findings to **AGENT_DIR/review/**. A subagent's `cd` does not persist between tool calls — use explicit paths.
+Читай diff из **WORKTREE**: `git -C "$WORKTREE" diff origin/main...HEAD`. Пиши findings в **AGENT_DIR/review/**. `cd` субагента не сохраняется между tool calls — используй явные пути.
 
-### Workflow
+### Рабочий процесс
 
-1. Determine your scope from the prompt given by the parent agent.
-   - If you are the only reviewer → review all changed files.
-   - If the prompt says `focus: backend` or `focus: frontend` → review only files for that scope.
-2. Read the spec and relevant changed implementation files in **parallel**.
-3. Obtain the diff:
-   - If the parent agent provided a diff in your prompt, use it.
-   - Otherwise, run `git -C "$WORKTREE" diff origin/main...HEAD` to see all changes.
-4. Analyze every changed file against the checklist below (logic, security, architecture, business rules, tests, golden-path impact).
-5. Write findings:
-   - Single reviewer → `$AGENT_DIR/review/findings.md`.
-   - Parallel review scope `{{item}}` → `$AGENT_DIR/review/findings-{{item}}.md`.
+1. Определи свой scope из промпта родительского агента.
+   - Если ты единственный reviewer → ревьюишь все изменённые файлы.
+   - Если в промпте сказано `focus: backend` или `focus: frontend` → ревьюишь только файлы этого scope.
+2. Прочитай spec и релевантные изменённые файлы реализации **параллельно**.
+3. Получи diff:
+   - Если родительский агент предоставил diff в промпте, используй его.
+   - Иначе запусти `git -C "$WORKTREE" diff origin/main...HEAD`, чтобы увидеть все изменения.
+4. Проанализируй каждый изменённый файл по чеклисту ниже (логика, security, архитектура, бизнес-правила, тесты, влияние на golden path).
+5. Напиши findings:
+   - Один reviewer → `$AGENT_DIR/review/findings.md`.
+   - Параллельный review scope `{{item}}` → `$AGENT_DIR/review/findings-{{item}}.md`.
 
-### Checklist
+### Чеклист
 
 #### Spec compliance
-- All Must-haves from `spec.md` are implemented — missing = CRITICAL
-- All architectural decisions (D-numbers) are followed exactly — deviation = CRITICAL
+- Все Must-haves из `spec.md` реализованы — отсутствие = CRITICAL
+- Все архитектурные решения (D-numbers) выполнены точно — отклонение = CRITICAL
 
-#### Backend (if changed)
-- Route handlers are thin; no business logic in routes
-- Business logic lives in `services/`
-- SQLAlchemy ORM used; no raw SQL strings
-- Money is `int` (kopecks); no float
-- Soft deletes on user/order/product (no hard delete)
-- New model has a new Alembic migration
-- `async def` throughout
-- Type hints present
-- FastAPI endpoints use a trailing slash (`/items/`, not `/items`)
+#### Backend (если изменён)
+- Route handlers тонкие; нет бизнес-логики в routes
+- Бизнес-логика живёт в `services/`
+- Используется SQLAlchemy ORM; нет raw SQL strings
+- Деньги — `int` (копейки); нет float
+- Soft deletes для user/order/product (нет hard delete)
+- Новая модель имеет новую Alembic миграцию
+- `async def` повсюду
+- Type hints присутствуют
+- FastAPI endpoints используют trailing slash (`/items/`, not `/items`)
 
-#### Frontend (if changed)
-- All API calls in `services/` / `api/` — never fetch directly in components
-- Custom composables for data fetching
-- Money formatted correctly (kopecks → currency display)
-- Composition API used
-- `data-testid` added for E2E
-- No `console.log` / `debugger`
+#### Frontend (если изменён)
+- Все API calls в `services/` / `api/` — никогда fetch напрямую из компонентов
+- Custom composables для data fetching
+- Деньги форматируются корректно (копейки → отображение валюты)
+- Используется Composition API
+- Добавлены `data-testid` для E2E
+- Нет `console.log` / `debugger`
 
-#### Tests
-- New behavior has tests — missing = CRITICAL
+#### Тесты
+- Новое поведение покрыто тестами — отсутствие = CRITICAL
 - Backend: real DB, external HTTP mocked with respx
 - Frontend: API calls mocked with `vi.mock` or MSW
 
-#### Security
-- No secrets hardcoded
-- Auth checks on all protected endpoints
+#### Безопасность
+- Нет хардкод-секретов
+- Auth checks на всех защищённых endpoints
 - Object-level auth enforced
-- Payment amounts calculated server-side only
+- Суммы платежей считаются только на сервере
 - Webhook signatures verified before processing
 
-### Findings format
+### Формат замечаний
 
 ```markdown
 # Code Review: <task-id>
@@ -131,24 +131,24 @@ Read the diff from **WORKTREE**: `git -C "$WORKTREE" diff origin/main...HEAD`. W
 **Question:** which approach is preferred?
 ```
 
-### Repeat review
+### Повторное ревью
 
-1. Check each previously `FIXED` item — verify the fix is correct.
-   - Correct → set to `VERIFIED`
-   - Incorrect → set back to `OPEN` with a comment
-2. Run `git diff` again to catch any new issues.
-3. Set overall `Status: APPROVED` only when zero `OPEN` items remain.
+1. Проверь каждый ранее `FIXED` пункт — верифицируй исправление.
+   - Корректно → установи `VERIFIED`
+   - Некорректно → верни в `OPEN` с комментарием
+2. Запусти `git diff` снова, чтобы поймать новые проблемы.
+3. Установи общий `Status: APPROVED` только когда не останется `OPEN` пунктов.
 
-### Rules
+### Правила
 
 - Never edit source code.
 - Never mark items `VERIFIED` without verifying.
-- If the review is `FIXES_NEEDED`, list concrete fixes and file/line references.
+- Если review `FIXES_NEEDED`, приведи конкретные исправления и ссылки на файл/строку.
 
 ---
 
 ## Язык / Language
 
-Единое правило: [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule / Языковое правило. Кратко: при русскоязычном пользователе финальные ответы, отчёты и артефакты — на русском; код, команды, идентификаторы, пути и технические термины — в оригинале.
+Единое правило: [Rule: Agent Commons](../../rules/agent-commons.md) > Language Rule / Языковое правило. Кратко: при русскоязычном пользователе финальные ответы, отчёты и артефакты — на русском; код, команды, идентификаторы, пути и технические термины — в оригинале.
 
 ---

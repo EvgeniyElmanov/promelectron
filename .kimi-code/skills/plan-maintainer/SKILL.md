@@ -10,74 +10,74 @@ arguments: "<action: analyze|update|propose|sprint-review>"
 disableModelInvocation: false
 ---
 
-# Plan Maintainer
+# Plan Maintainer / Менеджер планов
 
-Maintain `.agent/PLANNING_HANDOFF.md` and `.agent/BACKLOG.md` as the single source of truth for day-to-day execution.
+Поддерживай `.agent/PLANNING_HANDOFF.md` и `.agent/BACKLOG.md` как единый источник истины для повседневной работы.
 
-> For strategic roadmap decisions, use `/skill:project-manager`.
+> Для стратегических решений по роадмапу используй `/skill:project-manager`.
 
-## Language
+## Язык
 
-Follow [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule / Языковое правило.
-Kimi K2.7-Code runs in mandatory thinking mode; `reasoning_content` must be preserved across multi-turn tool calls.
-User-facing answers, reports, and artifacts must match the user's language.
+Следуй [Rule: Agent Commons](../../rules/agent-commons.md) > Language Rule / Языковое правило.
+Kimi K2.7-Code работает в обязательном thinking mode; `reasoning_content` должен сохраняться между multi-turn tool calls.
+Пользовательские ответы, отчёты и артефакты должны соответствовать языку пользователя.
 
 ---
 
-## Required context
+## Обязательный контекст
 
-Before any analysis or edit, read:
+Перед анализом или редактированием прочитай:
 1. `.agent/PLANNING_HANDOFF.md`
 2. `.agent/BACKLOG.md`
 3. `PROJECT_CONTEXT.md`
 4. `.agent/BLOCKERS.md`
 5. `.agent/SESSION_LOG.md`
-6. [Rule: Agent Commons](.kimi-code/rules/agent-commons.md)
+6. [Rule: Agent Commons](../../rules/agent-commons.md)
 
 ---
 
-## Commands
+## Команды
 
 ### `analyze`
-Read `.agent/PLANNING_HANDOFF.md` → `.agent/BACKLOG.md` → `git log --oneline -30` → scan key files → report discrepancies.
+Прочитай `.agent/PLANNING_HANDOFF.md` → `.agent/BACKLOG.md` → `git log --oneline -30` → просканируй ключевые файлы → сообщи о расхождениях.
 
 ### `update`
-Read `.agent/BACKLOG.md` → verify specific task in code → edit status → write back.
+Прочитай `.agent/BACKLOG.md` → проверь конкретную задачу в коде → обнови статус → запиши обратно.
 
 ### `propose`
-Read `.agent/BACKLOG.md` → identify unblocked P0/P1 → estimate capacity → write sprint proposal.
+Прочитай `.agent/BACKLOG.md` → определи разблокированные P0/P1 → оцени capacity → напиши предложение по спринту.
 
 ### `sprint-review`
-Read `.agent/BACKLOG.md` → `git log --since="1 week ago"` → compare planned vs actual → write review.
+Прочитай `.agent/BACKLOG.md` → `git log --since="1 week ago"` → сравни запланированное и фактическое → напиши review.
 
 ---
 
-## Analysis Checklist
+## Чеклист анализа
 
-For each task, verify:
-- [ ] **Code exists** — grep for function/component names
-- [ ] **Tests exist** — grep for `test_` + task name
-- [ ] **Routes registered** — check `main.py` or router includes
-- [ ] **Frontend linked** — check views, router, API calls
-- [ ] **Env vars set** — check `config.py`, `.env.example`, K8s manifests
-- [ ] **CI covers it** — check `.github/workflows/`
-- [ ] **Docs updated** — check `README.md`, `.kimi-code/skills/<role>/SKILL.md` and `.kimi-code/rules/` if agent rules changed
+Для каждой задачи проверь:
+- [ ] **Code exists** — grep по именам функций/компонентов
+- [ ] **Tests exist** — grep по `test_` + имя задачи
+- [ ] **Routes registered** — проверь `main.py` или router includes
+- [ ] **Frontend linked** — проверь views, router, API calls
+- [ ] **Env vars set** — проверь `config.py`, `.env.example`, K8s manifests
+- [ ] **CI covers it** — проверь `.github/workflows/`
+- [ ] **Docs updated** — проверь `README.md`, `.kimi-code/skills/<role>/SKILL.md` и `.kimi-code/rules/`, если изменились агентские правила
 
-Never rely on `ROADMAP.md` alone — it becomes stale.
-
----
-
-## Update Rules
-
-1. Evidence first — only mark `[x]` if you can point to a commit or file.
-2. Link commits — when marking done, add `(commit: abc1234)`.
-3. Explain blocks — when marking `[!]`, explain the exact blocker.
-4. Date everything — add `(updated: YYYY-MM-DD)` to status changes.
-5. Preserve history — don't delete old tasks; move them to "Completed".
+Никогда не полагайся только на `ROADMAP.md` — он устаревает.
 
 ---
 
-## Sprint Proposal Format
+## Правила обновления
+
+1. Evidence first — отмечай `[x]` только если можешь указать на commit или файл.
+2. Link commits — при отметке done добавляй `(commit: abc1234)`.
+3. Explain blocks — при отметке `[!]` объясни точный блокер.
+4. Date everything — добавляй `(updated: YYYY-MM-DD)` к изменениям статуса.
+5. Preserve history — не удаляй старые задачи; перемещай в "Completed".
+
+---
+
+## Формат предложения спринта
 
 ```markdown
 ## Sprint N — YYYY-MM-DD to YYYY-MM-DD
@@ -94,19 +94,19 @@ Never rely on `ROADMAP.md` alone — it becomes stale.
 ### P2 (Could)
 - [ ] **ID-003** Title (L) — risk: high
 
-### Assumptions
+### Допущения
 - ...
 
-### Risks
+### Риски
 - ...
 ```
 
 ---
 
-## Anti-Patterns
+## Anti-patterns
 
-- ❌ Don't create tasks larger than 1 day of work.
-- ❌ Don't assign tasks to sprints without checking dependencies.
-- ❌ Don't hide blockers — escalate them.
-- ❌ Don't duplicate tasks between PLANNING_HANDOFF.md and ROADMAP.md.
-- ❌ Don't delete completed tasks — archive them.
+- ❌ Не создавай задачи длиннее 1 дня работы.
+- ❌ Не назначай задачи в спринт без проверки зависимостей.
+- ❌ Не скрывай блокеры — эскалируй их.
+- ❌ Не дублируй задачи между PLANNING_HANDOFF.md и ROADMAP.md.
+- ❌ Не удаляй выполненные задачи — архивируй их.

@@ -19,7 +19,7 @@ disableModelInvocation: false
 
 ## Language / Язык
 
-Следуй [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule / Языковое правило. Все требования к русскому языку и преамбулы для субагентов живут там.
+Следуй [Rule: Agent Commons](../../rules/agent-commons.md) > Language Rule / Языковое правило. Все требования к русскому языку и преамбулы для субагентов живут там.
 
 При русскоязычном пользователе пиши `task.md`, `spec.md`, findings, reports и записи `SESSION_LOG.md` на русском.
 
@@ -104,7 +104,7 @@ python scripts/implement-pipeline.py create-worktree <task-id>
 
 ## Step 2: Проверка размера контекста (Kimi K2.7-Code)
 
-Следуй [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Context Size Check перед запуском субагентов.
+Следуй [Rule: Agent Commons](../../rules/agent-commons.md) > Context Size Check перед запуском субагентов.
 
 ```bash
 python scripts/implement-pipeline.py check-context <task-id>
@@ -116,7 +116,7 @@ python scripts/implement-pipeline.py check-context <task-id>
 
 ## Step 3: Политика повторных попыток
 
-Следуй [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Retry Policy при запуске субагентов.
+Следуй [Rule: Agent Commons](../../rules/agent-commons.md) > Retry Policy при запуске субагентов.
 
 ---
 
@@ -145,8 +145,8 @@ Important: Kimi K2.7-Code uses mandatory thinking mode (`thinking={"type":"enabl
 5. .agent/BLOCKERS.md
 6. .agent/SESSION_LOG.md
 7. `.kimi-code/skills/architect/SKILL.md`
-8. [Rule: Pre-edit Checklist](.kimi-code/rules/pre-edit-checklist.md)
-9. [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) — язык, retry policy, API constraints
+8. [Rule: Pre-edit Checklist](../../rules/pre-edit-checklist.md)
+9. [Rule: Agent Commons](../../rules/agent-commons.md) — язык, retry policy, API constraints
 
 Ты уже запущен как `plan`-субагент — контекст plan уже отключает shell и включает планирование, поэтому НЕ вызывай EnterPlanMode повторно. Пиши спецификацию прямо в plan-файл, предоставленный контекстом plan-субагента, затем вызови ExitPlanMode.
 
@@ -239,7 +239,7 @@ STATUS=in-progress
 
 ---
 
-## Step 5: Разработка — по умолчанию PARALLEL
+## Step 5: Разработка — по умолчанию параллельно
 
 Прочитай `Components Affected` и `Parallelization Plan` из `$AGENT_DIR/spec.md`. Вся работа с кодом ведётся в `WORKTREE` (используй `git -C`, `make -C`, явные пути — `cd` субагента не сохраняется).
 
@@ -265,9 +265,9 @@ Important: Kimi K2.7-Code uses mandatory thinking mode (`thinking={"type":"enabl
 5. .agent/BLOCKERS.md
 6. .agent/SESSION_LOG.md
 7. `.kimi-code/skills/<ROLE>/SKILL.md`
-8. [Rule: Pre-edit Checklist](.kimi-code/rules/pre-edit-checklist.md)
-9. [Rule: Agent Commons](.kimi-code/rules/agent-commons.md)
-10. [Rule: Security](.kimi-code/rules/security.md) — если задача касается auth/payments/PII/uploads
+8. [Rule: Pre-edit Checklist](../../rules/pre-edit-checklist.md)
+9. [Rule: Agent Commons](../../rules/agent-commons.md)
+10. [Rule: Security](../../rules/security.md) — если задача касается auth/payments/PII/uploads
 
 Setup:
 1. Работай ТОЛЬКО внутри $WORKTREE (ветка $BRANCH).
@@ -301,7 +301,7 @@ Report:
 
 ---
 
-## Step 6: Цикл Code Review (максимум 3 итерации)
+## Step 6: Цикл ревью кода (максимум 3 итерации)
 
 ### Определение scope ревью
 
@@ -324,8 +324,8 @@ Important: Kimi K2.7-Code uses mandatory thinking mode (`thinking={"type":"enabl
 1. $AGENT_DIR/task.md
 2. $AGENT_DIR/spec.md
 3. `.kimi-code/skills/code-reviewer/SKILL.md`
-4. [Rule: Security](.kimi-code/rules/security.md)
-5. [Rule: Agent Commons](.kimi-code/rules/agent-commons.md)
+4. [Rule: Security](../../rules/security.md)
+5. [Rule: Agent Commons](../../rules/agent-commons.md)
 
 Затем:
 1. Прочитай реализацию в $WORKTREE (используй Read/Grep/Glob параллельно).
@@ -371,8 +371,8 @@ Important: Kimi K2.7-Code uses mandatory thinking mode (`thinking={"type":"enabl
 1. $AGENT_DIR/task.md
 2. $AGENT_DIR/spec.md
 3. `.kimi-code/skills/code-reviewer/SKILL.md`
-4. [Rule: Security](.kimi-code/rules/security.md)
-5. [Rule: Agent Commons](.kimi-code/rules/agent-commons.md)
+4. [Rule: Security](../../rules/security.md)
+5. [Rule: Agent Commons](../../rules/agent-commons.md)
 
 Затем:
 1. Читай только {{item}}-файлы реализации в $WORKTREE (используй Read/Grep/Glob параллельно).
@@ -428,7 +428,7 @@ items: `["backend", "frontend"]`
 
 ---
 
-## Step 7: QA / Пирамида тестов
+## Step 7: QA / Пирамида тестирования
 
 ### Лёгкая QA (по умолчанию)
 
@@ -451,8 +451,8 @@ Important: Kimi K2.7-Code uses mandatory thinking mode (`thinking={"type":"enabl
 5. .agent/BACKLOG.md
 6. .agent/BLOCKERS.md
 7. `.kimi-code/skills/qa/SKILL.md`
-8. [Rule: Golden Path](.kimi-code/rules/golden-path.md)
-9. [Rule: Agent Commons](.kimi-code/rules/agent-commons.md)
+8. [Rule: Golden Path](../../rules/golden-path.md)
+9. [Rule: Agent Commons](../../rules/agent-commons.md)
 
 Затем:
 1. Запусти backend-тесты: make -C "$WORKTREE" test-backend
@@ -473,7 +473,7 @@ E2E в CI уже запускается на test-окружении (`promelect
 
 ---
 
-## Step 8: Создание Pull Request
+## Step 8: Создание запроса на слияние
 
 Все git-операции — в worktree.
 

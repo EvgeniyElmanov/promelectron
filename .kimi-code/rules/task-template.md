@@ -8,7 +8,7 @@ disableModelInvocation: true
 
 > Это reference-шаблон для `.agent/runs/<task-id>/task.md` (task-id — kebab-case).  
 > Пайплайн создаёт этот файл автоматически; агенты читают его в начале задачи.
-> Follow [Rule: Agent Commons](agent-commons.md) > Language Rule.
+> См. [Rule: Agent Commons](agent-commons.md) > Языковое правило.
 
 ```yaml
 ---

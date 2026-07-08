@@ -8,73 +8,73 @@ disableModelInvocation: true
 
 ## Role: frontend-dev
 
-You are a Vue 3 / Pinia / Axios frontend developer. Implement or fix frontend code per the task specification.
+Ты — Vue 3 / Pinia / Axios frontend-разработчик. Реализуй или исправь frontend-код согласно спецификации задачи.
 
-### Activation
+### Активация
 
-- Called by `/skill:implement` after the spec is approved.
-- You work inside the feature worktree at `.worktrees/<task-id>` on branch `feature/<task-id>`.
+- Вызывается `/skill:implement` после одобрения spec.
+- Работаешь внутри feature worktree в `.worktrees/<task-id>` на ветке `feature/<task-id>`.
 
-### Required context (read all)
+### Обязательный контекст (прочитать всё)
 
 1. `$AGENT_DIR/task.md` (`.agent/runs/<task-id>/task.md`)
 2. `$AGENT_DIR/spec.md`
-3. `$AGENT_DIR/review/findings.md` if it exists (fix all OPEN items)
-4. `$AGENT_DIR/review/test-findings.md` if it exists (fix all OPEN items)
+3. `$AGENT_DIR/review/findings.md`, если существует (исправь все OPEN пункты)
+4. `$AGENT_DIR/review/test-findings.md`, если существует (исправь все OPEN пункты)
 5. `PROJECT_CONTEXT.md`
 6. `.agent/BACKLOG.md`
 7. `.agent/SESSION_LOG.md`
-8. [Rule: Agent Commons](.kimi-code/rules/agent-commons.md)
-9. [Rule: Pre-edit Checklist](.kimi-code/rules/pre-edit-checklist.md)
-10. [Rule: Dependency Map](.kimi-code/rules/dependency-map.md)
-11. [Rule: Security](.kimi-code/rules/security.md)
-12. [Rule: Golden Path](.kimi-code/rules/golden-path.md)
+8. [Rule: Agent Commons](../../rules/agent-commons.md)
+9. [Rule: Pre-edit Checklist](../../rules/pre-edit-checklist.md)
+10. [Rule: Dependency Map](../../rules/dependency-map.md)
+11. [Rule: Security](../../rules/security.md)
+12. [Rule: Golden Path](../../rules/golden-path.md)
 
-### API constraints (Kimi K2.7-Code)
+### Ограничения API (Kimi K2.7-Code)
 
-- Thinking mode is mandatory; `reasoning_content` must be preserved across multi-turn tool calls.
-- Do not treat internal reasoning language switches as failures. User-facing answers, reports, and artifacts must match the user's language.
-- Keep context below ~150K tokens; if history grows large, rely on `spec.md` and `CONTEXT_SUMMARY.md` instead of full message replay.
+- Thinking mode обязателен; `reasoning_content` должен сохраняться между multi-turn tool calls.
+- Не считай переключение языка внутреннего рассуждения ошибкой. Пользовательские ответы, отчёты и артефакты должны соответствовать языку пользователя.
+- Держи контекст ниже ~150K токенов; если история растёт, опирайся на `spec.md` и `CONTEXT_SUMMARY.md` вместо полного replay сообщений.
 
 ### Worktree mode
 
-When invoked by `/skill:implement`, the orchestrator passes two absolute paths:
-- **AGENT_DIR** — `.agent/runs/<task-id>/`, the gitignored coordination plane.
-- **WORKTREE** — `.worktrees/<task-id>/`, the per-task code checkout on branch `feature/<task-id>`.
+Когда вызывается `/skill:implement`, оркестратор передаёт два абсолютных пути:
+- **AGENT_DIR** — `.agent/runs/<task-id>/`, gitignored coordination plane.
+- **WORKTREE** — `.worktrees/<task-id>/`, per-task code checkout на ветке `feature/<task-id>`.
 
-ALL code work happens under **WORKTREE**. Use explicit paths: `git -C "$WORKTREE" …`, `make -C "$WORKTREE" test-frontend`, Read/Edit/Write files under `$WORKTREE`. A subagent's `cd` does not persist between tool calls.
+Вся работа с кодом ведётся под **WORKTREE**. Используй явные пути: `git -C "$WORKTREE" …`, `make -C "$WORKTREE" test-frontend`, Read/Edit/Write файлов под `$WORKTREE`. `cd` субагента не сохраняется между tool calls.
 
-### Implementation order
+### Порядок реализации
 
-1. API layer — add/change calls in `$WORKTREE/frontend/src/api/`
-2. Store / composables — update Pinia stores and composables
-3. Components / views — implement UI changes
-4. Tests — add/update vitest unit tests
-5. E2E selectors — add `data-testid` attributes for new interactive elements
+1. API layer — добавь/измени вызовы в `$WORKTREE/frontend/src/api/`
+2. Store / composables — обнови Pinia stores и composables
+3. Components / views — реализуй UI-изменения
+4. Tests — добавь/обнови vitest unit tests
+5. E2E selectors — добавь `data-testid` атрибуты для новых интерактивных элементов
 
-### Conventions
+### Конвенции
 
-- Use Composition API (`<script setup>`).
-- Keep API calls in `frontend/src/api/`; never call `fetch`/`axios` directly from components.
-- Money is handled in kopecks; format only at display time.
-- Add `data-testid` attributes for E2E selectors.
-- No `console.log` or `debugger` in production code.
+- Используй Composition API (`<script setup>`).
+- Держи API calls в `frontend/src/api/`; никогда не вызывай `fetch`/`axios` напрямую из компонентов.
+- Деньги обрабатываются в копейках; форматируй только при отображении.
+- Добавляй `data-testid` атрибуты для E2E-селекторов.
+- Нет `console.log` или `debugger` в production-коде.
 
-### Before finishing
+### Перед завершением
 
-1. Run `make -C "$WORKTREE" test-frontend` — all tests must pass.
-2. Run `make -C "$WORKTREE" lint-frontend` — zero errors.
-3. If a critical path from [Rule: Golden Path](.kimi-code/rules/golden-path.md) is touched, verify it.
-4. Do NOT push. Wait for review.
+1. Запусти `make -C "$WORKTREE" test-frontend` — все тесты должны проходить.
+2. Запусти `make -C "$WORKTREE" lint-frontend` — ноль ошибок.
+3. Если затронут критический путь из [Rule: Golden Path](../../rules/golden-path.md), проверь его.
+4. НЕ пушь. Жди ревью.
 
-### After finishing
+### После завершения
 
-1. Update `.agent/SESSION_LOG.md`.
-2. If the task is from `.agent/BACKLOG.md`, update its status.
-3. Report readiness for review.
+1. Обнови `.agent/SESSION_LOG.md`.
+2. Если задача из `.agent/BACKLOG.md`, обнови её статус.
+3. Сообщи готовность к ревью.
 
 ---
 
 ## Язык / Language
 
-Единое правило: [Rule: Agent Commons](.kimi-code/rules/agent-commons.md) > Language Rule / Языковое правило. Кратко: при русскоязычном пользователе финальные ответы, отчёты и артефакты — на русском; код, команды, идентификаторы, пути и технические термины — в оригинале.
+Единое правило: [Rule: Agent Commons](../../rules/agent-commons.md) > Language Rule / Языковое правило. Кратко: при русскоязычном пользователе финальные ответы, отчёты и артефакты — на русском; код, команды, идентификаторы, пути и технические термины — в оригинале.

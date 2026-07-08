@@ -1,3 +1,145 @@
+### 2026-07-08 05:15 | orchestrator | Перевод агентской документации на русский
+  Роль: orchestrator.
+  Запрос: перевести агентскую документацию (ROUTER.md, SESSION_START.md, .kimi-code/AGENTS.md, BUNDLE.md, HOWTO.md, rules/, skills/*/SKILL.md) на русский, устранить противоречия.
+  Выполнено:
+  - Переведены корневые файлы: `ROUTER.md`, `SESSION_START.md`, `AGENTS.md`.
+  - Переведены `.kimi-code/AGENTS.md`, `.kimi-code/BUNDLE.md`, `.kimi-code/HOWTO.md`.
+  - Переведены 9 файлов `.kimi-code/rules/*.md`.
+  - Переведены 22 skill-файла `.kimi-code/skills/*/SKILL.md`.
+  - Унифицирована терминология: Code Review → ревью кода, Pull Request → запрос на слияние, Findings → замечания, Rules → правила и т.д.
+  - Согласованы hard rules между `.kimi-code/AGENTS.md` и `.kimi-code/skills/promelectron/SKILL.md`.
+  - Исправлены относительные ссылки на rules/skills для корректной работы `scripts/audit-agents.sh`.
+  - Технические термины внутри артефактов (task.md, spec.md, findings.md) и frontmatter skills оставлены в оригинале согласно Language Rule.
+  Проверки:
+  - `bash scripts/audit-agents.sh` — ✅ все проверки пройдены.
+  - Python-скрипт проверки markdown-ссылок — ✅ все ссылки разрешаются.
+  - `git diff --stat` — 34 файла, изменения только по языку и ссылкам.
+  Блокер: Нет.
+
+### 2026-07-06 08:45 | project-manager | yookassa-test-card-scenarios — создана задача и GitHub Issue
+  Роль: project-manager / orchestrator.
+  Запрос: изучить документацию ЮKassa по тестированию платежей, создать профессиональную задачу в backlog issue без выполнения, проработать все сценарии по картам, разбить на части с коммитами.
+  Выполнено:
+  - Изучена документация ЮKassa: тестовые карты (успешные/decline/auto-pay), cancellation_details, 3-D Secure.
+  - Проанализирован текущий код: `YooKassaService`, `PaymentService`, `Payment` model, webhook handler, E2E `checkout.spec.js`.
+  - Создана координационная плоскость `.agent/runs/yookassa-test-card-scenarios/`.
+  - Написаны `task.md` и `spec.md` с разбиением на 6 sub-issues и планом коммитов.
+  - Создан GitHub Issue [#65](https://github.com/AutonomaCo/promelectron/issues/65).
+  - Issue добавлен на project board Promelectron, статус установлен в **In progress**.
+  - Обновлён `.agent/BACKLOG.md` (секция GitHub Issues agent intake).
+  Проверки: issue доступен, статус In progress подтверждён через `gh project item-list`.
+  Блокер: Нет.
+
+### 2026-07-05 13:15 | backend-dev | fix-avatar-upload-notification — backend review fixes iteration 2 (F009–F010)
+  Роль: backend-dev.
+  Запрос: исправить оставшиеся backend findings из `.agent/runs/fix-avatar-upload-notification/review/findings-backend-iter2.md` (F009, F010).
+  Выполнено:
+  - `backend/src/app/api/users.py` (F009): в endpoint `POST /me/avatar/` добавлена проверка `file.content_type` на `image/*` после проверки расширения; при невалидном MIME-type возвращается 400.
+  - `backend/tests/test_avatar.py` (F009): добавлен тест `test_upload_avatar_invalid_content_type`, который отправляет файл `avatar.png` с `content_type=application/octet-stream` и ожидает 400.
+  - `backend/tests/test_avatar.py` (F010): тест `test_upload_avatar_requires_trailing_slash` переписан — теперь явно проверяется `response.status_code in (307, 308)` и заголовок `Location` заканчивается на `/api/v1/me/avatar/`.
+  - `.agent/runs/fix-avatar-upload-notification/review/findings-backend-iter2.md`: статусы F009 и F010 изменены на FIXED.
+  - `.agent/runs/fix-avatar-upload-notification/review/findings.md`: добавлены записи F009 и F010 со статусом FIXED для консолидированного обзора.
+  Проверки:
+  - `DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/promelectron REDIS_URL=redis://localhost:6379/0 SECRET_KEY=dev-secret-key-change-in-production-minimum-32-chars ENVIRONMENT=test pytest /home/evgeniy/project/my_shop_backend/.worktrees/fix-avatar-upload-notification/backend/tests/test_avatar.py -v` — 13/13 passed ✅
+  - `ruff check --no-cache /home/evgeniy/project/my_shop_backend/.worktrees/fix-avatar-upload-notification/backend/src /home/evgeniy/project/my_shop_backend/.worktrees/fix-avatar-upload-notification/backend/tests` — чисто ✅
+  Git:
+  - Branch: `feature/fix-avatar-upload-notification`
+  - Worktree: `/home/evgeniy/project/my_shop_backend/.worktrees/fix-avatar-upload-notification`
+  - Commit: `586489d` — `fix(backend): validate avatar MIME type and strengthen trailing slash test`
+  - Issue: https://github.com/AutonomaCo/promelectron/issues/63
+  Блокер: Нет.
+
+### 2026-07-05 12:45 | frontend-dev | fix-avatar-upload-notification — frontend review fixes (F005–F008)
+  Роль: frontend-dev.
+  Запрос: исправить OPEN frontend findings из `.agent/runs/fix-avatar-upload-notification/review/findings.md` (F005–F008).
+  Выполнено:
+  - `frontend/e2e/profile.spec.js` (F005): селектор `.avatar-preview__img` заменён на `.avatar__img` в обоих assertion'ах E2E-сценария загрузки аватара.
+  - `frontend/src/views/ProfileEdit.vue` (F006): при выборе файла с невалидным MIME-type теперь устанавливается `avatarError`, показывается toast «Выберите файл изображения» и сбрасывается значение input.
+  - `frontend/src/views/ProfileEdit.vue` (F008): после успешной загрузки аватара кроме `setAuth(...)` вызывается `setUser(data)` для явной синхронизации глобального состояния.
+  - `frontend/src/views/ProfileEdit.vue` (F007): добавлен `data-testid="password-error"` для блока ошибки смены пароля.
+  - `frontend/src/__tests__/ProfileEdit.spec.js` (F007): добавлено явное утверждение, что при ошибке загрузки аватара не отображается `password-error`.
+  - `.agent/runs/fix-avatar-upload-notification/review/findings.md`: статусы F005–F008 изменены на FIXED.
+  Проверки:
+  - `docker compose -f frontend/docker-compose.yml -p promelectron run --rm frontend sh -c "npm install --silent && npx vitest run src/__tests__/ProfileEdit.spec.js"` — 10/10 ✅
+  - `make -C /home/evgeniy/project/my_shop_backend/.worktrees/fix-avatar-upload-notification lint-frontend` — 0 warnings/errors ✅
+  Git:
+  - Branch: `feature/fix-avatar-upload-notification`
+  - Worktree: `/home/evgeniy/project/my_shop_backend/.worktrees/fix-avatar-upload-notification`
+  - Issue: https://github.com/AutonomaCo/promelectron/issues/63
+  Блокер: Нет.
+
+### 2026-07-05 12:45 | backend-dev | fix-avatar-upload-notification — backend review fixes iteration 1
+  Роль: backend-dev.
+  Запрос: исправить OPEN backend findings из `.agent/runs/fix-avatar-upload-notification/review/findings.md` (F001–F004).
+  Выполнено:
+  - `backend/tests/test_avatar.py` (F001): в `test_upload_avatar_deletes_old_avatar` и `test_upload_avatar_deletion_failure_does_not_block_upload` добавлена фикстура `test_session` и `await test_session.commit()` после присвоения `test_user.avatar_url`, чтобы изменение попадало в БД и endpoint действительно вызывал удаление старого аватара.
+  - `backend/tests/test_avatar.py` (F002): в `test_upload_avatar_deletion_failure_does_not_block_upload` добавлен трекер вызовов `deleted_keys`, assert `assert deleted_keys` подтверждает, что `delete_image` вызвана и бросила исключение, а запрос всё равно возвращает 200.
+  - `backend/src/app/api/users.py` (F003): убран неиспользуемый параметр `request: Request` из `register_user` и `login_user` (он не использовался в теле и не нужен для `conditional_limit`), убран `Request` из импорта `fastapi`.
+  - `backend/src/app/api/users.py` (F004): добавлен комментарий у `await file.read()` о 5 MB лимите и необходимости серверного ограничения тела запроса.
+  - `.agent/runs/fix-avatar-upload-notification/review/findings.md`: backend findings F001–F004 отмечены как FIXED.
+  Проверки:
+  - `DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/promelectron REDIS_URL=redis://localhost:6379/0 SECRET_KEY=test-secret-key-32-chars-minimum pytest /home/evgeniy/project/my_shop_backend/.worktrees/fix-avatar-upload-notification/backend/tests/test_avatar.py -v` — 12/12 passed ✅
+  - `ruff check --no-cache /home/evgeniy/project/my_shop_backend/.worktrees/fix-avatar-upload-notification/backend/src /home/evgeniy/project/my_shop_backend/.worktrees/fix-avatar-upload-notification/backend/tests` — чисто ✅
+  Git:
+  - Branch: `feature/fix-avatar-upload-notification`
+  - Worktree: `/home/evgeniy/project/my_shop_backend/.worktrees/fix-avatar-upload-notification`
+  - Issue: https://github.com/AutonomaCo/promelectron/issues/63
+  Блокер: Нет.
+
+### 2026-07-05 12:10 | backend-dev | fix-avatar-upload-notification — backend implementation
+  Роль: backend-dev.
+  Запрос: реализовать backend-часть исправления загрузки аватара (issue #63): trailing slash, response contract, валидация размера, устойчивое удаление старого аватара, backend unit-тесты.
+  Выполнено:
+  - Добавлена схема `AvatarUploadOut` в `backend/src/app/schemas/user.py` (наследует `UserOut`, добавляет `original`, `small`, `medium`, `large`).
+  - Исправлен endpoint `POST /me/avatar/` в `backend/src/app/api/users.py`:
+    - Добавлен trailing slash.
+    - Назначен `response_model=AvatarUploadOut`.
+    - Убран неиспользуемый параметр `request: Request`.
+    - Добавлена константа `AVATAR_MAX_SIZE = 5 * 1024 * 1024` и проверка: при превышении возвращается `413 Payload Too Large`.
+    - Удаление старого аватара обёрнуто в `try/except` с логированием; ошибка удаления не прерывает загрузку.
+  - Обновлён `backend/src/app/services/storage_service.py`: `upload_image` теперь принимает опциональный `content: bytes | None = None`, что позволяет endpoint'у переиспользовать уже прочитанный контент после валидации размера.
+  - Обновлён `backend/tests/conftest.py`: `FakeStorage.upload_image` принимает `content=None` для совместимости.
+  - Создан `backend/tests/test_avatar.py` с 12 тестами: успешная загрузка, допустимые расширения, сохранение в БД, невалидное расширение (400), превышение размера (413), отсутствие auth (403), удаление старого аватара, ошибка удаления не блокирует загрузку, trailing slash.
+  Проверки:
+  - `pytest tests/test_avatar.py -v` — 12/12 passed ✅
+  - `pytest tests/test_auth.py tests/test_products.py -v` — 98/98 passed ✅
+  - `pytest tests/ --ignore=tests/test_workers.py -v` — 342/342 passed ✅
+  - `pytest tests/test_workers.py -v` — 5/5 passed ✅
+  - `ruff check src/ tests/` (в контейнере api с установкой ruff) — чисто ✅
+  - `make test-backend` / `make lint-backend` — Makefile target'ы зависают/падают по известной инфраструктурной причине (`docker-entrypoint.sh` игнорирует override command, ruff отсутствует в образе); линт и тесты запущены вручную.
+  Git:
+  - Branch: `feature/fix-avatar-upload-notification`
+  - Worktree: `/home/evgeniy/project/my_shop_backend/.worktrees/fix-avatar-upload-notification`
+  - Commit: `0cb3336` — `fix(backend): avatar upload endpoint trailing slash, size limit, robust deletion (#63)`
+  - Issue: https://github.com/AutonomaCo/promelectron/issues/63
+  Блокер: `make test-backend` / `make lint-backend` работают некорректно из-за `backend/docker-entrypoint.sh` и отсутствия ruff в образе api. Это tooling issue, не связанный с кодом фичи.
+
+### 2026-07-05 12:20 | frontend-dev | fix-avatar-upload-notification — frontend implementation
+  Роль: frontend-dev.
+  Запрос: реализовать frontend-часть исправления загрузки аватара (issue #63): trailing slash, обновление превью, toast-уведомления, отдельная ошибка avatarError, unit/E2E-тесты.
+  Выполнено:
+  - Создан `frontend/src/api/users.js` с `uploadAvatar(file, onUploadProgress)` → `POST /me/avatar/`.
+  - Обновлён `frontend/src/views/ProfileEdit.vue`:
+    - Используется `uploadAvatar` из API layer и `useToast`.
+    - Добавлена реактивная переменная `avatarError`.
+    - Endpoint изменён на `/me/avatar/` (trailing slash).
+    - При успехе обновляется `avatarUrl` из `data.avatar_url || data.original`, вызывается `setAuth(token, data)` и показывается toast «Фото профиля обновлено».
+    - При ошибке показывается toast с деталями и текст под аватаром; больше не используется `passwordError`.
+  - Обновлён `frontend/src/components/ToastContainer.vue`: добавлены `data-testid="toast-container"`, `data-testid="toast-item"`, `data-testid="toast-message"` для E2E.
+  - Обновлён `frontend/tests/agent/api-client.js`: `uploadAvatar` теперь вызывает `/me/avatar/`.
+  - Обновлён `frontend/src/__tests__/ProfileEdit.spec.js`:
+    - Добавлены моки `@/api/users` и `@/composables/useToast`.
+    - Добавлены тесты успешной загрузки аватара (обновление превью, toast, setAuth) и обработки ошибки (avatarError, toast error, не используется passwordError).
+  - Обновлён `frontend/e2e/profile.spec.js`: добавлен E2E-сценарий загрузки аватара с проверкой toast и отображения на `/profile`.
+  Проверки:
+  - `make -C /home/evgeniy/project/my_shop_backend/.worktrees/fix-avatar-upload-notification lint-frontend` — чисто ✅
+  - `make -C /home/evgeniy/project/my_shop_backend/.worktrees/fix-avatar-upload-notification test-frontend` — `ProfileEdit.spec.js` 10/10 ✅; общий suite падает на 5 pre-existing тестах `useCart.spec.js` (`getSelectedGuestCartItems`, `selectItem`, `selectAll`, `deselectAll` отсутствуют в `useCart.js`), не связанных с задачей.
+  Git:
+  - Branch: `feature/fix-avatar-upload-notification`
+  - Worktree: `/home/evgeniy/project/my_shop_backend/.worktrees/fix-avatar-upload-notification`
+  - Issue: https://github.com/AutonomaCo/promelectron/issues/63
+  Блокер: `make test-frontend` не проходит целиком из-за pre-existing regressions в `useCart.spec.js` / `useCart.js`; frontend-изменения задачи покрыты и зелёны.
+
 ### 2026-07-05 07:00 | auditor | agent-pipeline-audit — массовый аудит и исправление агентской системы
   Роль: auditor / orchestrator.
   Запрос: изучить документацию Kimi K2.7, провести профессиональный аудит агентского пайплайна Promelectron, найти причину переключения агента на английский во время размышлений, исправить всё нужное и удалить не нужное.
@@ -1946,3 +2088,33 @@
   Блокер: Нет.
 =======
   Следующий шаг: нет.
+
+### 2026-07-05 21:45 | implement | fix-avatar-upload-notification — PR opened
+  Задача: исправить загрузку аватара (MinIO) и добавить toast-уведомление об успешной загрузке.
+  Реализовано:
+  - Backend:
+    - `POST /api/v1/me/avatar/` с trailing slash, `response_model=AvatarUploadOut`.
+    - Валидация расширения, MIME-type (`image/*`) и размера ≤ 5 MB (413).
+    - Удаление старого аватара в `try/except` не блокирует загрузку.
+    - `storage_service.upload_image` поддерживает `content: bytes | None`.
+    - `backend/tests/test_avatar.py` — 13 unit-тестов.
+  - Frontend:
+    - `ProfileEdit.vue` использует `uploadAvatar` из `@/api/users` и `useToast`.
+    - Toast «Фото профиля обновлено» при успехе, toast ошибки при неудаче.
+    - Отдельная `avatarError`, обновление `avatarUrl`, `setAuth` + `setUser`.
+    - `frontend/src/__tests__/ProfileEdit.spec.js` — 10 тестов.
+    - `frontend/e2e/profile.spec.js` — E2E-сценарий загрузки аватара.
+    - `ToastContainer.vue` — data-testid для тестов.
+    - `frontend/tests/agent/api-client.js` — `/me/avatar/`.
+  Проверки:
+  - Backend unit tests: 13/13 passed ✅
+  - Frontend unit tests (`ProfileEdit.spec.js`): 10/10 passed ✅
+  - Frontend lint: 0 warnings/errors ✅
+  - Backend lint (`ruff --no-cache`): All checks passed ✅
+  - E2E profile tests: 4/4 passed ✅
+  Git:
+  - Branch: `feature/fix-avatar-upload-notification`
+  - Worktree: `/home/evgeniy/project/my_shop_backend/.worktrees/fix-avatar-upload-notification`
+  - PR: https://github.com/AutonomaCo/promelectron/pull/64
+  - Issue: https://github.com/AutonomaCo/promelectron/issues/63 (In review)
+  Блокер: Нет. Развёрнутый стек (api, frontend, worker, postgres, redis, minio) оставлен запущенным для ручной проверки.
