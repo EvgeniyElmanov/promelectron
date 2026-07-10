@@ -45,13 +45,14 @@ def _is_transient_error(exc: BaseException) -> bool:
 
 
 def retry_on_kimi_errors(
-    max_attempts: int = 3,
+    max_attempts: int = 4,
     backoff_seconds: float = 2.0,
 ) -> Callable[[Callable[..., T]], Callable[..., T]]:
     """Decorator that retries a function on transient Kimi/platform errors.
 
     Args:
         max_attempts: Maximum number of attempts (must be >= 1).
+            Default 4 gives backoff delays 2s, 4s, 8s across retries.
         backoff_seconds: Initial backoff between attempts, doubled each time.
 
     Raises:
@@ -100,11 +101,11 @@ if __name__ == "__main__":
     # Simple self-test: a function that fails twice with 502 then succeeds.
     _counter = 0
 
-    @retry_on_kimi_errors(max_attempts=3, backoff_seconds=0.1)
+    @retry_on_kimi_errors(max_attempts=4, backoff_seconds=0.1)
     def _flaky() -> str:
         global _counter
         _counter += 1
-        if _counter < 3:
+        if _counter < 4:
             raise RuntimeError("502 Bad Gateway from Kimi API")
         return "success"
 

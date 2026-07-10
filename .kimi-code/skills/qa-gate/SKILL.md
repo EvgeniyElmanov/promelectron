@@ -70,9 +70,9 @@ python scripts/implement-pipeline.py check-context <task-id>
 Запусти субагента `qa` через инструмент `Agent` с `subagent_type: coder`.
 
 ```text
-ЯЗЫК / LANGUAGE: Пользователь общается на русском. Ключевые инструкции этой задачи — на русском. Ты — QA-инженер для Promelectron. Отвечай родительскому агенту и пиши все артефакты (spec, findings, отчёты, SESSION_LOG) на русском. Стремись рассуждать на русском. При multi-step tool calling сохраняй `reasoning_content` из ассистентских сообщений в истории. Код, команды, идентификаторы, пути и технические термины оставляй в оригинале.
+Предварь этот промпт комбинированной преамбулой из Rule: Agent Commons (раздел Full subagent prompt block).
 
-Important: Kimi K2.7-Code uses mandatory thinking mode (`thinking={"type":"enabled"}`), with fixed `temperature=1.0`, `top_p=0.95`, `n=1`, `presence_penalty=0.0`, `frequency_penalty=0.0`. `tool_choice` may only be `"auto"` or `"none"`.
+Ты — QA-инженер для Promelectron.
 
 Paths:
 - AGENT_DIR = /abs/path/to/.agent/runs/<task-id>
@@ -93,10 +93,7 @@ Paths:
 Затем:
 1. Запусти backend-тесты в $WORKTREE: make -C "$WORKTREE" test-backend
 2. Запусти frontend unit-тесты в $WORKTREE: make -C "$WORKTREE" test-frontend
-3. Если фича затрагивает UI или пользовательские сценарии, или передан флаг --e2e — запусти E2E: make -C "$WORKTREE" test-e2e. При необходимости делегируй E2E-специфичную часть e2e-tester субагенту, передав:
-   - feature scope из spec.md
-   - $AGENT_DIR и $WORKTREE
-   - Acceptance Criteria из spec.md
+3. Если фича затрагивает UI или пользовательские сценарии, или передан флаг --e2e — запусти E2E: `make -C "$WORKTREE" test-e2e`. Не делегируй E2E другому субагенту; при необходимости в запуске `e2e-tester` отдельно вернись к оркестратору после завершения.
 4. Проверь каждый Acceptance Criterion из $AGENT_DIR/spec.md.
 5. Запиши результаты в $AGENT_DIR/review/test-findings.md.
 6. Обнови $PROJECT_ROOT/.agent/SESSION_LOG.md.
@@ -108,7 +105,23 @@ Do NOT edit source code.
 
 ---
 
+## Step 3.5: E2E-тестер (опционально, запускается оркестратором)
+
+Если фича затрагивает UI/пользовательские сценарии или передан флаг `--e2e`, и результаты unit-тестов в порядке, запусти субагента `e2e-tester` **из основного агента** через инструмент `Agent` с `subagent_type: coder`. Не запускай e2e-tester изнутри qa-субагента.
+
+Промпт аналогичен Step 7.5 `/skill:implement`. Передай:
+- `$AGENT_DIR`
+- `$WORKTREE`
+- `feature scope` из spec.md
+- Acceptance Criteria из spec.md
+
+После завершения e2e-tester обновит `$AGENT_DIR/review/test-findings.md`.
+
+---
+
 ## Step 4: Отчёт
+
+Прочитай `$AGENT_DIR/review/test-findings.md` и отчитайся пользователю:
 
 Прочитай `$AGENT_DIR/review/test-findings.md` и отчитайся пользователю:
 - Status: `TESTS_PASSED` or `TESTS_FAILED`

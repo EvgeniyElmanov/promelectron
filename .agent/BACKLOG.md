@@ -1,12 +1,12 @@
 # Бэклог Promelectron
 
-**Версия:** 1.2
-**Дата:** 2026-06-24
+**Версия:** 1.3
+**Дата:** 2026-07-10
 **Формат:** 1 спринт = 2 недели
 
 ---
 
-## Текущий спринт: Sprint 1 (2026-06-01 — 2026-06-14)
+## Текущий спринт: Sprint 1 (2026-06-29 — 2026-07-12)
 
 | # | Задача | Issue | Агент | Приоритет | Статус | Зависимости | Оценка | Блокер |
 |---|--------|-------|-------|-----------|--------|-------------|--------|--------|--------|
@@ -15,31 +15,31 @@
 | 1b | ЮKassa: Alembic миграция Payment | | backend-dev | P0 | **done** ✅ | 1a | 1 день | — |
 | 1c | ЮKassa: YooKassaService (create/get payment) | | backend-dev | P0 | **done** ✅ | 1a, 1b | 2 дня | — |
 | 1d | ЮKassa: Обновить create_payment endpoint | | backend-dev | P0 | **done** ✅ | 1c | 1 день | — |
-| 1e | ЮKassa: Webhook endpoint + подпись | | backend-dev | P0 | **done** ✅ | 1d | 2 дня | — |
+| 1e | ЮKassa: Webhook endpoint + подпись | | backend-dev | P0 | **done** ✅ | 1d | 2 дня | BLK-010 |
 | 1f | ЮKassa: Frontend редирект + success page | | frontend-dev | P0 | **done** ✅ | 1d | 2 дня | — |
 | 1g | ЮKassa: Backend тесты | | backend-dev | P0 | **done** ✅ | 1e | 2 дня | — |
 | 1h | ЮKassa: E2E тест с тестовой картой | | e2e-tester | P0 | **done** ✅ | 1f, 1e | 2 дня | — |
-| 2 | Webhook обработка платежей | | backend-dev | P0 | **done** ✅ | #1 | 3 дня | — |
+| 2 | Webhook обработка платежей | | backend-dev | P0 | **done** ✅ | #1 | 3 дня | BLK-010 |
 | 3 | Гостевая корзина: backend API | | backend-dev | P0 | **done** ✅ | — | 1 неделя | — |
 | 4 | Гостевая корзина: localStorage + merge при login | | frontend-dev | P0 | **done** ✅ | #3 | 1 неделя | — |
-| 5 | Убрать hardcoded secrets (SECRET_KEY, SEED_SECRET, docker-compose, Helm placeholders) | | backend-dev + devops | P0 | **in_progress** | — | 2 дня | — |
-| 6 | Исправить Helm worker templates (Celery command + enabled flag) | | devops | P0 | **blocked** | — | 2 дня | BLK-001, BLK-002 |
+| 5 | Убрать hardcoded secrets (SECRET_KEY, SEED_SECRET, docker-compose, Helm placeholders) | | backend-dev + devops | P0 | **done** ✅ | — | 2 дня | — |
+| 6 | Исправить Helm worker templates (Celery command + enabled flag) | | devops | P0 | **done** ✅ | — | 2 дня | — |
 | 7 | Подключить Sentry (backend + frontend) | | devops | P0 | **in_progress** | — | 3 дня | — |
 | 8 | Настроить backup БД (pg_dump → S3/MinIO) | | devops | P0 | **in_progress** | — | 2 дня | — |
 | 9 | E2E тесты гостевой корзины | | e2e-tester | P0 | **done** ✅ | #3, #4 | 2 дня | — |
-| 10 | Product.price → Numeric(10,2) + Alembic | | backend-dev | P0 | todo | — | 2 дня | BLK-006 |
+| 10 | Product.price → Numeric(10,2) + Alembic | | backend-dev | P0 | todo | — | 2 дня | — |
 | 11 | OAuth Google ID — production настройка (credentials, redirect URI, валидация) | | backend-dev + devops | P0 | **done** ✅ | — | 2 дня | — |
 | 11a | Вписать GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET в `.env` и SOPS secrets | | devops | P0 | **done** ✅ | #11 | 1 день | — |
 | 12 | OAuth Yandex ID — production настройка (credentials, redirect URI, валидация) | | backend-dev + devops | P0 | **done** ✅ | — | 2 дня | — |
-| 13 | Исправить malformed revision ID в миграции `20260531_222559_guest_order_fields.py` | | backend-dev | P0 | **in_progress** | — | 1 день | BLK-006 |
+| 13 | Исправить malformed revision ID в миграции `20260531_222559_guest_order_fields.py` | | backend-dev | P0 | **done** ✅ | — | 1 день | — |
 | 14 | Добавить `.dockerignore` в `backend/` | | devops | P1 | todo | — | 1 день | — |
 | 15 | Убрать `console.error` из production-кода фронтенда | | frontend-dev | P2 | todo | — | 1 день | — |
 | 16 | Написать unit-тесты для `useCart` composable | | frontend-dev | P2 | todo | — | 2 дня | — |
-| 43 | Подключить реальный SMTP и отправку email + верификацию email при регистрации (BLK-005) | [#19](https://github.com/AutonomaCo/promelectron/issues/19) | backend-dev + frontend-dev + devops | P0 | **done** | — | 6 дней | — |
+| 43 | Подключить реальный SMTP и отправку email + верификацию email при регистрации (BLK-005) | [#19](https://github.com/AutonomaCo/promelectron/issues/19) | backend-dev + frontend-dev + devops | P0 | **done** ✅ | — | 6 дней | — |
 
 **Цель спринта:** Реальные платежи работают, гостевая корзина в проде, OAuth production-ready, нет критичных security issues.
 
-**Статус цели:** Частично выполнена. Гостевая корзина ✅. OAuth Yandex ✅, Google ✅. Security issues (hardcoded secrets) 🔄. Реальные платежи в работе. Исправление Alembic 🔄.
+**Статус цели:** Частично выполнена. Гостевая корзина ✅. OAuth Yandex ✅, Google ✅. Security issues (hardcoded secrets) ✅. Реальные платежи в работе. Sentry и backup БД 🔄.
 
 ### Детальное описание задачи #43
 
@@ -222,7 +222,7 @@
 |---------|-------|-------|------|
 | — | [#5](https://github.com/AutonomaCo/promelectron/issues/5) | Кнопка «Отменить заказ» для пользователя | — |
 | task-0703 | [#54](https://github.com/AutonomaCo/promelectron/issues/54) | Проверить формат даты и времени | 2026-07-03 |
-| — | Technical Specification: cart-select-items-for-payment | [#61](https://github.com/AutonomaCo/promelectron/issues/61) | backend-dev + frontend-dev | P1 | **done** ✅ | — | — | [#62](https://github.com/AutonomaCo/promelectron/pull/62) |
-| — | Technical Specification: fix-avatar-upload-notification | [#63](https://github.com/AutonomaCo/promelectron/issues/63) | backend-dev + frontend-dev | P1 | **in_progress** | — | — | — |
+| — | [#61](https://github.com/AutonomaCo/promelectron/issues/61) | Technical Specification: cart-select-items-for-payment | 2026-07-01 |
+| — | [#63](https://github.com/AutonomaCo/promelectron/issues/63) | Technical Specification: fix-avatar-upload-notification | 2026-07-02 |
 | yookassa-test-card-scenarios | [#65](https://github.com/AutonomaCo/promelectron/issues/65) | ЮKassa: покрытие тестовыми сценариями банковских карт (test mode) | 2026-07-06 |
-| — | Specification: onec-integration | [#66](https://github.com/AutonomaCo/promelectron/issues/66) | — | P1 | **backlog** | — | — | — |
+| — | [#66](https://github.com/AutonomaCo/promelectron/issues/66) | Specification: onec-integration | 2026-07-07 |

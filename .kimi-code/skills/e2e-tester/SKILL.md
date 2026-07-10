@@ -44,7 +44,7 @@ disableModelInvocation: true
 
 1. Запусти dev-окружение: `make -C "$WORKTREE" dev` или `bash "$WORKTREE/scripts/run_dev.sh"`. Дождись сервисов.
 2. Проверь сервисы: `curl -s http://localhost:8000/ | head -1` и `curl -s http://localhost:5173 | head -1`.
-3. Осмотри соответствующий UI и добавь/обнови `data-testid` селекторы, если не хватает (только в feature worktree).
+3. Сопоставь Acceptance Criteria из `$AGENT_DIR/spec.md` с будущими E2E-сценариями. Если какой-то критерий невозможно проверить в браузере — задокументируй это в отчёте.
 4. Напиши или обнови `$WORKTREE/frontend/e2e/<feature>.spec.js`, используя существующие конвенции.
 5. Запусти тест локально: `cd "$WORKTREE/frontend" && npx playwright test <feature>.spec.js`. Локальный E2E должен проходить перед push.
 6. Если тест падает, сделай скриншот и опиши expected vs actual behavior.

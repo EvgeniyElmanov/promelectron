@@ -28,6 +28,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "scripts"))
 from agent_retry import retry_on_kimi_errors  # noqa: E402
+from agent_metrics import collect_task_metrics  # noqa: E402
 
 WORKTREES_ROOT = PROJECT_ROOT / ".worktrees"
 # Transient per-task pipeline artifacts live under .agent/runs/ (gitignored),
@@ -38,7 +39,8 @@ BACKLOG_FILE = PROJECT_ROOT / ".agent" / "BACKLOG.md"
 # Context management thresholds for Kimi K2.7 (256K context window).
 # We use a conservative threshold to leave room for system prompt,
 # reasoning_content, and tool outputs.
-CONTEXT_THRESHOLD = 180_000
+# Aligned with .kimi-code/rules/agent-commons.md.
+CONTEXT_THRESHOLD = 150_000
 CHARS_PER_TOKEN = 4
 
 # GitHub Project configuration for Promelectron.
@@ -209,7 +211,7 @@ def cmd_worktree_path(args: argparse.Namespace) -> int:
     return 0
 
 
-@retry_on_kimi_errors(max_attempts=3, backoff_seconds=2.0)
+@retry_on_kimi_errors(max_attempts=4, backoff_seconds=2.0)
 def cmd_create_worktree(args: argparse.Namespace) -> int:
     task_id = args.task_id
     worktree = WORKTREES_ROOT / task_id
@@ -231,7 +233,7 @@ def cmd_create_worktree(args: argparse.Namespace) -> int:
     return 0
 
 
-@retry_on_kimi_errors(max_attempts=3, backoff_seconds=2.0)
+@retry_on_kimi_errors(max_attempts=4, backoff_seconds=2.0)
 def cmd_cleanup(args: argparse.Namespace) -> int:
     task_id = args.task_id
     worktree = WORKTREES_ROOT / task_id
@@ -441,7 +443,7 @@ def append_backlog_entry(task_id: str, title: str, issue_number: str) -> None:
     BACKLOG_FILE.write_text(text.rstrip() + entry, encoding="utf-8")
 
 
-@retry_on_kimi_errors(max_attempts=3, backoff_seconds=2.0)
+@retry_on_kimi_errors(max_attempts=4, backoff_seconds=2.0)
 def cmd_create_issue(args: argparse.Namespace) -> int:
     task_id = args.task_id
     task_dir = AGENT_RUNS_DIR / task_id
@@ -476,7 +478,7 @@ def cmd_create_issue(args: argparse.Namespace) -> int:
     return 0
 
 
-@retry_on_kimi_errors(max_attempts=3, backoff_seconds=2.0)
+@retry_on_kimi_errors(max_attempts=4, backoff_seconds=2.0)
 def cmd_set_status(args: argparse.Namespace) -> int:
     task_id = args.task_id
     task_file = AGENT_RUNS_DIR / task_id / "task.md"
@@ -499,7 +501,7 @@ def cmd_set_status(args: argparse.Namespace) -> int:
     return 0
 
 
-@retry_on_kimi_errors(max_attempts=3, backoff_seconds=2.0)
+@retry_on_kimi_errors(max_attempts=4, backoff_seconds=2.0)
 def cmd_sync_backlog(args: argparse.Namespace) -> int:
     """One-way sync: update local BACKLOG.md with open issues from GitHub Project."""
     items = run_json(
@@ -542,6 +544,27 @@ def cmd_sync_backlog(args: argparse.Namespace) -> int:
         )
 
     print(f"SYNCED={len(new_entries)}")
+    return 0
+
+
+@retry_on_kimi_errors(max_attempts=4, backoff_seconds=2.0)
+def cmd_record_metrics(args: argparse.Namespace) -> int:
+    """Collect metrics for a task and write them to .agent/runs/<task-id>/metrics.json."""
+    import json
+
+    task_id = args.task_id
+    metrics = collect_task_metrics(task_id)
+    metrics_file = AGENT_RUNS_DIR / task_id / "metrics.json"
+    metrics_file.write_text(
+        json.dumps(metrics.__dict__, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    print(f"METRICS_FILE={metrics_file}")
+    print(f"ESTIMATED_TOKENS={metrics.estimated_tokens}")
+    print(f"REVIEW_ITERATIONS={metrics.review_iterations}")
+    print(f"QA_ITERATIONS={metrics.qa_iterations}")
+    print(f"REACHED_PR={int(metrics.reached_pr)}")
+    print(f"COMPLETED={int(metrics.completed)}")
     return 0
 
 
@@ -595,6 +618,12 @@ def main() -> int:
         help="Sync open GitHub Project issues into .agent/BACKLOG.md",
     )
 
+    record_metrics = sub.add_parser(
+        "record-metrics",
+        help="Collect and save agent pipeline metrics for a task",
+    )
+    record_metrics.add_argument("task_id", help="Task ID")
+
     args = parser.parse_args()
 
     handlers = {
@@ -606,6 +635,7 @@ def main() -> int:
         "create-issue": cmd_create_issue,
         "set-status": cmd_set_status,
         "sync-backlog": cmd_sync_backlog,
+        "record-metrics": cmd_record_metrics,
     }
 
     return handlers[args.command](args)

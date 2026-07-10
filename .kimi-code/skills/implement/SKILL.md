@@ -126,16 +126,16 @@ python scripts/implement-pipeline.py check-context <task-id>
 
 ### 4.1 Research fan-out (параллельно, опционально)
 
-Для нетривиальных задач запускай read-only research субагентов (`coder` с read-only инструкциями) параллельно в одном сообщении — один на ось (libraries, best-practices, codebase integration) — каждый пишет `$AGENT_DIR/research/<axis>.md`. Для мелких внутренних изменений пропусти.
+Для нетривиальных задач запускай read-only research субагентов параллельно через инструмент `AgentSwarm` с `subagent_type: explore` — один на ось (libraries, best-practices, codebase integration) — каждый пишет `$AGENT_DIR/research/<axis>.md`. Для мелких внутренних изменений пропусти.
 
 ### 4.2 Запуск архитектора
 
 Запусти субагента architect через инструмент `Agent` с `subagent_type: plan`. Применяй политику повторных попыток из Step 3.
 
 ```text
-ЯЗЫК / LANGUAGE: Пользователь общается на русском. Ключевые инструкции этой задачи — на русском. Ты — архитектор Promelectron. Отвечай родительскому агенту и пиши все артефакты (spec, findings, отчёты, SESSION_LOG) на русском. Стремись рассуждать на русском. При multi-step tool calling сохраняй `reasoning_content` из ассистентских сообщений в истории. Код, команды, идентификаторы, пути и технические термины оставляй в оригинале.
+Предварь этот промпт комбинированной преамбулой из Rule: Agent Commons (раздел Full subagent prompt block).
 
-Important: Kimi K2.7-Code uses mandatory thinking mode (`thinking={"type":"enabled"}`), with fixed `temperature=1.0`, `top_p=0.95`, `n=1`, `presence_penalty=0.0`, `frequency_penalty=0.0`. `tool_choice` may only be `"auto"` or `"none"`.
+Ты — архитектор Promelectron.
 
 Прочитай (параллельно, где возможно):
 1. $AGENT_DIR/task.md
@@ -244,18 +244,16 @@ STATUS=in-progress
 Прочитай `Components Affected` и `Parallelization Plan` из `$AGENT_DIR/spec.md`. Вся работа с кодом ведётся в `WORKTREE` (используй `git -C`, `make -C`, явные пути — `cd` субагента не сохраняется).
 
 **Если затронуты и backend, и frontend, они независимы, и не заданы `--backend-only`/`--frontend-only`/`--serial`:**
-Запусти `backend-dev` и `frontend-dev` **в одном сообщении**, чтобы они работали параллельно. Они редактируют непересекающиеся деревья (`backend/` и `frontend/`) и оба ориентируются на **API Contract** из spec.
+Запусти `backend-dev` и `frontend-dev` параллельно через инструмент `AgentSwarm` с `subagent_type: coder`. Они редактируют непересекающиеся деревья (`backend/` и `frontend/`) и оба ориентируются на **API Contract** из spec.
 
-**Если задан `--serial`:** сначала backend, затем frontend в том же worktree.
+items: `["backend-dev", "frontend-dev"]`
 
-**Если затронута только одна сторона или флаги ограничивают область:** запускай только нужных разработчиков.
-
-Промпт для каждого разработчика:
+Промпт для `AgentSwarm` ({{item}} заменяется на роль):
 
 ```text
-ЯЗЫК / LANGUAGE: Пользователь общается на русском. Ключевые инструкции этой задачи — на русском. Ты — <ROLE> для Promelectron. Отвечай родительскому агенту и пиши все артефакты (spec, findings, отчёты, SESSION_LOG) на русском. Стремись рассуждать на русском. При multi-step tool calling сохраняй `reasoning_content` из ассистентских сообщений в истории. Код, команды, идентификаторы, пути и технические термины оставляй в оригинале.
+Предварь этот промпт комбинированной преамбулой из Rule: Agent Commons (раздел Full subagent prompt block).
 
-Important: Kimi K2.7-Code uses mandatory thinking mode (`thinking={"type":"enabled"}`), with fixed `temperature=1.0`, `top_p=0.95`, `n=1`, `presence_penalty=0.0`, `frequency_penalty=0.0`. `tool_choice` may only be `"auto"` or `"none"`.
+Ты — {{item}} для Promelectron.
 
 Прочитай (параллельно, где возможно):
 1. $AGENT_DIR/task.md
@@ -264,7 +262,7 @@ Important: Kimi K2.7-Code uses mandatory thinking mode (`thinking={"type":"enabl
 4. .agent/BACKLOG.md
 5. .agent/BLOCKERS.md
 6. .agent/SESSION_LOG.md
-7. `.kimi-code/skills/<ROLE>/SKILL.md`
+7. `.kimi-code/skills/<role>/SKILL.md` (роль подставляется из `{{item}}` AgentSwarm)
 8. [Rule: Pre-edit Checklist](../../rules/pre-edit-checklist.md)
 9. [Rule: Agent Commons](../../rules/agent-commons.md)
 10. [Rule: Security](../../rules/security.md) — если задача касается auth/payments/PII/uploads
@@ -273,7 +271,7 @@ Setup:
 1. Работай ТОЛЬКО внутри $WORKTREE (ветка $BRANCH).
 2. Используй явные пути: git -C "$WORKTREE" ..., make -C "$WORKTREE" ..., Read/Edit/Write файлов под $WORKTREE.
 
-Implement strictly per the spec and your role workflow:
+Implement strictly per the spec and the workflow of {{item}}:
 - backend-dev: model → schema → service → route handler → tests
 - frontend-dev: API service → composable → component → page → route → tests
 - devops: Helm/Docker → CI/CD → verify
@@ -299,6 +297,10 @@ Report:
 НАПОМИНАНИЕ: ответы и артефакты — на русском; технические токены (код, пути, команды) — в оригинале.
 ```
 
+**Если задан `--serial`:** запусти роли последовательно — сначала backend-dev, затем frontend-dev в том же worktree (используй отдельные вызовы `Agent`).
+
+**Если затронута только одна сторона или флаги ограничивают область:** запускай только нужного разработчика через `Agent` (не `AgentSwarm`).
+
 ---
 
 ## Step 6: Цикл ревью кода (максимум 3 итерации)
@@ -316,42 +318,27 @@ Report:
 Запусти одного reviewer-субагента через `Agent` с `subagent_type: coder`. Применяй политику повторных попыток из Step 3.
 
 ```text
-ЯЗЫК / LANGUAGE: Пользователь общается на русском. Ключевые инструкции этой задачи — на русском. Ты — code-reviewer для Promelectron. Отвечай родительскому агенту и пиши все артефакты (spec, findings, отчёты, SESSION_LOG) на русском. Стремись рассуждать на русском. При multi-step tool calling сохраняй `reasoning_content` из ассистентских сообщений в истории. Код, команды, идентификаторы, пути и технические термины оставляй в оригинале.
+Предварь этот промпт комбинированной преамбулой из Rule: Agent Commons (раздел Full subagent prompt block).
 
-Important: Kimi K2.7-Code uses mandatory thinking mode (`thinking={"type":"enabled"}`), with fixed `temperature=1.0`, `top_p=0.95`, `n=1`, `presence_penalty=0.0`, `frequency_penalty=0.0`. `tool_choice` may only be `"auto"` or `"none"`.
+Ты — code-reviewer для Promelectron.
+
+Контекст:
+- task-id: <task-id>
+- AGENT_DIR: $AGENT_DIR
+- WORKTREE: $WORKTREE
+- scope: all
+- output: $AGENT_DIR/review/findings.md
+- iteration: <N>
 
 Прочитай (параллельно, где возможно):
 1. $AGENT_DIR/task.md
 2. $AGENT_DIR/spec.md
-3. `.kimi-code/skills/code-reviewer/SKILL.md`
-4. [Rule: Security](../../rules/security.md)
-5. [Rule: Agent Commons](../../rules/agent-commons.md)
+3. $AGENT_DIR/review/findings.md (если это повторная итерация)
+4. `.kimi-code/skills/code-reviewer/SKILL.md`
+5. [Rule: Security](../../rules/security.md)
+6. [Rule: Agent Commons](../../rules/agent-commons.md)
 
-Затем:
-1. Прочитай реализацию в $WORKTREE (используй Read/Grep/Glob параллельно).
-2. Получи diff: git -C "$WORKTREE" --no-pager diff --no-color origin/main...HEAD
-3. Сравни со спецификацией и Decisions (D-01, D-02, ...).
-4. Проверь: логику, безопасность, архитектуру, бизнес-правила, тесты, влияние на golden path.
-5. Запиши findings в $AGENT_DIR/review/findings.md в формате:
-
-# Code Review: <task-id>
-- **Status:** FIXES_NEEDED | APPROVED
-- **Iteration:** <N>
-
-## Findings
-### [F001] ❌ CRITICAL | <Category>
-- **File:** path/to/file.py:42
-- **Problem:** ...
-- **Fix:** ...
-- **Status:** OPEN | FIXED | VERIFIED
-
-## Human Decisions (if any)
-### [H001] ...
-
-Жизненный цикл finding'а:
-- `OPEN` — найден ревьюером, требует исправления разработчиком.
-- `FIXED` — разработчик исправил и обновил статус (не ревьюер).
-- `VERIFIED` — ревьюер на повторной проверке подтвердил исправление.
+Затем следуй workflow из `.kimi-code/skills/code-reviewer/SKILL.md` строго. Запиши findings в $AGENT_DIR/review/findings.md.
 
 Do NOT edit source code. Only write findings.
 
@@ -362,46 +349,35 @@ Do NOT edit source code. Only write findings.
 
 Запусти reviewer-субагентов через инструмент `AgentSwarm` с `subagent_type: coder`. Применяй политику повторных попыток из Step 3.
 
-```text
-ЯЗЫК / LANGUAGE: Пользователь общается на русском. Ключевые инструкции этой задачи — на русском. Ты — code-reviewer для Promelectron (фокус: {{item}}). Отвечай родительскому агенту и пиши все артефакты (spec, findings, отчёты, SESSION_LOG) на русском. Стремись рассуждать на русском. При multi-step tool calling сохраняй `reasoning_content` из ассистентских сообщений в истории. Код, команды, идентификаторы, пути и технические термины оставляй в оригинале.
+items: `["backend", "frontend"]`
 
-Important: Kimi K2.7-Code uses mandatory thinking mode (`thinking={"type":"enabled"}`), with fixed `temperature=1.0`, `top_p=0.95`, `n=1`, `presence_penalty=0.0`, `frequency_penalty=0.0`. `tool_choice` may only be `"auto"` or `"none"`.
+```text
+Предварь этот промпт комбинированной преамбулой из Rule: Agent Commons (раздел Full subagent prompt block).
+
+Ты — code-reviewer для Promelectron.
+
+Контекст:
+- task-id: <task-id>
+- AGENT_DIR: $AGENT_DIR
+- WORKTREE: $WORKTREE
+- scope: {{item}}
+- output: $AGENT_DIR/review/findings-{{item}}.md
+- iteration: <N>
 
 Прочитай (параллельно, где возможно):
 1. $AGENT_DIR/task.md
 2. $AGENT_DIR/spec.md
-3. `.kimi-code/skills/code-reviewer/SKILL.md`
-4. [Rule: Security](../../rules/security.md)
-5. [Rule: Agent Commons](../../rules/agent-commons.md)
+3. $AGENT_DIR/review/findings-{{item}}.md (если это повторная итерация)
+4. `.kimi-code/skills/code-reviewer/SKILL.md`
+5. [Rule: Security](../../rules/security.md)
+6. [Rule: Agent Commons](../../rules/agent-commons.md)
 
-Затем:
-1. Читай только {{item}}-файлы реализации в $WORKTREE (используй Read/Grep/Glob параллельно).
-2. Получи diff: git -C "$WORKTREE" --no-pager diff --no-color origin/main...HEAD
-3. Сравни со спецификацией и Decisions (D-01, D-02, ...).
-4. Проверь: логику, безопасность, архитектуру, бизнес-правила, тесты, влияние на golden path для {{item}}.
-5. Запиши findings в $AGENT_DIR/review/findings-{{item}}.md в формате:
-
-# Code Review: <task-id> ({{item}})
-- **Status:** FIXES_NEEDED | APPROVED
-- **Iteration:** <N>
-- **Scope:** {{item}}
-
-## Findings
-### [F001] ❌ CRITICAL | <Category>
-- **File:** path/to/file.py:42
-- **Problem:** ...
-- **Fix:** ...
-- **Status:** OPEN | FIXED | VERIFIED
-
-## Human Decisions (if any)
-### [H001] ...
+Затем следуй workflow из `.kimi-code/skills/code-reviewer/SKILL.md` строго. Запиши findings в $AGENT_DIR/review/findings-{{item}}.md.
 
 Do NOT edit source code. Only write findings.
 
 НАПОМИНАНИЕ: ответы и артефакты — на русском; технические токены (код, пути, команды) — в оригинале.
 ```
-
-items: `["backend", "frontend"]`
 
 **После возврата `AgentSwarm`:**
 1. Прочитай `$AGENT_DIR/review/findings-backend.md` и `$AGENT_DIR/review/findings-frontend.md`.
@@ -439,9 +415,9 @@ items: `["backend", "frontend"]`
 После прохождения code review запусти субагента `qa` через `Agent` с `subagent_type: coder`. Применяй политику повторных попыток из Step 3.
 
 ```text
-ЯЗЫК / LANGUAGE: Пользователь общается на русском. Ключевые инструкции этой задачи — на русском. Ты — QA-инженер для Promelectron. Отвечай родительскому агенту и пиши все артефакты (spec, findings, отчёты, SESSION_LOG) на русском. Стремись рассуждать на русском. При multi-step tool calling сохраняй `reasoning_content` из ассистентских сообщений в истории. Код, команды, идентификаторы, пути и технические термины оставляй в оригинале.
+Предварь этот промпт комбинированной преамбулой из Rule: Agent Commons (раздел Full subagent prompt block).
 
-Important: Kimi K2.7-Code uses mandatory thinking mode (`thinking={"type":"enabled"}`), with fixed `temperature=1.0`, `top_p=0.95`, `n=1`, `presence_penalty=0.0`, `frequency_penalty=0.0`. `tool_choice` may only be `"auto"` or `"none"`.
+Ты — QA-инженер для Promelectron.
 
 Прочитай (параллельно, где возможно):
 1. $AGENT_DIR/task.md
@@ -457,7 +433,7 @@ Important: Kimi K2.7-Code uses mandatory thinking mode (`thinking={"type":"enabl
 Затем:
 1. Запусти backend-тесты: make -C "$WORKTREE" test-backend
 2. Запусти frontend unit-тесты: make -C "$WORKTREE" test-frontend
-3. Если фича затрагивает UI или пользовательские сценарии — запусти E2E: make -C "$WORKTREE" test-e2e. При необходимости делегируй E2E-специфичную часть e2e-tester субагенту, передав scope, spec и пути $AGENT_DIR / $WORKTREE.
+3. Если фича затрагивает UI или пользовательские сценарии — запусти E2E: `make -C "$WORKTREE" test-e2e`. Не делегируй E2E другому субагенту; оркестратор запустит `e2e-tester` отдельно при необходимости.
 4. Проверь каждый Acceptance Criterion из $AGENT_DIR/spec.md.
 5. Запиши результаты в $AGENT_DIR/review/test-findings.md.
 6. Обнови $PROJECT_ROOT/.agent/SESSION_LOG.md.
@@ -465,9 +441,41 @@ Important: Kimi K2.7-Code uses mandatory thinking mode (`thinking={"type":"enabl
 НАПОМИНАНИЕ: ответы и артефакты — на русском; технические токены (код, пути, команды) — в оригинале.
 ```
 
-Субагент `qa` может запустить субагента `e2e-tester` для браузерной автоматизации, если нужно.
+### Step 7.5: E2E-тестер (опционально, запускается оркестратором)
 
-Если статус `test-findings.md` — `TESTS_FAILED`, покажи ошибки, вызови затронутого разработчика для исправления, затем вернись к Step 6 (изменён код → повторное ревью). Максимум 2 QA-итерации, затем эскалация пользователю.
+Если фича затрагивает UI/пользовательские сценарии и требует ручной E2E-автоматизации (новые селекторы, сложный браузерный сценарий), запусти субагента `e2e-tester` **из основного агента** через инструмент `Agent` с `subagent_type: coder`. Не запускай e2e-tester изнутри qa-субагента.
+
+```text
+Предварь этот промпт комбинированной преамбулой из Rule: Agent Commons (раздел Full subagent prompt block).
+
+Ты — e2e-tester для Promelectron.
+
+Paths:
+- AGENT_DIR = $AGENT_DIR
+- WORKTREE = $WORKTREE
+
+Прочитай (параллельно, где возможно):
+1. $AGENT_DIR/task.md
+2. $AGENT_DIR/spec.md
+3. $AGENT_DIR/review/findings.md
+4. $AGENT_DIR/review/test-findings.md (если есть)
+5. `.kimi-code/skills/e2e-tester/SKILL.md`
+6. [Rule: Golden Path](../../rules/golden-path.md)
+7. [Rule: Agent Commons](../../rules/agent-commons.md)
+
+Затем:
+1. Работай только внутри $WORKTREE.
+2. Сопоставь Acceptance Criteria из spec.md с E2E-сценариями.
+3. Добавь/обнови E2E-тесты в $WORKTREE/frontend/e2e/.
+4. Запусти `npx playwright test` для новых/изменённых спек.
+5. Запиши краткий результат в $AGENT_DIR/review/test-findings.md (добавь секцию E2E, не перезаписывай результаты qa).
+
+Do NOT edit source code, кроме `data-testid` и E2E-спек.
+
+НАПОМИНАНИЕ: ответы и артефакты — на русском; технические токены (код, пути, команды) — в оригинале.
+```
+
+Если статус `test-findings.md` — `TESTS_FAILED`, покажи ошибки, вызови затронутого разработчика для исправления, затем вернись к Step 6 (изменён код → повторное ревью). Максимум 2 QA/E2E-итерации, затем эскалация пользователю.
 
 E2E в CI уже запускается на test-окружении (`promelectron-test`) после деплоя.
 
@@ -519,9 +527,10 @@ E2E в CI уже запускается на test-окружении (`promelect
 
 После завершения всех фаз:
 
-1. Запусти `python scripts/implement-pipeline.py check-context <task-id>`, чтобы зафиксировать итоговый размер контекста.
-2. Прочитай `.agent/SESSION_LOG.md` и допиши сводку: estimated tokens, количество итераций ревью, результат QA.
-3. Сообщи пользователю на русском:
+1. Запусти `python scripts/implement-pipeline.py record-metrics <task-id>`, чтобы собрать и сохранить метрики пайплайна в `.agent/runs/<task-id>/metrics.json`.
+2. Запусти `python scripts/implement-pipeline.py check-context <task-id>`, чтобы зафиксировать итоговый размер контекста.
+3. Прочитай `.agent/SESSION_LOG.md` и допиши сводку: estimated tokens, количество итераций ревью, результат QA.
+4. Сообщи пользователю на русском:
    - Task ID
    - Путь к worktree: `$WORKTREE`
    - Feature branch: `$BRANCH`
@@ -530,9 +539,10 @@ E2E в CI уже запускается на test-окружении (`promelect
    - Результаты тестов (backend, frontend, e2e)
    - Статус ревью
    - Estimated tokens и количество итераций
+   - Путь к `.agent/runs/<task-id>/metrics.json`
    - Открытые findings или H-items (если есть)
-4. Спроси: **"Влить `$BRANCH` в main?"** — НЕ мержи и НЕ пушь в main без явного одобрения.
-5. Если пользователь одобрил merge и merge выполнен, переведи связанный GitHub Issue в **Done**:
+5. Спроси: **"Влить `$BRANCH` в main?"** — НЕ мержи и НЕ пушь в main без явного одобрения.
+6. Если пользователь одобрил merge и merge выполнен, переведи связанный GitHub Issue в **Done**:
    ```bash
    python scripts/implement-pipeline.py set-status <task-id> done
    ```

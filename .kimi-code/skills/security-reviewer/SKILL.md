@@ -91,6 +91,27 @@ disableModelInvocation: true
 
 Severity: CRITICAL | HIGH | MEDIUM | LOW.
 
+### Human Decisions (if any)
+
+Если security-ревью выявляет архитектурный trade-off, который должен решить человек (product-owner, team-lead или заказчик), зафиксируй его в формате `[H-xxx]`:
+
+```markdown
+### [H001] <Краткое описание trade-off>
+- **Context:** где/в чём состоит выбор.
+- **Options:** 2–3 варианта с краткими плюсами/минусами.
+- **Recommendation:** предлагаемое решение security-ревьюера.
+- **Decision:** принятое решение (оставить OPEN, пока человек не ответит).
+- **Owner:** кто должен принять решение.
+```
+
+Примеры ситуаций для `[H-xxx]`:
+- Разрешить admin bypass для критичной операции.
+- Хранить секрет в SOPS vs sealed-secrets vs env.
+- Отключить rate limit для внутренних сервисов.
+- Разрешить логирование PII для отладки в test.
+
+Если решение уже принято в рамках `spec.md` (Decisions D-01, D-02, ...), сослаться на него и не открывать новый `[H-xxx]`.
+
 ### Правила
 
 - Never edit source code.

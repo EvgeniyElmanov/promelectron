@@ -43,7 +43,7 @@ gh project view 1 --owner AutonomaCo
 
 Если что-то не так — остановись и попроси пользователя выполнить `gh auth login` или выдать scope `project`.
 
-Сгенерируй `<task-id>`: короткий slug в kebab-case с префиксом `bugfix-`, например `bugfix-cart-stock-race`, `bugfix-login-redirect`.
+Сгенерируй `<task-id>`: короткий slug в kebab-case, например `cart-stock-race`, `login-redirect`.
 
 Создай временную координационную плоскость и корень worktree:
 
@@ -172,9 +172,9 @@ python scripts/implement-pipeline.py create-worktree <task-id>
 Запусти выбранного developer-субагента через `Agent` с `subagent_type: coder`.
 
 ```text
-ЯЗЫК / LANGUAGE: Пользователь общается на русском. Ключевые инструкции этой задачи — на русском. Ты — <ROLE> для Promelectron. Отвечай родительскому агенту и пиши все артефакты (spec, findings, отчёты, SESSION_LOG) на русском. Стремись рассуждать на русском. При multi-step tool calling сохраняй `reasoning_content` из ассистентских сообщений в истории. Код, команды, идентификаторы, пути и технические термины оставляй в оригинале.
+Предварь этот промпт комбинированной преамбулой из Rule: Agent Commons (раздел Full subagent prompt block).
 
-Important: Kimi K2.7-Code uses mandatory thinking mode (`thinking={"type":"enabled"}`), with fixed `temperature=1.0`, `top_p=0.95`, `n=1`, `presence_penalty=0.0`, `frequency_penalty=0.0`. `tool_choice` may only be `"auto"` or `"none"`.
+Ты — <ROLE> для Promelectron.
 
 Прочитай (параллельно, где возможно):
 1. $AGENT_DIR/task.md
@@ -244,10 +244,11 @@ Review findings пишутся в `$AGENT_DIR/review/findings.md` со стат�
 
 После всех фаз:
 
-1. Запусти `python scripts/implement-pipeline.py check-context <task-id>`, чтобы зафиксировать итоговый estimated tokens.
-2. Обнови `$PROJECT_ROOT/.agent/SESSION_LOG.md`.
-3. Обнови `.agent/BACKLOG.md`, если баг был из спринта.
-4. Сообщи пользователю:
+1. Запусти `python scripts/implement-pipeline.py record-metrics <task-id>`, чтобы собрать и сохранить метрики пайплайна в `.agent/runs/<task-id>/metrics.json`.
+2. Запусти `python scripts/implement-pipeline.py check-context <task-id>`, чтобы зафиксировать итоговый estimated tokens.
+3. Обнови `$PROJECT_ROOT/.agent/SESSION_LOG.md`.
+4. Обнови `.agent/BACKLOG.md`, если баг был из спринта.
+5. Сообщи пользователю:
    - Task ID
    - Путь к worktree: `$WORKTREE`
    - Ветка: `$BRANCH`
@@ -258,9 +259,10 @@ Review findings пишутся в `$AGENT_DIR/review/findings.md` со стат�
    - Результаты тестов
    - Статус ревью
    - Estimated tokens и количество итераций
+   - Путь к `.agent/runs/<task-id>/metrics.json`
    - Открытые findings или H-items (если есть)
-5. Спроси: **"Влить `$BRANCH` в main?"** — НЕ мержи без явного одобрения.
-6. Если merge выполнен, переведи связанный GitHub Issue в **Done**:
+6. Спроси: **"Влить `$BRANCH` в main?"** — НЕ мержи без явного одобрения.
+7. Если merge выполнен, переведи связанный GitHub Issue в **Done**:
    ```bash
    python scripts/implement-pipeline.py set-status <task-id> done
    ```

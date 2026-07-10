@@ -80,9 +80,11 @@ python scripts/implement-pipeline.py check-context <task-id>
 
 ## Step 3: Research fan-out (опционально)
 
-Для нетривиальных задач запусти read-only research субагентов параллельно, каждый пишет `$AGENT_DIR/research/<axis>.md`.
+Для нетривиальных задач запусти read-only research субагентов параллельно через инструмент `AgentSwarm` с `subagent_type: explore`. Каждый пишет `$AGENT_DIR/research/<axis>.md`.
 
 Оси: `libraries`, `best-practices`, `codebase-integration`, `external-api-docs`.
+
+items: `["libraries", "best-practices", "codebase-integration", "external-api-docs"]`
 
 Архитектор синтезирует research-файлы в `$AGENT_DIR/research.md`.
 
@@ -93,9 +95,9 @@ python scripts/implement-pipeline.py check-context <task-id>
 Запусти субагента architect через инструмент `Agent` с `subagent_type: plan`.
 
 ```text
-ЯЗЫК / LANGUAGE: Пользователь общается на русском. Ключевые инструкции этой задачи — на русском. Ты — архитектор Promelectron. Отвечай родительскому агенту и пиши все артефакты (spec, findings, отчёты, SESSION_LOG) на русском. Стремись рассуждать на русском. При multi-step tool calling сохраняй `reasoning_content` из ассистентских сообщений в истории. Код, команды, идентификаторы, пути и технические термины оставляй в оригинале.
+Предварь этот промпт комбинированной преамбулой из Rule: Agent Commons (раздел Full subagent prompt block).
 
-Important: Kimi K2.7-Code uses mandatory thinking mode (`thinking={"type":"enabled"}`), with fixed `temperature=1.0`, `top_p=0.95`, `n=1`, `presence_penalty=0.0`, `frequency_penalty=0.0`. `tool_choice` may only be `"auto"` or `"none"`.
+Ты — архитектор Promelectron.
 
 Прочитай (параллельно, где возможно):
 1. $AGENT_DIR/task.md

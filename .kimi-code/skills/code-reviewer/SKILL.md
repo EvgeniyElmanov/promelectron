@@ -43,6 +43,11 @@ disableModelInvocation: true
 
 Читай diff из **WORKTREE**: `git -C "$WORKTREE" diff origin/main...HEAD`. Пиши findings в **AGENT_DIR/review/**. `cd` субагента не сохраняется между tool calls — используй явные пути.
 
+Родительский агент также сообщает:
+- **scope**: `all` | `backend` | `frontend` — какие файлы ревьюить.
+- **output**: путь к файлу findings (например, `$AGENT_DIR/review/findings.md` или `$AGENT_DIR/review/findings-backend.md`).
+- **iteration**: номер итерации ревью.
+
 ### Рабочий процесс
 
 1. Определи свой scope из промпта родительского агента.

@@ -19,8 +19,16 @@ disableModelInvocation: false
 ## Язык
 
 Следуй [Rule: Agent Commons](../../rules/agent-commons.md) > Language Rule / Языковое правило.
-Kimi K2.7-Code работает в обязательном thinking mode; `reasoning_content` должен сохраняться между multi-turn tool calls.
-Пользовательские ответы, отчёты и артефакты должны соответствовать языку пользователя.
+
+---
+
+## Ограничения API (Kimi K2.7-Code)
+
+- Thinking mode обязателен (`thinking={"type":"enabled"}`); `reasoning_content` должен сохраняться между multi-turn tool calls.
+- Не считай переключение языка внутреннего рассуждения ошибкой. Пользовательские ответы, отчёты и артефакты должны соответствовать языку пользователя.
+- `tool_choice` может быть только `"auto"` или `"none"`.
+- Sampling-параметры фиксированы: `temperature=1.0`, `top_p=0.95`, `n=1`, `presence_penalty=0.0`, `frequency_penalty=0.0`.
+- Контекстное окно 256K; при анализе больших бэклогов суммируй и читай только релевантные секции.
 
 ---
 

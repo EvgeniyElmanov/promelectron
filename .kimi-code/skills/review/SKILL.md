@@ -102,9 +102,17 @@ git -C "$WORKTREE" --no-pager diff --no-color origin/main...HEAD -- <files>
 Запусти одного `code-reviewer` субагента через инструмент `Agent` с `subagent_type: coder`.
 
 ```text
-ЯЗЫК / LANGUAGE: Пользователь общается на русском. Ключевые инструкции этой задачи — на русском. Ты — code-reviewer для Promelectron. Отвечай родительскому агенту и пиши все артефакты (spec, findings, отчёты, SESSION_LOG) на русском. Стремись рассуждать на русском. При multi-step tool calling сохраняй `reasoning_content` из ассистентских сообщений в истории. Код, команды, идентификаторы, пути и технические термины оставляй в оригинале.
+Предварь этот промпт комбинированной преамбулой из Rule: Agent Commons (раздел Full subagent prompt block).
 
-Important: Kimi K2.7-Code uses mandatory thinking mode (`thinking={"type":"enabled"}`), with fixed `temperature=1.0`, `top_p=0.95`, `n=1`, `presence_penalty=0.0`, `frequency_penalty=0.0`. `tool_choice` may only be `"auto"` or `"none"`.
+Ты — code-reviewer для Promelectron.
+
+Контекст:
+- task-id: <task-id>
+- AGENT_DIR: $AGENT_DIR
+- WORKTREE: $WORKTREE
+- scope: all
+- output: $AGENT_DIR/review/findings.md
+- iteration: 1
 
 Прочитай (параллельно, где возможно):
 1. $AGENT_DIR/task.md (если есть)
@@ -113,26 +121,7 @@ Important: Kimi K2.7-Code uses mandatory thinking mode (`thinking={"type":"enabl
 4. [Rule: Security](../../rules/security.md)
 5. [Rule: Agent Commons](../../rules/agent-commons.md)
 
-Затем:
-1. Прочитай реализацию в $WORKTREE (используй Read/Grep/Glob параллельно).
-2. Получи diff: git -C "$WORKTREE" --no-pager diff --no-color origin/main...HEAD
-3. Сравни со спецификацией и Decisions (D-01, D-02, ...), если spec есть.
-4. Проверь: логику, безопасность, архитектуру, бизнес-правила, тесты, влияние на golden path.
-5. Запиши findings в $AGENT_DIR/review/findings.md в формате:
-
-# Code Review: <task-id>
-- **Status:** FIXES_NEEDED | APPROVED
-- **Iteration:** <N>
-
-## Findings
-### [F001] ❌ CRITICAL | <Category>
-- **File:** path/to/file.py:42
-- **Problem:** ...
-- **Fix:** ...
-- **Status:** OPEN
-
-## Human Decisions (if any)
-### [H001] ...
+Затем следуй workflow из `.kimi-code/skills/code-reviewer/SKILL.md` строго. Запиши findings в $AGENT_DIR/review/findings.md.
 
 Do NOT edit source code. Only write findings.
 
@@ -143,12 +132,20 @@ Do NOT edit source code. Only write findings.
 
 Используй `AgentSwarm` с `subagent_type: coder`.
 
-Шаблон промпта:
+items: `["backend", "frontend"]`
 
 ```text
-ЯЗЫК / LANGUAGE: Пользователь общается на русском. Ключевые инструкции этой задачи — на русском. Ты — code-reviewer для Promelectron (фокус: {{item}}). Отвечай родительскому агенту и пиши все артефакты (spec, findings, отчёты, SESSION_LOG) на русском. Стремись рассуждать на русском. При multi-step tool calling сохраняй `reasoning_content` из ассистентских сообщений в истории. Код, команды, идентификаторы, пути и технические термины оставляй в оригинале.
+Предварь этот промпт комбинированной преамбулой из Rule: Agent Commons (раздел Full subagent prompt block).
 
-Important: Kimi K2.7-Code uses mandatory thinking mode (`thinking={"type":"enabled"}`), with fixed `temperature=1.0`, `top_p=0.95`, `n=1`, `presence_penalty=0.0`, `frequency_penalty=0.0`. `tool_choice` may only be `"auto"` or `"none"`.
+Ты — code-reviewer для Promelectron.
+
+Контекст:
+- task-id: <task-id>
+- AGENT_DIR: $AGENT_DIR
+- WORKTREE: $WORKTREE
+- scope: {{item}}
+- output: $AGENT_DIR/review/findings-{{item}}.md
+- iteration: 1
 
 Прочитай (параллельно, где возможно):
 1. $AGENT_DIR/task.md (если есть)
@@ -157,34 +154,12 @@ Important: Kimi K2.7-Code uses mandatory thinking mode (`thinking={"type":"enabl
 4. [Rule: Security](../../rules/security.md)
 5. [Rule: Agent Commons](../../rules/agent-commons.md)
 
-Затем:
-1. Читай только {{item}}-файлы реализации в $WORKTREE (используй Read/Grep/Glob параллельно).
-2. Получи diff: git -C "$WORKTREE" --no-pager diff --no-color origin/main...HEAD
-3. Сравни со спецификацией и Decisions (D-01, D-02, ...), если spec есть.
-4. Проверь: логику, безопасность, архитектуру, бизнес-правила, тесты, влияние на golden path для {{item}}.
-5. Запиши findings в $AGENT_DIR/review/findings-{{item}}.md в формате:
-
-# Code Review: <task-id> ({{item}})
-- **Status:** FIXES_NEEDED | APPROVED
-- **Iteration:** <N>
-- **Scope:** {{item}}
-
-## Findings
-### [F001] ❌ CRITICAL | <Category>
-- **File:** path/to/file.py:42
-- **Problem:** ...
-- **Fix:** ...
-- **Status:** OPEN
-
-## Human Decisions (if any)
-### [H001] ...
+Затем следуй workflow из `.kimi-code/skills/code-reviewer/SKILL.md` строго. Запиши findings в $AGENT_DIR/review/findings-{{item}}.md.
 
 Do NOT edit source code. Only write findings.
 
 НАПОМИНАНИЕ: ответы и артефакты — на русском; технические токены (код, пути, команды) — в оригинале.
 ```
-
-items: `["backend", "frontend"]`
 
 **После возврата `AgentSwarm`:**
 1. Прочитай `$AGENT_DIR/review/findings-backend.md` и `$AGENT_DIR/review/findings-frontend.md`.

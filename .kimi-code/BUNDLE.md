@@ -46,6 +46,7 @@
 | Golden path | `.kimi-code/rules/golden-path.md` |
 | Dependency map | `.kimi-code/rules/dependency-map.md` |
 | Security | `.kimi-code/rules/security.md` |
+| Business rules (маркетплейс) | `.kimi-code/rules/business.md` |
 | Prompt format | `.kimi-code/rules/prompt-format.md` |
 | Task template | `.kimi-code/rules/task-template.md` |
 | Planning & Definition of Done | `.kimi-code/rules/planning.md` |

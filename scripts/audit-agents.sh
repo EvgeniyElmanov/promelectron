@@ -176,6 +176,7 @@ required_rules=(
     "golden-path"
     "dependency-map"
     "security"
+    "business"
     "prompt-format"
     "task-template"
     "planning"
@@ -362,10 +363,16 @@ else
     error "scripts/implement-pipeline.py имеет синтаксические ошибки"
 fi
 
-if cd backend && ruff check ../scripts/implement-pipeline.py 2>/dev/null; then
-    ok "ruff check scripts/implement-pipeline.py — чисто"
+if python3 -m py_compile scripts/agent_metrics.py 2>/dev/null; then
+    ok "scripts/agent_metrics.py синтаксически корректен"
 else
-    error "ruff check scripts/implement-pipeline.py — есть ошибки"
+    error "scripts/agent_metrics.py имеет синтаксические ошибки"
+fi
+
+if cd backend && ruff check ../scripts/implement-pipeline.py ../scripts/agent_metrics.py 2>/dev/null; then
+    ok "ruff check scripts/implement-pipeline.py scripts/agent_metrics.py — чисто"
+else
+    error "ruff check scripts/implement-pipeline.py scripts/agent_metrics.py — есть ошибки"
 fi
 cd "$PROJECT_ROOT"
 

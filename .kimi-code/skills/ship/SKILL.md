@@ -24,6 +24,15 @@ disableModelInvocation: false
 
 ---
 
+## Ограничения API (Kimi K2.7-Code)
+
+- Thinking mode обязателен (`thinking={"type":"enabled"}`); `reasoning_content` должен сохраняться между multi-turn tool calls (особенно при повторных попытках `gh pr create` / `git push`).
+- Не считай переключение языка внутреннего рассуждения ошибкой. Главное — финальные ответы, title/body PR и артефакты на языке пользователя.
+- `tool_choice` может быть только `"auto"` или `"none"`.
+- Sampling-параметры фиксированы: `temperature=1.0`, `top_p=0.95`, `n=1`, `presence_penalty=0.0`, `frequency_penalty=0.0`.
+
+---
+
 ## Step 0: Предварительные проверки
 
 Проверь доступ к GitHub CLI:

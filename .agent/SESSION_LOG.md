@@ -2006,7 +2006,6 @@
   - `make pre-push` после мерджа — чисто ✅
   Контекст: ESTIMATED_TOKENS=1954, THRESHOLD=180000.
   Блокер: Нет.
-<<<<<<< HEAD
 
 ### 2026-07-04 05:25 | frontend-dev | cart-select-items-for-payment — frontend-реализация
   Роль: frontend-dev.
@@ -2086,8 +2085,6 @@
   - Worktree: `/home/evgeniy/project/my_shop_backend/.worktrees/cart-select-items-for-payment`
   - Issue: https://github.com/AutonomaCo/promelectron/issues/61
   Блокер: Нет.
-=======
-  Следующий шаг: нет.
 
 ### 2026-07-05 21:45 | implement | fix-avatar-upload-notification — PR opened
   Задача: исправить загрузку аватара (MinIO) и добавить toast-уведомление об успешной загрузке.
@@ -2118,3 +2115,55 @@
   - PR: https://github.com/AutonomaCo/promelectron/pull/64
   - Issue: https://github.com/AutonomaCo/promelectron/issues/63 (In review)
   Блокер: Нет. Развёрнутый стек (api, frontend, worker, postgres, redis, minio) оставлен запущенным для ручной проверки.
+
+### 2026-07-10 11:37 | audit-kimi-pipeline | Исправления несоответствий документации Kimi K2.7 Code
+  Задача: проверить агентский пайплайн Promelectron на соответствие документации Kimi K2.7 Code и устранить найденные несоответствия.
+  Исправлено:
+  - `scripts/implement-pipeline.py`: `CONTEXT_THRESHOLD` 180000 → 150000 (соответствие `.kimi-code/rules/agent-commons.md`).
+  - `.kimi-code/config.example.toml`: `default_model` и `model` изменены с `kimi-for-coding` на `kimi-k2.7-code`; добавлен закомментированный пример прямого Kimi API `kimi-k2.7-code-highspeed` с `base_url = "https://api.moonshot.ai/v1"`.
+  - `.kimi-code/skills/dispatcher/SKILL.md`: исправлен `u003e` на `>`; финальное сообщение переведено на русский.
+  - `.kimi-code/skills/fix/SKILL.md`: убран префикс `bugfix-` из `task-id`, ветка теперь `bugfix/<task-id>` без дублирования.
+  - `.kimi-code/skills/implement/SKILL.md` и `.kimi-code/skills/qa-gate/SKILL.md`: убрана возможность `qa`-субагенту запускать `e2e-tester`; E2E-фаза теперь запускается основным агентом в Step 7.5 / Step 3.5.
+  - `.kimi-code/skills/implement/SKILL.md` и `.kimi-code/skills/spec/SKILL.md`: параллельный research fan-out и параллельная разработка backend/frontend теперь явно используют `AgentSwarm`.
+  - `scripts/agent_retry.py` и `scripts/implement-pipeline.py`: `max_attempts` 3 → 4, чтобы backoff соответствовал заявленной последовательности 2s, 4s, 8s.
+  - `.kimi-code/rules/agent-commons.md` и `.kimi-code/skills/promelectron/SKILL.md`: retry policy приведена к «до 4 попыток (3 повторных)».
+  - `.agent/BACKLOG.md`: синхронизированы даты спринта (2026-06-29 — 2026-07-12), версия/дата, статусы задач (#5, #6, #13), активные блокеры (BLK-009, BLK-010), исправлена сломанная строка в разделе GitHub Issues.
+  - `.agent/BLOCKERS.md`: синхронизированы активные блокеры (BLK-009, BLK-010), старые блокеры перемещены в решённые.
+  - `.kimi-code/skills/e2e-tester/SKILL.md`: добавлен явный шаг сопоставления E2E-сценариев с Acceptance Criteria из spec.md.
+  Проверки:
+  - `bash scripts/audit-agents.sh` — ✅ все проверки пройдены.
+  - `python3 -m py_compile scripts/agent_retry.py scripts/implement-pipeline.py` — ✅ синтаксис корректен.
+  - Поиск устаревших паттернов (`max_attempts=3`, `u003e`, `CONTEXT_THRESHOLD = 180`, `kimi-for-coding`, `bugfix-`) — ✅ не найдены.
+  Блокер: Нет.
+
+### 2026-07-10 11:48 | audit-kimi-pipeline | P2-улучшения агентского пайплайна
+  Задача: внедрить опциональные улучшения (P2) после аудита соответствия Kimi K2.7 Code.
+  Исправлено:
+  - `.kimi-code/skills/security-reviewer/SKILL.md`: добавлен раздел **Human Decisions (if any)** с форматом `[H-xxx]` для фиксации security-related архитектурных trade-off.
+  - `.kimi-code/skills/ship/SKILL.md`, `.kimi-code/skills/context-sync/SKILL.md`, `.kimi-code/skills/plan-maintainer/SKILL.md`: добавлены секции **Ограничения API (Kimi K2.7-Code)** с упоминанием mandatory thinking mode, `reasoning_content`, fixed sampling params и `tool_choice`.
+  - `.kimi-code/skills/implement/SKILL.md` и `.kimi-code/skills/review/SKILL.md`: промпты `code-reviewer` сокращены до контекста (task-id, AGENT_DIR, WORKTREE, scope, output, iteration) и ссылки на `.kimi-code/skills/code-reviewer/SKILL.md`; дублирующиеся шаблоны findings удалены.
+  - `.kimi-code/skills/code-reviewer/SKILL.md`: добавлено явное описание параметров от родительского агента (scope, output, iteration).
+  Проверки:
+  - `bash scripts/audit-agents.sh` — ✅ все проверки пройдены.
+  - Поиск дублирующихся шаблонов findings в `implement`/`review` — ✅ не найдены.
+  - Поиск `[H-xxx]` и API constraints в `security-reviewer`, `ship`, `context-sync`, `plan-maintainer` — ✅ на месте.
+  Блокер: Нет.
+
+### 2026-07-10 04:06 | agent-pipeline-upgrade | Профессиональный апгрейд агентской системы
+  Задача: реализовать профессиональный апгрейд скилов, правил и агентов на основе документации Kimi 2.7 Code и текущего состояния маркетплейса.
+  Исправлено:
+  - Cleanup: удалены устаревшие `.agent/*.log` и `.agent/tasks/*` (MinIO/YooKassa планы уже в main). Worktree `.worktrees/fix-avatar-upload-notification` не удалён физически из-за root-owned `__pycache__` / `.ruff_cache` (требуется ручная очистка с sudo); из git registry worktree отсутствует.
+  - Создан `scripts/agent_metrics.py`: сбор estimated tokens, review/QA итераций, lifetime, наличия PR/complete из `.agent/runs/<task-id>/` и `SESSION_LOG.md`.
+  - Добавлена команда `record-metrics` в `scripts/implement-pipeline.py`: сохраняет `.agent/runs/<task-id>/metrics.json`.
+  - Интегрирован `record-metrics` в финальные отчёты `/skill:implement` и `/skill:fix`.
+  - DRY-преамбула субагентов: в `.kimi-code/rules/agent-commons.md` добавлен комбинированный блок (language + Kimi API constraints); workflow skills `implement`, `fix`, `review`, `spec`, `qa-gate` переведены на ссылку к этому блоку вместо дублирования.
+  - Создан `.kimi-code/rules/business.md` с бизнес-инвариантами маркетплейса: цены/stock, заказы, платежи, доставка, возвраты, роли, промо (future).
+  - Обновлён `.kimi-code/BUNDLE.md` — добавлена ссылка на `business.md`.
+  - Обновлён `.kimi-code/AGENTS.md` — `business.md` добавлен в обязательный контекст и "См. также".
+  - Обновлён `.agent/METRICS.md` (v1.3): актуальные coverage (backend 335/335, frontend 245/245, e2e 108/108), таблица pipeline-метрик по 6 задачам в `.agent/runs/`.
+  Проверки:
+  - `python3 -m py_compile scripts/agent_metrics.py scripts/implement-pipeline.py` — ✅ синтаксис корректен.
+  - `python3 scripts/agent_metrics.py --all --format=json` — ✅ собирает метрики по 6 задачам.
+  - `python3 scripts/implement-pipeline.py record-metrics fix-avatar-upload-notification` — ✅ создаёт `metrics.json`.
+  - Поиск дублирующихся преамбул (`ЯЗЫК / LANGUAGE: Пользователь общается...`) в `.kimi-code/skills` — ✅ не найдены.
+  Блокер: Нет. Orphan-worktree `.worktrees/fix-avatar-upload-notification` удалён через `git worktree remove --force`.
