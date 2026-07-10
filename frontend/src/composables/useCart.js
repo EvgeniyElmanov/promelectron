@@ -55,11 +55,41 @@ export const useCart = () => {
           stock: product?.stock || 0,
           images: product?.images || [],
           supplier_id: product?.supplier_id ?? null,
+          selected: true,
         });
       }
       saveGuestCart(items);
       cartCount.value = getGuestCartCount();
     }
+  };
+
+  const getSelectedGuestCartItems = () => {
+    return loadGuestCart().filter((item) => item.selected !== false);
+  };
+
+  const selectItem = (productId, selected) => {
+    const items = loadGuestCart();
+    const item = items.find((i) => i.product_id === productId);
+    if (item) {
+      item.selected = selected;
+      saveGuestCart(items);
+    }
+  };
+
+  const selectAll = () => {
+    const items = loadGuestCart();
+    items.forEach((item) => {
+      item.selected = true;
+    });
+    saveGuestCart(items);
+  };
+
+  const deselectAll = () => {
+    const items = loadGuestCart();
+    items.forEach((item) => {
+      item.selected = false;
+    });
+    saveGuestCart(items);
   };
 
   const removeFromCart = async (productId) => {
@@ -126,6 +156,10 @@ export const useCart = () => {
     removeFromCart,
     updateQuantity,
     getGuestCartItems,
+    getSelectedGuestCartItems,
+    selectItem,
+    selectAll,
+    deselectAll,
     clearGuestCart,
     mergeCartOnLogin,
     syncCartCount,
