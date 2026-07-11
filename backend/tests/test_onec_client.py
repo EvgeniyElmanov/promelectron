@@ -1,4 +1,5 @@
 from dataclasses import replace
+from decimal import Decimal
 
 import pytest
 
@@ -61,7 +62,7 @@ async def test_get_prices(client):
     assert all(isinstance(p, OnecPriceOdata) for p in prices)
     assert prices[0].product_key == "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
     assert prices[0].price_type_key == "77777777-7777-7777-7777-777777777777"
-    assert prices[0].price == 999.99
+    assert prices[0].price == Decimal("999.99")
 
 
 @pytest.mark.asyncio

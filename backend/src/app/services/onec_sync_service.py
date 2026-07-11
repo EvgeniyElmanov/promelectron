@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 from hashlib import sha256
 from itertools import batched
 from uuid import UUID, uuid4
@@ -163,7 +164,8 @@ async def apply_price_change(session: AsyncSession, change: OnecChange) -> Produ
         return product
 
     if "price" in change.data:
-        product.price = change.data["price"]
+        price_value = change.data["price"]
+        product.price = Decimal(str(price_value)) if not isinstance(price_value, Decimal) else price_value
 
     product.onec_sync_at = change.version
     return product
@@ -174,6 +176,7 @@ async def apply_stock_change(session: AsyncSession, change: OnecChange) -> Produ
 
     If the product does not exist yet (e.g. product batch has not been applied)
     the change is silently skipped so the queue stays idempotent.
+    Negative stock values are clamped to 0 per business rule B-02.
     """
     result = await session.execute(
         select(Product).where(Product.onec_id == change.external_id)
@@ -186,7 +189,8 @@ async def apply_stock_change(session: AsyncSession, change: OnecChange) -> Produ
         return product
 
     if "stock" in change.data:
-        product.stock = change.data["stock"]
+        stock_value = int(change.data["stock"])
+        product.stock = max(stock_value, 0)
 
     product.onec_sync_at = change.version
     return product

@@ -70,6 +70,13 @@ def _parse_int_env(name: str, default: int) -> int:
     return int(os.getenv(name, str(default)))
 
 
+def _parse_optional_int_env(name: str) -> int | None:
+    value = os.getenv(name)
+    if value is None or value.strip() == "":
+        return None
+    return int(value)
+
+
 def _parse_csv_env(name: str, default: str) -> frozenset[str]:
     value = os.getenv(name, default)
     return frozenset(item.strip() for item in value.split(",") if item.strip())
@@ -172,7 +179,7 @@ settings = Settings(
     onec_price_type_key=os.getenv("ONEC_PRICE_TYPE_KEY"),
     onec_warehouse_key=os.getenv("ONEC_WAREHOUSE_KEY"),
     onec_webhook_api_key=_load_onec_webhook_api_key(),
-    onec_default_supplier_id=int(os.getenv("ONEC_DEFAULT_SUPPLIER_ID", "0")) or None,
+    onec_default_supplier_id=_parse_optional_int_env("ONEC_DEFAULT_SUPPLIER_ID"),
     yookassa_shop_id=os.getenv("YOOKASSA_SHOP_ID", ""),
     yookassa_secret_key=os.getenv("YOOKASSA_SECRET_KEY", ""),
     yookassa_webhook_secret=os.getenv("YOOKASSA_WEBHOOK_SECRET"),

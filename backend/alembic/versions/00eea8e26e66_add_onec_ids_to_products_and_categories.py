@@ -33,6 +33,7 @@ def upgrade() -> None:
 def downgrade() -> None:
     """Downgrade schema."""
     op.drop_index(op.f('ix_categories_onec_id'), table_name='categories')
+    op.drop_column('categories', 'is_active')
     op.drop_column('categories', 'onec_sync_at')
     op.drop_column('categories', 'onec_id')
 

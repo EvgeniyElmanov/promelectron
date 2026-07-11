@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 from typing import Any, Literal
 from uuid import UUID
 
@@ -55,7 +56,7 @@ class OnecPriceOdata(BaseModel):
 
     product_key: str
     price_type_key: str
-    price: float
+    price: Decimal
 
 
 class OnecStockOdata(BaseModel):
@@ -63,4 +64,4 @@ class OnecStockOdata(BaseModel):
 
     product_key: str
     warehouse_key: str | None
-    quantity: float
+    quantity: int

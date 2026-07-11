@@ -2,6 +2,7 @@ import asyncio
 import logging
 import os
 import signal
+from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
@@ -126,7 +127,7 @@ async def handle_onec_full_sync_job(job: Job, db: AsyncSession) -> None:
     await run_onec_full_sync(db, default_supplier_id=settings.onec_default_supplier_id)
 
 
-HANDLERS: dict[str, "callable"] = {
+HANDLERS: dict[str, Callable[[Job, AsyncSession], Awaitable[None]]] = {
     "CDEK_CREATE_ORDER": handle_cdek_create_order,
     "CDEK_SYNC_ORDER_STATUS": handle_cdek_sync_status,
     "SEND_EMAIL": handle_send_email,
@@ -135,7 +136,7 @@ HANDLERS: dict[str, "callable"] = {
 }
 
 
-async def reset_stuck_jobs(session_factory: "callable | None" = None) -> int:
+async def reset_stuck_jobs(session_factory: Callable[[], AsyncSession] | None = None) -> int:
     """Reset jobs stuck in 'running' back to pending so they can be retried."""
     if session_factory is None:
         session_factory = SessionLocal

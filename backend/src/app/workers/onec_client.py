@@ -1,5 +1,6 @@
 import logging
 from collections.abc import Awaitable, Callable
+from decimal import Decimal
 from typing import Any
 
 import aiohttp
@@ -196,7 +197,7 @@ class OnecClient:
                 OnecPriceOdata(
                     product_key=self._normalize_guid(item.get("Номенклатура_Key")) or "",
                     price_type_key=self._normalize_guid(item.get("ВидЦен_Key")) or "",
-                    price=float(item.get("Цена", 0) or 0),
+                    price=Decimal(str(item.get("Цена", 0) or 0)),
                 )
             )
         return result
@@ -238,9 +239,9 @@ class OnecClient:
             product_key = self._normalize_guid(item.get("Номенклатура_Key")) or ""
             wh_key = self._normalize_guid(item.get("Склад_Key"))
             qty_key = "КоличествоBalance" if "КоличествоBalance" in item else "Количество"
-            quantity = float(item.get(qty_key, 0) or 0)
+            quantity = int(item.get(qty_key, 0) or 0)
             if product_key not in raw_balances:
-                raw_balances[product_key] = {"quantity": 0.0, "warehouse_key": wh_key}
+                raw_balances[product_key] = {"quantity": 0, "warehouse_key": wh_key}
             raw_balances[product_key]["quantity"] += quantity
             # When summing across warehouses we drop the per-row warehouse key.
             if not warehouse:
