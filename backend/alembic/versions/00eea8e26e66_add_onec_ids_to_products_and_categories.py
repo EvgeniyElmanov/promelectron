@@ -26,6 +26,7 @@ def upgrade() -> None:
 
     op.add_column('categories', sa.Column('onec_id', sa.String(length=36), nullable=True))
     op.add_column('categories', sa.Column('onec_sync_at', sa.DateTime(timezone=True), nullable=True))
+    op.add_column('categories', sa.Column('is_active', sa.Boolean(), nullable=False, server_default='true'))
     op.create_index(op.f('ix_categories_onec_id'), 'categories', ['onec_id'], unique=True)
 
 

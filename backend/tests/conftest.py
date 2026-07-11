@@ -1,13 +1,18 @@
 import asyncio
+import contextlib
 import os
+
+import uuid
 
 import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
 
 from src.app.db.database import Base, get_db
 from src.app.main import app
+from src.app.models.onec_sync import OnecChangeLog  # noqa: F401
 from src.app.models.user import RoleEnum, User
 from src.app.utils.auth import create_access_token
 
@@ -18,6 +23,13 @@ if "postgresql" in _env_url:
     TEST_DATABASE_URL = _env_url.rsplit("/", 1)[0] + "/promelectron_test"
 else:
     TEST_DATABASE_URL = "sqlite+aiosqlite:///./test.db"
+
+
+TEMPLATE_DB_NAME = "promelectron_test_template"
+
+
+def _admin_url():
+    return TEST_DATABASE_URL.rsplit("/", 1)[0] + "/postgres"
 
 
 @pytest.fixture(autouse=True)
@@ -120,43 +132,80 @@ async def disable_real_email_sending(monkeypatch):
 
 @pytest.fixture(scope="session")
 def event_loop():
+    """Provide a single event loop for the whole test session."""
     loop = asyncio.new_event_loop()
     yield loop
     loop.close()
 
 
-@pytest.fixture
-async def test_engine():
-    # Для PostgreSQL: создаём тестовую БД если не существует
-    if "postgresql" in TEST_DATABASE_URL:
-        db_name = TEST_DATABASE_URL.rsplit("/", 1)[-1]
-        base_url = TEST_DATABASE_URL.rsplit("/", 1)[0] + "/postgres"
-        admin_engine = create_async_engine(base_url, isolation_level="AUTOCOMMIT")
-        async with admin_engine.connect() as conn:
-            result = await conn.execute(
-                text("SELECT 1 FROM pg_database WHERE datname = :db_name"),
-                {"db_name": db_name},
-            )
-            if not result.scalar():
-                await conn.execute(text(f'CREATE DATABASE "{db_name}"'))
-        await admin_engine.dispose()
+@pytest.fixture(scope="session")
+async def _test_template_db():
+    """Create a template database with schema for per-test DB cloning."""
+    if "postgresql" not in TEST_DATABASE_URL:
+        yield None
+        return
 
-    engine = create_async_engine(TEST_DATABASE_URL)
-    async with engine.begin() as conn:
-        await conn.execute(text("DROP SCHEMA IF EXISTS public CASCADE"))
-        await conn.execute(text("CREATE SCHEMA public"))
+    base_url = _admin_url()
+    admin_engine = create_async_engine(
+        base_url, isolation_level="AUTOCOMMIT", poolclass=NullPool
+    )
+    async with admin_engine.connect() as conn:
+        await conn.execute(text(f'DROP DATABASE IF EXISTS "{TEMPLATE_DB_NAME}"'))
+        await conn.execute(text(f'CREATE DATABASE "{TEMPLATE_DB_NAME}"'))
+    await admin_engine.dispose()
+
+    template_url = TEST_DATABASE_URL.rsplit("/", 1)[0] + f"/{TEMPLATE_DB_NAME}"
+    template_engine = create_async_engine(template_url, poolclass=NullPool)
+    async with template_engine.begin() as conn:
+        await conn.execute(text("CREATE SCHEMA IF NOT EXISTS public"))
         await conn.execute(text("GRANT ALL ON SCHEMA public TO public"))
         await conn.run_sync(Base.metadata.create_all)
+    await template_engine.dispose()
+
+    yield TEMPLATE_DB_NAME
+
+    admin_engine = create_async_engine(
+        base_url, isolation_level="AUTOCOMMIT", poolclass=NullPool
+    )
+    async with admin_engine.connect() as conn:
+        await conn.execute(text(f'DROP DATABASE IF EXISTS "{TEMPLATE_DB_NAME}"'))
+    await admin_engine.dispose()
+
+
+@pytest.fixture
+async def test_engine(_test_template_db):
+    """Provide an engine connected to a fresh per-test database."""
+    if "postgresql" not in TEST_DATABASE_URL:
+        engine = create_async_engine(TEST_DATABASE_URL, poolclass=NullPool)
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        yield engine
+        await engine.dispose()
+        return
+
+    base_url = _admin_url()
+    db_name = f"promelectron_test_{uuid.uuid4().hex[:12]}"
+
+    admin_engine = create_async_engine(
+        base_url, isolation_level="AUTOCOMMIT", poolclass=NullPool
+    )
+    async with admin_engine.connect() as conn:
+        await conn.execute(
+            text(f'CREATE DATABASE "{db_name}" TEMPLATE "{TEMPLATE_DB_NAME}"')
+        )
+    await admin_engine.dispose()
+
+    db_url = TEST_DATABASE_URL.rsplit("/", 1)[0] + f"/{db_name}"
+    engine = create_async_engine(db_url, poolclass=NullPool)
     yield engine
-    # Close all connections held by the test session/pool before dropping
-    # the schema to avoid deadlocks with DROP SCHEMA CASCADE.
+
     await engine.dispose()
-    cleanup_engine = create_async_engine(TEST_DATABASE_URL)
-    async with cleanup_engine.begin() as conn:
-        await conn.execute(text("DROP SCHEMA IF EXISTS public CASCADE"))
-        await conn.execute(text("CREATE SCHEMA public"))
-        await conn.execute(text("GRANT ALL ON SCHEMA public TO public"))
-    await cleanup_engine.dispose()
+    admin_engine = create_async_engine(
+        base_url, isolation_level="AUTOCOMMIT", poolclass=NullPool
+    )
+    async with admin_engine.connect() as conn:
+        await conn.execute(text(f'DROP DATABASE IF EXISTS "{db_name}" WITH (FORCE)'))
+    await admin_engine.dispose()
 
 
 @pytest.fixture
@@ -375,3 +424,28 @@ async def test_order(test_session, test_user, test_product):
     await test_session.commit()
     await test_session.refresh(order)
     return order
+
+
+@pytest.fixture
+async def onec_mock_server():
+    """Run the mock 1C OData server on a free port and return its base URL."""
+    import uvicorn
+
+    from tests.mocks.onec_server import app as onec_app
+
+    config = uvicorn.Config(onec_app, host="127.0.0.1", port=0, log_level="error")
+    server = uvicorn.Server(config)
+    task = asyncio.create_task(server.serve())
+    try:
+        while not server.started:
+            await asyncio.sleep(0.01)
+        port = server.servers[0].sockets[0].getsockname()[1]
+        yield f"http://127.0.0.1:{port}"
+    finally:
+        server.should_exit = True
+        try:
+            await asyncio.wait_for(task, timeout=5.0)
+        except asyncio.TimeoutError:
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await task

@@ -41,8 +41,12 @@ class Settings:
     minio_bucket: str
     minio_secure: bool
     onec_api_url: str | None
-    onec_api_key: str | None
+    onec_login: str | None
+    onec_password: str | None
+    onec_price_type_key: str | None
+    onec_warehouse_key: str | None
     onec_webhook_api_key: str
+    onec_default_supplier_id: int | None
     yookassa_shop_id: str
     yookassa_secret_key: str
     yookassa_webhook_secret: str | None
@@ -163,8 +167,12 @@ settings = Settings(
     minio_bucket=os.getenv("MINIO_BUCKET", "promelectron-uploads"),
     minio_secure=os.getenv("MINIO_SECURE", "true").lower() == "true",
     onec_api_url=os.getenv("ONEC_API_URL"),
-    onec_api_key=os.getenv("ONEC_API_KEY"),
+    onec_login=os.getenv("ONEC_LOGIN"),
+    onec_password=os.getenv("ONEC_PASSWORD"),
+    onec_price_type_key=os.getenv("ONEC_PRICE_TYPE_KEY"),
+    onec_warehouse_key=os.getenv("ONEC_WAREHOUSE_KEY"),
     onec_webhook_api_key=_load_onec_webhook_api_key(),
+    onec_default_supplier_id=int(os.getenv("ONEC_DEFAULT_SUPPLIER_ID", "0")) or None,
     yookassa_shop_id=os.getenv("YOOKASSA_SHOP_ID", ""),
     yookassa_secret_key=os.getenv("YOOKASSA_SECRET_KEY", ""),
     yookassa_webhook_secret=os.getenv("YOOKASSA_WEBHOOK_SECRET"),

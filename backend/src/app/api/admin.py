@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.app.db.database import get_db
@@ -23,7 +23,10 @@ from src.app.services.feature_flags import (
     set_enabled,
 )
 from src.app.services.order_service import OrderService
+from src.app.services.onec_sync_service import create_onec_full_sync_job
+from src.app.core.config import settings
 from src.app.utils.auth import get_current_active_admin
+from src.app.utils.rate_limiter import conditional_limit
 
 router = APIRouter()
 
@@ -136,3 +139,25 @@ async def update_feature_flag(
         raise HTTPException(status_code=400, detail=f"Unknown feature flag: {flag}")
     await set_enabled(flag, data.enabled)
     return await get_flag_status(flag, default=False)
+
+
+@router.post("/admin/onec/full-sync/")
+@conditional_limit("10/minute")
+async def admin_onec_full_sync(
+    current_user: User = Depends(get_current_active_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Enqueue a full pull synchronization from 1C:УНФ (admin only)."""
+    if not settings.onec_api_url:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="1C pull fallback is not configured (ONEC_API_URL)",
+        )
+    if not settings.onec_default_supplier_id:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="1C pull fallback requires ONEC_DEFAULT_SUPPLIER_ID",
+        )
+    await create_onec_full_sync_job(db)
+    await db.commit()
+    return {"status": "queued"}

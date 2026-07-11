@@ -5,10 +5,13 @@ import pytest
 from sqlalchemy import select
 
 from src.app.models.category import Category
+from src.app.models.job import Job
 from src.app.models.onec_sync import OnecChangeLog
 from src.app.models.product import Product
 from src.app.models.supplier import Supplier
-from src.app.services.onec_sync_service import handle_onec_apply_changes
+from src.app.services.onec_sync_service import handle_onec_apply_changes, run_onec_full_sync
+from src.app.core.config import settings
+from dataclasses import replace
 
 
 def _build_payload(entity_type: str, changes: list[dict]) -> dict:
@@ -450,3 +453,158 @@ async def test_onec_apply_changes_rolls_back_batch_on_error(test_session, suppli
     assert log.status == "failed"
     assert log.error_message is not None
     assert "non-existent-onec-id" in log.error_message
+
+
+@pytest.mark.asyncio
+async def test_onec_apply_price_change(test_session, supplier_id):
+    """Price change updates existing product price."""
+    version = datetime.now(timezone.utc)
+    product = Product(
+        onec_id="1c-prod-price",
+        name="Price Product",
+        sku="PRICE-001",
+        price=100.0,
+        stock=10,
+        supplier_id=supplier_id,
+        is_active=True,
+    )
+    test_session.add(product)
+    await test_session.flush()
+
+    payload = _build_payload(
+        "price",
+        [
+            {
+                "external_id": "1c-prod-price",
+                "action": "update",
+                "version": version.isoformat(),
+                "data": {"price": 199.99},
+            }
+        ],
+    )
+    log = OnecChangeLog(
+        batch_id=payload["batch_id"],
+        entity_type="price",
+        payload=payload,
+        status="pending",
+        checksum="checksum-price",
+    )
+    test_session.add(log)
+    await test_session.flush()
+
+    await handle_onec_apply_changes(test_session, {"log_id": log.id})
+    await test_session.commit()
+
+    await test_session.refresh(product)
+    assert product.price == 199.99
+    assert product.onec_sync_at == version
+
+
+@pytest.mark.asyncio
+async def test_onec_apply_stock_change(test_session, supplier_id):
+    """Stock change updates existing product stock."""
+    version = datetime.now(timezone.utc)
+    product = Product(
+        onec_id="1c-prod-stock",
+        name="Stock Product",
+        sku="STOCK-001",
+        price=100.0,
+        stock=10,
+        supplier_id=supplier_id,
+        is_active=True,
+    )
+    test_session.add(product)
+    await test_session.flush()
+
+    payload = _build_payload(
+        "stock",
+        [
+            {
+                "external_id": "1c-prod-stock",
+                "action": "update",
+                "version": version.isoformat(),
+                "data": {"stock": 42},
+            }
+        ],
+    )
+    log = OnecChangeLog(
+        batch_id=payload["batch_id"],
+        entity_type="stock",
+        payload=payload,
+        status="pending",
+        checksum="checksum-stock",
+    )
+    test_session.add(log)
+    await test_session.flush()
+
+    await handle_onec_apply_changes(test_session, {"log_id": log.id})
+    await test_session.commit()
+
+    await test_session.refresh(product)
+    assert product.stock == 42
+    assert product.onec_sync_at == version
+
+
+@pytest.mark.asyncio
+async def test_onec_apply_order_status_change_skips(test_session, supplier_id, caplog):
+    """order_status changes are accepted but skipped in Phase 1."""
+    version = datetime.now(timezone.utc)
+    payload = _build_payload(
+        "order_status",
+        [
+            {
+                "external_id": "order-123",
+                "action": "update",
+                "version": version.isoformat(),
+                "data": {"status": "shipped"},
+            }
+        ],
+    )
+    log = OnecChangeLog(
+        batch_id=payload["batch_id"],
+        entity_type="order_status",
+        payload=payload,
+        status="pending",
+        checksum="checksum-order-status",
+    )
+    test_session.add(log)
+    await test_session.flush()
+
+    await handle_onec_apply_changes(test_session, {"log_id": log.id})
+    await test_session.commit()
+
+    await test_session.refresh(log)
+    assert log.status == "done"
+    assert "not implemented yet" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_run_onec_full_sync_creates_batches(
+    test_session, onec_mock_server, monkeypatch, supplier_id
+):
+    """Pull fallback fetches from mock 1C and enqueues apply batches."""
+    patched = replace(
+        settings,
+        onec_api_url=onec_mock_server,
+        onec_login="test-user",
+        onec_password="test-pass",
+        onec_price_type_key="77777777-7777-7777-7777-777777777777",
+        onec_default_supplier_id=supplier_id,
+    )
+    monkeypatch.setattr("src.app.services.onec_sync_service.settings", patched)
+    monkeypatch.setattr("src.app.workers.onec_client.settings", patched)
+
+    await run_onec_full_sync(test_session, default_supplier_id=supplier_id)
+    await test_session.commit()
+
+    logs = await test_session.execute(select(OnecChangeLog))
+    log_list = logs.scalars().all()
+    assert len(log_list) == 4  # category, product, price, stock
+
+    jobs = await test_session.execute(select(Job).where(Job.job_type == "ONEC_APPLY_CHANGES"))
+    job_list = jobs.scalars().all()
+    assert len(job_list) == 4
+
+    product_log = next(log for log in log_list if log.entity_type == "product")
+    assert product_log.checksum is not None
+    assert product_log.payload["changes"][0]["data"]["supplier_id"] == supplier_id

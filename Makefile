@@ -96,7 +96,7 @@ seed: ## Залить тестовые данные
 lint: lint-backend lint-frontend ## Линт всего проекта
 
 lint-backend: ## Линт Python (ruff)
-	$(COMPOSE_BACKEND) run --rm api ruff check src/
+	$(COMPOSE_BACKEND) run --rm --entrypoint "" api sh -c "pip install -q -r requirements-dev.txt && ruff check src/ tests/"
 
 lint-frontend: ## Линт Vue/JS (oxlint + eslint)
 	$(COMPOSE_FRONTEND) run --rm frontend sh -c "npm install --silent && npm run lint"
@@ -104,7 +104,7 @@ lint-frontend: ## Линт Vue/JS (oxlint + eslint)
 format: format-backend format-frontend ## Форматировать весь проект
 
 format-backend: ## Форматировать Python (ruff)
-	$(COMPOSE_BACKEND) run --rm api ruff format src/
+	$(COMPOSE_BACKEND) run --rm --entrypoint "" api sh -c "pip install -q -r requirements-dev.txt && ruff format src/ tests/"
 
 format-frontend: ## Форматировать Vue/JS (prettier)
 	$(COMPOSE_FRONTEND) run --rm frontend sh -c "npm install --silent && npm run format"

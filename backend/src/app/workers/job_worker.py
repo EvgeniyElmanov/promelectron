@@ -16,7 +16,7 @@ from src.app.models.order import Order
 from src.app.services.cdek_client import CdekAPIError, CdekClient
 from src.app.services.cdek_service import CdekService
 from src.app.services.email_service import EmailService
-from src.app.services.onec_sync_service import handle_onec_apply_changes
+from src.app.services.onec_sync_service import handle_onec_apply_changes, run_onec_full_sync
 
 logger = logging.getLogger(__name__)
 
@@ -121,11 +121,17 @@ async def handle_onec_apply_changes_job(job: Job, db: AsyncSession) -> None:
     await handle_onec_apply_changes(db, job.payload)
 
 
+async def handle_onec_full_sync_job(job: Job, db: AsyncSession) -> None:
+    """Pull catalog data from 1C and enqueue per-entity apply jobs."""
+    await run_onec_full_sync(db, default_supplier_id=settings.onec_default_supplier_id)
+
+
 HANDLERS: dict[str, "callable"] = {
     "CDEK_CREATE_ORDER": handle_cdek_create_order,
     "CDEK_SYNC_ORDER_STATUS": handle_cdek_sync_status,
     "SEND_EMAIL": handle_send_email,
     "ONEC_APPLY_CHANGES": handle_onec_apply_changes_job,
+    "ONEC_FULL_SYNC": handle_onec_full_sync_job,
 }
 
 
