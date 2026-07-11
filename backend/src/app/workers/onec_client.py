@@ -112,9 +112,13 @@ class OnecClient:
         )
         result: list[OnecCategoryOdata] = []
         for item in data.get("value", []) if isinstance(data, dict) else []:
+            ref_key = self._normalize_guid(item.get("Ref_Key"))
+            if not ref_key:
+                logger.warning("Skipping 1C category with empty Ref_Key")
+                continue
             result.append(
                 OnecCategoryOdata(
-                    ref_key=self._normalize_guid(item.get("Ref_Key")) or "",
+                    ref_key=ref_key,
                     parent_key=self._normalize_guid(item.get("Parent_Key")),
                     description=item.get("Description") or "",
                 )
@@ -149,9 +153,13 @@ class OnecClient:
         )
         result: list[OnecProductOdata] = []
         for item in data.get("value", []) if isinstance(data, dict) else []:
+            ref_key = self._normalize_guid(item.get("Ref_Key"))
+            if not ref_key:
+                logger.warning("Skipping 1C product with empty Ref_Key")
+                continue
             result.append(
                 OnecProductOdata(
-                    ref_key=self._normalize_guid(item.get("Ref_Key")) or "",
+                    ref_key=ref_key,
                     description=item.get("Description") or "",
                     article=item.get("Артикул") or None,
                     code=item.get("Code") or None,
@@ -193,10 +201,14 @@ class OnecClient:
         )
         result: list[OnecPriceOdata] = []
         for item in data.get("value", []) if isinstance(data, dict) else []:
+            product_key = self._normalize_guid(item.get("Номенклатура_Key"))
+            if not product_key:
+                logger.warning("Skipping 1C price with empty product Ref_Key")
+                continue
             result.append(
                 OnecPriceOdata(
-                    product_key=self._normalize_guid(item.get("Номенклатура_Key")) or "",
-                    price_type_key=self._normalize_guid(item.get("ВидЦен_Key")) or "",
+                    product_key=product_key,
+                    price_type_key=self._normalize_guid(item.get("ВидЦен_Key")),
                     price=Decimal(str(item.get("Цена", 0) or 0)),
                 )
             )
@@ -236,7 +248,10 @@ class OnecClient:
 
         raw_balances: dict[str, dict[str, Any]] = {}
         for item in data.get("value", []) if isinstance(data, dict) else []:
-            product_key = self._normalize_guid(item.get("Номенклатура_Key")) or ""
+            product_key = self._normalize_guid(item.get("Номенклатура_Key"))
+            if not product_key:
+                logger.warning("Skipping 1C stock balance with empty product Ref_Key")
+                continue
             wh_key = self._normalize_guid(item.get("Склад_Key"))
             qty_key = "КоличествоBalance" if "КоличествоBalance" in item else "Количество"
             quantity = round(item.get(qty_key, 0) or 0)

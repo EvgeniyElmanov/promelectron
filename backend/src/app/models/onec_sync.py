@@ -11,10 +11,6 @@ def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def _generate_batch_id() -> str:
-    return str(uuid4())
-
-
 class OnecChangeLog(Base):
     __tablename__ = "onec_change_log"
 

@@ -154,6 +154,11 @@ async def admin_onec_full_sync(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="1C pull fallback is not configured (ONEC_API_URL)",
         )
+    if not settings.onec_login or not settings.onec_password:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="1C pull fallback requires ONEC_LOGIN and ONEC_PASSWORD",
+        )
     if not settings.onec_default_supplier_id:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

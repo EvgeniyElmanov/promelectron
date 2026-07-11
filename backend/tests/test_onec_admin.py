@@ -13,6 +13,8 @@ async def test_admin_onec_full_sync(client: AsyncClient, admin_token: str, test_
         settings,
         onec_api_url="http://1c.test",
         onec_default_supplier_id=1,
+        onec_login="user",
+        onec_password="secret",
     )
     monkeypatch.setattr("src.app.api.admin.settings", patched)
 
@@ -45,7 +47,13 @@ async def test_admin_onec_full_sync_requires_auth(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_admin_onec_full_sync_requires_config(client: AsyncClient, admin_token: str, monkeypatch):
-    patched = replace(settings, onec_api_url=None, onec_default_supplier_id=None)
+    patched = replace(
+        settings,
+        onec_api_url=None,
+        onec_default_supplier_id=None,
+        onec_login=None,
+        onec_password=None,
+    )
     monkeypatch.setattr("src.app.api.admin.settings", patched)
 
     response = await client.post(

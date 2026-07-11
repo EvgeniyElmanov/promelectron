@@ -80,8 +80,12 @@ async def apply_product_change(session: AsyncSession, change: OnecChange) -> Pro
     data = change.data
     is_new_product = product is None
     if is_new_product:
+        if change.action == "delete":
+            return None
         if "supplier_id" not in data:
             raise ValueError("supplier_id is required for product creation")
+        if "name" not in data or not data["name"]:
+            raise ValueError("name is required for product creation")
         product = Product(onec_id=change.external_id)
         session.add(product)
 
@@ -125,6 +129,10 @@ async def apply_category_change(session: AsyncSession, change: OnecChange) -> Ca
 
     data = change.data
     if category is None:
+        if change.action == "delete":
+            return None
+        if "name" not in data or not data["name"]:
+            raise ValueError("name is required for category creation")
         category = Category(onec_id=change.external_id)
         session.add(category)
 
@@ -189,7 +197,7 @@ async def apply_stock_change(session: AsyncSession, change: OnecChange) -> Produ
         return product
 
     if "stock" in change.data:
-        stock_value = int(change.data["stock"])
+        stock_value = round(change.data["stock"])
         product.stock = max(stock_value, 0)
 
     product.onec_sync_at = change.version
@@ -294,7 +302,7 @@ def build_stock_change(stock: OnecStockOdata, version: datetime) -> OnecChange:
         external_id=stock.product_key,
         action="update",
         version=version,
-        data={"stock": int(stock.quantity)},
+        data={"stock": round(stock.quantity)},
     )
 
 
