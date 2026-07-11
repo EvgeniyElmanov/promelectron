@@ -14,7 +14,7 @@ on:
 
 jobs:
   backend-tests:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - name: Checkout
@@ -37,17 +37,14 @@ jobs:
         run: docker compose -f backend/docker-compose.yml -p promelectron logs --tail=200
 
   frontend-tests:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build frontend image
-        run: docker compose -f frontend/docker-compose.yml -p promelectron build frontend
-
       - name: Run frontend tests
-        run: make test-frontend
+        run: make test-frontend-ci
 
       - name: Run frontend lint
         run: make lint-frontend
