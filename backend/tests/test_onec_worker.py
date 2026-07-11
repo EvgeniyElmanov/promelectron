@@ -335,3 +335,118 @@ async def test_onec_apply_category_version_conflict_skips_stale_change(test_sess
 
     await test_session.refresh(log_older)
     assert log_older.status == "done"
+
+
+@pytest.mark.asyncio
+async def test_onec_apply_product_with_category_id(test_session, supplier_id):
+    """Product creation with category_id as category onec_id must resolve to internal id."""
+    version = datetime.now(timezone.utc)
+    category_onec_id = "1c-cat-999"
+    category = Category(onec_id=category_onec_id, name="Test Category", is_active=True)
+    test_session.add(category)
+    await test_session.flush()
+
+    payload = _build_payload(
+        "product",
+        [
+            {
+                "external_id": "1c-prod-with-cat",
+                "action": "create",
+                "version": version.isoformat(),
+                "data": {
+                    "name": "Product With Category",
+                    "description": "Has category",
+                    "sku": "CAT-001",
+                    "price": 199.99,
+                    "stock": 5,
+                    "is_active": True,
+                    "supplier_id": supplier_id,
+                    "category_id": category_onec_id,
+                },
+            }
+        ],
+    )
+    log = OnecChangeLog(
+        batch_id=payload["batch_id"],
+        entity_type="product",
+        payload=payload,
+        status="pending",
+        checksum="checksum-cat-id",
+    )
+    test_session.add(log)
+    await test_session.flush()
+
+    await handle_onec_apply_changes(test_session, {"log_id": log.id})
+    await test_session.commit()
+
+    result = await test_session.execute(
+        select(Product).where(Product.onec_id == "1c-prod-with-cat")
+    )
+    product = result.scalar_one()
+    assert product.category_id == category.id
+    assert product.name == "Product With Category"
+
+    await test_session.refresh(log)
+    assert log.status == "done"
+
+
+@pytest.mark.asyncio
+async def test_onec_apply_changes_rolls_back_batch_on_error(test_session, supplier_id):
+    """A failed change inside a batch must rollback all changes and mark the log failed."""
+    version = datetime.now(timezone.utc)
+    payload = _build_payload(
+        "product",
+        [
+            {
+                "external_id": "1c-prod-valid",
+                "action": "create",
+                "version": version.isoformat(),
+                "data": {
+                    "name": "Valid Product",
+                    "sku": "VALID-001",
+                    "price": 99.99,
+                    "stock": 1,
+                    "is_active": True,
+                    "supplier_id": supplier_id,
+                },
+            },
+            {
+                "external_id": "1c-prod-invalid",
+                "action": "create",
+                "version": version.isoformat(),
+                "data": {
+                    "name": "Invalid Product",
+                    "sku": "INVALID-001",
+                    "price": 99.99,
+                    "stock": 1,
+                    "is_active": True,
+                    "supplier_id": supplier_id,
+                    "category_id": "non-existent-onec-id",
+                },
+            },
+        ],
+    )
+    log = OnecChangeLog(
+        batch_id=payload["batch_id"],
+        entity_type="product",
+        payload=payload,
+        status="pending",
+        checksum="checksum-batch-rollback",
+    )
+    test_session.add(log)
+    await test_session.flush()
+
+    with pytest.raises(ValueError):
+        await handle_onec_apply_changes(test_session, {"log_id": log.id})
+
+    await test_session.commit()
+
+    result = await test_session.execute(
+        select(Product).where(Product.onec_id == "1c-prod-valid")
+    )
+    assert result.scalar_one_or_none() is None
+
+    await test_session.refresh(log)
+    assert log.status == "failed"
+    assert log.error_message is not None
+    assert "non-existent-onec-id" in log.error_message
