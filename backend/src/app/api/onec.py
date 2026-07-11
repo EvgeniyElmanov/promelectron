@@ -43,6 +43,7 @@ async def onec_webhook(
 
     log = await create_change_log(db, payload, checksum, payload_json)
     await create_onec_apply_job(db, log.id)
+    await db.commit()
 
     return OnecWebhookResponse(
         status="accepted",

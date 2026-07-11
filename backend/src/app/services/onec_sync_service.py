@@ -70,6 +70,8 @@ async def apply_product_change(session: AsyncSession, change: OnecChange) -> Pro
     if _is_stale_change(change.version, product.onec_sync_at):
         return product
 
+    # Set required fields first so any autoflush triggered by FK resolution
+    # (e.g. category_id lookup) sees a valid product row.
     if "name" in data:
         product.name = data["name"]
     if "description" in data:
@@ -80,18 +82,19 @@ async def apply_product_change(session: AsyncSession, change: OnecChange) -> Pro
         product.price = data["price"]
     if "stock" in data:
         product.stock = data["stock"]
-    if "category_id" in data:
-        product.category_id = await _resolve_category_by_id(session, data["category_id"])
     if "supplier_id" in data:
         product.supplier_id = data["supplier_id"]
     if "is_active" in data:
         product.is_active = data["is_active"]
 
+    # Resolve foreign keys after all required fields are present.
+    if "category_id" in data:
+        product.category_id = await _resolve_category_by_id(session, data["category_id"])
+
     if change.action == "delete":
         product.is_active = False
 
     product.onec_sync_at = change.version
-    await session.flush()
     return product
 
 
@@ -123,7 +126,6 @@ async def apply_category_change(session: AsyncSession, change: OnecChange) -> Ca
         category.is_active = False
 
     category.onec_sync_at = change.version
-    await session.flush()
     return category
 
 
@@ -142,6 +144,7 @@ async def handle_onec_apply_changes(session: AsyncSession, payload: dict) -> Non
 
     log.status = "processing"
     log.processed_at = datetime.now(timezone.utc)
+    await session.flush()
 
     try:
         webhook_payload = OnecWebhookPayload.model_validate(log.payload)
@@ -153,8 +156,9 @@ async def handle_onec_apply_changes(session: AsyncSession, payload: dict) -> Non
         if not handler:
             raise ValueError(f"Unsupported entity_type: {webhook_payload.entity_type}")
 
-        for change in webhook_payload.changes:
-            await handler(session, change)
+        async with session.begin_nested():
+            for change in webhook_payload.changes:
+                await handler(session, change)
 
         log.status = "done"
         log.applied_at = datetime.now(timezone.utc)
