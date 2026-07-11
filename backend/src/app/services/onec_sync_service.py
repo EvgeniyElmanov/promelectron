@@ -101,7 +101,10 @@ async def apply_product_change(session: AsyncSession, change: OnecChange) -> Pro
     if "sku" in data:
         product.sku = data["sku"]
     if "price" in data:
-        product.price = data["price"]
+        price_value = data["price"]
+        if price_value is not None and price_value < 0:
+            raise ValueError("price cannot be negative")
+        product.price = price_value
     if "stock" in data:
         product.stock = data["stock"]
     if "supplier_id" in data:
@@ -284,6 +287,7 @@ def build_product_change(product: OnecProductOdata, version: datetime, supplier_
             "category_id": product.parent_key,
             "supplier_id": supplier_id,
             "is_active": True,
+            "price": Decimal("0"),
         },
     )
 
