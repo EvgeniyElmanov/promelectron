@@ -23,7 +23,7 @@ def upgrade() -> None:
     """Upgrade schema."""
     op.create_table(
         'onec_change_log',
-        sa.Column('id', sa.BigInteger(), nullable=False),
+        sa.Column('id', sa.BigInteger(), autoincrement=True, nullable=False),
         sa.Column('batch_id', sa.UUID(), nullable=False),
         sa.Column('entity_type', sa.String(length=50), nullable=False),
         sa.Column('source', sa.String(length=255), nullable=True),

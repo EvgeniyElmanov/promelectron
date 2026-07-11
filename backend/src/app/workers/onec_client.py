@@ -239,7 +239,7 @@ class OnecClient:
             product_key = self._normalize_guid(item.get("Номенклатура_Key")) or ""
             wh_key = self._normalize_guid(item.get("Склад_Key"))
             qty_key = "КоличествоBalance" if "КоличествоBalance" in item else "Количество"
-            quantity = int(item.get(qty_key, 0) or 0)
+            quantity = round(item.get(qty_key, 0) or 0)
             if product_key not in raw_balances:
                 raw_balances[product_key] = {"quantity": 0, "warehouse_key": wh_key}
             raw_balances[product_key]["quantity"] += quantity

@@ -18,7 +18,7 @@ def _generate_batch_id() -> str:
 class OnecChangeLog(Base):
     __tablename__ = "onec_change_log"
 
-    id = Column(BigInteger, primary_key=True)
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
     batch_id = Column(UUID(as_uuid=True), nullable=False, index=True, default=uuid4)
     entity_type = Column(String(50), nullable=False, index=True)
     source = Column(String(255), nullable=True)
