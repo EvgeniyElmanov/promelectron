@@ -4,7 +4,7 @@ WORKDIR /app
 
 COPY pyproject.toml requirements.txt requirements-dev.txt ./
 
-RUN python -m pip install --no-cache-dir -r requirements.txt
+RUN python -m pip install --no-cache-dir -r requirements-dev.txt
 
 COPY src/ ./src/
 COPY main.py alembic.ini seed_data.py docker-entrypoint.sh ./

@@ -1,0 +1,38 @@
+name: Tests
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'infra/helm/**'
+      - '.github/workflows/tests.yml'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  backend-tests:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run backend tests
+        run: make test-backend
+
+      - name: Run backend lint
+        run: make lint-backend
+
+  frontend-tests:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run frontend tests
+        run: make test-frontend
+
+      - name: Run frontend lint
+        run: make lint-frontend
