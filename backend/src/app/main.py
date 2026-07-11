@@ -20,6 +20,7 @@ from src.app.api.cdek import router as cdek_router
 from src.app.api.delivery_methods import router as delivery_methods_router
 from src.app.api.favorites import router as favorites_router
 from src.app.api.notifications import router as notifications_router
+from src.app.api.onec import router as onec_router
 from src.app.api.orders import router as orders_router
 from src.app.api.payments import router as payments_router
 from src.app.api.products import router as products_router
@@ -108,6 +109,7 @@ app.include_router(cart_router, prefix="/api/v1", tags=["cart"])
 app.include_router(orders_router, prefix="/api/v1", tags=["orders"])
 app.include_router(payments_router, prefix="/api/v1", tags=["payments"])
 app.include_router(notifications_router, prefix="/api/v1", tags=["notifications"])
+app.include_router(onec_router, prefix="/api/v1", tags=["onec"])
 app.include_router(ws_router)
 app.include_router(auth_router, prefix="/api/v1", tags=["auth"])
 app.include_router(reviews_router, prefix="/api/v1", tags=["reviews"])

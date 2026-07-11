@@ -5,6 +5,7 @@ from .delivery_method import DeliveryMethod as DeliveryMethod
 from .favorite import Favorite as Favorite
 from .job import Job as Job
 from .notification import Notification as Notification
+from .onec_sync import OnecChangeLog as OnecChangeLog
 from .order import Order as Order, OrderItem as OrderItem
 from .payment import Payment as Payment
 from .product import Product as Product
@@ -28,6 +29,7 @@ __all__ = [
     "Favorite",
     "Job",
     "Notification",
+    "OnecChangeLog",
     "Order",
     "OrderItem",
     "Payment",

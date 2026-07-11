@@ -12,6 +12,8 @@ class Product(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     sku = Column(String, unique=True, index=True, nullable=True)
+    onec_id = Column(String(36), unique=True, index=True, nullable=True)
+    onec_sync_at = Column(DateTime(timezone=True), nullable=True)
     name = Column(String, index=True, nullable=False)
     description = Column(Text, nullable=True)
     price = Column(Float, nullable=False)

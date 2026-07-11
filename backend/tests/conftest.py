@@ -148,11 +148,15 @@ async def test_engine():
         await conn.execute(text("GRANT ALL ON SCHEMA public TO public"))
         await conn.run_sync(Base.metadata.create_all)
     yield engine
-    async with engine.begin() as conn:
+    # Close all connections held by the test session/pool before dropping
+    # the schema to avoid deadlocks with DROP SCHEMA CASCADE.
+    await engine.dispose()
+    cleanup_engine = create_async_engine(TEST_DATABASE_URL)
+    async with cleanup_engine.begin() as conn:
         await conn.execute(text("DROP SCHEMA IF EXISTS public CASCADE"))
         await conn.execute(text("CREATE SCHEMA public"))
         await conn.execute(text("GRANT ALL ON SCHEMA public TO public"))
-    await engine.dispose()
+    await cleanup_engine.dispose()
 
 
 @pytest.fixture
