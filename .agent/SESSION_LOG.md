@@ -1,3 +1,25 @@
+### 2026-07-11 13:35 | fix | Восстановление deploy pipeline и E2E/smoke тестов в CI/CD
+  Роль: fix.
+  Запрос: восстановить тесты из deploy pipeline (run #277), которые перестали запускаться после обновления железа сервера.
+  Выполнено:
+  - Диагностика: job `build` в `.github/workflows/deploy.yml` падал из-за недоступности Harbor registry `harbor.kubeadm.ru` (`connection refused`) с self-hosted runner.
+  - Создан PR #70: миграция с Harbor на GitHub Container Registry (`ghcr.io/autonomaco/...`), build job перенесён на `ubuntu-latest` с авторизацией через `GITHUB_TOKEN`, добавлен job `test` для запуска unit-тестов перед сборкой, imagePullSecret переименован в `registrycred`.
+  - После мержа PR #70 обнаружена и исправлена ошибка: `ghcr.io` требует lowercase имена репозиториев (hotfix PR #71).
+  - PR #69 с фиксом `useCart` был смержен ранее, чтобы frontend unit-тесты проходили.
+  - Запущен deploy pipeline вручную (run 29155360044): unit-tests, build, deploy-test, smoke и E2E прошли успешно.
+  Проверки:
+  - `backend-tests` — ✅
+  - `frontend-tests` — ✅
+  - `build` (push API + frontend test images to ghcr.io) — ✅
+  - `deploy-test` (Helm upgrade, rollout status) — ✅
+  - `test-e2e / smoke` — ✅
+  - `test-e2e / e2e` (Playwright) — ✅
+  Git:
+  - Branch: `main`
+  - Merged PRs: #69, #70, #71
+  - Deploy run: 29155360044
+  Блокер: BLK-012 — закрыт.
+
 ### 2026-07-11 11:09 | fix | Восстановление unit-тестов frontend в CI/CD
   Роль: fix.
   Запрос: восстановить исчезнувшие из CI/CD unit-тесты после обновления железа сервера.

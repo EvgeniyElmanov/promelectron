@@ -30,6 +30,8 @@
 
 | ID | Дата | Блокер | Severity | Решение | Затраченное время |
 |----|------|--------|----------|---------|------------------|
+| BLK-012 | 2026-07-11 | Harbor registry `harbor.kubeadm.ru` недоступен с self-hosted runner после обновления железа сервера — deploy pipeline падает на job `build`, не запускаются `test-e2e` / `smoke` / `prod-smoke`. | P0 | Миграция deploy pipeline с Harbor на GitHub Container Registry (`ghcr.io/autonomaco/...`), build job перенесён на `ubuntu-latest`, добавлен job `test` для unit-тестов, обновлён `imagePullSecret` в Helm. Проверено: deploy + E2E на test прошли успешно (run 29155360044). | 1.5 часа |
+|----|------|--------|----------|---------|------------------|
 | BLK-001 | 2026-05-30 | `.github/` защищена — CI/CD правки требовали ручного доступа | P1 | Доступ предоставлен/решён вручную | — |
 | BLK-002 | 2026-05-30 | `worker.enabled=false` в Helm + сломанная команда Celery в K8s | P0 | Worker templates исправлены, Celery работает в K8s | — |
 | BLK-004 | 2026-05-30 | `API_BASE_URL` в K8s test окружении не настроен | P1 | Настроен через env/ConfigMap | — |
