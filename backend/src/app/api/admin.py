@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.app.db.database import get_db
@@ -144,6 +144,7 @@ async def update_feature_flag(
 @router.post("/admin/onec/full-sync/")
 @conditional_limit("10/minute")
 async def admin_onec_full_sync(
+    request: Request,
     current_user: User = Depends(get_current_active_admin),
     db: AsyncSession = Depends(get_db),
 ):

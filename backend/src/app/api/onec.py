@@ -1,6 +1,6 @@
 import json
 
-from fastapi import APIRouter, Depends, Header
+from fastapi import APIRouter, Depends, Header, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.app.db.database import get_db
@@ -20,6 +20,7 @@ router = APIRouter(prefix="/onec", tags=["onec"])
 @router.post("/webhook/", response_model=OnecWebhookResponse)
 @conditional_limit("100/minute")
 async def onec_webhook(
+    request: Request,
     payload: OnecWebhookPayload,
     x_1c_api_key: str | None = Header(default=None, alias="X-1C-Api-Key"),
     db: AsyncSession = Depends(get_db),
