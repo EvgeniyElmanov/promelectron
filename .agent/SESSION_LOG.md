@@ -1,3 +1,20 @@
+### 2026-07-11 11:09 | fix | Восстановление unit-тестов frontend в CI/CD
+  Роль: fix.
+  Запрос: восстановить исчезнувшие из CI/CD unit-тесты после обновления железа сервера.
+  Выполнено:
+  - Обнаружен root cause: в `main` коммит `41a5043` откатил изменения в `frontend/src/composables/useCart.js`, удалив helper'ы выбора товаров (`selectItem`, `selectAll`, `deselectAll`, `getSelectedGuestCartItems`).
+  - Восстановлены функции выбора товаров в `frontend/src/composables/useCart.js`.
+  - Добавлена изоляция мока `vi.resetModules()` + `flushPromises` в `frontend/src/composables/__tests__/useCart.spec.js` для стабильности в CI.
+  - Открыт PR #69 (`bugfix/usecart-ci-mock-isolation`), backend-tests и frontend-tests прошли успешно.
+  Проверки:
+  - `npm run test:unit -- useCart.spec.js` — ✅ локально.
+  - GitHub Actions `backend-tests` — ✅.
+  - GitHub Actions `frontend-tests` — ✅.
+  Git:
+  - Branch: `bugfix/usecart-ci-mock-isolation`
+  - Commit: восстановлен `.agent/SESSION_LOG.md` из `main` и дополнен текущей записью.
+  Блокер: Нет.
+
 ### 2026-07-10 05:29 | orchestrator | Agent system sync — commit and push to main
   Роль: orchestrator.
   Запрос: проверить работу агента session_da0b1a91-8406-431b-8e6e-6862984593b2, сверить изменения с документацией Kimi K2.7 Code, исправить найденные проблемы и запушить все изменения в main.
