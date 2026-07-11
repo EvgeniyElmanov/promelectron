@@ -18,6 +18,7 @@ services:
     working_dir: /app
     environment:
       - CI=true
+      - HOME=/app
     volumes:
       - ../frontend:/app
     command: sh -c "npm ci && npm test"
