@@ -8,6 +8,9 @@ from urllib.parse import urlparse
 # (sops-encrypted in infra/helm/stage/*/secrets.yaml, or GitHub Secret OVR_SECRET_KEY).
 _DEV_SECRET_PLACEHOLDER = "dev-only-insecure-change-me"
 
+# Dev-only placeholder for the 1С webhook API key.
+_ONEC_WEBHOOK_API_KEY_PLACEHOLDER = "change-me"
+
 
 @dataclass(frozen=True)
 class Settings:
@@ -76,6 +79,18 @@ def _load_secret_key() -> str:
             raise RuntimeError(
                 "SECRET_KEY must be set to a strong random value in production. "
                 "Set the SECRET_KEY environment variable (never use the dev placeholder)."
+            )
+    return key
+
+
+def _load_onec_webhook_api_key() -> str:
+    """Return ONEC_WEBHOOK_API_KEY from env. In production, fail fast if absent or placeholder."""
+    key = os.getenv("ONEC_WEBHOOK_API_KEY", _ONEC_WEBHOOK_API_KEY_PLACEHOLDER)
+    if os.getenv("ENVIRONMENT") == "production":
+        if not key or key == _ONEC_WEBHOOK_API_KEY_PLACEHOLDER:
+            raise RuntimeError(
+                "ONEC_WEBHOOK_API_KEY must be set to a strong random value in production. "
+                "Set the ONEC_WEBHOOK_API_KEY environment variable (never use the dev placeholder)."
             )
     return key
 
@@ -149,7 +164,7 @@ settings = Settings(
     minio_secure=os.getenv("MINIO_SECURE", "true").lower() == "true",
     onec_api_url=os.getenv("ONEC_API_URL"),
     onec_api_key=os.getenv("ONEC_API_KEY"),
-    onec_webhook_api_key=os.getenv("ONEC_WEBHOOK_API_KEY", "change-me"),
+    onec_webhook_api_key=_load_onec_webhook_api_key(),
     yookassa_shop_id=os.getenv("YOOKASSA_SHOP_ID", ""),
     yookassa_secret_key=os.getenv("YOOKASSA_SECRET_KEY", ""),
     yookassa_webhook_secret=os.getenv("YOOKASSA_WEBHOOK_SECRET"),

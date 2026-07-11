@@ -9,6 +9,25 @@ from src.app.models.product import Product
 from src.app.schemas.onec import OnecChange, OnecWebhookPayload
 
 
+async def _resolve_category_by_id(session: AsyncSession, category_id: str | int | None) -> int | None:
+    """Resolve a category identifier to the internal Category.id.
+
+    If the value is a string we treat it as a 1C external id (onec_id).
+    If it is already an int we return it as-is.
+    """
+    if category_id is None:
+        return None
+    if isinstance(category_id, int):
+        return category_id
+    result = await session.execute(
+        select(Category).where(Category.onec_id == str(category_id))
+    )
+    category = result.scalar_one_or_none()
+    if category is None:
+        raise ValueError(f"Category with onec_id={category_id!r} not found")
+    return category.id
+
+
 async def _resolve_category_parent_id(session: AsyncSession, parent_onec_id: str | int | None) -> int | None:
     """Resolve a parent identifier to the internal Category.id.
 
@@ -26,7 +45,14 @@ async def _resolve_category_parent_id(session: AsyncSession, parent_onec_id: str
     return parent.id if parent else None
 
 
-async def apply_product_change(session: AsyncSession, change: OnecChange) -> Product:
+def _is_stale_change(change_version: datetime, existing_sync_at: datetime | None) -> bool:
+    """Return True if the incoming change is older or equal to the existing entity."""
+    if existing_sync_at is None:
+        return False
+    return change_version <= existing_sync_at
+
+
+async def apply_product_change(session: AsyncSession, change: OnecChange) -> Product | None:
     """Apply a single 1C product change: create, update or soft-delete."""
     result = await session.execute(
         select(Product).where(Product.onec_id == change.external_id)
@@ -34,9 +60,15 @@ async def apply_product_change(session: AsyncSession, change: OnecChange) -> Pro
     product = result.scalar_one_or_none()
 
     data = change.data
-    if product is None:
+    is_new_product = product is None
+    if is_new_product:
+        if "supplier_id" not in data:
+            raise ValueError("supplier_id is required for product creation")
         product = Product(onec_id=change.external_id)
         session.add(product)
+
+    if _is_stale_change(change.version, product.onec_sync_at):
+        return product
 
     if "name" in data:
         product.name = data["name"]
@@ -49,7 +81,7 @@ async def apply_product_change(session: AsyncSession, change: OnecChange) -> Pro
     if "stock" in data:
         product.stock = data["stock"]
     if "category_id" in data:
-        product.category_id = data["category_id"]
+        product.category_id = await _resolve_category_by_id(session, data["category_id"])
     if "supplier_id" in data:
         product.supplier_id = data["supplier_id"]
     if "is_active" in data:
@@ -63,7 +95,7 @@ async def apply_product_change(session: AsyncSession, change: OnecChange) -> Pro
     return product
 
 
-async def apply_category_change(session: AsyncSession, change: OnecChange) -> Category:
+async def apply_category_change(session: AsyncSession, change: OnecChange) -> Category | None:
     """Apply a single 1C category change: create, update or soft-delete."""
     result = await session.execute(
         select(Category).where(Category.onec_id == change.external_id)
@@ -74,6 +106,9 @@ async def apply_category_change(session: AsyncSession, change: OnecChange) -> Ca
     if category is None:
         category = Category(onec_id=change.external_id)
         session.add(category)
+
+    if _is_stale_change(change.version, category.onec_sync_at):
+        return category
 
     if "name" in data:
         category.name = data["name"]

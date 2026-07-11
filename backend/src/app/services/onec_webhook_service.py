@@ -1,4 +1,5 @@
 import hashlib
+import hmac
 
 from fastapi import HTTPException
 from sqlalchemy import select
@@ -12,7 +13,9 @@ from src.app.schemas.onec import OnecWebhookPayload
 
 def validate_api_key(api_key: str | None) -> None:
     """Validate the X-1C-Api-Key header against the configured secret."""
-    if not api_key or api_key != settings.onec_webhook_api_key:
+    if not api_key:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+    if not hmac.compare_digest(api_key, settings.onec_webhook_api_key):
         raise HTTPException(status_code=401, detail="Invalid API key")
 
 
@@ -22,11 +25,15 @@ def compute_checksum(payload_json: bytes) -> str:
 
 
 async def is_already_processed(session: AsyncSession, checksum: str) -> bool:
-    """Return True if a log with this checksum has already been applied."""
+    """Return True if a log with this checksum is already in progress or done.
+
+    Failed logs are intentionally excluded so that a corrected payload can be
+    retried by 1С.
+    """
     result = await session.execute(
         select(OnecChangeLog).where(
             OnecChangeLog.checksum == checksum,
-            OnecChangeLog.status == "done",
+            OnecChangeLog.status.in_(["done", "pending", "processing"]),
         )
     )
     return result.scalar_one_or_none() is not None

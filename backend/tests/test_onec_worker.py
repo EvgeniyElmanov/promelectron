@@ -148,13 +148,14 @@ async def test_onec_apply_category_delete(test_session):
     await handle_onec_apply_changes(test_session, {"log_id": log.id})
     await test_session.commit()
 
+    delete_version = version.replace(year=version.year + 1)
     delete_payload = _build_payload(
         "category",
         [
             {
                 "external_id": "1c-cat-300",
                 "action": "delete",
-                "version": version.isoformat(),
+                "version": delete_version.isoformat(),
                 "data": {},
             }
         ],
@@ -178,3 +179,159 @@ async def test_onec_apply_category_delete(test_session):
     category = result.scalar_one()
     assert category.is_active is False
     assert category.name == "To Be Deleted"
+
+
+@pytest.mark.asyncio
+async def test_onec_apply_version_conflict_skips_stale_change(test_session, supplier_id):
+    """Older change.version must not overwrite a newer entity.onec_sync_at."""
+    newer_version = datetime.now(timezone.utc)
+    older_version = newer_version.replace(year=newer_version.year - 1)
+    external_id = "1c-prod-version-1"
+
+    # 1. Apply a change with the newer version.
+    payload_newer = _build_payload(
+        "product",
+        [
+            {
+                "external_id": external_id,
+                "action": "create",
+                "version": newer_version.isoformat(),
+                "data": {
+                    "name": "Newer Name",
+                    "description": "Newer description",
+                    "sku": "NEWER-001",
+                    "price": 399.99,
+                    "stock": 20,
+                    "is_active": True,
+                    "supplier_id": supplier_id,
+                },
+            }
+        ],
+    )
+    log_newer = OnecChangeLog(
+        batch_id=payload_newer["batch_id"],
+        entity_type="product",
+        payload=payload_newer,
+        status="pending",
+        checksum="checksum-version-newer",
+    )
+    test_session.add(log_newer)
+    await test_session.flush()
+
+    await handle_onec_apply_changes(test_session, {"log_id": log_newer.id})
+    await test_session.commit()
+
+    # 2. Apply a change with an older version.
+    payload_older = _build_payload(
+        "product",
+        [
+            {
+                "external_id": external_id,
+                "action": "update",
+                "version": older_version.isoformat(),
+                "data": {
+                    "name": "Older Name",
+                    "description": "Older description",
+                    "sku": "OLDER-001",
+                    "price": 1.99,
+                    "stock": 1,
+                    "is_active": False,
+                },
+            }
+        ],
+    )
+    log_older = OnecChangeLog(
+        batch_id=payload_older["batch_id"],
+        entity_type="product",
+        payload=payload_older,
+        status="pending",
+        checksum="checksum-version-older",
+    )
+    test_session.add(log_older)
+    await test_session.flush()
+
+    await handle_onec_apply_changes(test_session, {"log_id": log_older.id})
+    await test_session.commit()
+
+    # 3. Verify the entity still has the newer values.
+    result = await test_session.execute(
+        select(Product).where(Product.onec_id == external_id)
+    )
+    product = result.scalar_one()
+    assert product.name == "Newer Name"
+    assert product.description == "Newer description"
+    assert product.sku == "NEWER-001"
+    assert product.price == 399.99
+    assert product.stock == 20
+    assert product.is_active is True
+    assert product.onec_sync_at == newer_version
+
+    await test_session.refresh(log_older)
+    assert log_older.status == "done"
+
+
+@pytest.mark.asyncio
+async def test_onec_apply_category_version_conflict_skips_stale_change(test_session):
+    """Older change.version must not overwrite a newer category.onec_sync_at."""
+    newer_version = datetime.now(timezone.utc)
+    older_version = newer_version.replace(year=newer_version.year - 1)
+    external_id = "1c-cat-version-1"
+
+    payload_newer = _build_payload(
+        "category",
+        [
+            {
+                "external_id": external_id,
+                "action": "create",
+                "version": newer_version.isoformat(),
+                "data": {"name": "Newer Category", "is_active": True},
+            }
+        ],
+    )
+    log_newer = OnecChangeLog(
+        batch_id=payload_newer["batch_id"],
+        entity_type="category",
+        payload=payload_newer,
+        status="pending",
+        checksum="checksum-cat-version-newer",
+    )
+    test_session.add(log_newer)
+    await test_session.flush()
+
+    await handle_onec_apply_changes(test_session, {"log_id": log_newer.id})
+    await test_session.commit()
+
+    payload_older = _build_payload(
+        "category",
+        [
+            {
+                "external_id": external_id,
+                "action": "update",
+                "version": older_version.isoformat(),
+                "data": {"name": "Older Category", "is_active": False},
+            }
+        ],
+    )
+    log_older = OnecChangeLog(
+        batch_id=payload_older["batch_id"],
+        entity_type="category",
+        payload=payload_older,
+        status="pending",
+        checksum="checksum-cat-version-older",
+    )
+    test_session.add(log_older)
+    await test_session.flush()
+
+    await handle_onec_apply_changes(test_session, {"log_id": log_older.id})
+    await test_session.commit()
+
+    result = await test_session.execute(
+        select(Category).where(Category.onec_id == external_id)
+    )
+    category = result.scalar_one()
+    assert category.name == "Newer Category"
+    assert category.is_active is True
+    assert category.onec_sync_at == newer_version
+
+    await test_session.refresh(log_older)
+    assert log_older.status == "done"
