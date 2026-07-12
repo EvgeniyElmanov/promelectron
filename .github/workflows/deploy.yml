@@ -27,7 +27,11 @@ env:
   SOPS_VERSION: "3.9.4"
 
 jobs:
+  test:
+    uses: ./.github/workflows/tests.yml
+
   build:
+    needs: test
     runs-on: ubuntu-latest
     permissions:
       contents: read
