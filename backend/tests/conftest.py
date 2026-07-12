@@ -76,7 +76,7 @@ def mock_storage_service(monkeypatch):
         async def upload(self, key, file):
             return f"/uploads/{key}"
 
-        async def upload_image(self, key, file):
+        async def upload_image(self, key, file, content=None):
             base, _ = os.path.splitext(key)
             return {
                 "original": f"/uploads/{key}",

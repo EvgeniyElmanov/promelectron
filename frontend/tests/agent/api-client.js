@@ -120,7 +120,7 @@ export class ApiClient {
   }
 
   async uploadAvatar(fileData, role = 'user') {
-    return this.request('POST', '/me/avatar', { body: fileData, as: role, headers: { 'Content-Type': 'multipart/form-data' } });
+    return this.request('POST', '/me/avatar/', { body: fileData, as: role, headers: { 'Content-Type': 'multipart/form-data' } });
   }
 
   async getProfile(role = 'user') {
