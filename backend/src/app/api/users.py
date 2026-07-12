@@ -2,7 +2,7 @@ import logging
 import os
 import uuid
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from src.app.utils.rate_limiter import conditional_limit
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -38,13 +38,21 @@ router = APIRouter()
 
 @router.post("/register/")
 @conditional_limit("50/minute")
-async def register_user(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
+async def register_user(
+    request: Request,
+    user_data: UserCreate,
+    db: AsyncSession = Depends(get_db),
+):
     return await UserService.register_user(user_data=user_data, db=db)
 
 
 @router.post("/login/")
 @conditional_limit("50/minute")
-async def login_user(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
+async def login_user(
+    request: Request,
+    user_data: UserCreate,
+    db: AsyncSession = Depends(get_db),
+):
     return await UserService.login_user(user_data=user_data, db=db)
 
 
