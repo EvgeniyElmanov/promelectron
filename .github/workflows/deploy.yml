@@ -179,9 +179,32 @@ jobs:
             --namespace promelectron-test \
             --create-namespace \
             --wait \
-            --wait-for-jobs
+            --wait-for-jobs \
+            --timeout 10m
           kubectl rollout status deployment/promelectron-api -n promelectron-test --timeout=120s
           kubectl rollout status deployment/promelectron-frontend -n promelectron-test --timeout=120s
+
+      - name: Debug deploy failure
+        if: failure()
+        env:
+          KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
+        run: |
+          echo "=== Pods ==="
+          kubectl get pods -n promelectron-test -o wide || true
+          echo "=== Pod descriptions ==="
+          kubectl describe pods -n promelectron-test || true
+          echo "=== Events ==="
+          kubectl get events -n promelectron-test --sort-by='.lastTimestamp' || true
+          echo "=== API logs ==="
+          kubectl logs -n promelectron-test -l app=promelectron-api --tail=200 || true
+          echo "=== Frontend logs ==="
+          kubectl logs -n promelectron-test -l app=promelectron-frontend --tail=200 || true
+          echo "=== MinIO logs ==="
+          kubectl logs -n promelectron-test -l app=promelectron-minio --tail=200 || true
+          echo "=== PostgreSQL logs ==="
+          kubectl logs -n promelectron-test -l app=promelectron-postgres --tail=200 || true
+          echo "=== Redis logs ==="
+          kubectl logs -n promelectron-test -l app=promelectron-redis --tail=200 || true
 
   test-e2e:
     needs: deploy-test
