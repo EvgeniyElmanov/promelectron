@@ -181,3 +181,65 @@ class TestAvatarUpload:
         # Location header points to the slash-terminated path.
         assert response.status_code in (307, 308)
         assert response.headers.get("location").endswith("/api/v1/me/avatar/")
+
+    @pytest.mark.asyncio
+    async def test_upload_avatar_storage_error_returns_500(
+        self, client, test_user, user_token, monkeypatch
+    ):
+        """If storage.upload_image raises, endpoint returns 500 with generic message."""
+
+        class FailingUploadStorage:
+            async def upload_image(self, key, file, content=None):
+                raise RuntimeError("storage down")
+
+            async def delete_image(self, key):
+                pass
+
+        monkeypatch.setattr("src.app.api.users.storage", FailingUploadStorage())
+        response = await client.post(
+            "/api/v1/me/avatar/",
+            headers={"Authorization": f"Bearer {user_token}"},
+            files={"file": ("avatar.png", io.BytesIO(b"fake-image-content"), "image/png")},
+        )
+        assert response.status_code == 500
+        detail = response.json()["detail"]
+        assert "Avatar upload failed" in detail
+        assert "storage down" not in detail
+
+    @pytest.mark.asyncio
+    async def test_upload_avatar_update_profile_error_returns_500(
+        self, client, test_user, user_token, monkeypatch
+    ):
+        """If UserService.update_profile raises, endpoint returns 500 with generic message."""
+
+        class OkStorage:
+            async def upload_image(self, key, file, content=None):
+                return {
+                    "original": "/uploads/avatars/1/test.png",
+                    "small": "/uploads/avatars/1/test_small.webp",
+                    "medium": "/uploads/avatars/1/test_medium.webp",
+                    "large": "/uploads/avatars/1/test_large.webp",
+                }
+
+            async def delete_image(self, key):
+                pass
+
+        monkeypatch.setattr("src.app.api.users.storage", OkStorage())
+
+        async def failing_update_profile(*, user_id, user_data, db):
+            raise RuntimeError("db locked")
+
+        monkeypatch.setattr(
+            "src.app.services.user_service.UserService.update_profile",
+            failing_update_profile,
+        )
+
+        response = await client.post(
+            "/api/v1/me/avatar/",
+            headers={"Authorization": f"Bearer {user_token}"},
+            files={"file": ("avatar.png", io.BytesIO(b"fake-image-content"), "image/png")},
+        )
+        assert response.status_code == 500
+        detail = response.json()["detail"]
+        assert "Failed to save avatar" in detail
+        assert "db locked" not in detail

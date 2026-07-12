@@ -171,13 +171,31 @@ async def upload_avatar(
             )
 
     key = f"avatars/{current_user.id}/{uuid.uuid4().hex}{ext}"
-    result = await storage.upload_image(key, file, content=content)
+    try:
+        result = await storage.upload_image(key, file, content=content)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("Avatar upload failed for user %s", current_user.id)
+        raise HTTPException(
+            status_code=500,
+            detail="Avatar upload failed. Please try again later.",
+        ) from exc
 
-    user = await UserService.update_profile(
-        user_id=current_user.id,
-        user_data=UserUpdate(avatar_url=result["original"]),
-        db=db,
-    )
+    try:
+        user = await UserService.update_profile(
+            user_id=current_user.id,
+            user_data=UserUpdate(avatar_url=result["original"]),
+            db=db,
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("Failed to update profile avatar_url for user %s", current_user.id)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to save avatar. Please try again later.",
+        ) from exc
 
     response_data = UserOut.model_validate(user).model_dump()
     response_data.update({
