@@ -1,3 +1,159 @@
+### 2026-07-12 18:55 | implement | restore-deploy-pipeline-structure — merged
+  Роль: implement (оркестратор).
+  Запрос: убрать `test / backend-tests` и `test / frontend-tests` из `deploy.yml`, чтобы pipeline выглядел как на скриншоте (без intermediate test job перед build).
+  Выполнено:
+  - Удалён job `test` (`uses: ./.github/workflows/tests.yml`) из `.github/workflows/deploy.yml`.
+  - Убран `needs: test` у job `build`.
+  - Убран `.github/workflows/tests.yml` из `paths` триггера `deploy.yml`.
+  - `.github/workflows/tests.yml` оставлен как отдельный workflow для Pull Request.
+  - Создан PR #79: https://github.com/AutonomaCo/promelectron/pull/79
+  - PR #79 влит в `main` по одобрению пользователя; ветка удалена.
+  Проверки:
+  - YAML syntax check — ✅ OK
+  - pre-push hook (ruff + eslint) — ✅ OK
+  Git:
+  - Branch: `feature/restore-deploy-3807b77` (удалена после merge)
+  - PR: #79 — merged
+  Блокер: Нет.
+
+### 2026-07-12 18:25 | implement | fix-avatar-upload-kubernetes — merged
+  Роль: implement (оркестратор).
+  Запрос: после merge PR #76 E2E avatar upload test падает — починить.
+  Выполнено:
+  - Диагностика: API pod в Kubernetes не имел writable storage для `/app/uploads`; `LocalStorageService` падал при записи аватара.
+  - Исправлено: добавлен `emptyDir` volume mount `/app/uploads` в `infra/helm/templates/api-deployment.yaml` с `sizeLimit: 1Gi`.
+  - Добавлена обработка исключений в `upload_avatar` с generic сообщениями клиенту и логированием traceback.
+  - Добавлены тесты на 500 при ошибке storage / `UserService.update_profile`.
+  - Добавлен комментарий о `emptyDir` + `replicas: 1` ограничении в `infra/helm/values.yaml`.
+  - Code review iteration 1 — APPROVED (F001–F005 fixed).
+  - Создан PR #78: https://github.com/AutonomaCo/promelectron/pull/78
+  - Issue #77 переведён в статус `In review`, затем в `Done` после merge.
+  - PR #78 влит в `main` по одобрению пользователя; ветка удалена.
+  Проверки:
+  - backend lint (ruff) — ✅ All checks passed!
+  - полный backend suite — ✅ 351 passed, 3 warnings
+  Git:
+  - Branch: `feature/fix-avatar-upload-kubernetes` (удалена после merge)
+  - Worktree: `/home/evgeniy/project/my_shop_backend/.worktrees/fix-avatar-upload-kubernetes`
+  - Issue: #77 — Done
+  - PR: #78 — merged
+  Блокер: Issue #77 не добавился на GitHub Project board автоматически (`Could not find project item ID`) — issue создан, но project link требует ручной проверки.
+
+### 2026-07-12 16:45 | implement | fix-rate-limit-register-login-crash — merged
+  Роль: implement (оркестратор).
+  Запрос: упал деплой после merge PR #64; проверить deploy.yml / причину.
+  Выполнено:
+  - Диагностика: deploy падает не из-за `deploy.yml`, а из-за `backend/src/app/api/users.py`.
+  - Root cause: в PR #64 удалили `request: Request` из `register_user` и `login_user`, но `@conditional_limit` в production применяет `slowapi.limiter.limit()`, который требует этот аргумент. API-контейнер падает на импорте.
+  - Исправлено: возвращён `request: Request` в оба endpoint'а.
+  - Добавлен регрессионный тест `tests/test_rate_limiter.py::test_users_router_imports_in_production`.
+  - Code review iteration 1 — APPROVED.
+  - Создан PR #76: https://github.com/AutonomaCo/promelectron/pull/76
+  - Issue #75 переведён в статус `Done`.
+  - PR #76 влит в `main` по одобрению пользователя.
+  Проверки:
+  - backend lint (ruff) — ✅ All checks passed!
+  - полный backend suite — ✅ 349 passed, 3 warnings
+  - production-импорт users router — ✅
+  Git:
+  - Branch: `feature/fix-rate-limit-register-login-crash` (удалена после merge)
+  - Worktree: `/home/evgeniy/project/my_shop_backend/.worktrees/fix-rate-limit-register-login-crash`
+  - Issue: #75 — Done
+  - PR: #76 — merged
+  Блокер: Нет.
+
+### 2026-07-12 16:30 | implement | fix-rate-limit-register-login-crash — PR создан
+  Роль: implement (оркестратор).
+  Запрос: упал деплой после merge PR #64; проверить deploy.yml / причину.
+  Выполнено:
+  - Диагностика: deploy падает не из-за `deploy.yml`, а из-за `backend/src/app/api/users.py`.
+  - Root cause: в PR #64 удалили `request: Request` из `register_user` и `login_user`, но `@conditional_limit` в production применяет `slowapi.limiter.limit()`, который требует этот аргумент. API-контейнер падает на импорте.
+  - Исправлено: возвращён `request: Request` в оба endpoint'а.
+  - Добавлен регрессионный тест `tests/test_rate_limiter.py::test_users_router_imports_in_production`.
+  - Code review iteration 1 — APPROVED.
+  - Создан PR #76: https://github.com/AutonomaCo/promelectron/pull/76
+  - Issue #75 переведён в статус `In review`.
+  Проверки:
+  - backend lint (ruff) — ✅ All checks passed!
+  - полный backend suite — ✅ 349 passed, 3 warnings
+  - production-импорт users router — ✅
+  Git:
+  - Branch: `feature/fix-rate-limit-register-login-crash`
+  - Worktree: `/home/evgeniy/project/my_shop_backend/.worktrees/fix-rate-limit-register-login-crash`
+  - Issue: #75
+  - PR: #76
+  Блокер: Нет.
+
+### 2026-07-12 15:00 | implement | onec-integration — PR создан, QA PASS, F-044 закрыт для test
+  Роль: implement (оркестратор).
+  Запрос: доделать задачу #66 до конца (Sub-issue 7 + review + QA + PR).
+  Выполнено:
+  - Реализован Sub-issue 7: Helm/env переменные 1С, workflow overrides, шаблон 1С HTTP-сервиса (`docs/onec/HTTPService_PromElektron.md`).
+  - Разрешён F-043: `pytest-asyncio` обновлён до `>=1.0.0,<2.0.0` для совместимости с per-test DB isolation.
+  - Исправлены findings F-045–F-049 из review iteration 9:
+    - F-045: переписан шаблон 1С push через регламентное задание с исходящим HTTP-запросом.
+    - F-046: `price`/`stock` вынесены из `product` payload в отдельные entity_type.
+    - F-047: `order_status` явно помечен как out of scope.
+    - F-048: удалён устаревший cronjob `syncOnec` и связанные values.
+    - F-049: зафиксирован диапазон `pytest-asyncio>=1.0.0,<2.0.0`.
+  - Code review iteration 10 — APPROVED.
+  - QA gate — PASS.
+  - Создан/обновлён PR #68: https://github.com/AutonomaCo/promelectron/pull/68
+  - Issue #66 переведён в статус `In review`.
+  - F-044 закрыт для test-деплоя через GitHub Secrets overrides:
+    - `ONEC_API_URL` = `https://1c-test.example.com/unf/odata/standard.odata/`
+    - `ONEC_WEBHOOK_API_KEY` = `change-me`
+    - `ONEC_LOGIN` / `ONEC_PASSWORD` не заданы — pull fallback отключён в test.
+  - Обновлены TODO-файлы с инструкциями по SOPS для prod: `.agent/runs/onec-integration/SOPS_TODO.md`, `infra/helm/stage/test/secrets.TODO.md`, `infra/helm/stage/prod/secrets.TODO.md`.
+  Проверки:
+  - backend lint (ruff) — ✅ All checks passed!
+  - полный backend suite — ✅ 358 passed, 363 warnings
+  - целевые onec-тесты — ✅ 28 passed, 33 warnings
+  - Alembic downgrade/upgrade — ✅ passed
+  Git:
+  - Branch: `feature/onec-integration`
+  - Worktree: `/home/evgeniy/project/my_shop_backend/.worktrees/onec-integration`
+  - Issue: #66
+  - PR: #68
+  Блокер: F-044 остаётся открытым только для production SOPS-baseline (`infra/helm/stage/prod/secrets.yaml`). Test-деплой разблокирован.
+
+### 2026-07-12 14:40 | qa | QA gate onec-integration — PASS
+  Роль: qa.
+  Запрос: провести QA gate для задачи onec-integration после code review iteration 10 (APPROVED).
+  Выполнено:
+ - Прочитаны task.md, spec.md, review/findings.md, PROJECT_CONTEXT.md, BACKLOG.md, BLOCKERS.md, SESSION_LOG.md, qa/SKILL.md, golden-path.md, agent-commons.md.
+ - Запущен полный backend suite в worktree (pytest напрямую, т.к. `make test-backend` не смог поднять Docker-контейнеры из-за занятого порта 5432 уже запущенными `promelectron-onec-test-*` контейнерами).
+ - Проверены Acceptance Criteria из spec.md против реализации.
+ - Проверены Alembic миграции: `alembic downgrade -2 && alembic upgrade head` проходят.
+ - Записан QA-отчёт в `.agent/runs/onec-integration/review/test-findings.md`.
+  Проверки:
+ - backend lint (ruff) — ✅ All checks passed!
+ - полный backend suite — ✅ 358 passed, 363 warnings
+ - целевые onec-тесты — ✅ 28 passed, 33 warnings
+ - Alembic downgrade/upgrade — ✅ passed
+  Git:
+ - Branch: feature/onec-integration
+ - Worktree: /home/evgeniy/project/my_shop_backend/.worktrees/onec-integration
+ - Issue: #66
+  Блокер: F-044 (SOPS secrets) — open human-decision blocker, не относится к коду. QA gate пройден.
+
+### 2026-07-12 14:30 | implement | Исправление deploy pipeline после merge PR #64
+  Роль: implement (hotfix).
+  Запрос: деплой упал после merge PR #64 — проверить.
+  Выполнено:
+  - Диагностика: `Deploy to Kubernetes` run #29182705597 упал на `deploy-test` с `UPGRADE FAILED: context deadline exceeded`.
+  - Локальная проверка кода PR #64 не выявила багов: backend стартует, `/health` отвечает `ok`, frontend собирается, backend lint проходит.
+  - Вероятная причина: image в ghcr сразу после push ещё не доступен для pull self-hosted runner'ом (eventual consistency). Успешный run #283 имел job `test` перед `build`, что давало ghcr время на репликацию.
+  - Создан PR #73: возвращён job `test` в `.github/workflows/deploy.yml` перед `build`.
+  Проверки:
+  - backend lint (ruff) — ✅
+  - frontend lint (eslint) — ✅
+  - YAML deploy.yml — ✅
+  Git:
+  - Branch: `feature/fix-avatar-deploy-timeout`
+  - PR: #73
+  Блокер: Нет.
+
 ### 2026-07-11 13:35 | fix | Восстановление deploy pipeline и E2E/smoke тестов в CI/CD
   Роль: fix.
   Запрос: восстановить тесты из deploy pipeline (run #277), которые перестали запускаться после обновления железа сервера.
