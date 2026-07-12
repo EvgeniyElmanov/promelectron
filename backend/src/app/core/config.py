@@ -32,6 +32,7 @@ class Settings:
     verify_base_url: str
     redis_url: str
     api_base_url: str
+    storage_backend: str
     minio_endpoint: str | None
     minio_access_key: str | None
     minio_secret_key: str | None
@@ -141,6 +142,7 @@ settings = Settings(
     ),
     redis_url=os.getenv("REDIS_URL", "redis://redis:6379/0"),
     api_base_url=os.getenv("API_BASE_URL", ""),
+    storage_backend=os.getenv("STORAGE_BACKEND", "").lower(),
     minio_endpoint=os.getenv("MINIO_ENDPOINT"),
     minio_access_key=os.getenv("MINIO_ACCESS_KEY"),
     minio_secret_key=os.getenv("MINIO_SECRET_KEY"),

@@ -200,6 +200,13 @@ class MinioStorageService:
 
 
 def get_storage_service() -> StorageService:
+    backend = settings.storage_backend
+    if backend == "minio":
+        return MinioStorageService()
+    if backend == "local":
+        return LocalStorageService()
+    # Fallback for legacy deployments that don't set STORAGE_BACKEND:
+    # auto-select MinIO only when all required credentials are present.
     if settings.minio_endpoint and settings.minio_access_key and settings.minio_secret_key:
         return MinioStorageService()
     return LocalStorageService()
