@@ -1,3 +1,18 @@
+### 2026-07-12 19:05 | implement | remove-tests-yml — merged
+  Роль: implement (оркестратор).
+  Запрос: удалить `.github/workflows/tests.yml`, чтобы CI/CD соответствовал состоянию коммита `3807b77` (без автотестов backend/frontend в GitHub Actions).
+  Выполнено:
+  - Удалён `.github/workflows/tests.yml` полностью.
+  - Проверено, что `deploy.yml` больше не ссылается на `tests.yml`.
+  - Создан PR #80: https://github.com/AutonomaCo/promelectron/pull/80
+  - PR #80 влит в `main` по одобрению пользователя; ветка удалена.
+  Проверки:
+  - pre-push hook (ruff + eslint) — ✅ OK
+  Git:
+  - Branch: `feature/remove-tests-yml` (удалена после merge)
+  - PR: #80 — merged
+  Блокер: Нет.
+
 ### 2026-07-12 18:55 | implement | restore-deploy-pipeline-structure — merged
   Роль: implement (оркестратор).
   Запрос: убрать `test / backend-tests` и `test / frontend-tests` из `deploy.yml`, чтобы pipeline выглядел как на скриншоте (без intermediate test job перед build).
