@@ -1,3 +1,23 @@
+### 2026-07-12 19:20 | implement | storage-backend-local — merged
+  Роль: implement (оркестратор).
+  Запрос: влить незакоммиченный фикс выбора storage backend (STORAGE_BACKEND=local) для починки E2E avatar upload в test-окружении.
+  Выполнено:
+  - Добавлена настройка `storage_backend` в `backend/src/app/core/config.py` (читается из `STORAGE_BACKEND`).
+  - В `backend/src/app/services/storage_service.py` добавлен явный выбор `LocalStorageService`/`MinioStorageService` по `STORAGE_BACKEND`.
+  - Сохранён legacy fallback: MinIO, если заданы credentials, иначе local.
+  - В `infra/helm/stage/test/values.yaml` установлен `STORAGE_BACKEND: local`.
+  - В `infra/helm/values.yaml` добавлен `STORAGE_BACKEND: ""` и обновлены комментарии.
+  - Добавлен `backend/tests/test_storage_service.py` с 4 тестами на выбор backend.
+  - Создан PR #81: https://github.com/AutonomaCo/promelectron/pull/81
+  - PR #81 влит в `main` по одобрению пользователя; ветка удалена.
+  Проверки:
+  - `pytest backend/tests/test_storage_service.py backend/tests/test_avatar.py -v` — 19/19 passed ✅
+  - pre-push hook (ruff + eslint) — ✅ OK
+  Git:
+  - Branch: `feature/storage-backend-local` (удалена после merge)
+  - PR: #81 — merged
+  Блокер: Нет.
+
 ### 2026-07-12 19:05 | implement | remove-tests-yml — merged
   Роль: implement (оркестратор).
   Запрос: удалить `.github/workflows/tests.yml`, чтобы CI/CD соответствовал состоянию коммита `3807b77` (без автотестов backend/frontend в GitHub Actions).
