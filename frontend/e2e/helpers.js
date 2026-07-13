@@ -52,7 +52,44 @@ const YOO_KASSA_SELECTORS = {
     'button[type="submit"], button:has-text("Оплатить"), button:has-text("Pay"), input[type="submit"]',
   backButton:
     'button:has-text("Back to the website"), a:has-text("Back to the website"), a:has-text("Exit the payment process"), button:has-text("Exit the payment process")',
+  overlay: '[data-qa="overlay"], [class*="overlay"], [class*="spinner"], [class*="loading"]',
+  threeDSFrame: 'iframe, .three-d-secure, text=Подтвердите, text=Confirm, text=Card authentication',
+  errorMessage: 'text=/payment declined|отклонён|declined|ошибка|error/i',
 };
+
+async function waitForOverlayToDisappear(page, timeout = 5000) {
+  const overlay = page.locator(YOO_KASSA_SELECTORS.overlay).first();
+  try {
+    await overlay.waitFor({ state: 'hidden', timeout });
+  } catch {
+    // Overlay may still be present; callers should use force/JS click as fallback.
+  }
+}
+
+async function clickElementRobustly(locator, options = {}) {
+  const { timeout = 5000, forceTimeout = 2000, jsFallback = true } = options;
+  await expect(locator).toBeVisible({ timeout });
+
+  try {
+    await locator.click({ timeout: forceTimeout });
+    return;
+  } catch {
+    // Normal click failed (e.g. intercepted by overlay); try force click.
+  }
+
+  try {
+    await locator.click({ force: true, timeout: forceTimeout });
+    return;
+  } catch {
+    // Force click also failed; fall back to JS click if allowed.
+  }
+
+  if (jsFallback) {
+    await locator.evaluate((el) => el.click());
+  } else {
+    throw new Error('Could not click element robustly');
+  }
+}
 
 async function selectNewCardIfNeeded(page) {
   await page.waitForTimeout(2000);
@@ -95,13 +132,22 @@ async function fillYooKassaCardForm(page, card) {
 async function submitYooKassaForm(page) {
   const submitButton = page.locator(YOO_KASSA_SELECTORS.submitButton).first();
   await expect(submitButton).toBeVisible({ timeout: 5000 });
-  await submitButton.click();
+  await clickElementRobustly(submitButton, { timeout: 5000, forceTimeout: 3000 });
 }
 
 async function exitYooKassaPage(page) {
   const backButton = page.locator(YOO_KASSA_SELECTORS.backButton).first();
   await expect(backButton).toBeVisible({ timeout: 15000 });
-  await backButton.click();
+
+  // YooKassa may show a loading/3-D Secure overlay after form submission.
+  // Wait briefly for it to disappear before attempting a normal click.
+  await waitForOverlayToDisappear(page, 3000);
+
+  await clickElementRobustly(backButton, {
+    timeout: 5000,
+    forceTimeout: 3000,
+    jsFallback: true,
+  });
 }
 
 /**
@@ -119,26 +165,51 @@ export async function completeYooKassaPaymentIfNeeded(
   await page.waitForLoadState('networkidle');
 
   if (!isYooKassaPage(page)) {
-    return;
+    return true;
   }
 
   await fillYooKassaCardForm(page, card);
   await submitYooKassaForm(page);
 
-  // 3-D Secure test flow is best-effort in automated environments.
-  if (card.has3ds) {
-    const has3dsFrame = await page
-      .locator('iframe, .three-d-secure, text=Подтвердите, text=Confirm')
-      .first()
-      .isVisible()
-      .catch(() => false);
-    if (has3dsFrame) {
-      // Automated completion is not reliable for 3-D Secure; caller should
-      // treat this as skipped.
-      return false;
-    }
+  // After submission YooKassa may:
+  //   1. redirect straight back to the merchant success page,
+  //   2. show a 3-D Secure challenge,
+  //   3. show a loading overlay and then the "back to website" link.
+  // Wait for any of these outcomes.
+  const successPromise = page.waitForURL(/\/payment\/success/, { timeout: 20000 }).then(() => 'success');
+  const threeDSPromise = page
+    .locator(YOO_KASSA_SELECTORS.threeDSFrame)
+    .first()
+    .waitFor({ state: 'visible', timeout: 20000 })
+    .then(() => '3ds');
+  const backButtonPromise = page
+    .locator(YOO_KASSA_SELECTORS.backButton)
+    .first()
+    .waitFor({ state: 'visible', timeout: 20000 })
+    .then(() => 'back');
+
+  const outcome = await Promise.race([successPromise, threeDSPromise, backButtonPromise]).catch(
+    () => 'timeout'
+  );
+
+  if (outcome === 'success') {
+    return true;
   }
 
+  if (outcome === '3ds') {
+    // 3-D Secure cannot be reliably completed in automated environments.
+    return false;
+  }
+
+  // Loading overlay may still be visible; wait a bit more before clicking back.
+  await waitForOverlayToDisappear(page, 3000);
+
+  if (outcome === 'back') {
+    await exitYooKassaPage(page);
+    return true;
+  }
+
+  // Fallback: try to exit the YooKassa page anyway.
   await exitYooKassaPage(page);
   return true;
 }
@@ -159,13 +230,16 @@ export async function completeYooKassaFailedPaymentIfNeeded(page, card) {
   await fillYooKassaCardForm(page, card);
   await submitYooKassaForm(page);
 
-  // Most declined cards redirect back automatically, but the YooKassa UI may
-  // require clicking the back button. Wait briefly, then fall back to it.
+  // Declined cards usually show an error and stay on YooKassa, but some test
+  // flows redirect back automatically. Wait for either outcome.
   try {
     await page.waitForURL(/\/payment\/failed/, { timeout: 15000 });
+    return true;
   } catch {
+    // Stayed on YooKassa: click the back link to return to the merchant site.
+    // The PaymentSuccess page will sync the payment status and redirect to
+    // /payment/failed because cancellation_reason is populated.
     await exitYooKassaPage(page);
+    return true;
   }
-
-  return true;
 }
