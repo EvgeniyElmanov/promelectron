@@ -433,6 +433,67 @@ class TestPaymentsAPI:
         assert order_get.json()["status"] == "paid"
 
     @pytest.mark.asyncio
+    async def test_sync_payment_status_by_order_canceled_saves_cancellation_reason(
+        self, client, test_user, user_token, test_product, test_session, cdek_delivery_payload
+    ):
+        """Ручная синхронизация canceled-платежа сохраняет причину отказа в заказе."""
+        from src.app.models.payment import Payment
+
+        await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
+        order_resp = await client.post(
+            "/api/v1/orders/create/",
+            json={
+                "cdek_delivery": cdek_delivery_payload,
+                "recipient_first_name": "Тест",
+                "recipient_last_name": "Пользователь",
+                "recipient_phone": "+79990001122",
+            },
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        order_id = order_resp.json()["id"]
+
+        mock_yookassa = AsyncMock(return_value={
+            "yookassa_payment_id": "test-yookassa-id",
+            "status": "pending",
+            "confirmation_url": "https://yoomoney.ru/checkout/test",
+            "amount": Decimal(str(test_product.price)),
+            "created_at": "2026-06-02T12:00:00.000Z",
+        })
+
+        with (
+            patch("src.app.services.payment_service.YooKassaService.is_configured", return_value=True),
+            patch("src.app.services.payment_service.YooKassaService.create_payment", mock_yookassa),
+        ):
+            await client.post(f"/api/v1/payments/{order_id}/", headers={"Authorization": f"Bearer {user_token}"})
+
+        mock_sync = AsyncMock(return_value={
+            "yookassa_payment_id": "test-yookassa-id",
+            "status": "canceled",
+            "paid": False,
+            "amount": Decimal(str(test_product.price)),
+            "refunded_amount": Decimal("0"),
+            "payment_method_type": "bank_card",
+            "created_at": "2026-06-02T12:00:00.000Z",
+            "captured_at": None,
+            "cancellation_details": {"party": "payment_network", "reason": "insufficient_funds"},
+        })
+
+        with patch("src.app.services.payment_service.YooKassaService.get_payment", mock_sync):
+            resp = await client.post(f"/api/v1/payments/sync-by-order/{order_id}/", headers={"Authorization": f"Bearer {user_token}"})
+
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "cancelled"
+
+        payment_result = await test_session.execute(select(Payment).where(Payment.order_id == order_id))
+        payment = payment_result.scalars().first()
+        assert payment.yookassa_metadata["cancellation_details"]["reason"] == "insufficient_funds"
+
+        order_get = await client.get(f"/api/v1/orders/{order_id}/", headers={"Authorization": f"Bearer {user_token}"})
+        order_data = order_get.json()
+        assert order_data["cancellation_reason"] == "insufficient_funds"
+        assert order_data["status"] == "pending"
+
+    @pytest.mark.asyncio
     async def test_webhook_succeeded_idempotent(
         self, client, test_user, user_token, test_product, test_session, cdek_delivery_payload
     ):
