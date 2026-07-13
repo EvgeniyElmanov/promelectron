@@ -12,3 +12,13 @@ services:
     volumes:
       - ../frontend:/app
     command: sh -c "npm install --silent && npm run dev -- --host 0.0.0.0"
+
+  frontend-test:
+    image: node:20-slim
+    working_dir: /app
+    environment:
+      - CI=true
+      - HOME=/app
+    volumes:
+      - ../frontend:/app
+    command: sh -c "npm ci && npm test"

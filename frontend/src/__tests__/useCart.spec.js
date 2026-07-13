@@ -1,13 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { useCart } from '@/composables/useCart';
+import { ref } from 'vue';
 
 const GUEST_CART_KEY = 'guest_cart';
 
+// Соседние тесты (например, Cart.spec.js) мокируют useCart целиком.
+// Гарантируем, что здесь тестируется реальная реализация composable.
+vi.unmock('@/composables/useCart');
+
 vi.mock('@/composables/useAuth', () => ({
   useAuth: () => ({
-    isAuthenticated: { value: false },
+    isAuthenticated: ref(false),
   }),
 }));
+
+const { useCart } = await import('@/composables/useCart');
 
 describe('useCart — гостевая корзина', () => {
   beforeEach(() => {

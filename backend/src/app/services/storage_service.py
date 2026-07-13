@@ -13,7 +13,7 @@ class StorageService(Protocol):
     async def upload(self, key: str, file: UploadFile) -> str:
         ...
 
-    async def upload_image(self, key: str, file: UploadFile) -> dict:
+    async def upload_image(self, key: str, file: UploadFile, content: bytes | None = None) -> dict:
         ...
 
     def get_url(self, key: str) -> str:
@@ -40,8 +40,9 @@ class LocalStorageService:
         content = await file.read()
         return self._upload_bytes(key, content, file.content_type or "application/octet-stream")
 
-    async def upload_image(self, key: str, file: UploadFile) -> dict:
-        content = await file.read()
+    async def upload_image(self, key: str, file: UploadFile, content: bytes | None = None) -> dict:
+        if content is None:
+            content = await file.read()
         original_url = self._upload_bytes(
             key, content, file.content_type or "application/octet-stream"
         )
@@ -134,8 +135,9 @@ class MinioStorageService:
         content = await file.read()
         return await self._upload_bytes(key, content, file.content_type or "application/octet-stream")
 
-    async def upload_image(self, key: str, file: UploadFile) -> dict:
-        content = await file.read()
+    async def upload_image(self, key: str, file: UploadFile, content: bytes | None = None) -> dict:
+        if content is None:
+            content = await file.read()
         original_url = await self._upload_bytes(
             key, content, file.content_type or "application/octet-stream"
         )
@@ -198,6 +200,13 @@ class MinioStorageService:
 
 
 def get_storage_service() -> StorageService:
+    backend = settings.storage_backend
+    if backend == "minio":
+        return MinioStorageService()
+    if backend == "local":
+        return LocalStorageService()
+    # Fallback for legacy deployments that don't set STORAGE_BACKEND:
+    # auto-select MinIO only when all required credentials are present.
     if settings.minio_endpoint and settings.minio_access_key and settings.minio_secret_key:
         return MinioStorageService()
     return LocalStorageService()

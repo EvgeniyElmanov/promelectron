@@ -134,3 +134,16 @@ class ResendVerificationRequest(BaseModel):
         default=None,
         pattern=r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
     )
+
+
+class AvatarUploadOut(UserOut):
+    """Response schema for avatar upload endpoint.
+
+    Includes all UserOut fields plus the generated image URLs for each size.
+    The ``original`` URL matches ``avatar_url``.
+    """
+
+    original: str
+    small: str
+    medium: str
+    large: str
