@@ -54,6 +54,8 @@ const YOO_KASSA_SELECTORS = {
     'button:has-text("Back to the website"), a:has-text("Back to the website"), a:has-text("Exit the payment process"), button:has-text("Exit the payment process")',
   overlay: '[data-qa="overlay"], [class*="overlay"], [class*="spinner"], [class*="loading"]',
   threeDSFrame: 'iframe, .three-d-secure, text=Подтвердите, text=Confirm, text=Card authentication',
+  threeDSCodeInput: 'input[placeholder="Any number"], input[placeholder="Код из SMS"], input[name="code"], input[inputmode="numeric"]',
+  threeDSConfirmButton: 'button:has-text("Confirm"), button:has-text("Подтвердить")',
   errorMessage: 'text=/payment declined|отклонён|declined|ошибка|error/i',
 };
 
@@ -135,6 +137,19 @@ async function submitYooKassaForm(page) {
   await clickElementRobustly(submitButton, { timeout: 5000, forceTimeout: 3000 });
 }
 
+async function completeYooKassa3DSChallenge(page) {
+  const threeDSFrame = page.locator(YOO_KASSA_SELECTORS.threeDSFrame).first();
+  await expect(threeDSFrame).toBeVisible({ timeout: 15000 });
+
+  const codeInput = page.locator(YOO_KASSA_SELECTORS.threeDSCodeInput).first();
+  await expect(codeInput).toBeVisible({ timeout: 10000 });
+  await codeInput.fill('1234');
+
+  const confirmButton = page.locator(YOO_KASSA_SELECTORS.threeDSConfirmButton).first();
+  await expect(confirmButton).toBeVisible({ timeout: 10000 });
+  await clickElementRobustly(confirmButton, { timeout: 5000, forceTimeout: 3000 });
+}
+
 async function exitYooKassaPage(page) {
   const backButton = page.locator(YOO_KASSA_SELECTORS.backButton).first();
   await expect(backButton).toBeVisible({ timeout: 15000 });
@@ -150,6 +165,20 @@ async function exitYooKassaPage(page) {
   });
 }
 
+async function waitForAnyUrl(page, patterns, timeout) {
+  const start = Date.now();
+  while (Date.now() - start < timeout) {
+    const url = page.url();
+    for (const pattern of patterns) {
+      if (pattern.test(url)) {
+        return pattern;
+      }
+    }
+    await page.waitForTimeout(500);
+  }
+  return null;
+}
+
 /**
  * Complete YooKassa test-card payment if the browser was redirected to YooKassa.
  * Does nothing when the app is using mock payments (local dev).
@@ -157,6 +186,8 @@ async function exitYooKassaPage(page) {
  * @param {import('@playwright/test').Page} page
  * @param {Object} [card] - Card from SUCCESSFUL_CARDS. Defaults to the no-3DS
  *   Mastercard test card to preserve backward compatibility.
+ * @returns {Promise<boolean>} true if the payment flow completed (success or
+ *   manual exit), false if 3-D Secure could not be completed automatically.
  */
 export async function completeYooKassaPaymentIfNeeded(
   page,
@@ -174,37 +205,40 @@ export async function completeYooKassaPaymentIfNeeded(
   // After submission YooKassa may:
   //   1. redirect straight back to the merchant success page,
   //   2. show a 3-D Secure challenge,
-  //   3. show a loading overlay and then the "back to website" link.
-  // Wait for any of these outcomes.
-  const successPromise = page.waitForURL(/\/payment\/success/, { timeout: 20000 }).then(() => 'success');
-  const threeDSPromise = page
-    .locator(YOO_KASSA_SELECTORS.threeDSFrame)
-    .first()
-    .waitFor({ state: 'visible', timeout: 20000 })
-    .then(() => '3ds');
-  const backButtonPromise = page
-    .locator(YOO_KASSA_SELECTORS.backButton)
-    .first()
-    .waitFor({ state: 'visible', timeout: 20000 })
-    .then(() => 'back');
+  //   3. show an error and stay on YooKassa,
+  //   4. show a loading overlay and then the "back to website" link.
+  const successPattern = /\/payment\/success/;
+  const threeDSLocator = page.locator(YOO_KASSA_SELECTORS.threeDSFrame).first();
+  const backLocator = page.locator(YOO_KASSA_SELECTORS.backButton).first();
+  const errorLocator = page.locator(YOO_KASSA_SELECTORS.errorMessage).first();
 
-  const outcome = await Promise.race([successPromise, threeDSPromise, backButtonPromise]).catch(
-    () => 'timeout'
-  );
+  const outcome = await Promise.race([
+    waitForAnyUrl(page, [successPattern], 20000).then(() => 'success'),
+    threeDSLocator.waitFor({ state: 'visible', timeout: 20000 }).then(() => '3ds'),
+    backLocator.waitFor({ state: 'visible', timeout: 20000 }).then(() => 'back'),
+    errorLocator.waitFor({ state: 'visible', timeout: 20000 }).then(() => 'error'),
+  ]).catch(() => 'timeout');
 
   if (outcome === 'success') {
     return true;
   }
 
   if (outcome === '3ds') {
-    // 3-D Secure cannot be reliably completed in automated environments.
-    return false;
+    try {
+      await completeYooKassa3DSChallenge(page);
+      // After 3DS YooKassa should redirect to the merchant return_url.
+      await waitForAnyUrl(page, [successPattern], 20000);
+      return true;
+    } catch {
+      // 3-D Secure completion is not reliable in automated environments.
+      return false;
+    }
   }
 
   // Loading overlay may still be visible; wait a bit more before clicking back.
   await waitForOverlayToDisappear(page, 3000);
 
-  if (outcome === 'back') {
+  if (outcome === 'back' || outcome === 'error') {
     await exitYooKassaPage(page);
     return true;
   }
@@ -230,16 +264,57 @@ export async function completeYooKassaFailedPaymentIfNeeded(page, card) {
   await fillYooKassaCardForm(page, card);
   await submitYooKassaForm(page);
 
-  // Declined cards usually show an error and stay on YooKassa, but some test
-  // flows redirect back automatically. Wait for either outcome.
-  try {
-    await page.waitForURL(/\/payment\/failed/, { timeout: 15000 });
+  // Declined cards may:
+  //   1. redirect straight back to /payment/failed,
+  //   2. show a 3-D Secure challenge and then decline,
+  //   3. show an error and stay on YooKassa.
+  const failedPattern = /\/payment\/failed/;
+  const successPattern = /\/payment\/success/;
+  const threeDSLocator = page.locator(YOO_KASSA_SELECTORS.threeDSFrame).first();
+  const backLocator = page.locator(YOO_KASSA_SELECTORS.backButton).first();
+  const errorLocator = page.locator(YOO_KASSA_SELECTORS.errorMessage).first();
+
+  const outcome = await Promise.race([
+    waitForAnyUrl(page, [failedPattern, successPattern], 20000).then((matched) =>
+      matched === failedPattern ? 'failed' : 'success'
+    ),
+    threeDSLocator.waitFor({ state: 'visible', timeout: 20000 }).then(() => '3ds'),
+    backLocator.waitFor({ state: 'visible', timeout: 20000 }).then(() => 'back'),
+    errorLocator.waitFor({ state: 'visible', timeout: 20000 }).then(() => 'error'),
+  ]).catch(() => 'timeout');
+
+  if (outcome === 'failed') {
     return true;
-  } catch {
-    // Stayed on YooKassa: click the back link to return to the merchant site.
-    // The PaymentSuccess page will sync the payment status and redirect to
-    // /payment/failed because cancellation_reason is populated.
+  }
+
+  if (outcome === 'success') {
+    // Back on the merchant success page; PaymentSuccess will sync and redirect.
+    return true;
+  }
+
+  if (outcome === '3ds') {
+    try {
+      await completeYooKassa3DSChallenge(page);
+      await waitForAnyUrl(page, [failedPattern, successPattern], 20000);
+      return true;
+    } catch {
+      // Could not complete 3DS automatically; fall back to exiting manually.
+      await exitYooKassaPage(page);
+      return true;
+    }
+  }
+
+  if (outcome === 'back' || outcome === 'error') {
     await exitYooKassaPage(page);
     return true;
   }
+
+  // Fallback: wait a bit longer for a redirect, then exit if nothing happened.
+  const finalUrl = await waitForAnyUrl(page, [failedPattern, successPattern], 10000);
+  if (finalUrl) {
+    return true;
+  }
+
+  await exitYooKassaPage(page);
+  return true;
 }

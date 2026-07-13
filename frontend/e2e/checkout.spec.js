@@ -200,13 +200,14 @@ test.describe('Checkout Flow', () => {
     // Complete real YooKassa payment if configured; otherwise mock flow is used
     await completeYooKassaPaymentIfNeeded(page);
 
-    // Wait for redirect back to our success page
+    // Wait for redirect back to our success page and for the order to load
     await page.waitForURL(/\/payment\/success/, { timeout: 30000 });
-    await expect(page.locator('[data-testid="payment-success-page"]')).toBeVisible();
 
     // Verify success/processing title is shown (webhook may still be pending)
+    await expect(page.locator('[data-testid="payment-success-page"]')).toBeVisible();
     const title = page.locator('.payment-result__title');
     await expect(title).toBeVisible();
+    await expect(title).toHaveText(/Оплата прошла успешно!|Платёж в обработке/, { timeout: 15000 });
     const titleText = await title.textContent();
     expect(['Оплата прошла успешно!', 'Платёж в обработке']).toContain(titleText);
   });
@@ -282,13 +283,14 @@ test.describe('Checkout Flow', () => {
         return;
       }
 
-      // 7. Wait for redirect back to our success page
+      // 7. Wait for redirect back to our success page and for the order to load
       await page.waitForURL(/\/payment\/success/, { timeout: 30000 });
 
-      // 8. Verify success page is shown
+      // 8. Verify success page is shown (wait until the title is stable)
       await expect(page.locator('[data-testid="payment-success-page"]')).toBeVisible();
       const title = page.locator('.payment-result__title');
       await expect(title).toBeVisible();
+      await expect(title).toHaveText(/Оплата прошла успешно!|Платёж в обработке/, { timeout: 15000 });
       const titleText = await title.textContent();
       expect(['Оплата прошла успешно!', 'Платёж в обработке']).toContain(titleText);
     });
