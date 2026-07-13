@@ -41,8 +41,7 @@ export async function expectYooKassaPageOrSkip(page) {
 }
 
 const YOO_KASSA_SELECTORS = {
-  newCardOption:
-    'text=New card, text=Новая карта, text=Добавить карту, text=Add card',
+  newCardOption: 'text=/New card|Новая карта|Добавить карту|Add card/i',
   cardNumberInput:
     'input[name="cardNumber"], input[autocomplete="cc-number"], input[placeholder*="0000"], input[inputmode="numeric"]',
   monthInput: 'input[placeholder="MM"], input[name="expiryMonth"]',
@@ -56,7 +55,7 @@ const YOO_KASSA_SELECTORS = {
   overlay: '[data-qa="overlay"], [class*="overlay"], [class*="spinner"], [class*="loading"]',
   threeDSFrame: 'iframe, .three-d-secure',
   threeDSChallenge:
-    'text=Подтвердите, text=Confirm, text=Card authentication, text=3-D Secure, text=Код из SMS',
+    'text=/Подтвердите|Confirm|Card authentication|3-D Secure|Код из SMS/i',
   threeDSCodeInput:
     'input[placeholder="Any number"], input[placeholder="Код из SMS"], input[name="code"], input[inputmode="numeric"]',
   threeDSConfirmButton: 'button:has-text("Confirm"), button:has-text("Подтвердить")',
