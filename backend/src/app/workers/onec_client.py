@@ -1,4 +1,6 @@
 import logging
+import os
+import re
 from collections.abc import Awaitable, Callable
 from decimal import Decimal
 from typing import Any
@@ -15,6 +17,10 @@ from src.app.schemas.onec import (
 
 logger = logging.getLogger(__name__)
 
+_GUID_RE = re.compile(
+    r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+)
+
 
 class OnecClientError(Exception):
     """Base exception for 1C OData client errors."""
@@ -22,6 +28,59 @@ class OnecClientError(Exception):
 
 class OnecClientAuthError(OnecClientError):
     """Raised when 1C rejects authentication."""
+
+
+class OnecClientConfigurationError(OnecClientError):
+    """Raised when client is misconfigured (URL, GUID, etc.)."""
+
+
+def _is_valid_guid(value: str) -> bool:
+    return bool(_GUID_RE.match(value))
+
+
+def _escape_odata_string(value: str) -> str:
+    """Escape single quotes for OData string literals."""
+    return value.replace("'", "''")
+
+
+def _validate_base_url(url: str) -> str:
+    """Validate ``url`` against SSRF / unsafe endpoints in production.
+
+    Mirrors the fail-fast pattern from ``_load_secret_key`` and
+    ``_validate_frontend_url``. Dev/test are unrestricted.
+    """
+    import ipaddress
+    from urllib.parse import urlparse
+
+    if not url:
+        raise OnecClientConfigurationError("ONEC_API_URL is not configured")
+
+    parsed = urlparse(url)
+    if not parsed.scheme or not parsed.hostname:
+        raise OnecClientConfigurationError(f"ONEC_API_URL is not a valid URL: {url!r}")
+
+    if os.getenv("ENVIRONMENT") == "production":
+        if parsed.scheme != "https":
+            raise OnecClientConfigurationError(
+                f"ONEC_API_URL must use https:// in production. Got: {url!r}"
+            )
+        host = parsed.hostname
+        if host in ("localhost",):
+            raise OnecClientConfigurationError(
+                f"ONEC_API_URL must not point at localhost in production. Got: {url!r}"
+            )
+        try:
+            ip = ipaddress.ip_address(host)
+            if ip.is_loopback or ip.is_private or ip.is_link_local or ip.is_unspecified:
+                raise OnecClientConfigurationError(
+                    f"ONEC_API_URL must not point at a loopback/private/link-local IP "
+                    f"in production. Got: {url!r}"
+                )
+        except ValueError:
+            # Not an IP literal — a real domain name, which is fine.
+            pass
+
+    return url.rstrip("/")
 
 
 class OnecClient:
@@ -39,7 +98,7 @@ class OnecClient:
         password: str | None = None,
         timeout: int = 30,
     ) -> None:
-        self.base_url = (base_url or settings.onec_api_url or "").rstrip("/")
+        self.base_url = _validate_base_url(base_url or settings.onec_api_url or "")
         self.login = login or settings.onec_login or ""
         self.password = password or settings.onec_password or ""
         self.timeout = aiohttp.ClientTimeout(total=timeout)
@@ -69,9 +128,6 @@ class OnecClient:
         await self.close()
 
     async def _request(self, method: str, path: str, params: dict[str, Any] | None = None) -> Any:
-        if not self.base_url:
-            raise OnecClientError("ONEC_API_URL is not configured")
-
         url = f"{self.base_url}/{path.lstrip('/')}"
         session = self._session_or_create()
         try:
@@ -188,7 +244,13 @@ class OnecClient:
             logger.warning("ONEC_PRICE_TYPE_KEY not configured — returning empty price list")
             return []
 
-        filter_expr = f"ВидЦен_Key eq '{price_type}'"
+        price_type = price_type.strip()
+        if not _is_valid_guid(price_type):
+            raise OnecClientConfigurationError(
+                f"ONEC_PRICE_TYPE_KEY must be a valid GUID. Got: {price_type!r}"
+            )
+
+        filter_expr = f"ВидЦен_Key eq '{_escape_odata_string(price_type)}'"
         data = await self._request(
             "GET",
             "/InformationRegister_ЦеныНоменклатуры",
@@ -238,7 +300,12 @@ class OnecClient:
         warehouse = warehouse_key or settings.onec_warehouse_key
         params: dict[str, Any] = {"$top": top, "$skip": skip, "$format": "json"}
         if warehouse:
-            params["$filter"] = f"Склад_Key eq '{warehouse}'"
+            warehouse = warehouse.strip()
+            if not _is_valid_guid(warehouse):
+                raise OnecClientConfigurationError(
+                    f"ONEC_WAREHOUSE_KEY must be a valid GUID. Got: {warehouse!r}"
+                )
+            params["$filter"] = f"Склад_Key eq '{_escape_odata_string(warehouse)}'"
 
         data = await self._request(
             "GET",

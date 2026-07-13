@@ -41,7 +41,7 @@ class TestCartAPI:
         assert cart_item["quantity"] == 2
         assert cart_item["product"] is not None
         assert cart_item["product"]["name"] == test_product.name
-        assert cart_item["product"]["price"] == test_product.price
+        assert cart_item["product"]["price"] == float(test_product.price)
         assert cart_item["product"]["stock"] == test_product.stock
 
     async def test_update_cart_item_quantity(

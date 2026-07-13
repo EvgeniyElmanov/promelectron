@@ -10,6 +10,7 @@ from src.app.services.onec_webhook_service import (
     create_change_log,
     create_onec_apply_job,
     is_already_processed,
+    is_batch_already_exists,
     validate_api_key,
 )
 from src.app.utils.rate_limiter import conditional_limit
@@ -26,6 +27,12 @@ async def onec_webhook(
     db: AsyncSession = Depends(get_db),
 ):
     validate_api_key(x_1c_api_key)
+
+    if await is_batch_already_exists(db, str(payload.batch_id)):
+        return OnecWebhookResponse(
+            status="already_processed",
+            batch_id=payload.batch_id,
+        )
 
     payload_json = json.dumps(
         payload.model_dump(mode="json"),

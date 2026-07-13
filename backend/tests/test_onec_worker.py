@@ -1,3 +1,5 @@
+from dataclasses import replace
+from decimal import Decimal
 from datetime import datetime, timezone
 from uuid import uuid4
 
@@ -11,7 +13,6 @@ from src.app.models.product import Product
 from src.app.models.supplier import Supplier
 from src.app.services.onec_sync_service import handle_onec_apply_changes, run_onec_full_sync
 from src.app.core.config import settings
-from dataclasses import replace
 
 
 def _build_payload(entity_type: str, changes: list[dict]) -> dict:
@@ -75,7 +76,7 @@ async def test_onec_apply_product_change(test_session, supplier_id):
     assert product.name == "Applied Product"
     assert product.description == "From 1C"
     assert product.sku == "APP-001"
-    assert product.price == 299.99
+    assert product.price == Decimal("299.99")
     assert product.stock == 12
     assert product.is_active is True
     assert product.onec_sync_at == version
@@ -264,7 +265,7 @@ async def test_onec_apply_version_conflict_skips_stale_change(test_session, supp
     assert product.name == "Newer Name"
     assert product.description == "Newer description"
     assert product.sku == "NEWER-001"
-    assert product.price == 399.99
+    assert product.price == Decimal("399.99")
     assert product.stock == 20
     assert product.is_active is True
     assert product.onec_sync_at == newer_version
@@ -496,7 +497,7 @@ async def test_onec_apply_price_change(test_session, supplier_id):
     await test_session.commit()
 
     await test_session.refresh(product)
-    assert product.price == 199.99
+    assert product.price == Decimal("199.99")
     assert product.onec_sync_at == version
 
 

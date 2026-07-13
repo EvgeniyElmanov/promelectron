@@ -110,9 +110,34 @@ async def test_get_all_categories(client):
 async def test_unconfigured_client_raises_error(monkeypatch):
     patched = replace(settings, onec_api_url=None, onec_login=None, onec_password=None)
     monkeypatch.setattr("src.app.workers.onec_client.settings", patched)
+    with pytest.raises(OnecClientError):
+        OnecClient()
+
+
+@pytest.mark.asyncio
+async def test_invalid_price_type_key_raises(onec_mock_server, monkeypatch):
+    patched = replace(
+        settings,
+        onec_api_url=onec_mock_server,
+        onec_price_type_key="not-a-guid",
+    )
+    monkeypatch.setattr("src.app.workers.onec_client.settings", patched)
     async with OnecClient() as c:
         with pytest.raises(OnecClientError):
-            await c.get_categories()
+            await c.get_prices()
+
+
+@pytest.mark.asyncio
+async def test_invalid_warehouse_key_raises(onec_mock_server, monkeypatch):
+    patched = replace(
+        settings,
+        onec_api_url=onec_mock_server,
+        onec_warehouse_key="not-a-guid",
+    )
+    monkeypatch.setattr("src.app.workers.onec_client.settings", patched)
+    async with OnecClient() as c:
+        with pytest.raises(OnecClientError):
+            await c.get_stock_balance()
 
 
 @pytest.mark.asyncio

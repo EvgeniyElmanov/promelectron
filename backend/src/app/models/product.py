@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, JSON, Numeric, String, Text
 from sqlalchemy.orm import relationship
 
 from src.app.db.database import Base
@@ -16,7 +16,7 @@ class Product(Base):
     onec_sync_at = Column(DateTime(timezone=True), nullable=True)
     name = Column(String, index=True, nullable=False)
     description = Column(Text, nullable=True)
-    price = Column(Float, nullable=False)
+    price = Column(Numeric(precision=10, scale=2), nullable=False)
     stock = Column(Integer, default=0)
     weight_grams = Column(Integer, nullable=False, default=1000)
     length_cm = Column(Integer, nullable=True)

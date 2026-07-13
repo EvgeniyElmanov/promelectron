@@ -39,6 +39,17 @@ async def is_already_processed(session: AsyncSession, checksum: str) -> bool:
     return result.scalar_one_or_none() is not None
 
 
+async def is_batch_already_exists(session: AsyncSession, batch_id: str) -> bool:
+    """Return True if a log with this batch_id already exists.
+
+    Complements checksum-based deduplication with logical batch idempotency.
+    """
+    result = await session.execute(
+        select(OnecChangeLog).where(OnecChangeLog.batch_id == batch_id)
+    )
+    return result.scalar_one_or_none() is not None
+
+
 async def create_change_log(
     session: AsyncSession,
     payload: OnecWebhookPayload,
