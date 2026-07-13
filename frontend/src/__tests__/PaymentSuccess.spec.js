@@ -73,6 +73,39 @@ describe('PaymentSuccess.vue — авторизованный пользоват
 
     expect(wrapper.text()).toContain('Мои заказы');
   });
+
+  it('редиректит на /payment/failed, если у заказа есть cancellation_reason (даже при статусе pending)', async () => {
+    mockGet.mockImplementation((url) => {
+      if (url === '/orders/42/') {
+        return Promise.resolve({
+          data: { ...mockOrder, status: 'pending', cancellation_reason: 'insufficient_funds' },
+        });
+      }
+      return Promise.resolve({ data: {} });
+    });
+
+    await mountComponent();
+    await flushPromises();
+
+    expect(router.currentRoute.value.path).toBe('/payment/failed');
+    expect(router.currentRoute.value.query.order_id).toBe('42');
+  });
+
+  it('показывает статус "Отменён", если у заказа есть cancellation_reason', async () => {
+    mockGet.mockImplementation((url) => {
+      if (url === '/orders/42/') {
+        return Promise.resolve({
+          data: { ...mockOrder, status: 'pending', cancellation_reason: 'insufficient_funds' },
+        });
+      }
+      return Promise.resolve({ data: {} });
+    });
+
+    const wrapper = await mountComponent();
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Отменён');
+  });
 });
 
 describe('PaymentSuccess.vue — гостевой режим', () => {
