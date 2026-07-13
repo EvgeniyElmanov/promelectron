@@ -109,11 +109,12 @@ const cancellationReasonMap = {
 
 const displayStatus = computed(() => {
   if (!order.value) return '';
+  if (order.value.cancellation_reason || order.value.status === 'cancelled' || order.value.status === 'canceled') {
+    return 'Отменён';
+  }
   const map = {
     pending: 'Ожидает оплаты',
     awaiting_payment: 'Ожидает оплаты',
-    cancelled: 'Отменён',
-    canceled: 'Отменён',
   };
   return map[order.value.status] || order.value.status;
 });

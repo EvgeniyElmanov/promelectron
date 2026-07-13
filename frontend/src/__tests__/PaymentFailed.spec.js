@@ -88,6 +88,23 @@ describe('PaymentFailed.vue — авторизованный пользоват�
     expect(reason.text()).toContain('Недостаточно средств на карте');
   });
 
+  it('отображает статус "Отменён" и причину при cancellation_reason, даже если order.status === pending', async () => {
+    mockGet.mockImplementation((url) => {
+      if (url === '/orders/42/') {
+        return Promise.resolve({
+          data: { ...mockOrder, status: 'pending', cancellation_reason: 'invalid_csc' },
+        });
+      }
+      return Promise.resolve({ data: {} });
+    });
+    const wrapper = await mountComponent();
+
+    expect(wrapper.text()).toContain('Отменён');
+    const reason = wrapper.find('[data-testid="cancellation-reason"]');
+    expect(reason.exists()).toBe(true);
+    expect(reason.text()).toContain('Неверный код безопасности карты');
+  });
+
   it('отображает техническую причину, если маппинг неизвестен', async () => {
     mockGet.mockImplementation((url) => {
       if (url === '/orders/42/') {
