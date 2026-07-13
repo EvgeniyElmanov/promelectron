@@ -201,7 +201,7 @@ test.describe('Checkout Flow', () => {
     await completeYooKassaPaymentIfNeeded(page);
 
     // Wait for redirect back to our success page and for the order to load
-    await page.waitForURL(/\/payment\/success/, { timeout: 30000 });
+    await page.waitForURL(/\/payment\/success/, { timeout: 60000 });
 
     // Verify success/processing title is shown (webhook may still be pending)
     await expect(page.locator('[data-testid="payment-success-page"]')).toBeVisible();
@@ -214,7 +214,7 @@ test.describe('Checkout Flow', () => {
 
   for (const card of SUCCESSFUL_CARDS) {
     test(`authenticated user can pay with ${card.name} test card`, async ({ page }) => {
-      test.setTimeout(120000);
+      test.setTimeout(180000);
 
       const email = uniqueEmail();
       const password = 'TestPassword123!';
@@ -284,7 +284,7 @@ test.describe('Checkout Flow', () => {
       }
 
       // 7. Wait for redirect back to our success page and for the order to load
-      await page.waitForURL(/\/payment\/success/, { timeout: 30000 });
+      await page.waitForURL(/\/payment\/success/, { timeout: 60000 });
 
       // 8. Verify success page is shown (wait until the title is stable)
       await expect(page.locator('[data-testid="payment-success-page"]')).toBeVisible();
