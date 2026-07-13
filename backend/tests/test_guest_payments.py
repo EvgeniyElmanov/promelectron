@@ -5,6 +5,7 @@ import pytest
 from sqlalchemy import select
 
 from src.app.models.order import Order
+from src.app.models.payment import Payment
 from src.app.models.recipient import Recipient
 from src.app.models.user import PasswordResetToken, User, UserAddress
 
@@ -539,3 +540,59 @@ class TestGuestPaymentsAPI:
         order = result.scalars().first()
         assert order.user_id == test_user.id
         assert order.status == "paid"
+
+    @pytest.mark.asyncio
+    async def test_webhook_guest_payment_canceled_saves_cancellation_details(
+        self, client, test_product, cdek_delivery_payload, test_session
+    ):
+        """Webhook payment.canceled для гостевого заказа сохраняет cancellation_details."""
+        order_resp = await client.post(
+            "/api/v1/orders/create-guest/",
+            json={
+                "items": [{"product_id": test_product.id, "quantity": 1}],
+                "cdek_delivery": cdek_delivery_payload,
+                "guest_email": "canceledguest@example.com",
+                "recipient_phone": "+79990001122",
+                "recipient_first_name": "Иван",
+                "recipient_last_name": "Гость",
+            },
+        )
+        order_id = order_resp.json()["id"]
+
+        mock_yookassa = AsyncMock(return_value={
+            "yookassa_payment_id": "guest-canceled-id",
+            "status": "pending",
+            "confirmation_url": "https://yoomoney.ru/checkout/guest",
+            "amount": Decimal(str(test_product.price)),
+            "created_at": "2026-06-02T12:00:00.000Z",
+        })
+
+        with (
+            patch("src.app.services.payment_service.YooKassaService.is_configured", return_value=True),
+            patch("src.app.services.payment_service.YooKassaService.create_payment", mock_yookassa),
+        ):
+            await client.post(
+                f"/api/v1/payments/guest/{order_id}/",
+                json={"guest_email": "canceledguest@example.com"},
+            )
+
+        webhook_payload = {
+            "event": "payment.canceled",
+            "object": {
+                "id": "guest-canceled-id",
+                "status": "canceled",
+                "cancellation_details": {"party": "payment_network", "reason": "insufficient_funds"},
+            },
+        }
+
+        resp = await client.post("/api/v1/payments/yookassa/webhook/", json=webhook_payload)
+        assert resp.status_code == 200
+
+        result = await test_session.execute(select(Payment).where(Payment.order_id == order_id))
+        payment = result.scalars().first()
+        assert payment.status == "cancelled"
+        assert payment.yookassa_metadata.get("cancellation_details", {}).get("reason") == "insufficient_funds"
+
+        order_result = await test_session.execute(select(Order).where(Order.id == order_id))
+        order = order_result.scalars().first()
+        assert order.status == "pending"

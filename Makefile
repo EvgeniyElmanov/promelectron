@@ -56,17 +56,6 @@ test-backend: ## Запустить pytest (поднимает postgres/redis ч
 test-frontend: ## Запустить vitest
 	$(COMPOSE_FRONTEND) run --rm $(DOCKER_USER) frontend sh -c "npm install --silent && npm test"
 
-test-backend-ci: ## Запустить pytest в CI (SQLite, без postgres/redis)
-	$(COMPOSE_BACKEND) run --rm --entrypoint "" \
-	  $(DOCKER_USER) \
-	  -e DATABASE_URL=sqlite+aiosqlite:///./test.db \
-	  -e REDIS_URL=redis://redis:6379/0 \
-	  -e SECRET_KEY=test-secret-key-32-chars-minimum \
-	  api sh -c "pytest tests/ -v --tb=short"
-
-test-frontend-ci: ## Запустить vitest в CI (лёгкий node образ)
-	$(COMPOSE_FRONTEND) run --rm $(DOCKER_USER) frontend-test sh -c "npm ci && npm test"
-
 test-e2e: ## Запустить Playwright E2E тесты (требует запущенного стека)
 	$(COMPOSE) up -d
 	@echo "Waiting for frontend dev server to be ready..."

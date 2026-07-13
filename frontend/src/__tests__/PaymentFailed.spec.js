@@ -72,13 +72,48 @@ describe('PaymentFailed.vue — авторизованный пользоват�
     expect(wrapper.text()).toContain('Мои заказы');
   });
 
-  it('редиректит на checkout без guest_email для авторизованного пользователя', async () => {
+  it('отображает понятную причину отмены платежа', async () => {
+    mockGet.mockImplementation((url) => {
+      if (url === '/orders/42/') {
+        return Promise.resolve({
+          data: { ...mockOrder, status: 'cancelled', cancellation_reason: 'insufficient_funds' },
+        });
+      }
+      return Promise.resolve({ data: {} });
+    });
     const wrapper = await mountComponent();
 
-    await wrapper.find('button').trigger('click');
+    const reason = wrapper.find('[data-testid="cancellation-reason"]');
+    expect(reason.exists()).toBe(true);
+    expect(reason.text()).toContain('Недостаточно средств на карте');
+  });
+
+  it('отображает техническую причину, если маппинг неизвестен', async () => {
+    mockGet.mockImplementation((url) => {
+      if (url === '/orders/42/') {
+        return Promise.resolve({
+          data: { ...mockOrder, status: 'cancelled', cancellation_reason: 'unknown_reason' },
+        });
+      }
+      return Promise.resolve({ data: {} });
+    });
+    const wrapper = await mountComponent();
+
+    const reason = wrapper.find('[data-testid="cancellation-reason"]');
+    expect(reason.exists()).toBe(true);
+    expect(reason.text()).toContain('unknown_reason');
+  });
+
+  it('редиректит на checkout для авторизованного пользователя', async () => {
+    const wrapper = await mountComponent();
+
+    const retryButton = wrapper.findAll('button').find((b) => b.text().includes('Попробовать'));
+    expect(retryButton).toBeDefined();
+    await retryButton.trigger('click');
     await flushPromises();
 
     expect(router.currentRoute.value.path).toBe('/checkout/42');
+    expect(router.currentRoute.value.query).toEqual({});
   });
 });
 

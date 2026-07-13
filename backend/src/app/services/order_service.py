@@ -26,6 +26,33 @@ logger = logging.getLogger(__name__)
 
 class OrderService:
     @staticmethod
+    async def _ensure_payment_loaded(order: Order, db: AsyncSession) -> None:
+        """Ensure ``order.payment`` is loaded for ``OrderOut.cancellation_reason``.
+
+        ``selectinload(Order.payment)`` is unreliable for one-to-one relationships
+        in async SQLAlchemy (it may leave ``order.payment`` as ``None`` even when
+        a row exists). If the relationship is not populated, load the payment
+        explicitly with a targeted query.
+        """
+        if order.__dict__.get("payment") is not None:
+            return
+        result = await db.execute(select(Payment).where(Payment.order_id == order.id))
+        order.payment = result.scalars().first()
+
+    @staticmethod
+    async def _ensure_payment_loaded_for_orders(orders: list[Order], db: AsyncSession) -> None:
+        """Batch-load payments for multiple orders to avoid N+1 queries."""
+        missing = [order for order in orders if order.__dict__.get("payment") is None]
+        if not missing:
+            return
+
+        order_ids = [order.id for order in missing]
+        result = await db.execute(select(Payment).where(Payment.order_id.in_(order_ids)))
+        payments = {payment.order_id: payment for payment in result.scalars().all()}
+        for order in missing:
+            order.payment = payments.get(order.id)
+
+    @staticmethod
     async def create_order(current_user: User, order_data: OrderCreate, db: AsyncSession) -> Order:
         cart_result = await db.execute(
             select(Cart).where(Cart.user_id == current_user.id).options(selectinload(Cart.items))
@@ -125,6 +152,7 @@ class OrderService:
         order_result = await db.execute(
             select(Order).where(Order.id == new_order.id).options(
                 selectinload(Order.items),
+                selectinload(Order.payment),
                 selectinload(Order.recipient), selectinload(Order.cdek_order).selectinload(CdekOrder.status_history),
             )
         )
@@ -164,6 +192,7 @@ class OrderService:
             import logging
             logging.getLogger(__name__).exception("Failed to send order confirmation side-effects")
 
+        await OrderService._ensure_payment_loaded(full_order, db)
         return full_order
 
     @staticmethod
@@ -250,6 +279,7 @@ class OrderService:
         order_result = await db.execute(
             select(Order).where(Order.id == new_order.id).options(
                 selectinload(Order.items),
+                selectinload(Order.payment),
                 selectinload(Order.recipient), selectinload(Order.cdek_order).selectinload(CdekOrder.status_history),
             )
         )
@@ -280,6 +310,7 @@ class OrderService:
             import logging
             logging.getLogger(__name__).exception("Failed to send order confirmation side-effects")
 
+        await OrderService._ensure_payment_loaded(full_order, db)
         return full_order
 
     @staticmethod
@@ -298,11 +329,13 @@ class OrderService:
                 Order.id == order_id,
                 func.lower(Order.guest_email) == guest_email.lower(),
             )
-            .options(selectinload(Order.items), selectinload(Order.recipient), selectinload(Order.cdek_order).selectinload(CdekOrder.status_history))
+            .options(selectinload(Order.items), selectinload(Order.payment), selectinload(Order.recipient), selectinload(Order.cdek_order).selectinload(CdekOrder.status_history))
         )
         order = result.scalars().first()
         if not order:
             raise HTTPException(status_code=404, detail="Order not found")
+
+        await OrderService._ensure_payment_loaded(order, db)
         return order
 
     @staticmethod
@@ -311,14 +344,16 @@ class OrderService:
     ) -> list[Order]:
         from sqlalchemy import select
 
-        query = select(Order).options(selectinload(Order.items), selectinload(Order.recipient), selectinload(Order.cdek_order).selectinload(CdekOrder.status_history))
+        query = select(Order).options(selectinload(Order.items), selectinload(Order.payment), selectinload(Order.recipient), selectinload(Order.cdek_order).selectinload(CdekOrder.status_history))
         if status:
             query = query.where(Order.status == status)
         if user_id:
             query = query.where(Order.user_id == user_id)
         query = query.offset(skip).limit(limit).order_by(Order.created_at.desc())
         result = await db.execute(query)
-        return list(result.scalars().all())
+        orders = list(result.scalars().all())
+        await OrderService._ensure_payment_loaded_for_orders(orders, db)
+        return orders
 
     @staticmethod
     async def get_supplier_orders(supplier_id: int, db: AsyncSession, skip: int = 0, limit: int = 100) -> list[Order]:
@@ -333,23 +368,27 @@ class OrderService:
         result = await db.execute(
             select(Order)
             .where(Order.id.in_(select(subquery.c.id)))
-            .options(selectinload(Order.items).selectinload(OrderItem.product), selectinload(Order.recipient), selectinload(Order.user))
+            .options(selectinload(Order.items).selectinload(OrderItem.product), selectinload(Order.recipient), selectinload(Order.user), selectinload(Order.payment))
             .offset(skip)
             .limit(limit)
             .order_by(Order.created_at.desc())
         )
-        return list(result.scalars().all())
+        orders = list(result.scalars().all())
+        await OrderService._ensure_payment_loaded_for_orders(orders, db)
+        return orders
 
     @staticmethod
     async def get_supplier_order_details(order_id: int, supplier_id: int, db: AsyncSession) -> Order:
         result = await db.execute(
             select(Order)
             .where(Order.id == order_id)
-            .options(selectinload(Order.items).selectinload(OrderItem.product), selectinload(Order.recipient), selectinload(Order.user))
+            .options(selectinload(Order.items).selectinload(OrderItem.product), selectinload(Order.recipient), selectinload(Order.user), selectinload(Order.payment))
         )
         order = result.scalars().first()
         if not order:
             raise HTTPException(status_code=404, detail="Order not found")
+
+        await OrderService._ensure_payment_loaded(order, db)
 
         has_supplier_product = any(
             item.product and item.product.supplier_id == supplier_id for item in order.items
@@ -362,7 +401,7 @@ class OrderService:
     @staticmethod
     async def update_supplier_order_status(order_id: int, supplier_id: int, new_status: str, db: AsyncSession) -> Order:
         result = await db.execute(
-            select(Order).where(Order.id == order_id).options(selectinload(Order.items).selectinload(OrderItem.product), selectinload(Order.recipient))
+            select(Order).where(Order.id == order_id).options(selectinload(Order.items).selectinload(OrderItem.product), selectinload(Order.recipient), selectinload(Order.payment))
         )
         order = result.scalars().first()
         if not order:
@@ -385,12 +424,13 @@ class OrderService:
         order_result = await db.execute(
             select(Order)
             .where(Order.id == order_id)
-            .options(selectinload(Order.items).selectinload(OrderItem.product), selectinload(Order.recipient), selectinload(Order.user))
+            .options(selectinload(Order.items).selectinload(OrderItem.product), selectinload(Order.recipient), selectinload(Order.user), selectinload(Order.payment))
         )
         full_order = order_result.scalars().first()
         if not full_order:
             raise HTTPException(status_code=500, detail="Failed to update order")
 
+        await OrderService._ensure_payment_loaded(full_order, db)
         return full_order
 
     @staticmethod
@@ -398,6 +438,7 @@ class OrderService:
         result = await db.execute(
             select(Order).where(Order.id == order_id).options(
                 selectinload(Order.items),
+                selectinload(Order.payment),
                 selectinload(Order.recipient), selectinload(Order.cdek_order).selectinload(CdekOrder.status_history),
             )
         )
@@ -426,6 +467,7 @@ class OrderService:
         order_result = await db.execute(
             select(Order).where(Order.id == order_id).options(
                 selectinload(Order.items),
+                selectinload(Order.payment),
                 selectinload(Order.recipient), selectinload(Order.cdek_order).selectinload(CdekOrder.status_history),
             )
         )
@@ -465,6 +507,7 @@ class OrderService:
                 except Exception:
                     logger.exception("Failed to send status update side-effects for order %s", full_order.id)
 
+        await OrderService._ensure_payment_loaded(full_order, db)
         return full_order
 
     @staticmethod
@@ -472,12 +515,14 @@ class OrderService:
         result = await db.execute(
             select(Order)
             .where(Order.id == order_id, Order.user_id == current_user.id)
-            .options(selectinload(Order.items), selectinload(Order.recipient), selectinload(Order.cdek_order).selectinload(CdekOrder.status_history))
+            .options(selectinload(Order.items), selectinload(Order.payment), selectinload(Order.recipient), selectinload(Order.cdek_order).selectinload(CdekOrder.status_history))
         )
         order = result.scalars().first()
 
         if not order:
             raise HTTPException(status_code=404, detail="Order not found")
+
+        await OrderService._ensure_payment_loaded(order, db)
         return order
 
     @staticmethod
@@ -485,16 +530,18 @@ class OrderService:
         result = await db.execute(
             select(Order)
             .where(Order.user_id == current_user.id)
-            .options(selectinload(Order.items), selectinload(Order.recipient), selectinload(Order.cdek_order).selectinload(CdekOrder.status_history))
+            .options(selectinload(Order.items), selectinload(Order.payment), selectinload(Order.recipient), selectinload(Order.cdek_order).selectinload(CdekOrder.status_history))
         )
-        return list(result.scalars().all())
+        orders = list(result.scalars().all())
+        await OrderService._ensure_payment_loaded_for_orders(orders, db)
+        return orders
 
     @staticmethod
     async def cancel_order(order_id: int, current_user: User, db: AsyncSession) -> Order:
         result = await db.execute(
             select(Order)
             .where(Order.id == order_id, Order.user_id == current_user.id)
-            .options(selectinload(Order.items), selectinload(Order.recipient), selectinload(Order.cdek_order).selectinload(CdekOrder.status_history))
+            .options(selectinload(Order.items), selectinload(Order.payment), selectinload(Order.recipient), selectinload(Order.cdek_order).selectinload(CdekOrder.status_history))
             .with_for_update()
         )
         order = result.scalars().first()
@@ -570,7 +617,7 @@ class OrderService:
         order_result = await db.execute(
             select(Order)
             .where(Order.id == order_id)
-            .options(selectinload(Order.items), selectinload(Order.recipient), selectinload(Order.cdek_order).selectinload(CdekOrder.status_history))
+            .options(selectinload(Order.items), selectinload(Order.payment), selectinload(Order.recipient), selectinload(Order.cdek_order).selectinload(CdekOrder.status_history))
         )
         order = order_result.scalars().first()
 
@@ -587,6 +634,7 @@ class OrderService:
         except Exception:
             logger.exception("Failed to send order cancellation notification")
 
+        await OrderService._ensure_payment_loaded(order, db)
         return order
 
     @staticmethod
@@ -594,7 +642,7 @@ class OrderService:
         result = await db.execute(
             select(Order)
             .where(Order.id == order_id)
-            .options(selectinload(Order.items), selectinload(Order.recipient), selectinload(Order.cdek_order))
+            .options(selectinload(Order.items), selectinload(Order.payment), selectinload(Order.recipient), selectinload(Order.cdek_order))
             .with_for_update()
         )
         order = result.scalars().first()
@@ -616,7 +664,7 @@ class OrderService:
         order_result = await db.execute(
             select(Order)
             .where(Order.id == order_id)
-            .options(selectinload(Order.items), selectinload(Order.recipient), selectinload(Order.cdek_order).selectinload(CdekOrder.status_history))
+            .options(selectinload(Order.items), selectinload(Order.payment), selectinload(Order.recipient), selectinload(Order.cdek_order).selectinload(CdekOrder.status_history))
         )
         order = order_result.scalars().first()
 
@@ -642,6 +690,7 @@ class OrderService:
         except Exception:
             logger.exception("Failed to send order shipped notification")
 
+        await OrderService._ensure_payment_loaded(order, db)
         return order
 
     @staticmethod
@@ -664,7 +713,7 @@ class OrderService:
 
         order_result = await db.execute(
             select(Order).where(Order.id == order_id).options(
-                selectinload(Order.items), selectinload(Order.recipient), selectinload(Order.cdek_order).selectinload(CdekOrder.status_history)
+                selectinload(Order.items), selectinload(Order.payment), selectinload(Order.recipient), selectinload(Order.cdek_order).selectinload(CdekOrder.status_history)
             )
         )
         full_order = order_result.scalars().first()
@@ -702,4 +751,5 @@ class OrderService:
             except Exception:
                 logger.exception("Failed to send status update side-effects for order %s", full_order.id)
 
+        await OrderService._ensure_payment_loaded(full_order, db)
         return full_order
