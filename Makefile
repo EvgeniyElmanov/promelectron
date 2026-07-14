@@ -60,7 +60,7 @@ test-e2e: ## Запустить Playwright E2E тесты (требует зап
 	$(COMPOSE) up -d
 	@echo "Waiting for frontend dev server to be ready..."
 	@$(COMPOSE_FRONTEND) run --rm $(DOCKER_USER) frontend sh -c "until curl -s -o /dev/null http://frontend:5173; do sleep 1; done"
-	$(COMPOSE_FRONTEND) run --rm $(DOCKER_USER) frontend npx playwright test --workers=1
+	$(COMPOSE_FRONTEND) run --rm $(DOCKER_USER) frontend sh -c "npm install --silent \&\& npx playwright test --workers=1"
 
 test-visual: ## Визуальный smoke (скриншоты)
 	$(COMPOSE) up -d
