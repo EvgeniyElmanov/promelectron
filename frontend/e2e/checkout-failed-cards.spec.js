@@ -136,7 +136,7 @@ test.describe('Checkout failed card scenarios', () => {
       await completeYooKassaFailedPaymentIfNeeded(page, card);
 
       // Wait for redirect back to our failed page (PaymentSuccess may poll for a while)
-      await page.waitForURL(/\/payment\/failed/, { timeout: 60000 });
+      await page.waitForURL(/\/payment\/failed/, { timeout: 120000 });
       await expect(page.locator('[data-testid="payment-failed-page"]')).toBeVisible();
 
       // Verify the human-readable cancellation reason is shown

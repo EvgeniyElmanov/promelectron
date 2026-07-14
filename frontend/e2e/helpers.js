@@ -317,11 +317,10 @@ export async function completeYooKassaPaymentIfNeeded(
   //   1. redirect straight back to the merchant success page,
   //   2. show a 3-D Secure challenge (iframe or full-page redirect),
   //   3. stay on YooKassa because of an error.
-  // Poll for all outcomes in one loop so 3DS is detected immediately and we
-  // never click the always-visible Back button before YooKassa finishes
-  // processing the card.
+  // Wait briefly for a redirect or 3DS, then exit manually if YooKassa stays
+  // on the payment page. The merchant success page will poll/sync the status.
   const successPattern = /\/payment\/success/;
-  const outcome = await waitForYooKassaOutcome(page, [successPattern], 35000);
+  const outcome = await waitForYooKassaOutcome(page, [successPattern], 10000);
 
   if (outcome && outcome.type === 'redirect') {
     return true;
@@ -338,9 +337,8 @@ export async function completeYooKassaPaymentIfNeeded(
     }
   }
 
-  // No redirect, no 3DS: YooKassa is showing an error. Exit manually so the
-  // merchant page can display the failure reason.
-  await waitForOverlayToDisappear(page, 3000);
+  // No redirect, no 3DS: exit manually so the merchant page can poll/sync.
+  await waitForOverlayToDisappear(page, 2000);
   await exitYooKassaPage(page);
   return true;
 }
@@ -365,16 +363,16 @@ export async function completeYooKassaFailedPaymentIfNeeded(page, card) {
   //   1. redirect straight back to /payment/failed or /payment/success,
   //   2. show a 3-D Secure challenge and then decline,
   //   3. show an error and stay on YooKassa.
-  // Crucially, we must let YooKassa finish processing the card before exiting;
-  // clicking the Back button too early leaves the payment pending in YooKassa
-  // and the cancellation webhook never arrives.
+  // Give YooKassa a short moment to process the card, then return to the
+  // merchant site. The PaymentSuccess page will poll/sync with YooKassa and
+  // redirect to /payment/failed once the cancellation reason is available.
   const failedPattern = /\/payment\/failed/;
   const successPattern = /\/payment\/success/;
 
   const outcome = await waitForYooKassaOutcome(
     page,
     [failedPattern, successPattern],
-    40000,
+    15000,
   );
 
   if (outcome && outcome.type === 'redirect') {
@@ -394,24 +392,14 @@ export async function completeYooKassaFailedPaymentIfNeeded(page, card) {
   }
 
   if (outcome && outcome.type === 'error') {
-    // YooKassa has already declined the card and is showing an error. Give the
-    // cancellation webhook a moment to reach our backend, then return to the
-    // merchant site. The success page will poll/sync and redirect to failed.
-    await page.waitForTimeout(3000);
+    // YooKassa has already declined the card and is showing an error. Return
+    // to the merchant site so the success page can poll/sync the status.
+    await page.waitForTimeout(1000);
     await exitYooKassaPage(page);
     return true;
   }
 
-  // Last resort: wait a bit longer for a redirect, then exit if nothing happened.
-  const finalUrl = await waitForAnyUrl(
-    page,
-    [failedPattern, successPattern],
-    10000,
-  );
-  if (finalUrl) {
-    return true;
-  }
-
+  // Fallback: exit YooKassa manually and let the merchant page handle status.
   await exitYooKassaPage(page);
   return true;
 }

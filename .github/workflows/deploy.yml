@@ -204,6 +204,7 @@ jobs:
   test-e2e:
     needs: deploy-test
     uses: ./.github/workflows/e2e.yml
+    secrets: inherit
     with:
       environment: test
 
