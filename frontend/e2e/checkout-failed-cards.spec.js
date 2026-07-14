@@ -108,7 +108,7 @@ async function placeOrder(page) {
 test.describe('Checkout failed card scenarios', () => {
   for (const card of FAILED_CARDS) {
     test(`shows payment failed page with reason: ${card.reason}`, async ({ page }) => {
-      test.setTimeout(120000);
+      test.setTimeout(180000);
 
       const email = uniqueEmail();
       const password = 'TestPassword123!';
@@ -135,8 +135,8 @@ test.describe('Checkout failed card scenarios', () => {
       // Fill the declined card and submit the form
       await completeYooKassaFailedPaymentIfNeeded(page, card);
 
-      // Wait for redirect back to our failed page
-      await page.waitForURL(/\/payment\/failed/, { timeout: 30000 });
+      // Wait for redirect back to our failed page (PaymentSuccess may poll for a while)
+      await page.waitForURL(/\/payment\/failed/, { timeout: 60000 });
       await expect(page.locator('[data-testid="payment-failed-page"]')).toBeVisible();
 
       // Verify the human-readable cancellation reason is shown

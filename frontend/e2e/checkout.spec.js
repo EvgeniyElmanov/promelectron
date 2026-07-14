@@ -200,20 +200,21 @@ test.describe('Checkout Flow', () => {
     // Complete real YooKassa payment if configured; otherwise mock flow is used
     await completeYooKassaPaymentIfNeeded(page);
 
-    // Wait for redirect back to our success page
-    await page.waitForURL(/\/payment\/success/, { timeout: 30000 });
-    await expect(page.locator('[data-testid="payment-success-page"]')).toBeVisible();
+    // Wait for redirect back to our success page and for the order to load
+    await page.waitForURL(/\/payment\/success/, { timeout: 60000 });
 
     // Verify success/processing title is shown (webhook may still be pending)
+    await expect(page.locator('[data-testid="payment-success-page"]')).toBeVisible();
     const title = page.locator('.payment-result__title');
     await expect(title).toBeVisible();
+    await expect(title).toHaveText(/Оплата прошла успешно!|Платёж в обработке/, { timeout: 15000 });
     const titleText = await title.textContent();
     expect(['Оплата прошла успешно!', 'Платёж в обработке']).toContain(titleText);
   });
 
   for (const card of SUCCESSFUL_CARDS) {
     test(`authenticated user can pay with ${card.name} test card`, async ({ page }) => {
-      test.setTimeout(120000);
+      test.setTimeout(180000);
 
       const email = uniqueEmail();
       const password = 'TestPassword123!';
@@ -282,13 +283,14 @@ test.describe('Checkout Flow', () => {
         return;
       }
 
-      // 7. Wait for redirect back to our success page
-      await page.waitForURL(/\/payment\/success/, { timeout: 30000 });
+      // 7. Wait for redirect back to our success page and for the order to load
+      await page.waitForURL(/\/payment\/success/, { timeout: 60000 });
 
-      // 8. Verify success page is shown
+      // 8. Verify success page is shown (wait until the title is stable)
       await expect(page.locator('[data-testid="payment-success-page"]')).toBeVisible();
       const title = page.locator('.payment-result__title');
       await expect(title).toBeVisible();
+      await expect(title).toHaveText(/Оплата прошла успешно!|Платёж в обработке/, { timeout: 15000 });
       const titleText = await title.textContent();
       expect(['Оплата прошла успешно!', 'Платёж в обработке']).toContain(titleText);
     });
