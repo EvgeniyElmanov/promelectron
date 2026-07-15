@@ -4,11 +4,13 @@ services:
     working_dir: /app
     ports:
       - "5173:5173"
+    shm_size: 2gb
     environment:
       - VITE_PROXY_API=http://api:8000
       - API_URL=http://api:8000
       - BASE_URL=http://frontend:5173
       - VITE_YANDEX_MAPS_API_KEY=test-yandex-maps-api-key
+      - NODE_OPTIONS=--max-old-space-size=3072
     volumes:
       - ../frontend:/app
     command: sh -c "npm install --silent && npm run dev -- --host 0.0.0.0"

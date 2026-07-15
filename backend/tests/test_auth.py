@@ -300,6 +300,7 @@ def _make_oauth_settings(overrides: dict):
         "verify_base_url": original.verify_base_url,
         "redis_url": original.redis_url,
         "api_base_url": original.api_base_url,
+        "storage_backend": original.storage_backend,
         "minio_endpoint": original.minio_endpoint,
         "minio_access_key": original.minio_access_key,
         "minio_secret_key": original.minio_secret_key,

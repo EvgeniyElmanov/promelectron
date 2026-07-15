@@ -92,7 +92,7 @@ const error = ref(null);
 const polling = ref(false);
 const syncing = ref(false);
 const pollCount = ref(0);
-const maxPolls = 30;
+const maxPolls = 60;
 const pollInterval = 2000; // 2 seconds
 const consecutiveErrorCount = ref(0);
 const maxConsecutiveErrors = 3;
@@ -206,6 +206,11 @@ const startPolling = () => {
 
     if (pollCount.value >= maxPolls) {
       stopPolling();
+      // Fallback: if the order is still not terminal after max polling,
+      // redirect to the failed page so the user sees a meaningful result.
+      if (order.value && order.value.status !== 'paid' && !isOrderFailed(order.value)) {
+        router.replace(`/payment/failed?order_id=${orderId.value}`);
+      }
     }
   }, pollInterval);
 };
