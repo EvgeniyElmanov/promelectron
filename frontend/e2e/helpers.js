@@ -1,8 +1,10 @@
-import { expect } from '@playwright/test';
+import { expect, request } from '@playwright/test';
 import {
   DEFAULT_CARD_EXPIRY,
   SUCCESSFUL_CARDS,
 } from './yookassa-test-cards.js';
+
+const SEED_SECRET = process.env.SEED_SECRET || 'promelectron-test-seed-2024';
 
 export async function goToCart(page) {
   const headerLink = page.locator('[data-testid="cart-link"]');
@@ -38,6 +40,28 @@ export async function expectYooKassaPageOrSkip(page) {
     return false;
   }
   return true;
+}
+
+export async function setYooKassaPaymentStatus(
+  { orderId, status, cancellationReason, guestEmail },
+) {
+  const apiContext = await request.newContext({
+    baseURL: process.env.API_URL,
+  });
+  try {
+    const body = { order_id: orderId, status };
+    if (status === 'canceled') body.cancellation_reason = cancellationReason;
+    if (guestEmail) body.guest_email = guestEmail;
+    const res = await apiContext.post('/api/v1/payments/debug/set-status/', {
+      data: body,
+      headers: { 'x-seed-secret': SEED_SECRET },
+    });
+    if (!res.ok()) {
+      throw new Error(`debug/set-status failed: ${res.status()} ${await res.text()}`);
+    }
+  } finally {
+    await apiContext.dispose();
+  }
 }
 
 const YOO_KASSA_SELECTORS = {
@@ -296,7 +320,7 @@ async function waitForYooKassaOutcome(page, patterns, timeout) {
  *
  * @param {import('@playwright/test').Page} page
  * @param {Object} [card] - Card from SUCCESSFUL_CARDS. Defaults to the no-3DS
- *   Mastercard test card to preserve backward compatibility.
+ *   Mir test card to preserve backward compatibility.
  * @returns {Promise<boolean>} true if the payment flow completed (success or
  *   manual exit), false if 3-D Secure could not be completed automatically.
  */
@@ -343,63 +367,4 @@ export async function completeYooKassaPaymentIfNeeded(
   return true;
 }
 
-/**
- * Complete a YooKassa failed-card payment scenario.
- *
- * @param {import('@playwright/test').Page} page
- * @param {Object} card - Card from FAILED_CARDS.
- */
-export async function completeYooKassaFailedPaymentIfNeeded(page, card) {
-  await page.waitForLoadState('networkidle');
 
-  if (!isYooKassaPage(page)) {
-    return false;
-  }
-
-  await fillYooKassaCardForm(page, card);
-  await submitYooKassaForm(page);
-
-  // Declined cards may:
-  //   1. redirect straight back to /payment/failed or /payment/success,
-  //   2. show a 3-D Secure challenge and then decline,
-  //   3. show an error and stay on YooKassa.
-  // Give YooKassa a short moment to process the card, then return to the
-  // merchant site. The PaymentSuccess page will poll/sync with YooKassa and
-  // redirect to /payment/failed once the cancellation reason is available.
-  const failedPattern = /\/payment\/failed/;
-  const successPattern = /\/payment\/success/;
-
-  const outcome = await waitForYooKassaOutcome(
-    page,
-    [failedPattern, successPattern],
-    15000,
-  );
-
-  if (outcome && outcome.type === 'redirect') {
-    return true;
-  }
-
-  if (outcome && outcome.type === '3ds') {
-    try {
-      await completeYooKassa3DSChallenge(page);
-      await waitForAnyUrl(page, [failedPattern, successPattern], 30000);
-      return true;
-    } catch {
-      // Could not complete 3DS automatically; fall back to exiting manually.
-      await exitYooKassaPage(page);
-      return true;
-    }
-  }
-
-  if (outcome && outcome.type === 'error') {
-    // YooKassa has already declined the card and is showing an error. Return
-    // to the merchant site so the success page can poll/sync the status.
-    await page.waitForTimeout(1000);
-    await exitYooKassaPage(page);
-    return true;
-  }
-
-  // Fallback: exit YooKassa manually and let the merchant page handle status.
-  await exitYooKassaPage(page);
-  return true;
-}

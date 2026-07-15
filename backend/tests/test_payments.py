@@ -1,9 +1,14 @@
+from dataclasses import replace as dataclass_replace
 from decimal import Decimal
 from unittest.mock import AsyncMock, patch
 
 import pytest
 from sqlalchemy import select
 
+from src.app.api.seed import SEED_SECRET
+from src.app.core.config import settings
+from src.app.models.order import Order
+from src.app.models.payment import Payment
 
 class TestPaymentsAPI:
     """Тесты платёжного шлюза (ЮKassa)."""
@@ -616,3 +621,397 @@ class TestPaymentsAPI:
         payment = payment_result.scalars().first()
         assert payment.status == "refunded"
         assert float(payment.refunded_amount) == float(order_resp.json()["total_price"])
+
+
+class TestPaymentDebugSetStatusAPI:
+    """Тесты debug endpoint `/api/v1/payments/debug/set-status/`."""
+
+    @pytest.mark.asyncio
+    async def test_debug_set_status_succeeded(self, client, test_user, user_token, test_product, cdek_delivery_payload, test_session):
+        """Авторизованный заказ переводится в `paid` через debug endpoint."""
+        await client.post(
+            "/api/v1/cart/add",
+            json={"product_id": test_product.id, "quantity": 1},
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        order_resp = await client.post(
+            "/api/v1/orders/create/",
+            json={
+                "cdek_delivery": cdek_delivery_payload,
+                "recipient_first_name": "Тест",
+                "recipient_last_name": "Пользователь",
+                "recipient_phone": "+79990001122",
+            },
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        order_id = order_resp.json()["id"]
+
+        mock_yookassa = AsyncMock(return_value={
+            "yookassa_payment_id": "debug-yookassa-id",
+            "status": "pending",
+            "confirmation_url": "https://yoomoney.ru/checkout/test",
+            "amount": Decimal(str(test_product.price)),
+            "created_at": "2026-06-02T12:00:00.000Z",
+        })
+        with (
+            patch("src.app.services.payment_service.YooKassaService.is_configured", return_value=True),
+            patch("src.app.services.payment_service.YooKassaService.create_payment", mock_yookassa),
+        ):
+            await client.post(f"/api/v1/payments/{order_id}/", headers={"Authorization": f"Bearer {user_token}"})
+
+        resp = await client.post(
+            "/api/v1/payments/debug/set-status/",
+            json={"order_id": order_id, "status": "succeeded"},
+            headers={"x-seed-secret": SEED_SECRET},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "paid"
+        assert data["yookassa_status"] == "succeeded"
+
+        order_result = await test_session.execute(select(Order).where(Order.id == order_id))
+        order = order_result.scalars().first()
+        assert order.status == "paid"
+
+    @pytest.mark.asyncio
+    async def test_debug_set_status_canceled(self, client, test_user, user_token, test_product, cdek_delivery_payload, test_session):
+        """Debug endpoint сохраняет `cancellation_reason` и статус `cancelled`."""
+        await client.post(
+            "/api/v1/cart/add",
+            json={"product_id": test_product.id, "quantity": 1},
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        order_resp = await client.post(
+            "/api/v1/orders/create/",
+            json={
+                "cdek_delivery": cdek_delivery_payload,
+                "recipient_first_name": "Тест",
+                "recipient_last_name": "Пользователь",
+                "recipient_phone": "+79990001122",
+            },
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        order_id = order_resp.json()["id"]
+
+        mock_yookassa = AsyncMock(return_value={
+            "yookassa_payment_id": "debug-yookassa-id",
+            "status": "pending",
+            "confirmation_url": "https://yoomoney.ru/checkout/test",
+            "amount": Decimal(str(test_product.price)),
+            "created_at": "2026-06-02T12:00:00.000Z",
+        })
+        with (
+            patch("src.app.services.payment_service.YooKassaService.is_configured", return_value=True),
+            patch("src.app.services.payment_service.YooKassaService.create_payment", mock_yookassa),
+        ):
+            await client.post(f"/api/v1/payments/{order_id}/", headers={"Authorization": f"Bearer {user_token}"})
+
+        resp = await client.post(
+            "/api/v1/payments/debug/set-status/",
+            json={"order_id": order_id, "status": "canceled", "cancellation_reason": "insufficient_funds"},
+            headers={"x-seed-secret": SEED_SECRET},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "cancelled"
+        assert data["yookassa_status"] == "canceled"
+
+        payment_result = await test_session.execute(select(Payment).where(Payment.order_id == order_id))
+        payment = payment_result.scalars().first()
+        assert payment.yookassa_metadata["cancellation_details"]["reason"] == "insufficient_funds"
+
+        order_result = await test_session.execute(select(Order).where(Order.id == order_id))
+        order = order_result.scalars().first()
+        assert order.cancellation_reason == "insufficient_funds"
+        assert order.status == "pending"
+
+    @pytest.mark.asyncio
+    async def test_debug_set_status_guest(self, client, test_product, cdek_delivery_payload, test_session):
+        """Гостевой заказ переводится в `paid` по `guest_email`."""
+        guest_email = "debugguest@example.com"
+        order_resp = await client.post(
+            "/api/v1/orders/create-guest/",
+            json={
+                "items": [{"product_id": test_product.id, "quantity": 1}],
+                "cdek_delivery": cdek_delivery_payload,
+                "guest_email": guest_email,
+                "recipient_phone": "+79990001122",
+                "recipient_first_name": "Иван",
+                "recipient_last_name": "Гость",
+            },
+        )
+        order_id = order_resp.json()["id"]
+
+        mock_yookassa = AsyncMock(return_value={
+            "yookassa_payment_id": "guest-debug-yookassa-id",
+            "status": "pending",
+            "confirmation_url": "https://yoomoney.ru/checkout/guest",
+            "amount": Decimal(str(test_product.price)),
+            "created_at": "2026-06-02T12:00:00.000Z",
+        })
+        with (
+            patch("src.app.services.payment_service.YooKassaService.is_configured", return_value=True),
+            patch("src.app.services.payment_service.YooKassaService.create_payment", mock_yookassa),
+        ):
+            await client.post(
+                f"/api/v1/payments/guest/{order_id}/",
+                json={"guest_email": guest_email},
+            )
+
+        resp = await client.post(
+            "/api/v1/payments/debug/set-status/",
+            json={"order_id": order_id, "status": "succeeded", "guest_email": guest_email},
+            headers={"x-seed-secret": SEED_SECRET},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "paid"
+        assert data["yookassa_status"] == "succeeded"
+
+        order_result = await test_session.execute(select(Order).where(Order.id == order_id))
+        order = order_result.scalars().first()
+        assert order.status == "paid"
+        assert order.user_id is not None
+        assert order.guest_email == guest_email
+
+    @pytest.mark.asyncio
+    async def test_debug_set_status_guest_missing_email(self, client, test_product, cdek_delivery_payload):
+        """Отсутствие `guest_email` для гостевого заказа возвращает 400."""
+        guest_email = "debugguest-missing@example.com"
+        order_resp = await client.post(
+            "/api/v1/orders/create-guest/",
+            json={
+                "items": [{"product_id": test_product.id, "quantity": 1}],
+                "cdek_delivery": cdek_delivery_payload,
+                "guest_email": guest_email,
+                "recipient_phone": "+79990001122",
+                "recipient_first_name": "Иван",
+                "recipient_last_name": "Гость",
+            },
+        )
+        order_id = order_resp.json()["id"]
+
+        mock_yookassa = AsyncMock(return_value={
+            "yookassa_payment_id": "guest-debug-yookassa-id",
+            "status": "pending",
+            "confirmation_url": "https://yoomoney.ru/checkout/guest",
+            "amount": Decimal(str(test_product.price)),
+            "created_at": "2026-06-02T12:00:00.000Z",
+        })
+        with (
+            patch("src.app.services.payment_service.YooKassaService.is_configured", return_value=True),
+            patch("src.app.services.payment_service.YooKassaService.create_payment", mock_yookassa),
+        ):
+            await client.post(
+                f"/api/v1/payments/guest/{order_id}/",
+                json={"guest_email": guest_email},
+            )
+
+        resp = await client.post(
+            "/api/v1/payments/debug/set-status/",
+            json={"order_id": order_id, "status": "succeeded"},
+            headers={"x-seed-secret": SEED_SECRET},
+        )
+        assert resp.status_code == 400
+        assert "guest_email" in resp.json()["detail"].lower()
+
+    @pytest.mark.asyncio
+    async def test_debug_set_status_guest_wrong_email(self, client, test_product, cdek_delivery_payload):
+        """Неверный `guest_email` для гостевого заказа возвращает 404."""
+        guest_email = "debugguest-wrong@example.com"
+        order_resp = await client.post(
+            "/api/v1/orders/create-guest/",
+            json={
+                "items": [{"product_id": test_product.id, "quantity": 1}],
+                "cdek_delivery": cdek_delivery_payload,
+                "guest_email": guest_email,
+                "recipient_phone": "+79990001122",
+                "recipient_first_name": "Иван",
+                "recipient_last_name": "Гость",
+            },
+        )
+        order_id = order_resp.json()["id"]
+
+        mock_yookassa = AsyncMock(return_value={
+            "yookassa_payment_id": "guest-debug-yookassa-id",
+            "status": "pending",
+            "confirmation_url": "https://yoomoney.ru/checkout/guest",
+            "amount": Decimal(str(test_product.price)),
+            "created_at": "2026-06-02T12:00:00.000Z",
+        })
+        with (
+            patch("src.app.services.payment_service.YooKassaService.is_configured", return_value=True),
+            patch("src.app.services.payment_service.YooKassaService.create_payment", mock_yookassa),
+        ):
+            await client.post(
+                f"/api/v1/payments/guest/{order_id}/",
+                json={"guest_email": guest_email},
+            )
+
+        resp = await client.post(
+            "/api/v1/payments/debug/set-status/",
+            json={"order_id": order_id, "status": "succeeded", "guest_email": "wrong@example.com"},
+            headers={"x-seed-secret": SEED_SECRET},
+        )
+        assert resp.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_debug_set_status_guest_order_with_user(self, client, test_user, user_token, test_product, cdek_delivery_payload):
+        """Передача `guest_email` для авторизованного заказа возвращает 400."""
+        await client.post(
+            "/api/v1/cart/add",
+            json={"product_id": test_product.id, "quantity": 1},
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        order_resp = await client.post(
+            "/api/v1/orders/create/",
+            json={
+                "cdek_delivery": cdek_delivery_payload,
+                "recipient_first_name": "Тест",
+                "recipient_last_name": "Пользователь",
+                "recipient_phone": "+79990001122",
+            },
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        order_id = order_resp.json()["id"]
+
+        mock_yookassa = AsyncMock(return_value={
+            "yookassa_payment_id": "debug-yookassa-id",
+            "status": "pending",
+            "confirmation_url": "https://yoomoney.ru/checkout/test",
+            "amount": Decimal(str(test_product.price)),
+            "created_at": "2026-06-02T12:00:00.000Z",
+        })
+        with (
+            patch("src.app.services.payment_service.YooKassaService.is_configured", return_value=True),
+            patch("src.app.services.payment_service.YooKassaService.create_payment", mock_yookassa),
+        ):
+            await client.post(f"/api/v1/payments/{order_id}/", headers={"Authorization": f"Bearer {user_token}"})
+
+        resp = await client.post(
+            "/api/v1/payments/debug/set-status/",
+            json={"order_id": order_id, "status": "succeeded", "guest_email": "user@example.com"},
+            headers={"x-seed-secret": SEED_SECRET},
+        )
+        assert resp.status_code == 400
+        assert "guest order" in resp.json()["detail"].lower()
+
+    @pytest.mark.asyncio
+    async def test_debug_set_status_forbidden_without_secret(self, client):
+        """Debug endpoint возвращает 403 без `x-seed-secret`."""
+        resp = await client.post(
+            "/api/v1/payments/debug/set-status/",
+            json={"order_id": 1, "status": "succeeded"},
+        )
+        assert resp.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_debug_set_status_forbidden_in_prod_mode(self, client):
+        """Debug endpoint возвращает 403 при `YOOKASSA_TEST_MODE=false`."""
+        prod_settings = dataclass_replace(settings, yookassa_test_mode=False)
+        with patch("src.app.api.payments.settings", prod_settings):
+            resp = await client.post(
+                "/api/v1/payments/debug/set-status/",
+                json={"order_id": 1, "status": "succeeded"},
+                headers={"x-seed-secret": SEED_SECRET},
+            )
+        assert resp.status_code == 403
+
+
+    @pytest.mark.asyncio
+    async def test_debug_set_status_already_paid(self, client, test_user, user_token, test_product, cdek_delivery_payload):
+        """Повторный вызов succeeded для уже оплаченного платежа возвращает 400."""
+        await client.post(
+            "/api/v1/cart/add",
+            json={"product_id": test_product.id, "quantity": 1},
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        order_resp = await client.post(
+            "/api/v1/orders/create/",
+            json={
+                "cdek_delivery": cdek_delivery_payload,
+                "recipient_first_name": "Тест",
+                "recipient_last_name": "Пользователь",
+                "recipient_phone": "+79990001122",
+            },
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        order_id = order_resp.json()["id"]
+
+        mock_yookassa = AsyncMock(return_value={
+            "yookassa_payment_id": "debug-yookassa-id",
+            "status": "pending",
+            "confirmation_url": "https://yoomoney.ru/checkout/test",
+            "amount": Decimal(str(test_product.price)),
+            "created_at": "2026-06-02T12:00:00.000Z",
+        })
+        with (
+            patch("src.app.services.payment_service.YooKassaService.is_configured", return_value=True),
+            patch("src.app.services.payment_service.YooKassaService.create_payment", mock_yookassa),
+        ):
+            await client.post(f"/api/v1/payments/{order_id}/", headers={"Authorization": f"Bearer {user_token}"})
+
+        first = await client.post(
+            "/api/v1/payments/debug/set-status/",
+            json={"order_id": order_id, "status": "succeeded"},
+            headers={"x-seed-secret": SEED_SECRET},
+        )
+        assert first.status_code == 200
+        assert first.json()["status"] == "paid"
+
+        second = await client.post(
+            "/api/v1/payments/debug/set-status/",
+            json={"order_id": order_id, "status": "succeeded"},
+            headers={"x-seed-secret": SEED_SECRET},
+        )
+        assert second.status_code == 400
+        assert "terminal status" in second.json()["detail"].lower()
+
+    @pytest.mark.asyncio
+    async def test_debug_set_status_cancelled_then_succeeded(self, client, test_user, user_token, test_product, cdek_delivery_payload):
+        """После canceled вызов succeeded для того же платежа возвращает 400."""
+        await client.post(
+            "/api/v1/cart/add",
+            json={"product_id": test_product.id, "quantity": 1},
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        order_resp = await client.post(
+            "/api/v1/orders/create/",
+            json={
+                "cdek_delivery": cdek_delivery_payload,
+                "recipient_first_name": "Тест",
+                "recipient_last_name": "Пользователь",
+                "recipient_phone": "+79990001122",
+            },
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        order_id = order_resp.json()["id"]
+
+        mock_yookassa = AsyncMock(return_value={
+            "yookassa_payment_id": "debug-yookassa-id",
+            "status": "pending",
+            "confirmation_url": "https://yoomoney.ru/checkout/test",
+            "amount": Decimal(str(test_product.price)),
+            "created_at": "2026-06-02T12:00:00.000Z",
+        })
+        with (
+            patch("src.app.services.payment_service.YooKassaService.is_configured", return_value=True),
+            patch("src.app.services.payment_service.YooKassaService.create_payment", mock_yookassa),
+        ):
+            await client.post(f"/api/v1/payments/{order_id}/", headers={"Authorization": f"Bearer {user_token}"})
+
+        cancel_resp = await client.post(
+            "/api/v1/payments/debug/set-status/",
+            json={"order_id": order_id, "status": "canceled", "cancellation_reason": "insufficient_funds"},
+            headers={"x-seed-secret": SEED_SECRET},
+        )
+        assert cancel_resp.status_code == 200
+        assert cancel_resp.json()["status"] == "cancelled"
+
+        succeed_resp = await client.post(
+            "/api/v1/payments/debug/set-status/",
+            json={"order_id": order_id, "status": "succeeded"},
+            headers={"x-seed-secret": SEED_SECRET},
+        )
+        assert succeed_resp.status_code == 400
+        assert "terminal status" in succeed_resp.json()["detail"].lower()

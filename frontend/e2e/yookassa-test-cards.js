@@ -9,55 +9,45 @@
 
 export const SUCCESSFUL_CARDS = [
   {
-    name: 'Mastercard 3DS',
-    number: '5555555555554477',
-    has3ds: true,
-  },
-  {
-    name: 'Mastercard no 3DS',
-    number: '5555555555554444',
-    has3ds: false,
-  },
-  {
-    name: 'Visa no 3DS',
-    number: '4111111111111111',
-    has3ds: false,
-  },
-  {
     name: 'Mir 3DS',
     number: '2200000000000004',
     has3ds: true,
+  },
+  {
+    name: 'Mir no 3DS',
+    number: '2202474301322987',
+    has3ds: false,
   },
 ];
 
 export const FAILED_CARDS = [
   {
     name: 'Insufficient funds',
-    number: '5555555555554600',
+    number: '2200000000000053',
     reason: 'insufficient_funds',
     label: 'Недостаточно средств на карте',
   },
   {
     name: 'Invalid CSC',
-    number: '5555555555554626',
+    number: '2200770212727079',
     reason: 'invalid_csc',
     label: 'Неверный код безопасности карты',
   },
   {
     name: 'Card expired',
-    number: '5555555555554543',
+    number: '2200000000000038',
     reason: 'card_expired',
     label: 'Истёк срок действия карты',
   },
   {
     name: 'Fraud suspected',
-    number: '5555555555554576',
+    number: '2200000000000046',
     reason: 'fraud_suspected',
     label: 'Платёж отклонён по соображениям безопасности',
   },
   {
     name: 'General decline',
-    number: '5555555555554550',
+    number: '2202202212312379',
     reason: 'general_decline',
     label: 'Платёж отклонён банком',
   },
