@@ -1,9 +1,5 @@
 import { test, expect } from '@playwright/test';
-import {
-  goToCart,
-  completeYooKassaFailedPaymentIfNeeded,
-  expectYooKassaPageOrSkip,
-} from './helpers.js';
+import { goToCart, setYooKassaPaymentStatus } from './helpers.js';
 import { FAILED_CARDS } from './yookassa-test-cards.js';
 
 function uniqueEmail() {
@@ -103,6 +99,9 @@ async function placeOrder(page) {
   const response = await createOrderResponse;
   expect(response.status()).toBe(200);
   await expect(page).toHaveURL(/\/checkout\/\d+/, { timeout: 30000 });
+
+  const order = await response.json();
+  return order.id;
 }
 
 test.describe('Checkout failed card scenarios', () => {
@@ -116,30 +115,28 @@ test.describe('Checkout failed card scenarios', () => {
       await mockCdekWidget(page);
       await registerUser(page, email, password);
       await fillProfileForCdek(page);
-      await placeOrder(page);
+      const orderId = await placeOrder(page);
 
-      // Click Pay button → creates payment and redirects to YooKassa
+      // Click Pay button → creates payment
       const payResponsePromise = page.waitForResponse(
         response => response.url().includes('/payments/') && response.request().method() === 'POST',
         { timeout: 30000 }
       );
       await page.click('[data-testid="pay-button"]');
-      await payResponsePromise;
+      const payResponse = await payResponsePromise;
+      expect(payResponse.status()).toBe(200);
 
-      // In CI/CD test environments YooKassa credentials may be missing — handle gracefully
-      const onYooKassa = await expectYooKassaPageOrSkip(page);
-      if (!onYooKassa) {
-        return;
-      }
+      // Set payment status via debug endpoint instead of YooKassa UI
+      await setYooKassaPaymentStatus(page, {
+        orderId,
+        status: 'canceled',
+        cancellationReason: card.reason,
+      });
 
-      // Fill the declined card and submit the form
-      await completeYooKassaFailedPaymentIfNeeded(page, card);
-
-      // Wait for redirect back to our failed page (PaymentSuccess may poll for a while)
-      await page.waitForURL(/\/payment\/failed/, { timeout: 120000 });
+      // Navigate to failed page and verify the human-readable cancellation reason
+      await page.goto(`/payment/failed?order_id=${orderId}`);
       await expect(page.locator('[data-testid="payment-failed-page"]')).toBeVisible();
 
-      // Verify the human-readable cancellation reason is shown
       const reasonLocator = page.locator('[data-testid="cancellation-reason"]');
       await expect(reasonLocator).toBeVisible();
       const reasonText = await reasonLocator.textContent();

@@ -1,5 +1,10 @@
 import { test, expect } from '@playwright/test';
-import { goToCart, completeYooKassaPaymentIfNeeded, expectYooKassaPageOrSkip } from './helpers.js';
+import {
+  goToCart,
+  completeYooKassaPaymentIfNeeded,
+  expectYooKassaPageOrSkip,
+  setYooKassaPaymentStatus,
+} from './helpers.js';
 import { SUCCESSFUL_CARDS } from './yookassa-test-cards.js';
 
 function uniqueEmail() {
@@ -68,6 +73,15 @@ async function addFirstProductToCart(page) {
   await firstProduct.locator('[data-testid="add-to-cart-button"]').click();
   await expect(page.locator('.toast--success')).toBeVisible({ timeout: 5000 });
   await page.waitForTimeout(300);
+}
+
+async function verifyPaymentSuccessPage(page) {
+  await expect(page.locator('[data-testid="payment-success-page"]')).toBeVisible();
+  const title = page.locator('.payment-result__title');
+  await expect(title).toBeVisible();
+  await expect(title).toHaveText(/Оплата прошла успешно!|Платёж в обработке/, { timeout: 15000 });
+  const titleText = await title.textContent();
+  expect(['Оплата прошла успешно!', 'Платёж в обработке']).toContain(titleText);
 }
 
 test.describe('Checkout Flow', () => {
@@ -197,19 +211,16 @@ test.describe('Checkout Flow', () => {
     const payResponse = await payResponsePromise;
     expect(payResponse.status()).toBe(200);
 
-    // Complete real YooKassa payment if configured; otherwise mock flow is used
-    await completeYooKassaPaymentIfNeeded(page);
+    // Set payment status via debug endpoint instead of YooKassa UI
+    await setYooKassaPaymentStatus(page, {
+      orderId: order.id,
+      status: 'succeeded',
+      guestEmail: email,
+    });
 
-    // Wait for redirect back to our success page and for the order to load
-    await page.waitForURL(/\/payment\/success/, { timeout: 60000 });
-
-    // Verify success/processing title is shown (webhook may still be pending)
-    await expect(page.locator('[data-testid="payment-success-page"]')).toBeVisible();
-    const title = page.locator('.payment-result__title');
-    await expect(title).toBeVisible();
-    await expect(title).toHaveText(/Оплата прошла успешно!|Платёж в обработке/, { timeout: 15000 });
-    const titleText = await title.textContent();
-    expect(['Оплата прошла успешно!', 'Платёж в обработке']).toContain(titleText);
+    // Navigate to success page and verify order is loaded
+    await page.goto(`/payment/success?order_id=${order.id}`);
+    await verifyPaymentSuccessPage(page);
   });
 
   for (const card of SUCCESSFUL_CARDS) {
@@ -258,9 +269,12 @@ test.describe('Checkout Flow', () => {
       await page.locator('[data-testid="checkout-button"]').click();
       const response = await createOrderResponse;
       expect(response.status()).toBe(200);
+
+      const order = await response.json();
+      const orderId = order.id;
       await expect(page).toHaveURL(/\/checkout\/\d+/, { timeout: 30000 });
 
-      // 5. Click Pay button → creates payment and redirects to YooKassa
+      // 5. Click Pay button → creates payment
       const payResponsePromise = page.waitForResponse(
         response => response.url().includes('/payments/') && response.request().method() === 'POST',
         { timeout: 30000 }
@@ -269,30 +283,25 @@ test.describe('Checkout Flow', () => {
       const payResponse = await payResponsePromise;
       expect(payResponse.status()).toBe(200);
 
-      // In CI/CD test environments YooKassa credentials may be missing — handle gracefully
-      const onYooKassa = await expectYooKassaPageOrSkip(page);
-      if (!onYooKassa) {
-        return;
+      if (card.number === '2202474301322987') {
+        // Mir no-3DS: keep real YooKassa UI flow as the integration smoke test
+        const onYooKassa = await expectYooKassaPageOrSkip(page);
+        if (!onYooKassa) {
+          return;
+        }
+        const completed = await completeYooKassaPaymentIfNeeded(page, card);
+        if (!completed) {
+          test.skip();
+          return;
+        }
+      } else {
+        // Mir 3DS: deterministic debug endpoint to avoid flaky sandbox
+        await setYooKassaPaymentStatus(page, { orderId, status: 'succeeded' });
       }
 
-      // 6. Complete payment with the parameterized successful test card
-      const completed = await completeYooKassaPaymentIfNeeded(page, card);
-      if (!completed) {
-        // 3-D Secure cannot be reliably completed in automated environments
-        test.skip();
-        return;
-      }
-
-      // 7. Wait for redirect back to our success page and for the order to load
-      await page.waitForURL(/\/payment\/success/, { timeout: 60000 });
-
-      // 8. Verify success page is shown (wait until the title is stable)
-      await expect(page.locator('[data-testid="payment-success-page"]')).toBeVisible();
-      const title = page.locator('.payment-result__title');
-      await expect(title).toBeVisible();
-      await expect(title).toHaveText(/Оплата прошла успешно!|Платёж в обработке/, { timeout: 15000 });
-      const titleText = await title.textContent();
-      expect(['Оплата прошла успешно!', 'Платёж в обработке']).toContain(titleText);
+      // 6. Navigate to success page and verify order is loaded
+      await page.goto(`/payment/success?order_id=${orderId}`);
+      await verifyPaymentSuccessPage(page);
     });
   }
 });
