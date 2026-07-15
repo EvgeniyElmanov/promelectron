@@ -1,43 +1,57 @@
-%%{init: {'flowchart': {'curve': 'basis', 'padding': 16}}}%%
+%%{init: {'flowchart': {'curve': 'basis', 'padding': 20}}}%%
 flowchart TD
-    subgraph Entry ["Entry skills"]
-        IMP(["/skill:implement"])
-        FIX(["/skill:fix"])
-        SPEC(["/skill:spec"])
-        REV(["/skill:review"])
-        QA(["/skill:qa-gate"])
-        SHIP(["/skill:ship"])
-    end
+    Entry(["/skill:*"])
+    Entry --> Tracker
 
-    IMP --> Prep
-    FIX --> Prep
-    SPEC --> Plan
-    REV --> Review
-    QA --> Test
-    SHIP --> PR
+    Tracker["Tracker"]
+    Tracker --> Worktree
 
-    Prep["Prepare workspace<br/>.agent/runs/{id}<br/>.worktrees/{id}"] --> Plan
+    Worktree["git worktree<br/>.worktrees/{id}"]
+    Worktree -.-> libs["libs"]
+    Worktree -.-> best["best-pract"]
+    Worktree -.-> code["codebase"]
 
-    Plan["Architect writes spec.md"] --> Approve
-    Approve["Human approval"] -->|clarify| Plan
-    Approve --> Dev
+    libs --> Architect
+    best --> Architect
+    code --> Architect
 
-    Dev["Developer implements<br/>status: In progress"] --> Review
-    Review["Code reviewer<br/>≤3 iterations"] -->|needs work| Dev
-    Review --> Test
+    Architect["Architect<br/><font color='#c62828'>⚠ plan mode required</font>"] <-.->|<i>прорабатывают архитектуру</i>| Human([Human])
 
-    Test["QA gate<br/>pytest · vitest · E2E"] --> PR
-    PR["Pull Request<br/>status: In review"] --> Merge
-    Merge["Human merge"] --> Done(["Done"])
+    Architect --> Dev["Developer"]
 
-    classDef entry fill:#e1f5ff,stroke:#01579b,stroke-width:2px
-    classDef coord fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
-    classDef human fill:#f3e5f5,stroke:#6a1b9a,stroke-width:2px
-    classDef agent fill:#fff3e0,stroke:#ef6c00,stroke-width:2px
-    classDef final fill:#ffebee,stroke:#c62828,stroke-width:2px
+    Dev --> Reviewer["Reviewer"]
+    Reviewer -->|<i>1-й проход & адаптивно к диффу</i>| Approved{APPROVED?}
+    Approved -.->|<font color='#c62828'>нет</font>| Dev
+    Approved -.->|<font color='#2e7d32'>да</font>| QA_Gate
 
-    class IMP,FIX,SPEC,REV,QA,SHIP entry
-    class Prep coord
-    class Approve,Merge human
-    class Plan,Dev,Review,Test,PR agent
-    class Done final
+    QA_Gate["QA Gate"] -->|<i>опционально · --qa</i>| MR
+
+    MR["MR → GitHub"] --> Done([Done])
+
+    noteBottom["re-review — один агент (шард при LARGE) · цикл до 5 итераций"]
+    MR ~~~ noteBottom
+
+    classDef entry fill:#f5f5f5,stroke:#9e9e9e,stroke-width:1px,color:#424242
+    classDef tracker fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#1565c0
+    classDef worktree fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,stroke-dasharray:5 5,color:#2e7d32
+    classDef research fill:#f3e5f5,stroke:#6a1b9a,stroke-width:2px,color:#6a1b9a
+    classDef human fill:#f3e5f5,stroke:#6a1b9a,stroke-width:2px,color:#6a1b9a
+    classDef dev fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#2e7d32
+    classDef review fill:#fff3e0,stroke:#ef6c00,stroke-width:2px,color:#ef6c00
+    classDef qa fill:#fffde7,stroke:#f9a825,stroke-width:2px,stroke-dasharray:5 5,color:#ef6c00
+    classDef ship fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#c62828
+    classDef note fill:none,stroke:none,color:#616161
+
+    class Entry entry
+    class Tracker tracker
+    class Worktree worktree
+    class libs,best,code research
+    class Architect human
+    class Human human
+    class Dev dev
+    class Reviewer review
+    class Approved review
+    class QA_Gate qa
+    class MR ship
+    class Done ship
+    class noteBottom note

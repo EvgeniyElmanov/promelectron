@@ -120,63 +120,75 @@ Manual approval → Deploy to Prod
 ```mermaid
 %%{init: {'flowchart': {'curve': 'basis', 'padding': 20}}}%%
 flowchart TD
-    A(["/skill:implement"])
-    R(["/skill:fix"])
-    Q(["/skill:spec"])
-    S(["/skill:review"])
-    T(["/skill:qa-gate"])
-    U(["/skill:ship"])
+    Entry(["/skill:*"])
+    Entry --> Tracker
 
-    A --> B
-    R --> B
+    Tracker["Tracker"]
+    Tracker --> Worktree
 
-    B["Dispatcher<br/>role selection"] --> C
-    C["Coordination plane<br/>.agent/runs/{task-id}/"] --> D
-    D["Git worktree<br/>.worktrees/{task-id}/<br/>feature/{task-id}"] --> E
-    E["Context check +<br/>retry policy"] --> F
+    Worktree["git worktree<br/>.worktrees/{id}"]
+    Worktree -.-> libs["libs"]
+    Worktree -.-> best["best-pract"]
+    Worktree -.-> code["codebase"]
 
-    F["Research fan-out<br/>parallel subagents"] --> G
-    G["Architect<br/>⚠ plan mode required<br/>writes spec.md"] --> H["   Human approval   "]
-    G <-->|"needs clarification"| H
-    H -->|"approved"| I
+    libs --> Architect
+    best --> Architect
+    code --> Architect
 
-    I["GitHub Issue<br/>status: In progress"] --> J
-    J["Developer"] --> K
-    K["Reviewer"] --> L
-    L{"APPROVED?"} -->|"нет"| J
-    L -->|"да"| M
+    Architect["Architect<br/><font color='#c62828'>⚠ plan mode required</font>"] <-.->|<i>прорабатывают архитектуру</i>| Human([Human])
 
-    M["QA Gate<br/>pytest + vitest + E2E"] --> N
-    N["Pull Request<br/>GitHub<br/>status: In review"] --> O
-    O["Human merge"] --> P["Done"]
+    Architect --> Dev["Developer"]
 
-    Q --> G
-    S --> K
-    T --> M
-    U --> N
+    Dev --> Reviewer["Reviewer"]
+    Reviewer -->|<i>1-й проход & адаптивно к диффу</i>| Approved{APPROVED?}
+    Approved -.->|<font color='#c62828'>нет</font>| Dev
+    Approved -.->|<font color='#2e7d32'>да</font>| QA_Gate
 
-    classDef entry fill:#e1f5ff,stroke:#01579b,stroke-width:2px
-    classDef coord fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
-    classDef human fill:#f3e5f5,stroke:#6a1b9a,stroke-width:2px
-    classDef agent fill:#fff3e0,stroke:#ef6c00,stroke-width:2px
-    classDef decision fill:#fffde7,stroke:#f9a825,stroke-width:2px
-    classDef final fill:#ffebee,stroke:#c62828,stroke-width:2px
+    QA_Gate["QA Gate"] -->|<i>опционально · --qa</i>| MR
 
-    class A,R,Q,S,T,U entry
-    class C,D coord
-    class H,O human
-    class F,G,J,K,M,N agent
-    class L decision
-    class P final
+    MR["MR → GitHub"] --> Done([Done])
 
-    style H width:240px,height:80px
+    noteBottom["re-review — один агент (шард при LARGE) · цикл до 5 итераций"]
+    MR ~~~ noteBottom
+
+    classDef entry fill:#f5f5f5,stroke:#9e9e9e,stroke-width:1px,color:#424242
+    classDef tracker fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#1565c0
+    classDef worktree fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,stroke-dasharray:5 5,color:#2e7d32
+    classDef research fill:#f3e5f5,stroke:#6a1b9a,stroke-width:2px,color:#6a1b9a
+    classDef human fill:#f3e5f5,stroke:#6a1b9a,stroke-width:2px,color:#6a1b9a
+    classDef dev fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#2e7d32
+    classDef review fill:#fff3e0,stroke:#ef6c00,stroke-width:2px,color:#ef6c00
+    classDef qa fill:#fffde7,stroke:#f9a825,stroke-width:2px,stroke-dasharray:5 5,color:#ef6c00
+    classDef ship fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#c62828
+    classDef note fill:none,stroke:none,color:#616161
+
+    class Entry entry
+    class Tracker tracker
+    class Worktree worktree
+    class libs,best,code research
+    class Architect human
+    class Human human
+    class Dev dev
+    class Reviewer review
+    class Approved review
+    class QA_Gate qa
+    class MR ship
+    class Done ship
+    class noteBottom note
 ```
+
+Entry-скиллы:
+- `/skill:implement` / `/skill:fix` → **Tracker**
+- `/skill:spec` → **Architect**
+- `/skill:review` → **Reviewer**
+- `/skill:qa-gate` → **QA Gate**
+- `/skill:ship` → **MR → GitHub**
 
 Кубики пайплайна:
 
 | Кубик | Роль | Что делает |
 |-------|------|------------|
-| Dispatcher | — | Определяет роль для каждой задачи |
+| Tracker | — | Определяет роль и маршрут задачи |
 | Architect | `architect` | Пишет техническую спецификацию в plan mode |
 | Research | `explore` subagents | Параллельный research: libraries, best-practices, codebase |
 | Backend Dev | `backend-dev` | Модель → схема → сервис → эндпоинт → тесты |
