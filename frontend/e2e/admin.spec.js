@@ -110,7 +110,13 @@ test.describe('Admin Panel', () => {
     await page.fill('[data-testid="category-name-input"]', rootName);
     await page.fill('[data-testid="category-description-input"]', 'Root test description');
     await page.selectOption('[data-testid="category-parent-select"]', { label: 'Без родителя' });
+    const createRootResponse = page.waitForResponse(
+      response => response.url().includes('/api/v1/categories/') && response.request().method() === 'POST',
+      { timeout: 30000 }
+    );
     await page.click('[data-testid="category-submit-btn"]');
+    const rootResponse = await createRootResponse;
+    expect(rootResponse.status()).toBe(200);
     await expect(page.locator('.modal-overlay')).not.toBeVisible({ timeout: 10000 });
 
     const rootRow = page.locator('.admin__table tr').filter({ hasText: rootName }).first();
@@ -121,7 +127,13 @@ test.describe('Admin Panel', () => {
     await page.fill('[data-testid="category-name-input"]', childName);
     await page.fill('[data-testid="category-description-input"]', 'Child test description');
     await page.selectOption('[data-testid="category-parent-select"]', { label: rootName });
+    const createChildResponse = page.waitForResponse(
+      response => response.url().includes('/api/v1/categories/') && response.request().method() === 'POST',
+      { timeout: 30000 }
+    );
     await page.click('[data-testid="category-submit-btn"]');
+    const childResponse = await createChildResponse;
+    expect(childResponse.status()).toBe(200);
     await expect(page.locator('.modal-overlay')).not.toBeVisible({ timeout: 10000 });
 
     const childRow = page.locator('.admin__table tr').filter({ hasText: childName }).first();
