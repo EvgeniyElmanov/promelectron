@@ -1,4 +1,5 @@
 import hmac
+from datetime import datetime, timezone
 from decimal import Decimal
 
 from fastapi import APIRouter, Body, Depends, Header, HTTPException, Query, Request
@@ -226,8 +227,10 @@ async def debug_set_payment_status(
     if order.user_id is None and request_data.guest_email is None:
         raise HTTPException(status_code=400, detail="guest_email is required for guest orders")
 
-    if payment.status == "paid":
-        raise HTTPException(status_code=400, detail="Payment already paid")
+    if payment.status in ("paid", "cancelled"):
+        raise HTTPException(status_code=400, detail="Payment is in terminal status")
+
+    payment.updated_at = datetime.now(timezone.utc)
 
     if request_data.status == "succeeded":
         payment.yookassa_status = "succeeded"

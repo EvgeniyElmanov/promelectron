@@ -283,7 +283,7 @@ test.describe('Checkout Flow', () => {
       const payResponse = await payResponsePromise;
       expect(payResponse.status()).toBe(200);
 
-      if (card.number === '2202474301322987') {
+      if (card.name === 'Mir no 3DS') {
         // Mir no-3DS: keep real YooKassa UI flow as the integration smoke test
         const onYooKassa = await expectYooKassaPageOrSkip(page);
         if (!onYooKassa) {

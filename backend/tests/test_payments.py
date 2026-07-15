@@ -916,3 +916,102 @@ class TestPaymentDebugSetStatusAPI:
                 headers={"x-seed-secret": SEED_SECRET},
             )
         assert resp.status_code == 403
+
+
+    @pytest.mark.asyncio
+    async def test_debug_set_status_already_paid(self, client, test_user, user_token, test_product, cdek_delivery_payload):
+        """Повторный вызов succeeded для уже оплаченного платежа возвращает 400."""
+        await client.post(
+            "/api/v1/cart/add",
+            json={"product_id": test_product.id, "quantity": 1},
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        order_resp = await client.post(
+            "/api/v1/orders/create/",
+            json={
+                "cdek_delivery": cdek_delivery_payload,
+                "recipient_first_name": "Тест",
+                "recipient_last_name": "Пользователь",
+                "recipient_phone": "+79990001122",
+            },
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        order_id = order_resp.json()["id"]
+
+        mock_yookassa = AsyncMock(return_value={
+            "yookassa_payment_id": "debug-yookassa-id",
+            "status": "pending",
+            "confirmation_url": "https://yoomoney.ru/checkout/test",
+            "amount": Decimal(str(test_product.price)),
+            "created_at": "2026-06-02T12:00:00.000Z",
+        })
+        with (
+            patch("src.app.services.payment_service.YooKassaService.is_configured", return_value=True),
+            patch("src.app.services.payment_service.YooKassaService.create_payment", mock_yookassa),
+        ):
+            await client.post(f"/api/v1/payments/{order_id}/", headers={"Authorization": f"Bearer {user_token}"})
+
+        first = await client.post(
+            "/api/v1/payments/debug/set-status/",
+            json={"order_id": order_id, "status": "succeeded"},
+            headers={"x-seed-secret": SEED_SECRET},
+        )
+        assert first.status_code == 200
+        assert first.json()["status"] == "paid"
+
+        second = await client.post(
+            "/api/v1/payments/debug/set-status/",
+            json={"order_id": order_id, "status": "succeeded"},
+            headers={"x-seed-secret": SEED_SECRET},
+        )
+        assert second.status_code == 400
+        assert "terminal status" in second.json()["detail"].lower()
+
+    @pytest.mark.asyncio
+    async def test_debug_set_status_cancelled_then_succeeded(self, client, test_user, user_token, test_product, cdek_delivery_payload):
+        """После canceled вызов succeeded для того же платежа возвращает 400."""
+        await client.post(
+            "/api/v1/cart/add",
+            json={"product_id": test_product.id, "quantity": 1},
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        order_resp = await client.post(
+            "/api/v1/orders/create/",
+            json={
+                "cdek_delivery": cdek_delivery_payload,
+                "recipient_first_name": "Тест",
+                "recipient_last_name": "Пользователь",
+                "recipient_phone": "+79990001122",
+            },
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        order_id = order_resp.json()["id"]
+
+        mock_yookassa = AsyncMock(return_value={
+            "yookassa_payment_id": "debug-yookassa-id",
+            "status": "pending",
+            "confirmation_url": "https://yoomoney.ru/checkout/test",
+            "amount": Decimal(str(test_product.price)),
+            "created_at": "2026-06-02T12:00:00.000Z",
+        })
+        with (
+            patch("src.app.services.payment_service.YooKassaService.is_configured", return_value=True),
+            patch("src.app.services.payment_service.YooKassaService.create_payment", mock_yookassa),
+        ):
+            await client.post(f"/api/v1/payments/{order_id}/", headers={"Authorization": f"Bearer {user_token}"})
+
+        cancel_resp = await client.post(
+            "/api/v1/payments/debug/set-status/",
+            json={"order_id": order_id, "status": "canceled", "cancellation_reason": "insufficient_funds"},
+            headers={"x-seed-secret": SEED_SECRET},
+        )
+        assert cancel_resp.status_code == 200
+        assert cancel_resp.json()["status"] == "cancelled"
+
+        succeed_resp = await client.post(
+            "/api/v1/payments/debug/set-status/",
+            json={"order_id": order_id, "status": "succeeded"},
+            headers={"x-seed-secret": SEED_SECRET},
+        )
+        assert succeed_resp.status_code == 400
+        assert "terminal status" in succeed_resp.json()["detail"].lower()
