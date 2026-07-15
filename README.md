@@ -146,9 +146,9 @@ flowchart TD
 
     QA_Gate["QA Gate"] -->|<i>опционально · --qa</i>| MR
 
-    MR["MR → GitHub"] --> Done([Done])
+    MR["PR → GitHub"] --> Done([Done])
 
-    noteBottom["re-review — один агент (шард при LARGE) · цикл до 5 итераций"]
+    noteBottom["re-review — один агент (шард при LARGE) · цикл до 3 итераций"]
     MR ~~~ noteBottom
 
     classDef entry fill:#f5f5f5,stroke:#9e9e9e,stroke-width:1px,color:#424242
@@ -182,7 +182,7 @@ Entry-скиллы:
 - `/skill:spec` → **Architect**
 - `/skill:review` → **Reviewer**
 - `/skill:qa-gate` → **QA Gate**
-- `/skill:ship` → **MR → GitHub**
+- `/skill:ship` → **PR → GitHub**
 
 Кубики пайплайна:
 
