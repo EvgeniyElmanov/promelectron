@@ -2,12 +2,17 @@ from decimal import Decimal
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
+from src.app.api.seed import SEED_SECRET
 from src.app.core.config import settings
 from src.app.db.database import get_db
+from src.app.models.order import Order
+from src.app.models.payment import Payment
 from src.app.models.user import User
-from src.app.schemas.payment import PaymentCreateResponse, PaymentOut
+from src.app.schemas.payment import PaymentCreateResponse, PaymentDebugSetStatusRequest, PaymentOut
 from src.app.services.payment_service import PaymentService
 from src.app.services.yookassa_service import YooKassaService
 from src.app.utils.auth import get_current_active_user
@@ -164,6 +169,62 @@ async def debug_yookassa_create(
         user_id=current_user.id,
     )
     return result
+
+
+@router.post("/debug/set-status/", response_model=PaymentOut)
+async def debug_set_payment_status(
+    request_data: PaymentDebugSetStatusRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Debug endpoint: детерминированно перевести платёж в `succeeded` или `canceled`.
+
+    Доступен только при `YOOKASSA_TEST_MODE=true` и с заголовком `x-seed-secret`.
+    Используется в E2E-тестах для обхода нестабильного UI sandbox ЮKassa.
+    """
+    if not settings.yookassa_test_mode:
+        raise HTTPException(status_code=403, detail="Debug endpoint only available in test mode")
+
+    secret = request.headers.get("x-seed-secret")
+    if secret != SEED_SECRET:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    result = await db.execute(
+        select(Payment)
+        .where(Payment.order_id == request_data.order_id)
+        .options(
+            selectinload(Payment.order).selectinload(Order.items),
+            selectinload(Payment.order).selectinload(Order.recipient),
+            selectinload(Payment.order).selectinload(Order.cdek_order),
+        )
+    )
+    payment = result.scalars().first()
+    if not payment:
+        raise HTTPException(status_code=404, detail="Payment not found")
+
+    order = payment.order
+    if order is None:
+        raise HTTPException(status_code=500, detail="Order not loaded for payment")
+
+    if request_data.guest_email is not None:
+        if order.user_id is not None:
+            raise HTTPException(status_code=400, detail="Order is not a guest order")
+        if order.guest_email is None or order.guest_email.lower() != request_data.guest_email.lower():
+            raise HTTPException(status_code=404, detail="Order not found")
+
+    if request_data.status == "succeeded":
+        payment.yookassa_status = "succeeded"
+        await PaymentService._process_successful_payment(payment, db)
+    else:
+        payment.status = "cancelled"
+        payment.yookassa_status = "canceled"
+        PaymentService._store_cancellation_details(
+            payment, {"reason": request_data.cancellation_reason}
+        )
+        await db.commit()
+
+    await db.refresh(payment)
+    return payment
 
 
 @router.post("/yookassa/webhook/")
