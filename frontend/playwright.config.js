@@ -7,7 +7,7 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 4 : undefined,
+  workers: process.env.CI ? 2 : undefined,
   reporter: 'html',
   use: {
     baseURL: process.env.BASE_URL || 'http://localhost:5173',
@@ -15,6 +15,12 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     viewport: { width: 390, height: 844 },
     userAgent: 'Mozilla/5.0 (Linux; Android 10; SM-G960U) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36',
+    launchOptions: {
+      args: [
+        '--disable-features=NetworkService,NetworkServiceInProcess',
+        '--disable-dev-shm-usage',
+      ],
+    },
   },
   projects: [
     {
