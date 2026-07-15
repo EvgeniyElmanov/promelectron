@@ -4,7 +4,7 @@ import {
   SUCCESSFUL_CARDS,
 } from './yookassa-test-cards.js';
 
-const SEED_SECRET = 'promelectron-test-seed-2024';
+const SEED_SECRET = process.env.SEED_SECRET || 'promelectron-test-seed-2024';
 
 export async function goToCart(page) {
   const headerLink = page.locator('[data-testid="cart-link"]');
@@ -43,23 +43,25 @@ export async function expectYooKassaPageOrSkip(page) {
 }
 
 export async function setYooKassaPaymentStatus(
-  page,
   { orderId, status, cancellationReason, guestEmail },
 ) {
   const apiContext = await request.newContext({
     baseURL: process.env.API_URL,
   });
-  const body = { order_id: orderId, status };
-  if (status === 'canceled') body.cancellation_reason = cancellationReason;
-  if (guestEmail) body.guest_email = guestEmail;
-  const res = await apiContext.post('/api/v1/payments/debug/set-status/', {
-    data: body,
-    headers: { 'x-seed-secret': SEED_SECRET },
-  });
-  if (!res.ok()) {
-    throw new Error(`debug/set-status failed: ${res.status()} ${await res.text()}`);
+  try {
+    const body = { order_id: orderId, status };
+    if (status === 'canceled') body.cancellation_reason = cancellationReason;
+    if (guestEmail) body.guest_email = guestEmail;
+    const res = await apiContext.post('/api/v1/payments/debug/set-status/', {
+      data: body,
+      headers: { 'x-seed-secret': SEED_SECRET },
+    });
+    if (!res.ok()) {
+      throw new Error(`debug/set-status failed: ${res.status()} ${await res.text()}`);
+    }
+  } finally {
+    await apiContext.dispose();
   }
-  await apiContext.dispose();
 }
 
 const YOO_KASSA_SELECTORS = {

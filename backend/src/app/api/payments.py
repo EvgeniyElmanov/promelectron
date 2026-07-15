@@ -1,8 +1,9 @@
+import hmac
 from decimal import Decimal
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Body, Depends, Header, HTTPException, Query, Request
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -174,7 +175,7 @@ async def debug_yookassa_create(
 @router.post("/debug/set-status/", response_model=PaymentOut)
 async def debug_set_payment_status(
     request_data: PaymentDebugSetStatusRequest,
-    request: Request,
+    x_seed_secret: str | None = Header(None, alias="x-seed-secret"),
     db: AsyncSession = Depends(get_db),
 ):
     """Debug endpoint: детерминированно перевести платёж в `succeeded` или `canceled`.
@@ -185,11 +186,10 @@ async def debug_set_payment_status(
     if not settings.yookassa_test_mode:
         raise HTTPException(status_code=403, detail="Debug endpoint only available in test mode")
 
-    secret = request.headers.get("x-seed-secret")
-    if secret != SEED_SECRET:
+    if x_seed_secret is None or not hmac.compare_digest(x_seed_secret, SEED_SECRET):
         raise HTTPException(status_code=403, detail="Forbidden")
 
-    result = await db.execute(
+    query = (
         select(Payment)
         .where(Payment.order_id == request_data.order_id)
         .options(
@@ -198,6 +198,8 @@ async def debug_set_payment_status(
             selectinload(Payment.order).selectinload(Order.cdek_order),
         )
     )
+
+    result = await db.execute(query)
     payment = result.scalars().first()
     if not payment:
         raise HTTPException(status_code=404, detail="Payment not found")
@@ -209,8 +211,23 @@ async def debug_set_payment_status(
     if request_data.guest_email is not None:
         if order.user_id is not None:
             raise HTTPException(status_code=400, detail="Order is not a guest order")
-        if order.guest_email is None or order.guest_email.lower() != request_data.guest_email.lower():
+        email_match = await db.scalar(
+            select(func.count())
+            .select_from(Order)
+            .where(
+                Order.id == order.id,
+                Order.user_id.is_(None),
+                func.lower(Order.guest_email) == request_data.guest_email.lower(),
+            )
+        )
+        if not email_match:
             raise HTTPException(status_code=404, detail="Order not found")
+
+    if order.user_id is None and request_data.guest_email is None:
+        raise HTTPException(status_code=400, detail="guest_email is required for guest orders")
+
+    if payment.status == "paid":
+        raise HTTPException(status_code=400, detail="Payment already paid")
 
     if request_data.status == "succeeded":
         payment.yookassa_status = "succeeded"
@@ -219,7 +236,7 @@ async def debug_set_payment_status(
         payment.status = "cancelled"
         payment.yookassa_status = "canceled"
         PaymentService._store_cancellation_details(
-            payment, {"reason": request_data.cancellation_reason}
+            payment, {"reason": request_data.cancellation_reason, "party": "yoo_money"}
         )
         await db.commit()
 

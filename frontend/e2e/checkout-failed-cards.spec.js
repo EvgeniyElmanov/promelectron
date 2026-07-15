@@ -127,7 +127,7 @@ test.describe('Checkout failed card scenarios', () => {
       expect(payResponse.status()).toBe(200);
 
       // Set payment status via debug endpoint instead of YooKassa UI
-      await setYooKassaPaymentStatus(page, {
+      await setYooKassaPaymentStatus({
         orderId,
         status: 'canceled',
         cancellationReason: card.reason,

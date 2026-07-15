@@ -212,7 +212,7 @@ test.describe('Checkout Flow', () => {
     expect(payResponse.status()).toBe(200);
 
     // Set payment status via debug endpoint instead of YooKassa UI
-    await setYooKassaPaymentStatus(page, {
+    await setYooKassaPaymentStatus({
       orderId: order.id,
       status: 'succeeded',
       guestEmail: email,
@@ -294,13 +294,18 @@ test.describe('Checkout Flow', () => {
           test.skip();
           return;
         }
+        try {
+          await page.waitForURL(/\/payment\/success/, { timeout: 60000 });
+        } catch {
+          await page.goto(`/payment/success?order_id=${orderId}`);
+        }
       } else {
         // Mir 3DS: deterministic debug endpoint to avoid flaky sandbox
-        await setYooKassaPaymentStatus(page, { orderId, status: 'succeeded' });
+        await setYooKassaPaymentStatus({ orderId, status: 'succeeded' });
+        await page.goto(`/payment/success?order_id=${orderId}`);
       }
 
-      // 6. Navigate to success page and verify order is loaded
-      await page.goto(`/payment/success?order_id=${orderId}`);
+      // 6. Verify success page is loaded
       await verifyPaymentSuccessPage(page);
     });
   }
