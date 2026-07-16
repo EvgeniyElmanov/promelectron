@@ -74,8 +74,10 @@ disableModelInvocation: true
 ```markdown
 ### [S-001] 🔴 CRITICAL | <Category>
 - **File:** path/to/file.py:42
+- **Evidence:** <цитата/фрагмент из diff>
 - **Problem:** ...
-- **Fix:** ...
+- **Impact:** <security риск и blast radius>
+- **Action:** <конкретное исправление>
 - **Status:** OPEN
 ```
 

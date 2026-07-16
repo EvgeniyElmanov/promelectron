@@ -68,6 +68,11 @@
 
 # Поддержка планов
 /skill:plan-maintainer analyze
+
+# Визуальный статус пайплайна задачи (Mermaid, read-only)
+/skill:flow-implement add-promo-codes-to-cart-0624
+/skill:flow-fix fix-yookassa-cancel-reason-84
+/skill:flow-review add-promo-codes-to-cart-0624
 ```
 
 ---
@@ -82,6 +87,7 @@
 | `.kimi-code/mcp.json` | Конфигурация MCP-серверов |
 | `.kimi-code/config.example.toml` | Пример пользовательской конфигурации |
 | `scripts/implement-pipeline.py` | Хелпер для task ID, git worktrees, review loops |
+| `scripts/agent_state.py` | Typed state + детекция фазы пайплайна + trace.jsonl с correlation ID (observability) |
 | `.agent/runs/<task-id>/` | Gitignored coordination plane для задачи (`task.md`, `spec.md`, `review/findings.md`, `review/test-findings.md`) |
 | `.worktrees/<task-id>/` | Изолированный git worktree для feature-ветки |
 
