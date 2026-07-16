@@ -170,6 +170,7 @@ Product.price → Numeric      →  Product variants / Seller payouts
 | GET | `/api/v1/admin/products/` | ✅ | Список товаров (admin) |
 | POST | `/api/v1/admin/products/` | ✅ | Создать товар |
 | GET | `/api/v1/admin/orders/` | ✅ | Список заказов (admin) |
+| POST | `/api/v1/admin/orders/{order_id}/cancel/` | ✅ | Отмена заказа админом (refund для paid, возврат stock, best-effort CDEK cancel) |
 | GET | `/api/v1/admin/users/` | ✅ | Список пользователей (admin) |
 | GET | `/api/v1/admin/users/{user_id}/` | ✅ | Детали пользователя + его заказы (admin only) |
 | GET | `/api/v1/admin/feature-flags` | ✅ | Список feature flags (admin) |

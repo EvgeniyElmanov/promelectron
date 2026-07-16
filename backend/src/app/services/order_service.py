@@ -16,6 +16,7 @@ from src.app.models.recipient import Recipient
 from src.app.models.user import User
 from src.app.schemas.order import AdminOrderUpdate, GuestOrderCreate, OrderCreate, OrderUpdateStatus
 from src.app.services.cart_service import CartService
+from src.app.services.cdek_service import CdekService
 from src.app.services.email_service import EmailService
 from src.app.services.notification_service import NotificationService
 from src.app.services.recipient_service import RecipientService
@@ -549,12 +550,57 @@ class OrderService:
         if not order:
             raise HTTPException(status_code=404, detail="Order not found")
 
+        return await OrderService._cancel_order_common(
+            order, db, reason="user_cancelled", notify_user_id=current_user.id, notify_email=None
+        )
+
+    @staticmethod
+    async def cancel_order_by_admin(order_id: int, db: AsyncSession) -> Order:
+        result = await db.execute(
+            select(Order)
+            .where(Order.id == order_id)
+            .options(selectinload(Order.items), selectinload(Order.payment), selectinload(Order.recipient), selectinload(Order.cdek_order).selectinload(CdekOrder.status_history))
+            .with_for_update()
+        )
+        order = result.scalars().first()
+
+        if not order:
+            raise HTTPException(status_code=404, detail="Order not found")
+
+        notify_email = None
+        if order.user_id:
+            user_result = await db.execute(select(User).where(User.id == order.user_id))
+            user = user_result.scalars().first()
+            notify_email = user.email if user else None
+        elif order.guest_email:
+            notify_email = order.guest_email
+
+        return await OrderService._cancel_order_common(
+            order, db, reason="admin_cancelled", notify_user_id=order.user_id, notify_email=notify_email
+        )
+
+    @staticmethod
+    async def _cancel_order_common(
+        order: Order,
+        db: AsyncSession,
+        *,
+        reason: str,
+        notify_user_id: int | None,
+        notify_email: str | None,
+    ) -> Order:
+        """Общее ядро отмены заказа (user-cancel и admin-cancel).
+
+        Проверка статуса → строгий refund для paid → возврат stock →
+        best-effort отмена в CDEK → статус/поля → commit → уведомления.
+        Заказ должен быть загружен с selectinload(items/payment/recipient/
+        cdek_order.status_history) и заблокирован через SELECT FOR UPDATE.
+        """
         if order.status not in ("pending", "paid"):
             raise HTTPException(status_code=400, detail="Order cannot be cancelled")
 
         if order.status == "paid":
             payment_result = await db.execute(
-                select(Payment).where(Payment.order_id == order_id).with_for_update()
+                select(Payment).where(Payment.order_id == order.id).with_for_update()
             )
             payment = payment_result.scalars().first()
 
@@ -602,37 +648,51 @@ class OrderService:
 
         order.status = "cancelled"
         order.cancelled_at = datetime.now(timezone.utc)
-        order.cancellation_reason = "user_cancelled"
+        order.cancellation_reason = reason
 
+        # Cancel in CDEK (best-effort: CDEK allows deleting only CREATED orders,
+        # so a refusal must not block the local cancellation)
         if order.cdek_order and order.cdek_order.cdek_uuid:
-            logger.warning(
-                "Order %s has CDEK order %s, cancellation in CDEK is not implemented",
-                order.id,
-                order.cdek_order.cdek_uuid,
-            )
+            try:
+                await CdekService.cancel_cdek_order(order.cdek_order.cdek_uuid)
+            except Exception as exc:
+                logger.warning(
+                    "Failed to cancel CDEK order %s for order %s: %s",
+                    order.cdek_order.cdek_uuid,
+                    order.id,
+                    exc,
+                )
 
         await db.commit()
 
         # Reload order with items for response
         order_result = await db.execute(
             select(Order)
-            .where(Order.id == order_id)
+            .where(Order.id == order.id)
             .options(selectinload(Order.items), selectinload(Order.payment), selectinload(Order.recipient), selectinload(Order.cdek_order).selectinload(CdekOrder.status_history))
         )
         order = order_result.scalars().first()
 
-        # Send notification (best-effort)
+        # Send notifications (best-effort)
         try:
-            await NotificationService.create_notification(
-                db=db,
-                user_id=current_user.id,
-                type="order_cancelled",
-                title="Заказ отменён",
-                message=f"Заказ №{order.id} отменён.",
-                order_id=order.id,
-            )
+            if notify_user_id:
+                await NotificationService.create_notification(
+                    db=db,
+                    user_id=notify_user_id,
+                    type="order_cancelled",
+                    title="Заказ отменён",
+                    message=f"Заказ №{order.id} отменён.",
+                    order_id=order.id,
+                )
+            if notify_email:
+                await EmailService.send_order_status_update(
+                    to=notify_email,
+                    order_id=order.id,
+                    status="cancelled",
+                    db=db,
+                )
         except Exception:
-            logger.exception("Failed to send order cancellation notification")
+            logger.exception("Failed to send order cancellation side-effects for order %s", order.id)
 
         await OrderService._ensure_payment_loaded(order, db)
         return order

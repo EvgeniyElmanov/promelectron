@@ -120,6 +120,21 @@ async def ship_admin_order(
     return await OrderService.ship_order_by_admin(order_id=order_id, db=db)
 
 
+@router.post("/admin/orders/{order_id}/cancel/", response_model=OrderOut)
+async def cancel_admin_order(
+    order_id: int,
+    current_user: User = Depends(get_current_active_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Отменить заказ (только для статусов pending и paid).
+
+    Для оплаченного заказа выполняется строгий refund через ЮKassa
+    (при сбое — 502, заказ не отменяется), stock возвращается,
+    отмена в CDEK — best-effort.
+    """
+    return await OrderService.cancel_order_by_admin(order_id=order_id, db=db)
+
+
 @router.get("/admin/feature-flags", response_model=list[FeatureFlagOut])
 async def get_feature_flags(
     current_user: User = Depends(get_current_active_admin),
