@@ -37,6 +37,24 @@
       "env": {
         "KUBECONFIG": "/home/evgeniy/.kube/config"
       }
+    },
+    "figma": {
+      "type": "stdio",
+      "command": "python3",
+      "args": ["/home/evgeniy/project/my_shop_backend/scripts/mcp_figma.py"],
+      "env": {
+        "FIGMA_ACCESS_TOKEN": "${FIGMA_ACCESS_TOKEN}"
+      }
+    },
+    "atlassian": {
+      "type": "stdio",
+      "command": "python3",
+      "args": ["/home/evgeniy/project/my_shop_backend/scripts/mcp_atlassian.py"],
+      "env": {
+        "ATLASSIAN_URL": "${ATLASSIAN_URL}",
+        "ATLASSIAN_USERNAME": "${ATLASSIAN_USERNAME}",
+        "ATLASSIAN_API_TOKEN": "${ATLASSIAN_API_TOKEN}"
+      }
     }
   }
 }

@@ -67,6 +67,7 @@ disableModelInvocation: true
 - [ ] **Image scanning**: Образы сканируются на CVE
 - [ ] **Non-root containers**: `securityContext.runAsNonRoot: true`, `readOnlyRootFilesystem`
 - [ ] **HTTPS**: Production endpoint'ы только `https://`, HSTS
+- [ ] **MCP tokens**: Figma / Atlassian API tokens только в env vars / CI secrets, не в `.kimi-code/mcp.json` и не в логах; см. `docs/MCP_INTEGRATION.md`
 
 ### Формат security findings
 

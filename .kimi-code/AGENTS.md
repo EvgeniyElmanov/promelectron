@@ -91,6 +91,9 @@
 | `.kimi-code/config.example.toml` | Пример пользовательской конфигурации |
 | `scripts/implement-pipeline.py` | Хелпер для task ID, git worktrees, review loops |
 | `scripts/agent_state.py` | Typed state + детекция фазы пайплайна + trace.jsonl с correlation ID (observability) |
+| `scripts/mcp_figma.py` | MCP-сервер: Figma design tokens / styles / components |
+| `scripts/mcp_atlassian.py` | MCP-сервер: Jira issues + Confluence pages |
+| `docs/MCP_INTEGRATION.md` | Настройка токенов и использование MCP-серверов figma/atlassian |
 | `.agent/runs/<task-id>/` | Gitignored coordination plane для задачи (`task.md`, `spec.md`, `review/findings.md`, `review/test-findings.md`) |
 | `.worktrees/<task-id>/` | Изолированный git worktree для feature-ветки |
 

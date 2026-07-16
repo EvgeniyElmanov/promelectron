@@ -14,6 +14,9 @@ disableModelInvocation: true
 ---
 task-id: <kebab-case-slug>
 github_issue: #N
+jira_issue: PROJ-123          # опционально — для MCP atlassian
+confluence_spec_url: https://...  # опционально — для MCP atlassian
+figma_file_key: AbC123dEfG    # опционально — для MCP figma
 status: todo | in_progress | in_review | done
 branch: feature/<task-id>
 worktree: /abs/path/to/.worktrees/<task-id>

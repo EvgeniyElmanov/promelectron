@@ -267,6 +267,23 @@ STATUS=in-progress
 
 ---
 
+## Step 4.6: Figma design tokens (опционально)
+
+Если в `spec.md` указан `figma_file_key` (например, `figma_file_key: AbC123dEfG`), используй MCP-сервер `figma`, чтобы подтянуть design tokens до старта разработки frontend:
+
+```text
+Инструменты MCP:
+- figma/get_design_tokens — агрегированный summary (colors, typography, spacing)
+- figma/get_file — дерево документа, если нужна структура экранов
+- figma/get_components — компоненты, которые можно переиспользовать
+```
+
+Извлечённые tokens сохрани как справочник для frontend-dev агента (можно кратко в `task.md` или в отдельный `$AGENT_DIR/design-tokens.md`).
+
+Если MCP-сервер недоступен (нет `FIGMA_ACCESS_TOKEN`) — продолжай без него; это не blocker. Просто frontend-dev должен следовать существующим UI-конвенциям проекта.
+
+---
+
 ## Step 5: Разработка — plan → approve → execute
 
 Прочитай `Components Affected` и `Parallelization Plan` из `$AGENT_DIR/spec.md`. Вся работа с кодом ведётся в `WORKTREE`.

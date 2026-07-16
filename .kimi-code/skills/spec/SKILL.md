@@ -66,6 +66,24 @@ mkdir -p "$PROJECT_ROOT/.agent/runs/<task-id>/research"
 
 ---
 
+## Step 1.5: MCP — подтягивание Jira / Confluence (опционально)
+
+Если в `task.md` указаны `jira_issue` или `confluence_spec_url`, используй MCP-сервер `atlassian` для получения дополнительного контекста и допиши его в `task.md` (раздел `External context`).
+
+```text
+Инструменты MCP:
+- atlassian/jira_get_issue — для jira_issue
+- atlassian/confluence_get_page / confluence_search_pages — для confluence_spec_url
+```
+
+Что извлечь:
+- Jira: `summary`, `description`, `labels`, `components`, acceptance criteria (если есть в description или custom fields).
+- Confluence: `title`, `body.storage` (plain text/html), связанные страницы.
+
+Не дублируй уже имеющееся описание — только дополнительные детали и AC. Если MCP-сервер недоступен (нет токенов), продолжай без него и отметь это в `task.md`.
+
+---
+
 ## Step 2: Проверка размера контекста (Kimi K2.7-Code)
 
 Следуй [Rule: Agent Commons](../../rules/agent-commons.md) > Context Size Check перед запуском субагентов.
