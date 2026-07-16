@@ -112,6 +112,30 @@ function uniqueEmail() {
 
 ---
 
+## 7. Fail-fast валидация секретов + placeholder в GitHub Secrets = падение деплоя
+
+**Ошибка:**
+```
+RuntimeError: ONEC_WEBHOOK_API_KEY must be set to a strong random value in production.
+```
+Backend-под уходил в CrashLoopBackOff при деплое в `promelectron-test` после merge PR #68 (run 29476928631, 2026-07-16), job `deploy-test` падал, E2E и prod-деплой пропускались.
+
+**Причина:**
+1. PR добавил fail-fast валидацию `ONEC_WEBHOOK_API_KEY` при `ENVIRONMENT=production` (`config.py::_load_onec_webhook_api_key`).
+2. В GitHub Secrets ключ был задан placeholder-значением `change-me` — по совету `stage/test/secrets.TODO.md`, который утверждал «Backend will not crash in dev/test».
+3. Утверждение было неверным: test environment работает с `ENVIRONMENT=production` (см. урок №5), поэтому fail-fast сработал и в test.
+
+**Решение:** Установить сильное значение (`openssl rand -hex 32`) в GitHub Secret `ONEC_WEBHOOK_API_KEY` и передеплоить. TODO-документ исправлен: placeholder для webhook-ключа запрещён в обоих окружениях.
+
+**Сопутствующий эффект:** после падения контейнера рестарты уходили в `ImagePullBackOff` — `registrycred` в кластере создаётся из ephemeral `GITHUB_TOKEN` workflow run'а и умирает вместе с ним. Долгий CrashLoopBackOff, переживший run, превращается в вечный ImagePullBackOff до следующего деплоя.
+
+**Профилактика:**
+- Любой новый обязательный секрет: сразу задавать валидное значение в GitHub Secrets **до** merge, в обоих окружениях (один репозиторный секрет используется и для test, и для prod в `deploy.yml`).
+- При добавлении fail-fast валидации помнить: test = `ENVIRONMENT=production`, «это проверяется только в prod» — ложное допущение.
+- Проверять деплой в test сразу после merge PR, добавляющего новые обязательные env-переменные.
+
+---
+
 ## Summary checklist для будущих E2E фич
 
 - [ ] Docker image для E2E — `mcr.microsoft.com/playwright`
