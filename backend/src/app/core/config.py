@@ -8,6 +8,9 @@ from urllib.parse import urlparse
 # (sops-encrypted in infra/helm/stage/*/secrets.yaml, or GitHub Secret OVR_SECRET_KEY).
 _DEV_SECRET_PLACEHOLDER = "dev-only-insecure-change-me"
 
+# Dev-only placeholder for the 1С webhook API key.
+_ONEC_WEBHOOK_API_KEY_PLACEHOLDER = "change-me"
+
 
 @dataclass(frozen=True)
 class Settings:
@@ -39,7 +42,12 @@ class Settings:
     minio_bucket: str
     minio_secure: bool
     onec_api_url: str | None
-    onec_api_key: str | None
+    onec_login: str | None
+    onec_password: str | None
+    onec_price_type_key: str | None
+    onec_warehouse_key: str | None
+    onec_webhook_api_key: str
+    onec_default_supplier_id: int | None
     yookassa_shop_id: str
     yookassa_secret_key: str
     yookassa_webhook_secret: str | None
@@ -63,6 +71,13 @@ def _parse_int_env(name: str, default: int) -> int:
     return int(os.getenv(name, str(default)))
 
 
+def _parse_optional_int_env(name: str) -> int | None:
+    value = os.getenv(name)
+    if value is None or value.strip() == "":
+        return None
+    return int(value)
+
+
 def _parse_csv_env(name: str, default: str) -> frozenset[str]:
     value = os.getenv(name, default)
     return frozenset(item.strip() for item in value.split(",") if item.strip())
@@ -76,6 +91,18 @@ def _load_secret_key() -> str:
             raise RuntimeError(
                 "SECRET_KEY must be set to a strong random value in production. "
                 "Set the SECRET_KEY environment variable (never use the dev placeholder)."
+            )
+    return key
+
+
+def _load_onec_webhook_api_key() -> str:
+    """Return ONEC_WEBHOOK_API_KEY from env. In production, fail fast if absent or placeholder."""
+    key = os.getenv("ONEC_WEBHOOK_API_KEY", _ONEC_WEBHOOK_API_KEY_PLACEHOLDER)
+    if os.getenv("ENVIRONMENT") == "production":
+        if not key or key == _ONEC_WEBHOOK_API_KEY_PLACEHOLDER:
+            raise RuntimeError(
+                "ONEC_WEBHOOK_API_KEY must be set to a strong random value in production. "
+                "Set the ONEC_WEBHOOK_API_KEY environment variable (never use the dev placeholder)."
             )
     return key
 
@@ -149,7 +176,12 @@ settings = Settings(
     minio_bucket=os.getenv("MINIO_BUCKET", "promelectron-uploads"),
     minio_secure=os.getenv("MINIO_SECURE", "true").lower() == "true",
     onec_api_url=os.getenv("ONEC_API_URL"),
-    onec_api_key=os.getenv("ONEC_API_KEY"),
+    onec_login=os.getenv("ONEC_LOGIN"),
+    onec_password=os.getenv("ONEC_PASSWORD"),
+    onec_price_type_key=os.getenv("ONEC_PRICE_TYPE_KEY"),
+    onec_warehouse_key=os.getenv("ONEC_WAREHOUSE_KEY"),
+    onec_webhook_api_key=_load_onec_webhook_api_key(),
+    onec_default_supplier_id=_parse_optional_int_env("ONEC_DEFAULT_SUPPLIER_ID"),
     yookassa_shop_id=os.getenv("YOOKASSA_SHOP_ID", ""),
     yookassa_secret_key=os.getenv("YOOKASSA_SECRET_KEY", ""),
     yookassa_webhook_secret=os.getenv("YOOKASSA_WEBHOOK_SECRET"),

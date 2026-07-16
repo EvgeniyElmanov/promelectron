@@ -17,6 +17,7 @@ def test_users_router_imports_in_production():
     env["ENVIRONMENT"] = "production"
     env.pop("CI", None)
     env["SECRET_KEY"] = "a" * 64  # достаточно длинный ключ для production-валидации
+    env["ONEC_WEBHOOK_API_KEY"] = "b" * 32  # production fail-fast требует не-placeholder
     env["FRONTEND_URL"] = "https://example.com"
 
     result = subprocess.run(

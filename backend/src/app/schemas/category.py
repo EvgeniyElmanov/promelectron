@@ -21,6 +21,7 @@ class CategoryUpdate(CategoryBase):
 
 class CategoryOut(CategoryBase):
     id: int
+    is_active: bool
     created_at: datetime
     product_count: int = 0
 
