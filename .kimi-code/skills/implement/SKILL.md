@@ -120,6 +120,30 @@ python scripts/implement-pipeline.py check-context <task-id>
 
 ---
 
+## Step 3.1: Observability — trace границ фаз
+
+На каждой границе фазы записывай событие в append-only trace задачи (единый correlation ID на задачу создаётся автоматически при первом событии):
+
+```bash
+python3 scripts/agent_state.py trace <task-id> <event> --actor <actor> --data '{"key": "value"}'
+```
+
+Обязательные события:
+
+| Момент | event | actor |
+|--------|-------|-------|
+| task.md создан | `task_created` | orchestrator |
+| spec одобрен пользователем | `spec_approved` | orchestrator |
+| developer(ы) отчитались о готовности | `dev_done` | backend-dev / frontend-dev |
+| вердикт ревью (каждая итерация) | `review_verdict` | code-reviewer (data: `{"iteration": N, "verdict": "..."}`) |
+| QA gate завершён | `qa_done` | qa (data: `{"status": "TESTS_PASSED|TESTS_FAILED"}`) |
+| PR открыт | `pr_opened` | orchestrator (data: `{"url": "..."}`) |
+| Knowledge capture | `knowledge_captured` | orchestrator (data: `{"rules": N, "skills": N, "docs": N}`) |
+
+Trace не должен блокировать пайплайн: если команда падает — продолжай и упомяни в итоговом отчёте.
+
+---
+
 ## Step 4: Фаза архитектора (пропустить при --quick)
 
 Спецификацию пишет **агент `architect`** — ты (оркестратор) только управляешь циклом и общаешься с пользователем. Не пиши spec сам.
@@ -546,6 +570,42 @@ E2E в CI уже запускается на test-окружении (`promelect
    python scripts/implement-pipeline.py set-status <task-id> in-review
    ```
 5. Захвати URL PR для отчёта.
+
+---
+
+## Step 8.5: Knowledge Capture — уроки из прогона
+
+Перед итоговым отчётом извлеки уроки из этого run. Это фаза самоулучшения пайплайна: то, что стоило нам итераций, не должно повториться.
+
+**Что анализировать:**
+
+1. `review/findings.md` — какие категории findings повторялись между итерациями (одна и та же ошибка дважды = системная проблема процесса, а не кода).
+2. `review/test-findings.md` — падения QA, которые не были пойманы на ревью.
+3. Ошибки субагентов и retry (см. trace.jsonl, если есть).
+4. Правки, которые вносил человек вручную (спроси пользователя, если заметил их в diff).
+
+**Классификация каждого урока:**
+
+| Класс | Критерий | Куда попадает |
+|-------|----------|---------------|
+| **rule-worthy** | Инвариант, который должны соблюдать все задачи | Предложение добавить в `.kimi-code/rules/` (pre-edit-checklist / known-pitfalls / business / security) |
+| **skill-worthy** | Улучшение процедуры конкретной роли | Предложение правки `.kimi-code/skills/<role>/SKILL.md` |
+| **doc-worthy** | Разовый технический урок (окружение, инструменты, flaky) | Сразу записать в `.kimi-code/LESSONS_LEARNED.md` |
+
+**Порог срабатывания** — пишем урок только если он:
+
+- **повторяемый** — встретился ≥2 раз в этом run или уже есть похожий в `known-pitfalls.md`; или
+- **дорогой** — стоил итерацию ревью, падение QA или вмешательство человека.
+
+Не плоди шум: «опечатка в одном файле» — не урок.
+
+**Действия:**
+
+- **doc-worthy** — допиши в `.kimi-code/LESSONS_LEARNED.md` по существующему формату: номер, заголовок, **Ошибка** / **Причина** / **Решение** / **Профилактика**.
+- **rule-worthy / skill-worthy** — НЕ правь правила и скиллы сам. Вынеси в итоговый отчёт отдельным списком «Предлагаемые улучшения пайплайна» с конкретным текстом правки; пользователь одобряет.
+- Запиши trace: `python3 scripts/agent_state.py trace <task-id> knowledge_captured --actor orchestrator --data '{"rules": N, "skills": N, "docs": N}'`.
+
+Если уроков нет — так и напиши в отчёте: «уроков не выявлено». Не выдумывай.
 
 ---
 
