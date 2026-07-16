@@ -17,7 +17,13 @@ flowchart TD
 
     Architect["Architect<br/><font color='#c62828'>⚠ plan mode required</font>"] <-.->|<i>прорабатывают архитектуру</i>| Human([Human])
 
-    Architect --> Dev["Developer"]
+    Architect --> Plan["PLAN.md"]
+    Plan --> Approve{"auto / human<br/><i>approve?</i>"}
+    Approve -.->|<font color='#c62828'>revise</font>| Plan
+    Approve -->|<font color='#2e7d32'>approved</font>| Dev
+
+    JiraCon["Jira / Confluence"] -.->|<i>spec context</i>| Architect
+    Figma["Figma"] -.->|<i>design tokens</i>| Dev
 
     Dev --> SelfRev["Self-review<br/><i>adversarial audit diff</i>"]
 
@@ -59,6 +65,8 @@ flowchart TD
     class Architect human
     class Human human
     class Dev dev
+    class Plan dev
+    class Approve review
     class SelfRev dev
     class Contract review
     class Reviewer review
@@ -68,5 +76,7 @@ flowchart TD
     class MR ship
     class KC ship
     class Done ship
+    class JiraCon research
+    class Figma research
     class noteBottom note
     class noteTrace note

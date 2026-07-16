@@ -137,7 +137,13 @@ flowchart TD
 
     Architect["Architect<br/><font color='#c62828'>⚠ plan mode required</font>"] <-.->|<i>прорабатывают архитектуру</i>| Human([Human])
 
-    Architect --> Dev["Developer"]
+    Architect --> Plan["PLAN.md"]
+    Plan --> Approve{"auto / human<br/><i>approve?</i>"}
+    Approve -.->|<font color='#c62828'>revise</font>| Plan
+    Approve -->|<font color='#2e7d32'>approved</font>| Dev
+
+    JiraCon["Jira / Confluence"] -.->|<i>spec context</i>| Architect
+    Figma["Figma"] -.->|<i>design tokens</i>| Dev
 
     Dev --> SelfRev["Self-review<br/><i>adversarial audit diff</i>"]
 
@@ -179,6 +185,8 @@ flowchart TD
     class Architect human
     class Human human
     class Dev dev
+    class Plan dev
+    class Approve review
     class SelfRev dev
     class Contract review
     class Reviewer review
@@ -188,6 +196,8 @@ flowchart TD
     class MR ship
     class KC ship
     class Done ship
+    class JiraCon research
+    class Figma research
     class noteBottom note
     class noteTrace note
 ```
@@ -209,6 +219,8 @@ Entry-скиллы:
 | Research | `explore` subagents | Параллельный research: libraries, best-practices, codebase |
 | Backend Dev | `backend-dev` | Модель → схема → сервис → эндпоинт → тесты |
 | Frontend Dev | `frontend-dev` | API client → composable → компонент → страница → тесты |
+| Plan | dev-роли | Пишет `$WORKTREE/PLAN.md` перед кодированием |
+| Approve | оркестратор | Auto-одобрение простых планов / human-одобрение сложных |
 | Self-review | dev-роли | Adversarial audit своего diff (3–5 проблем) до ревью |
 | API Contract | оркестратор | Сверка backend ↔ frontend контракта до ревью (Step 5.5) |
 | Code Reviewer | `code-reviewer` | Проверяет diff, пишет findings (Evidence / Impact / Action) |
@@ -218,6 +230,7 @@ Entry-скиллы:
 | Ship | `ship` | Открывает PR, публикует H-items |
 | Knowledge Capture | оркестратор | Уроки run → rules / skills / LESSONS_LEARNED (Step 8.5) |
 | Trace | `agent_state.py` | trace.jsonl на границах фаз, correlation ID, детекция фазы |
+| External sources | MCP | Jira/Confluence → spec context; Figma → design tokens |
 
 Подробнее — в [`.kimi-code/AGENTS.md`](.kimi-code/AGENTS.md) и [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
