@@ -263,6 +263,45 @@ class TestAdminOrders:
         assert response.status_code == 400
 
     @pytest.mark.asyncio
+    async def test_admin_update_order_to_cancelled_rejected(self, client, test_admin, admin_token, test_order):
+        """Прямой перевод в cancelled через PUT запрещён — 400 (S-002)."""
+        response = await client.put(
+            f"/api/v1/admin/orders/{test_order.id}",
+            json={"status": "cancelled"},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert response.status_code == 400
+        assert "to cancel orders" in response.json()["detail"]
+
+        # Статус заказа не изменился
+        list_response = await client.get(
+            "/api/v1/admin/orders",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        order_data = next(o for o in list_response.json() if o["id"] == test_order.id)
+        assert order_data["status"] == "pending"
+
+    @pytest.mark.asyncio
+    async def test_admin_update_cancelled_order_noop(self, client, test_admin, admin_token, test_order):
+        """No-op cancelled→cancelled разрешён: редактирование отменённого заказа работает (S-002)."""
+        cancel_response = await client.post(
+            f"/api/v1/admin/orders/{test_order.id}/cancel/",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert cancel_response.status_code == 200
+
+        # Frontend-форма шлёт текущий статус вместе с остальными полями
+        response = await client.put(
+            f"/api/v1/admin/orders/{test_order.id}",
+            json={"status": "cancelled", "tracking_number": "TRACK-NOOP"},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "cancelled"
+        assert data["tracking_number"] == "TRACK-NOOP"
+
+    @pytest.mark.asyncio
     async def test_admin_update_nonexistent_order(self, client, test_admin, admin_token):
         """Обновление несуществующего заказа — 404."""
         response = await client.put(
@@ -609,6 +648,31 @@ class TestAdminCancelOrder:
             f"Order {test_order.id} cancelled by admin user_id={test_admin.id}" in record.getMessage()
             for record in caplog.records
         )
+
+    @pytest.mark.asyncio
+    async def test_admin_cancel_order_email_failure_logs_no_pii(self, client, test_admin, admin_token, test_order, caplog):
+        """Сбой email-уведомления при отмене: в логе только тип исключения,
+        без traceback и email получателя (S-004)."""
+        mock_email = AsyncMock(side_effect=Exception("SMTP refused for victim@example.com"))
+        with (
+            patch("src.app.services.order_service.EmailService.send_order_status_update", mock_email),
+            caplog.at_level(logging.WARNING, logger="src.app.services.order_service"),
+        ):
+            response = await client.post(
+                f"/api/v1/admin/orders/{test_order.id}/cancel/",
+                headers={"Authorization": f"Bearer {admin_token}"},
+            )
+
+        assert response.status_code == 200
+        warning_records = [
+            record
+            for record in caplog.records
+            if "Failed to send order cancellation side-effects" in record.getMessage()
+        ]
+        assert len(warning_records) == 1
+        assert "Exception" in warning_records[0].getMessage()
+        assert warning_records[0].exc_info is None
+        assert "victim@example.com" not in caplog.text
 
 
 class TestAdminFeatureFlags:

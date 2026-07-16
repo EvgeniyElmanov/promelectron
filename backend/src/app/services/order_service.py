@@ -454,6 +454,14 @@ class OrderService:
         if data.status is not None:
             if data.status not in allowed_statuses:
                 raise HTTPException(status_code=400, detail="Invalid status")
+            # Прямой перевод в cancelled через PUT запрещён: отмена должна идти
+            # через POST /admin/orders/{id}/cancel/ (refund/stock/CDEK).
+            # No-op cancelled→cancelled разрешён: frontend-форма шлёт текущий статус.
+            if data.status == "cancelled" and order.status != "cancelled":
+                raise HTTPException(
+                    status_code=400,
+                    detail="Use POST /admin/orders/{id}/cancel/ to cancel orders",
+                )
             if order.status != data.status:
                 order.status = data.status
                 status_changed = True
@@ -505,8 +513,13 @@ class OrderService:
                         message=f"Заказ №{full_order.id}: {label}",
                         order_id=full_order.id,
                     )
-                except Exception:
-                    logger.exception("Failed to send status update side-effects for order %s", full_order.id)
+                except Exception as exc:
+                    # Без traceback: SMTP-traceback может содержать email получателя (PII)
+                    logger.warning(
+                        "Failed to send status update side-effects for order %s: %s",
+                        full_order.id,
+                        type(exc).__name__,
+                    )
 
         await OrderService._ensure_payment_loaded(full_order, db)
         return full_order
@@ -694,8 +707,13 @@ class OrderService:
                     status="cancelled",
                     db=db,
                 )
-        except Exception:
-            logger.exception("Failed to send order cancellation side-effects for order %s", order.id)
+        except Exception as exc:
+            # Без traceback: SMTP-traceback может содержать email получателя (PII)
+            logger.warning(
+                "Failed to send order cancellation side-effects for order %s: %s",
+                order.id,
+                type(exc).__name__,
+            )
 
         await OrderService._ensure_payment_loaded(order, db)
         return order
@@ -750,8 +768,9 @@ class OrderService:
                     message=f"Заказ №{order.id}: {label}",
                     order_id=order.id,
                 )
-        except Exception:
-            logger.exception("Failed to send order shipped notification")
+        except Exception as exc:
+            # Без traceback: SMTP-traceback может содержать email получателя (PII)
+            logger.warning("Failed to send order shipped notification: %s", type(exc).__name__)
 
         await OrderService._ensure_payment_loaded(order, db)
         return order

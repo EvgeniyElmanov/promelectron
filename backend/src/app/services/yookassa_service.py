@@ -260,7 +260,9 @@ class YooKassaService:
     ) -> dict[str, Any]:
         cls._ensure_configured()
         """Create a refund for a succeeded payment."""
-        idempotence_key = str(uuid.uuid4())
+        # Детерминированный ключ на платёж: ретрай после потери ответа вернёт
+        # исходный refund вместо создания второго.
+        idempotence_key = f"refund-{yookassa_payment_id}"
 
         params: dict[str, Any] = {
             "payment_id": yookassa_payment_id,
