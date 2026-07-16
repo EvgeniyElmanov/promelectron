@@ -37,6 +37,10 @@
         <span>Статус</span>
         <span class="payment-result__badge payment-result__badge--error">{{ displayStatus }}</span>
       </div>
+      <div v-if="cancellationReason" class="payment-result__row" data-testid="cancellation-reason">
+        <span>Причина</span>
+        <span class="payment-result__reason">{{ cancellationReason }}</span>
+      </div>
       <div v-if="order.items?.length" class="payment-result__items">
         <div
           v-for="item in order.items"
@@ -95,15 +99,30 @@ const subtitle = computed(() => {
   return `Что-то пошло не так при оплате заказа №${orderId.value}. Вы можете попробовать снова или выбрать другой способ оплаты.`;
 });
 
+const cancellationReasonMap = {
+  insufficient_funds: 'Недостаточно средств на карте',
+  invalid_csc: 'Неверный код безопасности карты',
+  card_expired: 'Истёк срок действия карты',
+  fraud_suspected: 'Платёж отклонён по соображениям безопасности',
+  general_decline: 'Платёж отклонён банком',
+};
+
 const displayStatus = computed(() => {
   if (!order.value) return '';
+  if (order.value.cancellation_reason || order.value.status === 'cancelled' || order.value.status === 'canceled') {
+    return 'Отменён';
+  }
   const map = {
     pending: 'Ожидает оплаты',
     awaiting_payment: 'Ожидает оплаты',
-    cancelled: 'Отменён',
-    canceled: 'Отменён',
   };
   return map[order.value.status] || order.value.status;
+});
+
+const cancellationReason = computed(() => {
+  const reason = order.value?.cancellation_reason;
+  if (!reason) return '';
+  return cancellationReasonMap[reason] || reason;
 });
 
 const fetchOrder = async () => {

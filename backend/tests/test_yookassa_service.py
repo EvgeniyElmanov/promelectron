@@ -51,6 +51,7 @@ class TestYooKassaService:
         mock_response.payment_method = mock_payment_method
         mock_response.created_at = "2026-06-02T12:00:00.000Z"
         mock_response.captured_at = "2026-06-02T12:05:00.000Z"
+        mock_response.cancellation_details = None
 
         with (
             patch("src.app.services.yookassa_service.YooKassaService._ensure_configured"),
@@ -63,6 +64,35 @@ class TestYooKassaService:
         assert result["paid"] is True
         assert result["amount"] == Decimal("200.00")
         assert result["payment_method_type"] == "bank_card"
+        assert result["cancellation_details"] is None
+
+    @pytest.mark.asyncio
+    async def test_get_payment_canceled_includes_cancellation_details(self):
+        mock_response = MagicMock()
+        mock_response.id = "test-payment-id"
+        mock_response.status = "canceled"
+        mock_response.amount.value = "200.00"
+        mock_response.paid = False
+        mock_response.refunded_amount = None
+        mock_response.payment_method = None
+        mock_response.created_at = "2026-06-02T12:00:00.000Z"
+        mock_response.captured_at = None
+        mock_cancellation_details = MagicMock()
+        mock_cancellation_details.party = "payment_network"
+        mock_cancellation_details.reason = "insufficient_funds"
+        mock_response.cancellation_details = mock_cancellation_details
+
+        with (
+            patch("src.app.services.yookassa_service.YooKassaService._ensure_configured"),
+            patch("src.app.services.yookassa_service.Payment.find_one", return_value=mock_response),
+        ):
+            result = await YooKassaService.get_payment("test-payment-id")
+
+        assert result["status"] == "canceled"
+        assert result["cancellation_details"] == {
+            "party": "payment_network",
+            "reason": "insufficient_funds",
+        }
 
     @pytest.mark.asyncio
     async def test_cancel_payment_success(self):

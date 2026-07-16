@@ -7,7 +7,13 @@ const GUEST_CART_KEY = 'guest_cart';
 const loadGuestCart = () => {
   try {
     const raw = localStorage.getItem(GUEST_CART_KEY);
-    return raw ? JSON.parse(raw) : [];
+    if (!raw) return [];
+    const items = JSON.parse(raw);
+    // Миграция старых записей без флага selected: считаем выбранными.
+    return items.map((item) => ({
+      ...item,
+      selected: item.selected !== undefined ? item.selected : true,
+    }));
   } catch {
     return [];
   }
@@ -55,6 +61,7 @@ export const useCart = () => {
           stock: product?.stock || 0,
           images: product?.images || [],
           supplier_id: product?.supplier_id ?? null,
+          selected: true,
         });
       }
       saveGuestCart(items);
@@ -83,6 +90,27 @@ export const useCart = () => {
   };
 
   const getGuestCartItems = () => loadGuestCart();
+
+  const getSelectedGuestCartItems = () => loadGuestCart().filter((i) => i.selected);
+
+  const selectItem = async (productId, selected) => {
+    const items = loadGuestCart();
+    const item = items.find((i) => i.product_id === productId);
+    if (item) {
+      item.selected = selected;
+      saveGuestCart(items);
+    }
+  };
+
+  const selectAll = async () => {
+    const items = loadGuestCart().map((i) => ({ ...i, selected: true }));
+    saveGuestCart(items);
+  };
+
+  const deselectAll = async () => {
+    const items = loadGuestCart().map((i) => ({ ...i, selected: false }));
+    saveGuestCart(items);
+  };
 
   const clearGuestCart = () => {
     localStorage.removeItem(GUEST_CART_KEY);
@@ -126,6 +154,10 @@ export const useCart = () => {
     removeFromCart,
     updateQuantity,
     getGuestCartItems,
+    getSelectedGuestCartItems,
+    selectItem,
+    selectAll,
+    deselectAll,
     clearGuestCart,
     mergeCartOnLogin,
     syncCartCount,

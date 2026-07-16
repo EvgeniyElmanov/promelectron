@@ -31,6 +31,7 @@ def _make_settings(**overrides) -> Settings:
         "verify_base_url": original_settings.verify_base_url,
         "redis_url": original_settings.redis_url,
         "api_base_url": original_settings.api_base_url,
+        "storage_backend": original_settings.storage_backend,
         "minio_endpoint": original_settings.minio_endpoint,
         "minio_access_key": original_settings.minio_access_key,
         "minio_secret_key": original_settings.minio_secret_key,

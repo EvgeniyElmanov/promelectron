@@ -1,7 +1,8 @@
+import logging
 import os
 import uuid
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, Request
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from src.app.utils.rate_limiter import conditional_limit
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,6 +12,7 @@ from src.app.models.supplier import Supplier
 from src.app.models.user import User
 from src.app.schemas.supplier import SupplierOut, SupplierUpdate
 from src.app.schemas.user import (
+    AvatarUploadOut,
     PasswordChange,
     UserAddressCreate,
     UserAddressOut,
@@ -27,19 +29,30 @@ from src.app.utils.auth import (
 )
 
 AVATAR_ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
+AVATAR_MAX_SIZE = 5 * 1024 * 1024
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 
 @router.post("/register/")
 @conditional_limit("50/minute")
-async def register_user(request: Request, user_data: UserCreate, db: AsyncSession = Depends(get_db)):
+async def register_user(
+    request: Request,
+    user_data: UserCreate,
+    db: AsyncSession = Depends(get_db),
+):
     return await UserService.register_user(user_data=user_data, db=db)
 
 
 @router.post("/login/")
 @conditional_limit("50/minute")
-async def login_user(request: Request, user_data: UserCreate, db: AsyncSession = Depends(get_db)):
+async def login_user(
+    request: Request,
+    user_data: UserCreate,
+    db: AsyncSession = Depends(get_db),
+):
     return await UserService.login_user(user_data=user_data, db=db)
 
 
@@ -116,9 +129,8 @@ async def update_supplier_profile(
     return supplier
 
 
-@router.post("/me/avatar")
+@router.post("/me/avatar/", response_model=AvatarUploadOut)
 async def upload_avatar(
-    request: Request,
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -130,18 +142,60 @@ async def upload_avatar(
             detail=f"Invalid file type. Allowed: {', '.join(AVATAR_ALLOWED_EXTENSIONS)}",
         )
 
-    # Remove old avatar file if exists (including variants)
+    if not (file.content_type and file.content_type.startswith("image/")):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid file type. Only image files are allowed.",
+        )
+
+    content = await file.read()
+    # The whole file is loaded into memory; the endpoint is capped at 5 MB,
+    # which is acceptable for avatar uploads. Additional server-level limits
+    # (e.g., nginx client_max_body_size) should also be configured.
+    if len(content) > AVATAR_MAX_SIZE:
+        raise HTTPException(
+            status_code=413,
+            detail="File too large. Max 5 MB",
+        )
+
+    # Remove old avatar file if exists (including variants). Failures are
+    # logged but must not block the new upload.
     if current_user.avatar_url:
-        await storage.delete_image(current_user.avatar_url)
+        try:
+            await storage.delete_image(current_user.avatar_url)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "Failed to delete old avatar for user %s: %s",
+                current_user.id,
+                exc,
+            )
 
     key = f"avatars/{current_user.id}/{uuid.uuid4().hex}{ext}"
-    result = await storage.upload_image(key, file)
+    try:
+        result = await storage.upload_image(key, file, content=content)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("Avatar upload failed for user %s", current_user.id)
+        raise HTTPException(
+            status_code=500,
+            detail="Avatar upload failed. Please try again later.",
+        ) from exc
 
-    user = await UserService.update_profile(
-        user_id=current_user.id,
-        user_data=UserUpdate(avatar_url=result["original"]),
-        db=db,
-    )
+    try:
+        user = await UserService.update_profile(
+            user_id=current_user.id,
+            user_data=UserUpdate(avatar_url=result["original"]),
+            db=db,
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("Failed to update profile avatar_url for user %s", current_user.id)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to save avatar. Please try again later.",
+        ) from exc
 
     response_data = UserOut.model_validate(user).model_dump()
     response_data.update({

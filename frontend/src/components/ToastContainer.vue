@@ -1,13 +1,14 @@
 <template>
-  <div class="toast-container">
+  <div class="toast-container" data-testid="toast-container">
     <TransitionGroup name="toast">
       <div
         v-for="toast in toasts"
         :key="toast.id"
         class="toast"
         :class="`toast--${toast.type}`"
+        data-testid="toast-item"
       >
-        <span class="toast__message">{{ toast.message }}</span>
+        <span class="toast__message" data-testid="toast-message">{{ toast.message }}</span>
         <button class="toast__close" @click="remove(toast.id)">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="18" y1="6" x2="6" y2="18"/>

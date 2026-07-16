@@ -189,6 +189,24 @@ class PaymentService:
         )
 
     @staticmethod
+    def _store_cancellation_details(payment: Payment, details: dict | None) -> None:
+        """Persist YooKassa cancellation details inside payment metadata and order.
+
+        We also write the reason directly to ``payment.order.cancellation_reason``
+        so ``OrderOut`` exposes it without relying solely on the metadata dict.
+        This makes the frontend redirect to ``/payment/failed`` immediately after
+        a manual sync, even if the order status is kept ``pending`` for retry.
+        """
+        if details:
+            payment.yookassa_metadata = {
+                **(payment.yookassa_metadata or {}),
+                "cancellation_details": details,
+            }
+        reason = (details or {}).get("reason")
+        if reason and payment.order is not None:
+            payment.order.cancellation_reason = reason
+
+    @staticmethod
     async def _process_successful_payment(payment: Payment, db: AsyncSession) -> None:
         """Обработка успешной оплаты: обновление статусов, очистка корзины, уведомления."""
         if payment.status == "paid":
@@ -437,6 +455,10 @@ class PaymentService:
             await PaymentService._process_successful_payment(payment, db)
         elif event in ("payment.canceled", "payment.cancelled") or yookassa_status == "canceled":
             payment.status = "cancelled"
+            cancellation_details = obj.get("cancellation_details")
+            PaymentService._store_cancellation_details(payment, cancellation_details)
+            # Order intentionally remains in "pending" so the user can retry payment
+            # from the PaymentFailed page; the UI shows the YooKassa cancellation reason.
             await db.commit()
         else:
             await db.commit()
@@ -486,6 +508,9 @@ class PaymentService:
             await PaymentService._process_successful_payment(payment, db)
         elif yookassa_data["status"] == "canceled":
             payment.status = "cancelled"
+            PaymentService._store_cancellation_details(
+                payment, yookassa_data.get("cancellation_details")
+            )
             await db.commit()
         else:
             await db.commit()
@@ -535,6 +560,9 @@ class PaymentService:
                 await PaymentService._process_successful_payment(payment, db)
             elif yookassa_data["status"] == "canceled":
                 payment.status = "cancelled"
+                PaymentService._store_cancellation_details(
+                    payment, yookassa_data.get("cancellation_details")
+                )
                 await db.commit()
             else:
                 await db.commit()

@@ -7,6 +7,8 @@ on:
       - 'backend/**'
       - 'frontend/**'
       - 'infra/helm/**'
+      - '.github/workflows/deploy.yml'
+      - '.github/workflows/e2e.yml'
   workflow_dispatch:
     inputs:
       environment:
@@ -20,31 +22,26 @@ on:
         default: test
 
 env:
-  REGISTRY: harbor.kubeadm.ru
-  API_IMAGE: harbor.kubeadm.ru/promelectron/promelectron-api
-  FRONTEND_IMAGE: harbor.kubeadm.ru/promelectron/promelectron-frontend
+  REGISTRY: ghcr.io
+  API_IMAGE: ghcr.io/autonomaco/promelectron-api
+  FRONTEND_IMAGE: ghcr.io/autonomaco/promelectron-frontend
   KUBECONFIG_PATH: ${{ vars.KUBECONFIG_PATH }}
   SOPS_VERSION: "3.9.4"
 
 jobs:
   build:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Log in to Harbor
+      - name: Log in to GitHub Container Registry
         run: |
-          echo "${{ secrets.HARBOR_PASSWORD }}" | docker login ${{ env.REGISTRY }} \
-            -u "${{ secrets.HARBOR_USERNAME }}" --password-stdin
-
-      - name: Ensure Harbor project exists
-        run: |
-          curl -sf -o /dev/null \
-            -u "${{ secrets.HARBOR_USERNAME }}:${{ secrets.HARBOR_PASSWORD }}" \
-            -X POST "https://${{ env.REGISTRY }}/api/v2.0/projects" \
-            -H "Content-Type: application/json" \
-            -d '{"project_name":"promelectron","public":false}' || true
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ${{ env.REGISTRY }} \
+            -u "${{ github.actor }}" --password-stdin
 
       - name: Build and push API image
         run: |
@@ -111,15 +108,15 @@ jobs:
               done
           echo "GNUPGHOME=$GNUPGHOME" >> "$GITHUB_ENV"
 
-      - name: Create Harbor imagePullSecret (test)
+      - name: Create imagePullSecret (test)
         env:
           KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
         run: |
           kubectl create namespace promelectron-test --dry-run=client -o yaml | kubectl apply -f -
-          kubectl create secret docker-registry harborcred \
+          kubectl create secret docker-registry registrycred \
             --docker-server=${{ env.REGISTRY }} \
-            --docker-username=${{ secrets.HARBOR_USERNAME }} \
-            --docker-password=${{ secrets.HARBOR_PASSWORD }} \
+            --docker-username=${{ github.actor }} \
+            --docker-password=${{ secrets.GITHUB_TOKEN }} \
             --namespace promelectron-test \
             --dry-run=client -o yaml | kubectl apply -f -
 
@@ -179,13 +176,37 @@ jobs:
             --namespace promelectron-test \
             --create-namespace \
             --wait \
-            --wait-for-jobs
+            --wait-for-jobs \
+            --timeout 10m
           kubectl rollout status deployment/promelectron-api -n promelectron-test --timeout=120s
           kubectl rollout status deployment/promelectron-frontend -n promelectron-test --timeout=120s
+
+      - name: Debug deploy failure
+        if: failure()
+        env:
+          KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
+        run: |
+          echo "=== Pods ==="
+          kubectl get pods -n promelectron-test -o wide || true
+          echo "=== Pod descriptions ==="
+          kubectl describe pods -n promelectron-test || true
+          echo "=== Events ==="
+          kubectl get events -n promelectron-test --sort-by='.lastTimestamp' || true
+          echo "=== API logs ==="
+          kubectl logs -n promelectron-test -l app=promelectron-api --tail=200 || true
+          echo "=== Frontend logs ==="
+          kubectl logs -n promelectron-test -l app=promelectron-frontend --tail=200 || true
+          echo "=== MinIO logs ==="
+          kubectl logs -n promelectron-test -l app=promelectron-minio --tail=200 || true
+          echo "=== PostgreSQL logs ==="
+          kubectl logs -n promelectron-test -l app=promelectron-postgres --tail=200 || true
+          echo "=== Redis logs ==="
+          kubectl logs -n promelectron-test -l app=promelectron-redis --tail=200 || true
 
   test-e2e:
     needs: deploy-test
     uses: ./.github/workflows/e2e.yml
+    secrets: inherit
     with:
       environment: test
 
@@ -232,15 +253,15 @@ jobs:
               done
           echo "GNUPGHOME=$GNUPGHOME" >> "$GITHUB_ENV"
 
-      - name: Create Harbor imagePullSecret (prod)
+      - name: Create imagePullSecret (prod)
         env:
           KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
         run: |
           kubectl create namespace promelectron --dry-run=client -o yaml | kubectl apply -f -
-          kubectl create secret docker-registry harborcred \
+          kubectl create secret docker-registry registrycred \
             --docker-server=${{ env.REGISTRY }} \
-            --docker-username=${{ secrets.HARBOR_USERNAME }} \
-            --docker-password=${{ secrets.HARBOR_PASSWORD }} \
+            --docker-username=${{ github.actor }} \
+            --docker-password=${{ secrets.GITHUB_TOKEN }} \
             --namespace promelectron \
             --dry-run=client -o yaml | kubectl apply -f -
 

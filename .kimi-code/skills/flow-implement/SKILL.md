@@ -1,0 +1,118 @@
+---
+name: flow-implement
+description: >
+  Pipeline visualizer for /skill:implement in Promelectron.
+  Detects the current phase of a task (Tracker → Architect → Dev → Reviewer → QA Gate → PR → Done)
+  from the coordination plane (.agent/runs/<task-id>/) and git state, then renders the
+  Mermaid pipeline diagram (docs/ai-agent-pipeline.mmd) with completed/current phases highlighted.
+  Read-only: never edits code, never moves the project board.
+type: prompt
+whenToUse: When the user asks where a task is in the pipeline, what phase an implement task is at, what the next step is, or wants a visual pipeline status.
+arguments: "[task-id] (optional — defaults to the current feature/bugfix branch)"
+disableModelInvocation: false
+---
+
+# /skill:flow-implement — Визуализатор пайплайна implement
+
+> **ЯЗЫК / LANGUAGE:** Пользователь общается на русском. Все ответы пользователю и артефакты пиши на русском. Стремись рассуждать на русском, но если reasoning уходит на английский — это не ошибка. Код, команды, идентификаторы, пути и технические термины оставляй в оригинале.
+
+Покажи пользователю, **на какой фазе пайплайна `/skill:implement` находится задача**, в виде Mermaid-диаграммы с подсветкой (Mermaid рендерится в web chat Kimi Code) плюс краткий статус и следующее действие.
+
+Это **read-only** скилл: ничего не редактируй, не запускай тесты, не двигай GitHub Project board.
+
+---
+
+## Step 0: Определение task-id
+
+Если `task-id` передан аргументом — используй его. Иначе выведи из текущей ветки:
+
+```bash
+git branch --show-current   # feature/<task-id> или bugfix/<task-id>
+```
+
+Если ветка `main` и аргумент не передан — перечисли доступные задачи и спроси, какую показать:
+
+```bash
+ls .agent/runs/
+```
+
+`task-id` должен соответствовать `^[a-z0-9-]+$`. Иначе — остановись и попроси корректный id.
+
+---
+
+## Step 1: Сбор состояния
+
+Используй единый источник истины — `scripts/agent_state.py`:
+
+```bash
+python3 scripts/agent_state.py state <task-id>
+```
+
+Он вернёт JSON: `phase`, `artifacts`, `branch`, `worktree_exists`, `findings` (total/open/fixed/verified/approved), `tests_status`, `pr_state`, `pr_url`. Флаг `--no-pr` — если gh недоступен/офлайн.
+
+Не падай, если артефактов нет — отсутствие артефакта это тоже сигнал фазы.
+
+---
+
+## Step 2: Определение текущей фазы
+
+Фазу возвращает `agent_state.py` (поле `phase`). Логика детекции (справочно, не дублируй её парсингом):
+
+| Фаза | Признак |
+|------|---------|
+| `done` | PR существует и `state == MERGED` |
+| `mr` | PR открыт (`OPEN`), либо `test-findings.md` содержит `TESTS_PASSED` |
+| `qa_gate` | `findings.md` содержит верхнеуровневый `APPROVED`, но `test-findings.md` нет или `TESTS_FAILED` |
+| `reviewer` | `review/findings.md` существует, нет `APPROVED` |
+| `dev` | `spec.md` существует, `review/findings.md` нет |
+| `architect` | `task.md` существует, `spec.md` нет |
+| `tracker` | `.agent/runs/<task-id>/` не существует (только ветка или вообще ничего) |
+
+Пройденные фазы — все фазы левее текущей в цепочке `tracker → architect → dev → reviewer → qa_gate → mr → done`.
+
+---
+
+## Step 3: Рендер диаграммы
+
+Прочитай `docs/ai-agent-pipeline.mmd` и выведи её пользователю в блоке ```` ```mermaid ````, добавив в конец (после строк `class ...`) подсветку:
+
+- Текущая фаза:
+  ```text
+  style <Node> fill:#ffe082,stroke:#f57f17,stroke-width:4px
+  ```
+- Каждая пройденная фаза:
+  ```text
+  style <Node> fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px
+  ```
+
+Имена узлов в `ai-agent-pipeline.mmd`: `Tracker`, `Worktree`, `Architect`, `Dev`, `Reviewer`, `Approved`, `QA_Gate`, `MR`, `Done`. Маппинг фазы на узел: `tracker` → `Tracker`, `architect` → `Architect`, `dev` → `Dev`, `reviewer` → `Reviewer`, `qa_gate` → `QA_Gate`, `mr` → `MR`, `done` → `Done`. Узел `Worktree` подсвечивай как пройденный, если существует `.worktrees/<task-id>/` или ветка `feature|bugfix/<task-id>`.
+
+Не перерисовывай диаграмму от себя — используй файл как источник истины, только добавляй `style`-строки.
+
+---
+
+## Step 4: Отчёт и следующее действие
+
+Кратко, на русском:
+
+- **Задача:** `<task-id>` · ветка `feature/<task-id>` (если есть)
+- **Текущая фаза:** `<phase>` — одно предложение, что там происходит
+- **Артефакты:** список из поля `artifacts`
+- **Открытые замечания:** `findings.open` из state JSON и `[H-xxx]` из findings.md (если есть)
+- **Следующий шаг:** одна конкретная команда, например:
+  - `tracker` → `/skill:implement "<описание>"` или завести GitHub Issue
+  - `architect` → ждать одобрения spec, затем продолжить `/skill:implement <task-id>`
+  - `dev` → дождаться developer'ов или `/skill:implement <task-id>` продолжить
+  - `reviewer` → developer правит findings, затем `/skill:review`
+  - `qa_gate` → `/skill:qa-gate <task-id>`
+  - `mr` → `/skill:ship` или review PR на GitHub
+  - `done` → задача закрыта; `/skill:context-sync`
+
+---
+
+## Правила
+
+- **Read-only:** не редактируй файлы, не запускай субагентов, тесты и `make`.
+- Не двигай GitHub Project board и не комментируй PR.
+- Диаграмма всегда строится из `docs/ai-agent-pipeline.mmd`; если файл изменился — отрази это как есть.
+- Если `.agent/runs/<task-id>/` нет и ветки нет — скажи прямо, что задача не заведена, и предложи `/skill:implement`.

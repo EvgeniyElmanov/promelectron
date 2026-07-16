@@ -56,22 +56,11 @@ test-backend: ## Запустить pytest (поднимает postgres/redis ч
 test-frontend: ## Запустить vitest
 	$(COMPOSE_FRONTEND) run --rm $(DOCKER_USER) frontend sh -c "npm install --silent && npm test"
 
-test-backend-ci: ## Запустить pytest в CI (SQLite, без postgres/redis)
-	$(COMPOSE_BACKEND) run --rm --entrypoint "" \
-	  $(DOCKER_USER) \
-	  -e DATABASE_URL=sqlite+aiosqlite:///./test.db \
-	  -e REDIS_URL=redis://redis:6379/0 \
-	  -e SECRET_KEY=test-secret-key-32-chars-minimum \
-	  api sh -c "pytest tests/ -v --tb=short"
-
-test-frontend-ci: ## Запустить vitest в CI (лёгкий node образ)
-	$(COMPOSE_FRONTEND) run --rm $(DOCKER_USER) frontend-test sh -c "npm ci && npm test"
-
 test-e2e: ## Запустить Playwright E2E тесты (требует запущенного стека)
 	$(COMPOSE) up -d
 	@echo "Waiting for frontend dev server to be ready..."
 	@$(COMPOSE_FRONTEND) run --rm $(DOCKER_USER) frontend sh -c "until curl -s -o /dev/null http://frontend:5173; do sleep 1; done"
-	$(COMPOSE_FRONTEND) run --rm $(DOCKER_USER) frontend npx playwright test --workers=1
+	$(COMPOSE_FRONTEND) run --rm $(DOCKER_USER) frontend sh -c "npm install --silent \&\& npx playwright test --workers=1"
 
 test-visual: ## Визуальный smoke (скриншоты)
 	$(COMPOSE) up -d

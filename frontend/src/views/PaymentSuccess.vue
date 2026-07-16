@@ -92,11 +92,15 @@ const error = ref(null);
 const polling = ref(false);
 const syncing = ref(false);
 const pollCount = ref(0);
-const maxPolls = 30;
+const maxPolls = 60;
 const pollInterval = 2000; // 2 seconds
 const consecutiveErrorCount = ref(0);
 const maxConsecutiveErrors = 3;
 let pollTimer = null;
+
+const isOrderFailed = (order) => {
+  return order && (order.status === 'cancelled' || order.status === 'canceled' || Boolean(order.cancellation_reason));
+};
 
 const displayStatus = computed(() => {
   if (!order.value) return '';
@@ -107,11 +111,17 @@ const displayStatus = computed(() => {
     cancelled: 'Отменён',
     canceled: 'Отменён',
   };
+  if (isOrderFailed(order.value)) {
+    return 'Отменён';
+  }
   return map[order.value.status] || order.value.status;
 });
 
 const badgeClass = computed(() => {
   if (!order.value) return '';
+  if (isOrderFailed(order.value)) {
+    return 'payment-result__badge--error';
+  }
   const classes = {
     paid: 'payment-result__badge--success',
     pending: 'payment-result__badge--warning',
@@ -126,7 +136,7 @@ const title = computed(() => {
   if (error.value) return 'Ошибка';
   if (!order.value) return 'Обработка платежа...';
   if (order.value.status === 'paid') return 'Оплата прошла успешно!';
-  if (order.value.status === 'cancelled' || order.value.status === 'canceled') return 'Платёж отменён';
+  if (isOrderFailed(order.value)) return 'Платёж отменён';
   return 'Платёж в обработке';
 });
 
@@ -136,7 +146,7 @@ const subtitle = computed(() => {
   if (order.value.status === 'paid') {
     return `Заказ №${orderId.value} оплачен. Мы отправили подтверждение на ваш email.`;
   }
-  if (order.value.status === 'cancelled' || order.value.status === 'canceled') {
+  if (isOrderFailed(order.value)) {
     return `Заказ №${orderId.value} был отменён.`;
   }
   return `Заказ №${orderId.value} ожидает подтверждения оплаты.`;
@@ -183,7 +193,7 @@ const startPolling = () => {
       await fetchOrder();
       consecutiveErrorCount.value = 0;
 
-      if (order.value && (order.value.status === 'paid' || order.value.status === 'cancelled' || order.value.status === 'canceled')) {
+      if (order.value && (order.value.status === 'paid' || isOrderFailed(order.value))) {
         stopPolling();
       }
     } catch {
@@ -196,6 +206,11 @@ const startPolling = () => {
 
     if (pollCount.value >= maxPolls) {
       stopPolling();
+      // Fallback: if the order is still not terminal after max polling,
+      // redirect to the failed page so the user sees a meaningful result.
+      if (order.value && order.value.status !== 'paid' && !isOrderFailed(order.value)) {
+        router.replace(`/payment/failed?order_id=${orderId.value}`);
+      }
     }
   }, pollInterval);
 };
@@ -216,11 +231,11 @@ onMounted(async () => {
   await fetchOrder();
 
   // If order is still pending, force sync with YooKassa immediately
-  if (order.value && order.value.status !== 'paid' && order.value.status !== 'cancelled' && order.value.status !== 'canceled') {
+  if (order.value && order.value.status !== 'paid' && !isOrderFailed(order.value)) {
     await checkPaymentStatus();
 
     // Start polling only if still pending after forced sync
-    if (order.value && order.value.status !== 'paid' && order.value.status !== 'cancelled' && order.value.status !== 'canceled') {
+    if (order.value && order.value.status !== 'paid' && !isOrderFailed(order.value)) {
       startPolling();
     }
   }
@@ -234,6 +249,9 @@ const checkPaymentStatus = async () => {
       await syncPaymentStatusByOrder(orderId.value);
     }
     await fetchOrder();
+    if (isOrderFailed(order.value)) {
+      router.replace(`/payment/failed?order_id=${orderId.value}`);
+    }
   } catch {
     // Silent sync errors
   } finally {
@@ -259,9 +277,9 @@ const confirmMockPayment = async () => {
   }
 };
 
-// Redirect to /payment/failed if order was cancelled
+// Redirect to /payment/failed if order was cancelled or YooKassa reported a cancellation reason
 watch(order, (newOrder) => {
-  if (newOrder && (newOrder.status === 'cancelled' || newOrder.status === 'canceled')) {
+  if (newOrder && isOrderFailed(newOrder)) {
     router.replace(`/payment/failed?order_id=${orderId.value}`);
   }
 });

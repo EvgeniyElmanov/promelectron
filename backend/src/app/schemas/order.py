@@ -1,6 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -173,5 +173,34 @@ class OrderOut(BaseModel):
     save_address: bool = False
     cancelled_at: Optional[datetime] = None
     recipient: Optional[RecipientOut] = None
+    cancellation_reason: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+    @model_validator(mode="before")
+    @classmethod
+    def set_cancellation_reason(cls, data: Any):
+        """Prefer YooKassa cancellation reason from payment metadata.
+
+        Falls back to the existing ``Order.cancellation_reason`` column (e.g.
+        ``user_cancelled``) when YooKassa does not provide a reason.  Returns a
+        clean dict instead of mutating the SQLAlchemy instance.
+        """
+        if not hasattr(data, "__dict__"):
+            return data
+
+        payment = data.__dict__.get("payment")
+        yookassa_reason = None
+        if payment is not None:
+            metadata = payment.yookassa_metadata or {}
+            cancellation_details = metadata.get("cancellation_details")
+            if isinstance(cancellation_details, dict):
+                yookassa_reason = cancellation_details.get("reason")
+
+        cleaned = {k: v for k, v in data.__dict__.items() if k != "_sa_instance_state"}
+        if yookassa_reason:
+            cleaned["cancellation_reason"] = yookassa_reason
+        elif cleaned.get("cancellation_reason") is None:
+            # Preserve the DB column value (e.g. user_cancelled) when no YooKassa reason.
+            cleaned["cancellation_reason"] = data.__dict__.get("cancellation_reason")
+        return cleaned

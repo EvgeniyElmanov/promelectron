@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createRouter, createWebHistory } from 'vue-router'
 import ProfileEdit from '@/views/ProfileEdit.vue'
@@ -13,6 +13,11 @@ const mockProfile = {
   email_verified: true,
 }
 
+const mockSetAuth = vi.fn()
+const mockSetUser = vi.fn()
+const mockToast = vi.fn()
+const mockUploadAvatar = vi.fn()
+
 vi.mock('@/services/api', () => ({
   default: {
     get: vi.fn((url) => {
@@ -26,53 +31,62 @@ vi.mock('@/services/api', () => ({
   },
 }))
 
-vi.mock('@/composables/useAuth', () => {
-  const currentUser = { value: null }
-  return {
-    useAuth: () => ({
-      get user() {
-        return { value: currentUser.value }
-      },
-      setAuth: vi.fn(),
-      setUser: (userData) => {
-        currentUser.value = userData
-      },
-      get emailVerified() {
-        return { value: !!currentUser.value?.email_verified }
-      },
-    }),
-  }
-})
+vi.mock('@/api/users', () => ({
+  uploadAvatar: (...args) => mockUploadAvatar(...args),
+}))
+
+vi.mock('@/composables/useAuth', () => ({
+  useAuth: () => ({
+    setAuth: mockSetAuth,
+    setUser: mockSetUser,
+    emailVerified: { value: true },
+  }),
+}))
+
+vi.mock('@/composables/useToast', () => ({
+  useToast: () => ({
+    add: mockToast,
+  }),
+}))
+
+function createFile(name = 'avatar.png', type = 'image/png') {
+  return new File(['dummy'], name, { type })
+}
+
+function createWrapper() {
+  const router = createRouter({
+    history: createWebHistory(),
+    routes: [{ path: '/profile/edit', component: ProfileEdit }],
+  })
+  return mount(ProfileEdit, {
+    global: { plugins: [router] },
+  })
+}
 
 describe('ProfileEdit.vue', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockUploadAvatar.mockReset()
+    mockToast.mockReset()
+    Object.defineProperty(window, 'localStorage', {
+      value: {
+        getItem: vi.fn(() => 'test-token'),
+        setItem: vi.fn(),
+        removeItem: vi.fn(),
+      },
+      writable: true,
+    })
+  })
+
   it('отображает заголовок страницы', async () => {
-    const router = createRouter({
-      history: createWebHistory(),
-      routes: [{ path: '/profile/edit', component: ProfileEdit }],
-    })
-    await router.push('/profile/edit')
-    await router.isReady()
-
-    const wrapper = mount(ProfileEdit, {
-      global: { plugins: [router] },
-    })
-
+    const wrapper = createWrapper()
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('Редактирование профиля')
     })
   })
 
   it('загружает и отображает данные пользователя', async () => {
-    const router = createRouter({
-      history: createWebHistory(),
-      routes: [{ path: '/profile/edit', component: ProfileEdit }],
-    })
-    await router.push('/profile/edit')
-    await router.isReady()
-
-    const wrapper = mount(ProfileEdit, {
-      global: { plugins: [router] },
-    })
+    const wrapper = createWrapper()
 
     await vi.waitFor(() => {
       expect(wrapper.find('[data-testid="edit-profile-first-name"]').element.value).toBe('Иван')
@@ -85,16 +99,7 @@ describe('ProfileEdit.vue', () => {
   })
 
   it('содержит форму смены пароля', async () => {
-    const router = createRouter({
-      history: createWebHistory(),
-      routes: [{ path: '/profile/edit', component: ProfileEdit }],
-    })
-    await router.push('/profile/edit')
-    await router.isReady()
-
-    const wrapper = mount(ProfileEdit, {
-      global: { plugins: [router] },
-    })
+    const wrapper = createWrapper()
 
     await vi.waitFor(() => {
       expect(wrapper.find('[data-testid="edit-profile-old-password"]').exists()).toBe(true)
@@ -105,16 +110,7 @@ describe('ProfileEdit.vue', () => {
   })
 
   it('валидирует телефон в формате +7XXXXXXXXXX', async () => {
-    const router = createRouter({
-      history: createWebHistory(),
-      routes: [{ path: '/profile/edit', component: ProfileEdit }],
-    })
-    await router.push('/profile/edit')
-    await router.isReady()
-
-    const wrapper = mount(ProfileEdit, {
-      global: { plugins: [router] },
-    })
+    const wrapper = createWrapper()
     await vi.waitFor(() => expect(wrapper.find('[data-testid="edit-profile-phone"]').exists()).toBe(true))
 
     await wrapper.find('[data-testid="edit-profile-phone"]').setValue('abc')
@@ -125,16 +121,7 @@ describe('ProfileEdit.vue', () => {
   })
 
   it('валидирует имя и фамилию на недопустимые символы', async () => {
-    const router = createRouter({
-      history: createWebHistory(),
-      routes: [{ path: '/profile/edit', component: ProfileEdit }],
-    })
-    await router.push('/profile/edit')
-    await router.isReady()
-
-    const wrapper = mount(ProfileEdit, {
-      global: { plugins: [router] },
-    })
+    const wrapper = createWrapper()
     await vi.waitFor(() => expect(wrapper.find('[data-testid="edit-profile-first-name"]').exists()).toBe(true))
 
     await wrapper.find('[data-testid="edit-profile-first-name"]').setValue('Иван123')
@@ -147,16 +134,7 @@ describe('ProfileEdit.vue', () => {
   })
 
   it('нормализует телефон перед отправкой', async () => {
-    const router = createRouter({
-      history: createWebHistory(),
-      routes: [{ path: '/profile/edit', component: ProfileEdit }],
-    })
-    await router.push('/profile/edit')
-    await router.isReady()
-
-    const wrapper = mount(ProfileEdit, {
-      global: { plugins: [router] },
-    })
+    const wrapper = createWrapper()
     await vi.waitFor(() => expect(wrapper.find('[data-testid="edit-profile-phone"]').exists()).toBe(true))
 
     await wrapper.find('[data-testid="edit-profile-phone"]').setValue('8 (999) 000-11-22')
@@ -167,32 +145,14 @@ describe('ProfileEdit.vue', () => {
   })
 
   it('отображает статус подтверждения email', async () => {
-    const router = createRouter({
-      history: createWebHistory(),
-      routes: [{ path: '/profile/edit', component: ProfileEdit }],
-    })
-    await router.push('/profile/edit')
-    await router.isReady()
-
-    const wrapper = mount(ProfileEdit, {
-      global: { plugins: [router] },
-    })
+    const wrapper = createWrapper()
     await vi.waitFor(() => expect(wrapper.find('[data-testid="edit-profile-email-status"]').exists()).toBe(true))
 
     expect(wrapper.find('[data-testid="edit-profile-email-status"]').text()).toContain('Подтверждён')
   })
 
   it('показывает предупреждение при смене email', async () => {
-    const router = createRouter({
-      history: createWebHistory(),
-      routes: [{ path: '/profile/edit', component: ProfileEdit }],
-    })
-    await router.push('/profile/edit')
-    await router.isReady()
-
-    const wrapper = mount(ProfileEdit, {
-      global: { plugins: [router] },
-    })
+    const wrapper = createWrapper()
     await vi.waitFor(() => expect(wrapper.find('[data-testid="edit-profile-email"]').exists()).toBe(true))
 
     expect(wrapper.find('[data-testid="edit-profile-email-warning"]').exists()).toBe(false)
@@ -202,5 +162,63 @@ describe('ProfileEdit.vue', () => {
 
     expect(wrapper.find('[data-testid="edit-profile-email-warning"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="edit-profile-email-warning"]').text()).toContain('повторное подтверждение')
+  })
+
+  it('успешно загружает аватар, обновляет превью и показывает toast', async () => {
+    const wrapper = createWrapper()
+    await vi.waitFor(() => expect(wrapper.find('[data-testid="edit-profile-first-name"]').exists()).toBe(true))
+
+    const avatarUrl = 'https://example.com/avatars/1/original.png'
+    mockUploadAvatar.mockResolvedValue({
+      data: {
+        avatar_url: avatarUrl,
+        original: avatarUrl,
+        small: 'https://example.com/avatars/1/small.webp',
+        medium: 'https://example.com/avatars/1/medium.webp',
+        large: 'https://example.com/avatars/1/large.webp',
+      },
+    })
+
+    const input = wrapper.find('input[type="file"]')
+    const file = createFile()
+    await input.setValue('')
+    Object.defineProperty(input.element, 'files', {
+      value: [file],
+      writable: false,
+    })
+    await input.trigger('change')
+    await flushPromises()
+    await vi.waitFor(() => expect(mockUploadAvatar).toHaveBeenCalled())
+
+    expect(mockUploadAvatar).toHaveBeenCalledTimes(1)
+    expect(wrapper.find('.avatar-preview__img').exists()).toBe(true)
+    expect(wrapper.find('.avatar-preview__img').attributes('src')).toBe(avatarUrl)
+    expect(mockToast).toHaveBeenCalledWith('Фото профиля обновлено', 'success')
+    expect(mockSetAuth).toHaveBeenCalledWith('test-token', expect.objectContaining({ avatar_url: avatarUrl }))
+  })
+
+  it('при ошибке загрузки аватара показывает toast и не использует passwordError', async () => {
+    const wrapper = createWrapper()
+    await vi.waitFor(() => expect(wrapper.find('[data-testid="edit-profile-first-name"]').exists()).toBe(true))
+
+    mockUploadAvatar.mockRejectedValue({
+      response: { data: { detail: 'Недопустимый формат файла' } },
+    })
+
+    const input = wrapper.find('input[type="file"]')
+    const file = createFile()
+    Object.defineProperty(input.element, 'files', {
+      value: [file],
+      writable: false,
+    })
+    await input.trigger('change')
+    await flushPromises()
+    await vi.waitFor(() => expect(mockUploadAvatar).toHaveBeenCalled())
+
+    expect(wrapper.find('[data-testid="avatar-upload-error"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="avatar-upload-error"]').text()).toContain('Недопустимый формат файла')
+    expect(mockToast).toHaveBeenCalledWith('Недопустимый формат файла', 'error')
+    expect(wrapper.find('.edit-card--avatar .error-msg').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="password-error"]').exists()).toBe(false)
   })
 })

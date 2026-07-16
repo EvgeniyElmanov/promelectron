@@ -175,6 +175,13 @@ class YooKassaService:
             else Decimal("0")
         )
 
+        cancellation_details = getattr(response, "cancellation_details", None)
+        if cancellation_details is not None:
+            cancellation_details = {
+                "party": getattr(cancellation_details, "party", None),
+                "reason": getattr(cancellation_details, "reason", None),
+            }
+
         result = {
             "yookassa_payment_id": response.id,
             "status": response.status,
@@ -188,6 +195,7 @@ class YooKassaService:
             ),
             "created_at": response.created_at,
             "captured_at": getattr(response, "captured_at", None),
+            "cancellation_details": cancellation_details,
         }
         logger.debug("YooKassa get_payment response: %s", result)
         return result

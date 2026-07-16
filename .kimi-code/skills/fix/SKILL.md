@@ -125,7 +125,7 @@ python scripts/implement-pipeline.py create-worktree <task-id>
 7. [Rule: Pre-edit Checklist](../../rules/pre-edit-checklist.md)
 8. [Rule: Golden Path](../../rules/golden-path.md), если баг затрагивает cart, checkout, auth, payment, orders
 9. [Rule: Agent Commons](../../rules/agent-commons.md)
-10. [Rule: Security](../../rules/security.md), если затрагивает auth/payments/PII
+10. [Rule: Security](../../rules/security.md) — всегда; lightweight pass для любой задачи, extended для auth/payments/PII/uploads/orders/webhooks
 
 ### 4.2 Воспроизведение
 
@@ -186,7 +186,7 @@ python scripts/implement-pipeline.py create-worktree <task-id>
 7. `.kimi-code/skills/<ROLE>/SKILL.md`
 8. [Rule: Pre-edit Checklist](../../rules/pre-edit-checklist.md)
 9. [Rule: Agent Commons](../../rules/agent-commons.md)
-10. [Rule: Security](../../rules/security.md) — если задача касается auth/payments/PII/uploads
+10. [Rule: Security](../../rules/security.md) — всегда; lightweight pass для любой задачи, extended для auth/payments/PII/uploads/orders/webhooks
 
 Setup:
 1. Работай ТОЛЬКО внутри $WORKTREE (ветка $BRANCH).
@@ -237,6 +237,21 @@ Review findings пишутся в `$AGENT_DIR/review/findings.md` со стат�
 ## Step 9: Создание запроса на слияние
 
 Как в `/skill:implement` Step 8, с веткой `bugfix/<task-id>`.
+
+---
+
+## Step 9.5: Knowledge Capture — уроки из бага
+
+Баги — лучший источник уроков. Перед итоговым отчётом ответь на три вопроса:
+
+1. **Почему баг дошёл?** Какой слой пайплайна должен был его поймать (unit-тест, ревью, QA, E2E) и почему не поймал.
+2. **Повторяем ли паттерн?** Есть ли похожая запись в `.kimi-code/rules/known-pitfalls.md` или `.kimi-code/LESSONS_LEARNED.md`.
+3. **Что предотвратило бы повтор?** Действуй по классификации из `/skill:implement` Step 8.5:
+   - **doc-worthy** (разовый технический урок) → сразу допиши в `.kimi-code/LESSONS_LEARNED.md` (формат: Ошибка / Причина / Решение / Профилактика).
+   - **rule-worthy / skill-worthy** → не правь сам, вынеси в итоговый отчёт списком «Предлагаемые улучшения пайплайна».
+   - **test-worthy** (нет теста на этот сценарий) → регрессионный тест должен уже быть частью фикса (Step 6); если нет — это blocker для merge.
+
+Порог тот же: только повторяемые или дорогие уроки. Если уроков нет — напиши «уроков не выявлено».
 
 ---
 
