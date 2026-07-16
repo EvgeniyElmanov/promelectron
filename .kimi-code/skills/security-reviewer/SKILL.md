@@ -81,8 +81,10 @@ disableModelInvocation: true
 
 ### [S001] 🔴 CRITICAL | <Category>
 **File:** path/to/file.py:42
+**Evidence:** <цитата/фрагмент из diff, подтверждающий проблему>
 **Problem:** description
-**Fix:** suggested fix
+**Impact:** <security риск: утечка данных, bypass auth, injection, ...>
+**Action:** <конкретное исправление: что изменить, где, как>
 **Status:** OPEN
 
 ### [S002] 🟠 HIGH | <Category>
@@ -90,6 +92,11 @@ disableModelInvocation: true
 ```
 
 Severity: CRITICAL | HIGH | MEDIUM | LOW.
+
+Правила формата:
+- **Evidence** — всегда приводи фрагмент из diff, а не пересказ.
+- **Impact** — конкретный security риск и потенциальный blast radius.
+- **Action** — исполнимая инструкция, а не «усилить безопасность».
 
 ### Human Decisions (if any)
 

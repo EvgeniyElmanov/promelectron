@@ -265,7 +265,7 @@ items: `["backend-dev", "frontend-dev"]`
 7. `.kimi-code/skills/<role>/SKILL.md` (роль подставляется из `{{item}}` AgentSwarm)
 8. [Rule: Pre-edit Checklist](../../rules/pre-edit-checklist.md)
 9. [Rule: Agent Commons](../../rules/agent-commons.md)
-10. [Rule: Security](../../rules/security.md) — если задача касается auth/payments/PII/uploads
+10. [Rule: Security](../../rules/security.md) — всегда; lightweight pass для любой задачи, extended для auth/payments/PII/uploads/orders/webhooks
 
 Setup:
 1. Работай ТОЛЬКО внутри $WORKTREE (ветка $BRANCH).
@@ -300,6 +300,32 @@ Report:
 **Если задан `--serial`:** запусти роли последовательно — сначала backend-dev, затем frontend-dev в том же worktree (используй отдельные вызовы `Agent`).
 
 **Если затронута только одна сторона или флаги ограничивают область:** запускай только нужного разработчика через `Agent` (не `AgentSwarm`).
+
+> **Rate limits AgentSwarm:** при большом fan-out или повторяющихся 429 установи `KIMI_CODE_AGENT_SWARM_MAX_CONCURRENCY=2` (env var, см. Kimi Code CLI v0.18.0+), чтобы swarm не упирался в provider rate limits.
+
+---
+
+## Step 5.5: Валидация API Contract (backend ↔ frontend)
+
+Пропусти, если фича затрагивает только backend или только frontend. Иначе — **до запуска reviewer-субагентов** сам (оркестратор) сверь, что backend и frontend сошлись в контракте из `$AGENT_DIR/spec.md`:
+
+1. Извлеки изменённые/новые endpoints из backend diff:
+   ```bash
+   git -C "$WORKTREE" --no-pager diff origin/main...HEAD -- 'backend/src/app/api/*.py' | grep -E '^\+.*@(router|.*)\.(get|post|put|patch|delete)'
+   ```
+2. Извлеки API calls из frontend diff:
+   ```bash
+   git -C "$WORKTREE" --no-pager diff origin/main...HEAD -- 'frontend/src/api/*' | grep -E '^\+.*(get|post|put|patch|delete)\('
+   ```
+3. Сверь по каждому endpoint из spec `API Changes`:
+   - **path** совпадает, включая **trailing slash** (`/items/`, не `/items`)
+   - **HTTP method** совпадает
+   - **request-поля** (body/params/query) совпадают с Pydantic-схемой
+   - **response-поля**, которые frontend реально читает, присутствуют в response-схеме
+4. Если нашёл расхождение — зафиксируй в `$AGENT_DIR/review/findings.md` как `[F-xxx] CRITICAL | API Contract` со статусом `OPEN` и верни соответствующего developer-субагента на исправление **до** Step 6.
+5. Если расхождений нет — переходи к Step 6.
+
+Этот шаг ловит класс ошибок «backend и frontend параллельно разошлись в контракте», который дороже чинить после ревью, чем до него.
 
 ---
 

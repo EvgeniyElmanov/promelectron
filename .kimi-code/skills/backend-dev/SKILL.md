@@ -52,6 +52,24 @@ model → schema → service → route handler → tests
 
 Никогда не пропускай слои. Никогда не помещай бизнес-логику в route handlers.
 
+### Self-review (Reflection) — перед отчётом о готовности
+
+Перед тем как сообщить о готовности к ревью, проведи adversarial audit своего diff:
+
+1. `git -C "$WORKTREE" --no-pager diff origin/main...HEAD` — перечитай весь diff свежим взглядом.
+2. Сопоставь каждый Must-have из `$AGENT_DIR/spec.md` с конкретным изменением в diff. Что не покрыто — допиши.
+3. Найди и исправь минимум 3–5 потенциальных проблем до ревью:
+   - забытый `await` / не-`async def` в DB-операциях
+   - отсутствие trailing slash в новом endpoint
+   - пропущенная Alembic-миграция или `__init__.py` экспорт
+   - N+1 запрос (нет `selectinload`/`joinedload`)
+   - необработанный `IntegrityError` / гонка на stock
+   - endpoint без теста
+   - лишний код за пределами spec (scope creep)
+4. Если нашёл и исправил проблемы — перезапусти `make -C "$WORKTREE" test-backend`.
+
+Это обязательный шаг. Не перекладывай на reviewer то, что можешь поймать сам.
+
 ### Перед завершением
 
 1. Запусти `make -C "$WORKTREE" test-backend` — все тесты должны проходить.

@@ -77,7 +77,7 @@ security_review: yes | no
 - [ ] `.kimi-code/skills/<role>/SKILL.md`
 - [ ] [Rule: Pre-edit Checklist](pre-edit-checklist.md)
 - [ ] [Rule: Agent Commons](agent-commons.md)
-- [ ] [Rule: Security](security.md) — если затрагивает auth/payments/PII/uploads
+- [ ] [Rule: Security](security.md) — всегда; lightweight pass для любой задачи, extended для auth/payments/PII/uploads/orders/webhooks
 
 ## КОНТЕКСТНЫЙ ПАКЕТ (для рабочего агента)
 

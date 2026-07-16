@@ -125,7 +125,7 @@ python scripts/implement-pipeline.py create-worktree <task-id>
 7. [Rule: Pre-edit Checklist](../../rules/pre-edit-checklist.md)
 8. [Rule: Golden Path](../../rules/golden-path.md), если баг затрагивает cart, checkout, auth, payment, orders
 9. [Rule: Agent Commons](../../rules/agent-commons.md)
-10. [Rule: Security](../../rules/security.md), если затрагивает auth/payments/PII
+10. [Rule: Security](../../rules/security.md) — всегда; lightweight pass для любой задачи, extended для auth/payments/PII/uploads/orders/webhooks
 
 ### 4.2 Воспроизведение
 
@@ -186,7 +186,7 @@ python scripts/implement-pipeline.py create-worktree <task-id>
 7. `.kimi-code/skills/<ROLE>/SKILL.md`
 8. [Rule: Pre-edit Checklist](../../rules/pre-edit-checklist.md)
 9. [Rule: Agent Commons](../../rules/agent-commons.md)
-10. [Rule: Security](../../rules/security.md) — если задача касается auth/payments/PII/uploads
+10. [Rule: Security](../../rules/security.md) — всегда; lightweight pass для любой задачи, extended для auth/payments/PII/uploads/orders/webhooks
 
 Setup:
 1. Работай ТОЛЬКО внутри $WORKTREE (ветка $BRANCH).

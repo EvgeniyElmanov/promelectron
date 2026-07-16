@@ -114,15 +114,19 @@ disableModelInvocation: true
 
 ### [F001] ❌ CRITICAL | <Category>
 **File:** path/to/file.py:42
+**Evidence:** <цитата/фрагмент из diff, подтверждающий проблему>
 **Problem:** description
-**Fix:** suggested fix
+**Impact:** <что сломается/какой риск, если оставить>
+**Action:** <конкретное исправление: что изменить, где, как>
 **Status:** OPEN
 **Developer note:**
 
 ### [F002] ⚠️ HIGH | <Category>
 **File:** path/to/file.py:15
+**Evidence:** <цитата из diff>
 **Problem:** description
-**Fix:** suggested fix
+**Impact:** <что сломается/какой риск>
+**Action:** <конкретное исправление>
 **Status:** OPEN
 **Developer note:**
 
@@ -135,6 +139,11 @@ disableModelInvocation: true
 - **B:** description
 **Question:** which approach is preferred?
 ```
+
+Правила формата:
+- **Evidence** — всегда приводи фрагмент из diff (строка/кусок кода), а не пересказ.
+- **Impact** — конкретный эффект: runtime error, потеря данных, security риск, регрессия UX, tech debt.
+- **Action** — исполнимая инструкция: «заменить X на Y в файле Z», а не «подумать об улучшении».
 
 ### Повторное ревью
 

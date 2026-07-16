@@ -85,6 +85,21 @@ cd backend && docker compose config
 diff <(yq '.env.open' infra/helm/values.yaml) <(yq '.env.open' infra/helm/stage/test/values.yaml)
 ```
 
+### Self-review (Reflection) — перед отчётом о готовности
+
+Перед отчётом проведи adversarial audit своего diff:
+
+1. `git --no-pager diff origin/main...HEAD` — перечитай все изменения инфры свежим взглядом.
+2. Найди и исправь минимум 3 потенциальные проблемы до ревью:
+   - env var добавлена не во все окружения (prod / test / docker-compose / `.env.example`)
+   - URL без scheme (`http://`, `https://`, `redis://`)
+   - plaintext-секрет без `TODO` + `CHANGEME_` + одобрения
+   - image tag `:latest` или не git SHA
+   - healthcheck на бинарник, которого нет в образе
+3. Перезапусти `helm template` / `docker compose config` после исправлений.
+
+Это обязательный шаг. Не перекладывай на reviewer то, что можешь поймать сам.
+
 ### Правила
 
 - Never deploy to prod without test passing first.
