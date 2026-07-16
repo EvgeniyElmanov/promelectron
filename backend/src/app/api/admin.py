@@ -132,7 +132,7 @@ async def cancel_admin_order(
     (при сбое — 502, заказ не отменяется), stock возвращается,
     отмена в CDEK — best-effort.
     """
-    return await OrderService.cancel_order_by_admin(order_id=order_id, db=db)
+    return await OrderService.cancel_order_by_admin(order_id=order_id, current_user=current_user, db=db)
 
 
 @router.get("/admin/feature-flags", response_model=list[FeatureFlagOut])

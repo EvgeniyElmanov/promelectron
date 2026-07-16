@@ -555,7 +555,7 @@ class OrderService:
         )
 
     @staticmethod
-    async def cancel_order_by_admin(order_id: int, db: AsyncSession) -> Order:
+    async def cancel_order_by_admin(order_id: int, current_user: User, db: AsyncSession) -> Order:
         result = await db.execute(
             select(Order)
             .where(Order.id == order_id)
@@ -575,9 +575,12 @@ class OrderService:
         elif order.guest_email:
             notify_email = order.guest_email
 
-        return await OrderService._cancel_order_common(
+        order = await OrderService._cancel_order_common(
             order, db, reason="admin_cancelled", notify_user_id=order.user_id, notify_email=notify_email
         )
+        # Audit trail: отмена может включать refund реальных денег — фиксируем актора (id, не email)
+        logger.info("Order %s cancelled by admin user_id=%s", order.id, current_user.id)
+        return order
 
     @staticmethod
     async def _cancel_order_common(

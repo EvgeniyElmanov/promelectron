@@ -1,6 +1,8 @@
 from decimal import Decimal
 from unittest.mock import AsyncMock, patch
 
+import logging
+
 import pytest
 from sqlalchemy import select
 
@@ -592,6 +594,21 @@ class TestAdminCancelOrder:
         assert response.status_code == 200
         assert response.json()["status"] == "cancelled"
         mock_cdek_cancel.assert_awaited_once_with("test-cdek-uuid-456")
+
+    @pytest.mark.asyncio
+    async def test_admin_cancel_order_writes_audit_log(self, client, test_admin, admin_token, test_order, caplog):
+        """Отмена заказа админом фиксируется в audit-логе с id актора (S-001)."""
+        with caplog.at_level(logging.INFO, logger="src.app.services.order_service"):
+            response = await client.post(
+                f"/api/v1/admin/orders/{test_order.id}/cancel/",
+                headers={"Authorization": f"Bearer {admin_token}"},
+            )
+
+        assert response.status_code == 200
+        assert any(
+            f"Order {test_order.id} cancelled by admin user_id={test_admin.id}" in record.getMessage()
+            for record in caplog.records
+        )
 
 
 class TestAdminFeatureFlags:
