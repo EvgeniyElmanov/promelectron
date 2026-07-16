@@ -1,12 +1,14 @@
 ---
 name: plan-maintainer
 description: >
-  Operational plan maintainer for Promelectron. Runs analyze/update/propose/sprint-review
+  Operational plan maintainer for Promelectron. Runs analyze/update/propose/sprint-review/improve
   commands against `.agent/PLANNING_HANDOFF.md` and `.agent/BACKLOG.md`.
+  `improve` runs the continuous improvement loop: analyzes failure patterns across
+  all pipeline runs (scripts/agent_improve.py) and proposes rule/skill updates.
   Use for concrete backlog operations, not strategic roadmap decisions.
 type: prompt
-whenToUse: When the user asks about project status, priorities, roadmap, sprint planning, or what to do next, and detailed backlog operations are needed.
-arguments: "<action: analyze|update|propose|sprint-review>"
+whenToUse: When the user asks about project status, priorities, roadmap, sprint planning, what to do next, or recurring agent failure patterns, and detailed backlog operations are needed.
+arguments: "<action: analyze|update|propose|sprint-review|improve>"
 disableModelInvocation: false
 ---
 
@@ -57,6 +59,20 @@ disableModelInvocation: false
 
 ### `sprint-review`
 Прочитай `.agent/BACKLOG.md` → `git log --since="1 week ago"` → сравни запланированное и фактическое → напиши review.
+
+### `improve`
+Continuous improvement loop — анализ failure patterns поперёк всех задач пайплайна.
+
+1. Запусти анализатор:
+   ```bash
+   python3 scripts/agent_improve.py            # или --last N для последних N задач
+   ```
+2. Прочитай отчёт. Для каждого паттерна:
+   - **Покрыто правилами: нет — НОВОЕ** → предложи конкретный текст правила для указанного файла (rule-worthy) или правку скилла роли (skill-worthy). Применяй только с одобрения пользователя.
+   - **Покрыто правилами: да** → правило существует, но не сработало. Проверь, почему: правило слишком общее? Не на том слою (ловит reviewer, а должен self-review developer'а)? Предложи усиление или перенос проверки на более ранний слой.
+3. Итог — список «Предлагаемые улучшения пайплайна» с конкретными правками; doc-worthy разовые уроки допиши в `.kimi-code/LESSONS_LEARNED.md`.
+
+Рекомендуемый ритм: в конце спринта (перед `sprint-review`) и после любой задачи с 2+ итерациями ревью.
 
 ---
 

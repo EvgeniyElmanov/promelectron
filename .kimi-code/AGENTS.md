@@ -69,6 +69,9 @@
 # Поддержка планов
 /skill:plan-maintainer analyze
 
+# Анализ повторяющихся failure patterns пайплайна (continuous improvement)
+/skill:plan-maintainer improve
+
 # Визуальный статус пайплайна задачи (Mermaid, read-only)
 /skill:flow-implement add-promo-codes-to-cart-0624
 /skill:flow-fix fix-yookassa-cancel-reason-84
