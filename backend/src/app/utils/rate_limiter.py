@@ -13,7 +13,9 @@ if os.getenv("ENVIRONMENT") == "production" and not os.getenv("CI"):
     limiter = Limiter(
         key_func=get_remote_address,
         storage_uri=_redis_url,
-        storage_options={"socket_connect_timeout": "5"},
+        # socket_connect_timeout must be a number — redis-py passes it to
+        # sock.settimeout(), and a string raises TypeError on every hit (500s).
+        storage_options={"socket_connect_timeout": 5},
     )
 else:
     # In-memory storage for dev/test/CI.
