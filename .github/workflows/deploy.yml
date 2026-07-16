@@ -124,7 +124,8 @@ jobs:
         env:
           KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
           # Optional GitHub Secrets overrides. Each is applied only when non-empty;
-          # otherwise the SOPS-encrypted baseline (stage/test/secrets.yaml) is used.
+          # otherwise the committed baselines are used: SOPS (stage/test/secrets.yaml),
+          # then infra/secret.yml (plain-text test-only secrets, e.g. ONEC_*).
           OVR_POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
           OVR_POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           OVR_POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
@@ -170,6 +171,7 @@ jobs:
           helm upgrade --install promelectron-test ./infra/helm \
             -f infra/helm/stage/test/values.yaml \
             -f <(sops -d infra/helm/stage/test/secrets.yaml) \
+            -f infra/secret.yml \
             --set api.image=${{ env.API_IMAGE }}:${{ github.sha }} \
             --set frontend.image=${{ env.FRONTEND_IMAGE }}-test:${{ github.sha }} \
             "${OVERRIDES[@]}" \
