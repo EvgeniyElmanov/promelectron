@@ -1,7 +1,10 @@
 from decimal import Decimal
 from unittest.mock import AsyncMock, patch
 
+import logging
+
 import pytest
+from sqlalchemy import select
 
 
 class TestAdminDashboard:
@@ -359,6 +362,253 @@ class TestAdminOrders:
             headers={"Authorization": f"Bearer {user_token}"},
         )
         assert response.status_code == 403
+
+
+class TestAdminCancelOrder:
+    """Тесты отмены заказа админом (POST /admin/orders/{id}/cancel/)."""
+
+    async def _create_paid_order(self, client, user_token, test_product, cdek_delivery_payload) -> int:
+        """Создать оплаченный заказ: cart → create → mock payment → webhook succeeded."""
+        await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
+        order_resp = await client.post(
+            "/api/v1/orders/create/",
+            json={
+                "cdek_delivery": cdek_delivery_payload,
+                "recipient_first_name": "Тест",
+                "recipient_last_name": "Пользователь",
+                "recipient_phone": "+79990001122",
+            },
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        order_id = order_resp.json()["id"]
+
+        mock_yookassa = AsyncMock(return_value={
+            "yookassa_payment_id": "test-yookassa-id",
+            "status": "pending",
+            "confirmation_url": "https://yoomoney.ru/checkout/test",
+            "amount": Decimal(str(test_product.price)),
+            "created_at": "2026-06-02T12:00:00.000Z",
+        })
+        with (
+            patch("src.app.services.payment_service.YooKassaService.is_configured", return_value=True),
+            patch("src.app.services.payment_service.YooKassaService.create_payment", mock_yookassa),
+        ):
+            await client.post(f"/api/v1/payments/{order_id}/", headers={"Authorization": f"Bearer {user_token}"})
+
+        webhook_payload = {
+            "event": "payment.succeeded",
+            "object": {
+                "id": "test-yookassa-id",
+                "status": "succeeded",
+                "amount": {"value": str(test_product.price), "currency": "RUB"},
+            },
+        }
+        await client.post("/api/v1/payments/yookassa/webhook/", json=webhook_payload)
+        return order_id
+
+    @pytest.mark.asyncio
+    async def test_admin_cancel_pending_order(self, client, test_admin, admin_token, test_user, user_token, test_product, cdek_delivery_payload):
+        """Админ отменяет pending-заказ: статус, причина, возврат stock."""
+        await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
+        order_resp = await client.post(
+            "/api/v1/orders/create/",
+            json={
+                "cdek_delivery": cdek_delivery_payload,
+                "recipient_first_name": "Тест",
+                "recipient_last_name": "Пользователь",
+                "recipient_phone": "+79990001122",
+            },
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        order_id = order_resp.json()["id"]
+
+        response = await client.post(
+            f"/api/v1/admin/orders/{order_id}/cancel/",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "cancelled"
+        assert data["cancelled_at"] is not None
+        assert data["cancellation_reason"] == "admin_cancelled"
+
+        # Stock возвращён
+        prod_resp = await client.get(f"/api/v1/products/{test_product.id}")
+        assert prod_resp.json()["stock"] == test_product.stock
+
+    @pytest.mark.asyncio
+    async def test_admin_cancel_paid_order_with_refund(self, client, test_session, test_admin, admin_token, test_user, user_token, test_product, cdek_delivery_payload):
+        """Отмена оплаченного заказа админом: refund в ЮKassa, payment → refunded."""
+        from src.app.models.payment import Payment
+
+        order_id = await self._create_paid_order(client, user_token, test_product, cdek_delivery_payload)
+
+        mock_refund = AsyncMock(return_value={
+            "refund_id": "test-refund-id",
+            "status": "succeeded",
+            "amount": Decimal(str(test_product.price)),
+            "created_at": "2026-06-02T12:00:00.000Z",
+        })
+        with patch("src.app.services.order_service.YooKassaService.create_refund", mock_refund):
+            response = await client.post(
+                f"/api/v1/admin/orders/{order_id}/cancel/",
+                headers={"Authorization": f"Bearer {admin_token}"},
+            )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "cancelled"
+        assert data["cancelled_at"] is not None
+        assert data["cancellation_reason"] == "admin_cancelled"
+        mock_refund.assert_awaited_once()
+
+        result = await test_session.execute(select(Payment).where(Payment.order_id == order_id))
+        payment = result.scalars().first()
+        assert payment.status == "refunded"
+        assert payment.refunded_amount == Decimal(str(data["total_price"]))
+
+        # Stock возвращён
+        prod_resp = await client.get(f"/api/v1/products/{test_product.id}")
+        assert prod_resp.json()["stock"] == test_product.stock
+
+    @pytest.mark.asyncio
+    async def test_admin_cancel_paid_order_refund_failure(self, client, test_session, test_admin, admin_token, test_user, user_token, test_product, cdek_delivery_payload):
+        """Сбой refund → 502, заказ НЕ отменяется."""
+        from src.app.models.order import Order
+        from src.app.models.payment import Payment
+
+        order_id = await self._create_paid_order(client, user_token, test_product, cdek_delivery_payload)
+
+        mock_refund = AsyncMock(side_effect=Exception("YooKassa unavailable"))
+        with patch("src.app.services.order_service.YooKassaService.create_refund", mock_refund):
+            response = await client.post(
+                f"/api/v1/admin/orders/{order_id}/cancel/",
+                headers={"Authorization": f"Bearer {admin_token}"},
+            )
+
+        assert response.status_code == 502
+        assert "Refund could not be processed" in response.json()["detail"]
+
+        result = await test_session.execute(select(Order).where(Order.id == order_id))
+        order = result.scalars().first()
+        assert order.status == "paid"
+
+        payment_result = await test_session.execute(select(Payment).where(Payment.order_id == order_id))
+        payment = payment_result.scalars().first()
+        assert payment.status != "refunded"
+
+    @pytest.mark.asyncio
+    async def test_admin_cancel_shipped_order_fails(self, client, test_admin, admin_token, test_user, user_token, test_product, cdek_delivery_payload):
+        """Отмена отправленного заказа — 400."""
+        order_id = await self._create_paid_order(client, user_token, test_product, cdek_delivery_payload)
+        await client.post(
+            f"/api/v1/admin/orders/{order_id}/ship/",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+
+        response = await client.post(
+            f"/api/v1/admin/orders/{order_id}/cancel/",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert response.status_code == 400
+        assert "Order cannot be cancelled" in response.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_admin_cancel_already_cancelled_order_fails(self, client, test_admin, admin_token, test_order):
+        """Повторная отмена заказа — 400."""
+        response = await client.post(
+            f"/api/v1/admin/orders/{test_order.id}/cancel/",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert response.status_code == 200
+
+        response = await client.post(
+            f"/api/v1/admin/orders/{test_order.id}/cancel/",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert response.status_code == 400
+        assert "Order cannot be cancelled" in response.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_admin_cancel_nonexistent_order(self, client, test_admin, admin_token):
+        """Отмена несуществующего заказа — 404."""
+        response = await client.post(
+            "/api/v1/admin/orders/99999/cancel/",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert response.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_user_cannot_cancel_order_via_admin(self, client, test_user, user_token, test_order):
+        """Обычный пользователь не может отменить заказ через admin endpoint — 403."""
+        response = await client.post(
+            f"/api/v1/admin/orders/{test_order.id}/cancel/",
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert response.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_cancel_order_unauthorized(self, client, test_order):
+        """Без токена доступ запрещён."""
+        response = await client.post(f"/api/v1/admin/orders/{test_order.id}/cancel/")
+        assert response.status_code in (401, 403)
+
+    @pytest.mark.asyncio
+    async def test_admin_cancel_order_calls_cdek_cancel(self, client, test_session, test_admin, admin_token, test_order):
+        """При наличии cdek_uuid вызывается CdekService.cancel_cdek_order."""
+        from src.app.models.cdek_order import CdekOrder
+
+        result = await test_session.execute(select(CdekOrder).where(CdekOrder.order_id == test_order.id))
+        cdek_order = result.scalars().first()
+        cdek_order.cdek_uuid = "test-cdek-uuid-123"
+        await test_session.commit()
+
+        mock_cdek_cancel = AsyncMock(return_value={"entity": {"uuid": "test-cdek-uuid-123"}})
+        with patch("src.app.services.order_service.CdekService.cancel_cdek_order", mock_cdek_cancel):
+            response = await client.post(
+                f"/api/v1/admin/orders/{test_order.id}/cancel/",
+                headers={"Authorization": f"Bearer {admin_token}"},
+            )
+
+        assert response.status_code == 200
+        assert response.json()["status"] == "cancelled"
+        mock_cdek_cancel.assert_awaited_once_with("test-cdek-uuid-123")
+
+    @pytest.mark.asyncio
+    async def test_admin_cancel_order_cdek_failure_does_not_block(self, client, test_session, test_admin, admin_token, test_order):
+        """Сбой отмены в CDEK не блокирует локальную отмену заказа."""
+        from src.app.models.cdek_order import CdekOrder
+
+        result = await test_session.execute(select(CdekOrder).where(CdekOrder.order_id == test_order.id))
+        cdek_order = result.scalars().first()
+        cdek_order.cdek_uuid = "test-cdek-uuid-456"
+        await test_session.commit()
+
+        mock_cdek_cancel = AsyncMock(side_effect=Exception("CDEK refuses: order already ACCEPTED"))
+        with patch("src.app.services.order_service.CdekService.cancel_cdek_order", mock_cdek_cancel):
+            response = await client.post(
+                f"/api/v1/admin/orders/{test_order.id}/cancel/",
+                headers={"Authorization": f"Bearer {admin_token}"},
+            )
+
+        assert response.status_code == 200
+        assert response.json()["status"] == "cancelled"
+        mock_cdek_cancel.assert_awaited_once_with("test-cdek-uuid-456")
+
+    @pytest.mark.asyncio
+    async def test_admin_cancel_order_writes_audit_log(self, client, test_admin, admin_token, test_order, caplog):
+        """Отмена заказа админом фиксируется в audit-логе с id актора (S-001)."""
+        with caplog.at_level(logging.INFO, logger="src.app.services.order_service"):
+            response = await client.post(
+                f"/api/v1/admin/orders/{test_order.id}/cancel/",
+                headers={"Authorization": f"Bearer {admin_token}"},
+            )
+
+        assert response.status_code == 200
+        assert any(
+            f"Order {test_order.id} cancelled by admin user_id={test_admin.id}" in record.getMessage()
+            for record in caplog.records
+        )
 
 
 class TestAdminFeatureFlags:

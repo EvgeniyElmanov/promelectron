@@ -27,3 +27,10 @@ export const formatDateTime = (dateStr) => {
   if (Number.isNaN(d.getTime())) return '—';
   return `${formatDate(dateStr)}, ${formatTime(dateStr)}`;
 };
+
+export const formatDateTimeShort = (dateStr) => {
+  if (!dateStr) return '—';
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return '—';
+  return `${formatDate(dateStr)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};

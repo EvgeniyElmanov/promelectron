@@ -10,3 +10,5 @@ export const getGuestOrder = (orderId, guestEmail) =>
 export const cancelOrder = (orderId) => api.patch(`/orders/${orderId}/cancel/`);
 
 export const shipOrderAdmin = (orderId) => api.post(`/admin/orders/${orderId}/ship/`);
+
+export const cancelOrderAdmin = (orderId) => api.post(`/admin/orders/${orderId}/cancel/`);
