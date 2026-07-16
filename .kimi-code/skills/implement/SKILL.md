@@ -134,6 +134,10 @@ python3 scripts/agent_state.py trace <task-id> <event> --actor <actor> --data '{
 |--------|-------|-------|
 | task.md создан | `task_created` | orchestrator |
 | spec одобрен пользователем | `spec_approved` | orchestrator |
+| план создан | `plan_created` | orchestrator |
+| план auto-одобрен | `plan_auto_approved` | orchestrator |
+| план одобрен человеком | `plan_human_approved` | human |
+| план доработан | `plan_revised` | orchestrator |
 | developer(ы) отчитались о готовности | `dev_done` | backend-dev / frontend-dev |
 | вердикт ревью (каждая итерация) | `review_verdict` | code-reviewer (data: `{"iteration": N, "verdict": "..."}`) |
 | QA gate завершён | `qa_done` | qa (data: `{"status": "TESTS_PASSED|TESTS_FAILED"}`) |
@@ -263,16 +267,79 @@ STATUS=in-progress
 
 ---
 
-## Step 5: Разработка — по умолчанию параллельно
+## Step 5: Разработка — plan → approve → execute
 
-Прочитай `Components Affected` и `Parallelization Plan` из `$AGENT_DIR/spec.md`. Вся работа с кодом ведётся в `WORKTREE` (используй `git -C`, `make -C`, явные пути — `cd` субагента не сохраняется).
+Прочитай `Components Affected` и `Parallelization Plan` из `$AGENT_DIR/spec.md`. Вся работа с кодом ведётся в `WORKTREE`.
 
-**Если затронуты и backend, и frontend, они независимы, и не заданы `--backend-only`/`--frontend-only`/`--serial`:**
-Запусти `backend-dev` и `frontend-dev` параллельно через инструмент `AgentSwarm` с `subagent_type: coder`. Они редактируют непересекающиеся деревья (`backend/` и `frontend/`) и оба ориентируются на **API Contract** из spec.
+Разработку разбиваем на три фазы: **Plan → Approve → Execute**. Developer-агент **не пишет код без одобренного плана**.
 
-items: `["backend-dev", "frontend-dev"]`
+---
 
-Промпт для `AgentSwarm` ({{item}} заменяется на роль):
+### Step 5a: Plan — developer пишет PLAN.md
+
+Запусти нужные роли с задачей **только написать план**, не меняя код. Каждая роль создаёт `$WORKTREE/PLAN.md` (один общий, если serial; по одному для backend/frontend, если параллельно). Если фича затрагивает и backend, и frontend — пишутся два независимых плана.
+
+Правила запуска те же:
+
+- **Backend + frontend, независимы, нет `--backend-only`/`--frontend-only`/`--serial`:** параллельно `AgentSwarm` с `items: ["backend-dev", "frontend-dev"]`.
+- **`--serial`:** последовательно — сначала backend-dev, затем frontend-dev в том же worktree.
+- **Одна сторона / devops:** один вызов `Agent`.
+
+Промпт тот же, что и для execution (см. Step 5c), но в начале явно:
+
+```text
+=== PHASE A: PLAN ONLY — DO NOT WRITE CODE ===
+
+Перед кодированием напиши $WORKTREE/PLAN.md по spec. Следуй секции «План перед кодированием (PLAN.md)» своего ролевого SKILL.md.
+
+PLAN.md должен содержать:
+1. Goal — одно предложение.
+2. Steps — нумерованный список шагов: что меняется, в каком порядке, проверка после каждого шага.
+3. Risks / Open questions — что может пойти не так.
+
+Не редактируй production-код, не создавай миграций, не трогай frontend/backend.
+После написания PLAN.md остановись и сообщи: «PLAN.md готов».
+```
+
+После завершения всех ролей прочитай `$WORKTREE/PLAN.md` (и backend/frontend планы, если они разделены).
+
+---
+
+### Step 5b: Approve — auto или human
+
+Оркестратор оценивает план(ы) по критериям **auto-approve**. План auto-одобряется, если **все** условия выполнены:
+
+1. Затронута только одна сторона ИЛИ backend и frontend имеют независимые планы без перекрёстных зависимостей.
+2. ≤ 5 Must-haves / Acceptance Criteria в spec.
+3. В плане ≤ 4 основных шага.
+4. Нет auth / payments / PII / uploads / orders / webhooks (extended security scope).
+5. Нет внешних интеграций (1С, YooKassa, CDEK, Telegram, внешние API).
+6. Все риски помечены как LOW или описан стандартный rollback.
+
+Логируй trace:
+
+```bash
+python3 scripts/agent_state.py trace <task-id> plan_created --actor orchestrator
+python3 scripts/agent_state.py trace <task-id> plan_auto_approved --actor orchestrator
+# или
+python3 scripts/agent_state.py trace <task-id> plan_human_approved --actor human --data '{"reason": "..."}'
+# при доработке
+python3 scripts/agent_state.py trace <task-id> plan_revised --actor orchestrator
+```
+
+Если план auto-одобрен — продолжай к Step 5c.
+
+Если **хотя бы один** критерий не выполнен — покажи PLAN.md пользователю кратко (Goal, Steps, Risks) и спроси: **«одобрить план / доработать?»**. При доработке верни в Step 5a. При одобрении — иди к Step 5c.
+
+> **Не экономь на human-approval:** если план касается денег, безопасности, публичного API или критичной инфраструктуры — всегда показывай пользователю, даже если формально проходит auto-approve.
+
+---
+
+### Step 5c: Execute — реализация по одобренному плану
+
+Запусти те же роли с задачей **реализовать одобренный PLAN.md**. Параллельность / serial / одиночный запуск — та же схема, что в Step 5a.
+
+Промпт (замени `{{item}}` на роль, используется через `AgentSwarm`):
 
 ```text
 Предварь этот промпт комбинированной преамбулой из Rule: Agent Commons (раздел Full subagent prompt block).
@@ -282,20 +349,21 @@ items: `["backend-dev", "frontend-dev"]`
 Прочитай (параллельно, где возможно):
 1. $AGENT_DIR/task.md
 2. $AGENT_DIR/spec.md
-3. PROJECT_CONTEXT.md
-4. .agent/BACKLOG.md
-5. .agent/BLOCKERS.md
-6. .agent/SESSION_LOG.md
-7. `.kimi-code/skills/<role>/SKILL.md` (роль подставляется из `{{item}}` AgentSwarm)
-8. [Rule: Pre-edit Checklist](../../rules/pre-edit-checklist.md)
-9. [Rule: Agent Commons](../../rules/agent-commons.md)
-10. [Rule: Security](../../rules/security.md) — всегда; lightweight pass для любой задачи, extended для auth/payments/PII/uploads/orders/webhooks
+3. $WORKTREE/PLAN.md — одобренный план, реализуй строго по нему
+4. PROJECT_CONTEXT.md
+5. .agent/BACKLOG.md
+6. .agent/BLOCKERS.md
+7. .agent/SESSION_LOG.md
+8. `.kimi-code/skills/<role>/SKILL.md` (роль подставляется из `{{item}}` AgentSwarm)
+9. [Rule: Pre-edit Checklist](../../rules/pre-edit-checklist.md)
+10. [Rule: Agent Commons](../../rules/agent-commons.md)
+11. [Rule: Security](../../rules/security.md) — всегда; lightweight pass для любой задачи, extended для auth/payments/PII/uploads/orders/webhooks
 
 Setup:
 1. Работай ТОЛЬКО внутри $WORKTREE (ветка $BRANCH).
 2. Используй явные пути: git -C "$WORKTREE" ..., make -C "$WORKTREE" ..., Read/Edit/Write файлов под $WORKTREE.
 
-Implement strictly per the spec and the workflow of {{item}}:
+Implement strictly per the approved PLAN.md and the workflow of {{item}}:
 - backend-dev: model → schema → service → route handler → tests
 - frontend-dev: API service → composable → component → page → route → tests
 - devops: Helm/Docker → CI/CD → verify
@@ -307,6 +375,7 @@ Rules:
 - Use trailing slash in FastAPI endpoints.
 - Do NOT commit to main. You may commit to $BRANCH in the worktree.
 - For OPEN findings from previous review: fix them and update the finding status to FIXED in $AGENT_DIR/review/findings.md.
+- If the approved PLAN.md becomes unworkable mid-flight: stop, report to orchestrator, revise PLAN.md, and get re-approval before continuing.
 
 Before finishing:
 1. Run the role-specific tests in $WORKTREE (e.g. make -C "$WORKTREE" test-backend; make -C "$WORKTREE" test-frontend).
@@ -316,14 +385,11 @@ Before finishing:
 Report:
 - Changed files
 - Test results
+- Any deviations from PLAN.md (must be re-approved)
 - Any blockers
 
 НАПОМИНАНИЕ: ответы и артефакты — на русском; технические токены (код, пути, команды) — в оригинале.
 ```
-
-**Если задан `--serial`:** запусти роли последовательно — сначала backend-dev, затем frontend-dev в том же worktree (используй отдельные вызовы `Agent`).
-
-**Если затронута только одна сторона или флаги ограничивают область:** запускай только нужного разработчика через `Agent` (не `AgentSwarm`).
 
 > **Rate limits AgentSwarm:** при большом fan-out или повторяющихся 429 установи `KIMI_CODE_AGENT_SWARM_MAX_CONCURRENCY=2` (env var, см. Kimi Code CLI v0.18.0+), чтобы swarm не упирался в provider rate limits.
 

@@ -167,9 +167,44 @@ python scripts/implement-pipeline.py create-worktree <task-id>
 
 ---
 
-## Step 6: Исправление причины проблемы
+## Step 6: Исправление причины проблемы — plan → approve → execute
 
-Запусти выбранного developer-субагента через `Agent` с `subagent_type: coder`.
+Запуск developer-субагента разбиваем на планирование и исполнение. Без одобренного плана код не пишем.
+
+### Step 6a: Plan — developer пишет PLAN.md
+
+Запусти выбранного developer-субагента через `Agent` с `subagent_type: coder` с задачей **только написать план**:
+
+```text
+=== PHASE A: PLAN ONLY — DO NOT WRITE CODE ===
+
+Перед фиксом напиши $WORKTREE/PLAN.md по task.md/spec.md.
+
+PLAN.md должен содержать:
+1. Root cause — в чём причина бага (с цитатой из diff или теста).
+2. Steps — как исправлять: какие файлы, минимальные изменения, проверка после каждого шага.
+3. Regression test — какой тест добавить/обновить, чтобы баг не повторился.
+4. Risks / Rollback — что может сломаться и как откатить.
+
+Не редактируй production-код. После написания PLAN.md остановись и сообщи: «PLAN.md готов».
+```
+
+### Step 6b: Approve
+
+Оцени план по критериям auto-approve. Auto-одобряется, если **все** условия выполнены:
+
+1. Фикс укладывается в ≤3 файла.
+2. Изменения не касаются auth / payments / PII / orders / webhooks.
+3. Не требуется изменение API contract.
+4. Regression test описан явно.
+
+Если все условия выполнены — trace `plan_auto_approved` и иди к Step 6c.
+
+Если нет — покажи PLAN.md пользователю и спроси: **«одобрить план / доработать?»**. Доработка → верни в Step 6a (trace `plan_revised`). Одобрение → trace `plan_human_approved` и иди к Step 6c.
+
+### Step 6c: Execute — реализация по одобренному плану
+
+Запусти того же developer-субагента с задачей **реализовать одобренный PLAN.md**:
 
 ```text
 Предварь этот промпт комбинированной преамбулой из Rule: Agent Commons (раздел Full subagent prompt block).
@@ -179,20 +214,21 @@ python scripts/implement-pipeline.py create-worktree <task-id>
 Прочитай (параллельно, где возможно):
 1. $AGENT_DIR/task.md
 2. $AGENT_DIR/spec.md
-3. PROJECT_CONTEXT.md
-4. .agent/BACKLOG.md
-5. .agent/BLOCKERS.md
-6. .agent/SESSION_LOG.md
-7. `.kimi-code/skills/<ROLE>/SKILL.md`
-8. [Rule: Pre-edit Checklist](../../rules/pre-edit-checklist.md)
-9. [Rule: Agent Commons](../../rules/agent-commons.md)
-10. [Rule: Security](../../rules/security.md) — всегда; lightweight pass для любой задачи, extended для auth/payments/PII/uploads/orders/webhooks
+3. $WORKTREE/PLAN.md — одобренный план, реализуй строго по нему
+4. PROJECT_CONTEXT.md
+5. .agent/BACKLOG.md
+6. .agent/BLOCKERS.md
+7. .agent/SESSION_LOG.md
+8. `.kimi-code/skills/<ROLE>/SKILL.md`
+9. [Rule: Pre-edit Checklist](../../rules/pre-edit-checklist.md)
+10. [Rule: Agent Commons](../../rules/agent-commons.md)
+11. [Rule: Security](../../rules/security.md) — всегда; lightweight pass для любой задачи, extended для auth/payments/PII/uploads/orders/webhooks
 
 Setup:
 1. Работай ТОЛЬКО внутри $WORKTREE (ветка $BRANCH).
 2. Используй явные пути: git -C "$WORKTREE" ..., make -C "$WORKTREE" ..., Read/Edit/Write файлов под $WORKTREE.
 
-Задача: исправить root cause бага, а не симптом.
+Задача: исправить root cause бага, а не симптом, строго по одобренному PLAN.md.
 
 Rules:
 - Do NOT wrap everything in try/except.
@@ -200,6 +236,7 @@ Rules:
 - If you change an API contract → update the frontend API layer.
 - Use trailing slash in FastAPI endpoints.
 - Do NOT commit to main. You may commit to $BRANCH in the worktree.
+- If PLAN.md becomes unworkable mid-flight: stop, revise PLAN.md with orchestrator, get re-approval.
 
 Before finishing:
 1. Write/update a regression test that would have failed before the fix and passes now.
@@ -213,6 +250,7 @@ Report:
 - Fix
 - Changed files
 - Test results
+- Any deviations from PLAN.md (must be re-approved)
 - Any blockers
 
 НАПОМИНАНИЕ: ответы и артефакты — на русском; технические токены (код, пути, команды) — в оригинале.
