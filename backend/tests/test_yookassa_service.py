@@ -132,6 +132,32 @@ class TestYooKassaService:
         assert result["amount"] == Decimal("50.00")
 
     @pytest.mark.asyncio
+    async def test_create_refund_idempotence_key_deterministic(self):
+        """Idempotence key детерминирован на платёж: ретрай после потери ответа
+        вернёт исходный refund вместо создания второго (S-003)."""
+        mock_response = MagicMock()
+        mock_response.id = "test-refund-id"
+        mock_response.status = "succeeded"
+        mock_response.amount.value = "50.00"
+        mock_response.created_at = "2026-06-02T12:10:00.000Z"
+
+        with (
+            patch("src.app.services.yookassa_service.YooKassaService._ensure_configured"),
+            patch("src.app.services.yookassa_service.Refund.create", return_value=mock_response) as mock_create,
+        ):
+            await YooKassaService.create_refund(
+                yookassa_payment_id="test-payment-id",
+                amount=Decimal("50.00"),
+            )
+            await YooKassaService.create_refund(
+                yookassa_payment_id="test-payment-id",
+                amount=Decimal("50.00"),
+            )
+
+        keys = [call.kwargs["idempotency_key"] for call in mock_create.call_args_list]
+        assert keys == ["refund-test-payment-id", "refund-test-payment-id"]
+
+    @pytest.mark.asyncio
     async def test_create_payment_bad_request(self):
         from yookassa.domain.exceptions.bad_request_error import BadRequestError
 

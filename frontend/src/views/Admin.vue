@@ -520,6 +520,7 @@
               <option value="paid">Оплачен</option>
               <option value="shipped">Отправлен</option>
               <option value="delivered">Доставлен</option>
+              <option v-if="orderForm.status === 'cancelled'" value="cancelled" disabled>Отменён</option>
             </select>
           </div>
           <div class="field">

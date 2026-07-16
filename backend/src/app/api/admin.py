@@ -121,8 +121,10 @@ async def ship_admin_order(
 
 
 @router.post("/admin/orders/{order_id}/cancel/", response_model=OrderOut)
+@conditional_limit("30/minute")
 async def cancel_admin_order(
     order_id: int,
+    request: Request,
     current_user: User = Depends(get_current_active_admin),
     db: AsyncSession = Depends(get_db),
 ):
