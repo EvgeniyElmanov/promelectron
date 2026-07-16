@@ -198,6 +198,7 @@ describe('Admin.vue', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     toastFn.mockClear();
+    window.confirm = vi.fn();
     mockGet.mockImplementation(defaultMockGet);
     mockPost.mockImplementation((url) => {
       if (url === '/admin/orders/101/ship/') {
@@ -583,6 +584,137 @@ describe('Admin.vue', () => {
     expect(mockPost).toHaveBeenCalledTimes(1);
     expect(mockPost).toHaveBeenCalledWith('/admin/orders/101/ship/');
     expect(toastFn).toHaveBeenCalledWith('Заказ отправлен', 'success');
+  });
+
+  it('отображает дату заказа в формате DD.MM.YYYY HH:MM', async () => {
+    const wrapper = mount(Admin, { global: { plugins: [router] } });
+    await flushPromises();
+
+    await switchSectionTab(wrapper, 'orders');
+
+    const firstRow = wrapper.find('[data-testid="orders-table"] tbody tr');
+    const cells = firstRow.findAll('td');
+    expect(cells[6].text()).toMatch(/^\d{2}\.\d{2}\.\d{4} \d{2}:\d{2}$/);
+  });
+
+  it('показывает кнопку «Отменить заказ» для pending и paid заказов', async () => {
+    const wrapper = mount(Admin, { global: { plugins: [router] } });
+    await flushPromises();
+
+    await switchSectionTab(wrapper, 'orders');
+
+    expect(wrapper.find('[data-testid="admin-order-cancel-btn-101"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="admin-order-cancel-btn-102"]').exists()).toBe(true);
+  });
+
+  it('не показывает кнопку «Отменить заказ» для shipped/delivered/cancelled заказов', async () => {
+    const mixedOrders = [
+      { ...mockOrders[0], id: 201, status: 'shipped' },
+      { ...mockOrders[0], id: 202, status: 'delivered' },
+      { ...mockOrders[0], id: 203, status: 'cancelled' },
+    ];
+    mockGet.mockImplementation((url, config) => {
+      if (url === '/admin/orders') return Promise.resolve({ data: mixedOrders });
+      return defaultMockGet(url, config);
+    });
+
+    const wrapper = mount(Admin, { global: { plugins: [router] } });
+    await flushPromises();
+
+    await switchSectionTab(wrapper, 'orders');
+
+    expect(wrapper.find('[data-testid="admin-order-cancel-btn-201"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="admin-order-cancel-btn-202"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="admin-order-cancel-btn-203"]').exists()).toBe(false);
+  });
+
+  it('отменяет pending заказ после подтверждения', async () => {
+    window.confirm.mockReturnValue(true);
+    const wrapper = mount(Admin, { global: { plugins: [router] } });
+    await flushPromises();
+
+    await switchSectionTab(wrapper, 'orders');
+
+    const cancelBtn = wrapper.find('[data-testid="admin-order-cancel-btn-102"]');
+    expect(cancelBtn.exists()).toBe(true);
+
+    const ordersFetchBefore = mockGet.mock.calls.filter(([url]) => url === '/admin/orders').length;
+
+    await cancelBtn.trigger('click');
+    await flushPromises();
+
+    expect(window.confirm).toHaveBeenCalledWith('Отменить заказ?');
+    expect(mockPost).toHaveBeenCalledTimes(1);
+    expect(mockPost).toHaveBeenCalledWith('/admin/orders/102/cancel/');
+    expect(toastFn).toHaveBeenCalledWith('Заказ отменён', 'success');
+
+    const ordersFetchAfter = mockGet.mock.calls.filter(([url]) => url === '/admin/orders').length;
+    expect(ordersFetchAfter).toBe(ordersFetchBefore + 1);
+  });
+
+  it('при отмене paid заказа показывает предупреждение о возврате денег', async () => {
+    window.confirm.mockReturnValue(true);
+    const wrapper = mount(Admin, { global: { plugins: [router] } });
+    await flushPromises();
+
+    await switchSectionTab(wrapper, 'orders');
+
+    const cancelBtn = wrapper.find('[data-testid="admin-order-cancel-btn-101"]');
+    await cancelBtn.trigger('click');
+    await flushPromises();
+
+    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining('возвращены'));
+    expect(mockPost).toHaveBeenCalledWith('/admin/orders/101/cancel/');
+  });
+
+  it('не отменяет заказ при отказе в confirm', async () => {
+    window.confirm.mockReturnValue(false);
+    const wrapper = mount(Admin, { global: { plugins: [router] } });
+    await flushPromises();
+
+    await switchSectionTab(wrapper, 'orders');
+
+    const cancelBtn = wrapper.find('[data-testid="admin-order-cancel-btn-101"]');
+    await cancelBtn.trigger('click');
+    await flushPromises();
+
+    expect(mockPost).not.toHaveBeenCalled();
+    expect(toastFn).not.toHaveBeenCalledWith('Заказ отменён', 'success');
+  });
+
+  it('показывает toast с ошибкой при неудачной отмене', async () => {
+    window.confirm.mockReturnValue(true);
+    mockPost.mockRejectedValueOnce({ response: { data: { detail: 'Order cannot be cancelled' } } });
+
+    const wrapper = mount(Admin, { global: { plugins: [router] } });
+    await flushPromises();
+
+    await switchSectionTab(wrapper, 'orders');
+
+    const cancelBtn = wrapper.find('[data-testid="admin-order-cancel-btn-101"]');
+    await cancelBtn.trigger('click');
+    await flushPromises();
+
+    expect(mockPost).toHaveBeenCalledWith('/admin/orders/101/cancel/');
+    expect(toastFn).toHaveBeenCalledWith('Order cannot be cancelled', 'error');
+  });
+
+  it('в модалке редактирования заказа нет опции «Отменён»', async () => {
+    const wrapper = mount(Admin, { global: { plugins: [router] } });
+    await flushPromises();
+
+    await switchSectionTab(wrapper, 'orders');
+
+    const editBtn = wrapper.find('[data-testid="orders-table"] .admin__icon-btn--edit');
+    expect(editBtn.exists()).toBe(true);
+    await editBtn.trigger('click');
+    await flushPromises();
+
+    const statusSelect = wrapper.find('.modal__form select');
+    expect(statusSelect.exists()).toBe(true);
+    const values = statusSelect.findAll('option').map((o) => o.attributes('value'));
+    expect(values).toEqual(['pending', 'paid', 'shipped', 'delivered']);
+    expect(values).not.toContain('cancelled');
   });
 
   it('открывает модалку деталей пользователя из вкладки Пользователи', async () => {
