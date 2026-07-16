@@ -338,7 +338,7 @@
                 </td>
                 <td>{{ order.delivery_method?.name || '—' }}</td>
                 <td>{{ order.tracking_number || '—' }}</td>
-                <td>{{ formatShortDate(order.created_at) }}</td>
+                <td>{{ formatDateTimeShort(order.created_at) }}</td>
                 <td class="admin__table-actions">
                   <button
                     v-if="order.status === 'paid'"
@@ -347,6 +347,14 @@
                     @click="handleShipOrder(order.id)"
                   >
                     Подтвердить отправку
+                  </button>
+                  <button
+                    v-if="order.status === 'pending' || order.status === 'paid'"
+                    class="admin__btn admin__btn--small admin__btn--danger"
+                    :data-testid="`admin-order-cancel-btn-${order.id}`"
+                    @click="handleCancelOrder(order)"
+                  >
+                    Отменить заказ
                   </button>
                   <button class="admin__icon-btn admin__icon-btn--edit" @click="openEditOrderModal(order)">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -512,7 +520,6 @@
               <option value="paid">Оплачен</option>
               <option value="shipped">Отправлен</option>
               <option value="delivered">Доставлен</option>
-              <option value="cancelled">Отменён</option>
             </select>
           </div>
           <div class="field">
@@ -607,9 +614,9 @@ import { ref, onMounted, onUnmounted, computed } from 'vue';
 import api from '@/services/api';
 import { useToast } from '@/composables/useToast';
 import { useCategories } from '@/composables/useCategories';
-import { shipOrderAdmin } from '@/api/orders';
+import { shipOrderAdmin, cancelOrderAdmin } from '@/api/orders';
 import { formatPriceCurrency as formatPrice } from '@/utils/price';
-import { formatShortDate } from '@/utils/date';
+import { formatShortDate, formatDateTimeShort } from '@/utils/date';
 import { orderStatusLabel } from '@/utils/order';
 import SkeletonAdminTable from '@/components/SkeletonAdminTable.vue';
 import UserDetailsModal from '@/components/admin/UserDetailsModal.vue';
@@ -1090,6 +1097,21 @@ const handleShipOrder = async (orderId) => {
     await fetchOrders();
   } catch (err) {
     toast(err.response?.data?.detail || 'Не удалось подтвердить отправку', 'error');
+  }
+};
+
+const handleCancelOrder = async (order) => {
+  let message = 'Отменить заказ?';
+  if (order.status === 'paid') {
+    message = 'Заказ уже оплачен. При отмене деньги будут автоматически возвращены покупателю. Отменить заказ?';
+  }
+  if (!confirm(message)) return;
+  try {
+    await cancelOrderAdmin(order.id);
+    toast('Заказ отменён', 'success');
+    await fetchOrders();
+  } catch (err) {
+    toast(err.response?.data?.detail || 'Не удалось отменить заказ', 'error');
   }
 };
 

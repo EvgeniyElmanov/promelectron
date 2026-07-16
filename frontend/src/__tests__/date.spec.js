@@ -4,6 +4,7 @@ import {
   formatDate,
   formatTime,
   formatDateTime,
+  formatDateTimeShort,
 } from '@/utils/date';
 
 const NOON_UTC = '2026-05-18T12:00:00Z';
@@ -81,6 +82,31 @@ describe('date utils', () => {
 
     it('returns — for invalid date string', () => {
       expect(formatDateTime('not-a-date')).toBe('—');
+    });
+  });
+
+  describe('formatDateTimeShort', () => {
+    it('returns DD.MM.YYYY HH:MM separated by a space, without seconds', () => {
+      const result = formatDateTimeShort(TIME_UTC);
+      const [datePart, timePart] = result.split(' ');
+      expect(datePart).toBe(formatDate(TIME_UTC));
+      expect(timePart).toMatch(/^\d{2}:\d{2}$/);
+      expect(result).toMatch(/^\d{2}\.\d{2}\.\d{4} \d{2}:\d{2}$/);
+    });
+
+    it('does not include seconds', () => {
+      const result = formatDateTimeShort(TIME_UTC);
+      expect(result.split(':').length).toBe(2);
+    });
+
+    it('returns — for empty input', () => {
+      expect(formatDateTimeShort('')).toBe('—');
+      expect(formatDateTimeShort(null)).toBe('—');
+      expect(formatDateTimeShort(undefined)).toBe('—');
+    });
+
+    it('returns — for invalid date string', () => {
+      expect(formatDateTimeShort('not-a-date')).toBe('—');
     });
   });
 });
