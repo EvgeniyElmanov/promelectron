@@ -34,6 +34,7 @@ disableModelInvocation: true
 - [ ] **Idempotency**: Платёжные endpoint'ы идемпотентны (idempotency key / уникальность external_id)
 - [ ] **Coupon validation**: Проверка срока, лимитов использования, применимости
 - [ ] **State machine**: Статусы заказа/платежа меняются допустимыми переходами
+- [ ] **Money-movement audit**: Любой admin endpoint, инициирующий движение денег (refund / payout), обязан фиксировать actor (`current_user.id`) в audit-логе — без PII (только id, action, сумма, заказ)
 
 ### Фронтенд
 

@@ -65,6 +65,7 @@ model → schema → service → route handler → tests
    - N+1 запрос (нет `selectinload`/`joinedload`)
    - необработанный `IntegrityError` / гонка на stock
    - endpoint без теста
+   - сигнатура сервисного метода из spec упрощена (особенно выброшен `current_user`) — нельзя без согласования с architect
    - лишний код за пределами spec (scope creep)
 4. Если нашёл и исправил проблемы — перезапусти `make -C "$WORKTREE" test-backend`.
 
