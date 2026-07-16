@@ -717,6 +717,34 @@ describe('Admin.vue', () => {
     expect(values).not.toContain('cancelled');
   });
 
+  it('в модалке отменённого заказа статус «Отменён» показан disabled-опцией', async () => {
+    mockGet.mockImplementation((url, config) => {
+      if (url === '/admin/orders') {
+        return Promise.resolve({ data: [{ ...mockOrders[0], id: 205, status: 'cancelled' }] });
+      }
+      return defaultMockGet(url, config);
+    });
+
+    const wrapper = mount(Admin, { global: { plugins: [router] } });
+    await flushPromises();
+
+    await switchSectionTab(wrapper, 'orders');
+
+    const editBtn = wrapper.find('[data-testid="orders-table"] .admin__icon-btn--edit');
+    expect(editBtn.exists()).toBe(true);
+    await editBtn.trigger('click');
+    await flushPromises();
+
+    const statusSelect = wrapper.find('.modal__form select');
+    expect(statusSelect.exists()).toBe(true);
+    expect(statusSelect.element.value).toBe('cancelled');
+
+    const cancelledOption = statusSelect.find('option[value="cancelled"]');
+    expect(cancelledOption.exists()).toBe(true);
+    expect(cancelledOption.text()).toBe('Отменён');
+    expect(cancelledOption.attributes('disabled')).toBeDefined();
+  });
+
   it('открывает модалку деталей пользователя из вкладки Пользователи', async () => {
     const wrapper = mount(Admin, { global: { plugins: [router] } });
     await flushPromises();
