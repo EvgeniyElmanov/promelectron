@@ -312,6 +312,184 @@ class TestAdminOrders:
         assert response.status_code == 404
 
     @pytest.mark.asyncio
+    async def test_admin_update_order_status_allowed_transitions(
+        self, client, test_admin, admin_token, test_order
+    ):
+        """Разрешённые переходы статуса через admin PUT — 200 (S-008)."""
+        transitions = [
+            ("pending", "paid"),
+            ("paid", "shipped"),
+            ("shipped", "delivered"),
+        ]
+        for _old_status, new_status in transitions:
+            response = await client.put(
+                f"/api/v1/admin/orders/{test_order.id}",
+                json={"status": new_status},
+                headers={"Authorization": f"Bearer {admin_token}"},
+            )
+            assert response.status_code == 200, new_status
+            assert response.json()["status"] == new_status
+
+    @pytest.mark.parametrize(
+        "old_status,new_status",
+        [
+            ("cancelled", "paid"),
+            ("delivered", "shipped"),
+            ("paid", "pending"),
+        ],
+    )
+    @pytest.mark.asyncio
+    async def test_admin_update_order_status_invalid_transitions(
+        self,
+        client,
+        test_admin,
+        admin_token,
+        test_order,
+        test_session,
+        old_status,
+        new_status,
+    ):
+        """Запрещённые переходы статуса через admin PUT — 400 (S-008)."""
+        test_order.status = old_status
+        await test_session.commit()
+
+        response = await client.put(
+            f"/api/v1/admin/orders/{test_order.id}",
+            json={"status": new_status},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert response.status_code == 400
+        assert "Invalid status transition" in response.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_admin_update_order_status_noop(
+        self, client, test_admin, admin_token, test_order
+    ):
+        """No-op переход статуса через admin PUT — 200 (S-008)."""
+        # Сначала переводим в paid
+        response = await client.put(
+            f"/api/v1/admin/orders/{test_order.id}",
+            json={"status": "paid"},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert response.status_code == 200
+
+        # paid → paid
+        response = await client.put(
+            f"/api/v1/admin/orders/{test_order.id}",
+            json={"status": "paid"},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert response.status_code == 200
+        assert response.json()["status"] == "paid"
+
+    @pytest.mark.asyncio
+    async def test_legacy_update_order_status_allowed_transitions(
+        self, client, admin_token, admin_order
+    ):
+        """Разрешённые переходы через legacy PUT /orders/{id}/status/ — 200 (S-008)."""
+        transitions = [
+            ("pending", "paid"),
+            ("paid", "shipped"),
+            ("shipped", "delivered"),
+        ]
+        for _old_status, new_status in transitions:
+            response = await client.put(
+                f"/api/v1/orders/{admin_order.id}/status/",
+                json={"status": new_status},
+                headers={"Authorization": f"Bearer {admin_token}"},
+            )
+            assert response.status_code == 200, new_status
+            assert response.json()["status"] == new_status
+
+    @pytest.mark.parametrize(
+        "old_status,new_status,expected_detail",
+        [
+            ("cancelled", "paid", "Invalid status transition"),
+            ("delivered", "shipped", "Invalid status transition"),
+            ("paid", "pending", "Invalid status transition"),
+            ("pending", "cancelled", "to cancel orders"),
+        ],
+    )
+    @pytest.mark.asyncio
+    async def test_legacy_update_order_status_invalid_transitions(
+        self,
+        client,
+        admin_token,
+        admin_order,
+        test_session,
+        old_status,
+        new_status,
+        expected_detail,
+    ):
+        """Запрещённые переходы через legacy PUT /orders/{id}/status/ — 400 (S-007/S-008)."""
+        admin_order.status = old_status
+        await test_session.commit()
+
+        response = await client.put(
+            f"/api/v1/orders/{admin_order.id}/status/",
+            json={"status": new_status},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert response.status_code == 400
+        assert expected_detail in response.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_legacy_update_order_status_noop(
+        self, client, admin_token, admin_order
+    ):
+        """No-op через legacy PUT /orders/{id}/status/ — 200 (S-007)."""
+        response = await client.put(
+            f"/api/v1/orders/{admin_order.id}/status/",
+            json={"status": "paid"},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert response.status_code == 200
+
+        response = await client.put(
+            f"/api/v1/orders/{admin_order.id}/status/",
+            json={"status": "paid"},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert response.status_code == 200
+        assert response.json()["status"] == "paid"
+
+    @pytest.mark.asyncio
+    async def test_legacy_update_order_status_email_failure_logs_no_pii(
+        self, client, admin_token, admin_order, caplog
+    ):
+        """Сбой email-уведомления в legacy status endpoint: только тип исключения,
+        без traceback и email получателя (S-006)."""
+        mock_email = AsyncMock(
+            side_effect=Exception("SMTP refused for victim@example.com")
+        )
+        with (
+            patch(
+                "src.app.services.order_service.EmailService.send_order_status_update",
+                mock_email,
+            ),
+            caplog.at_level(
+                logging.WARNING, logger="src.app.services.order_service"
+            ),
+        ):
+            response = await client.put(
+                f"/api/v1/orders/{admin_order.id}/status/",
+                json={"status": "paid"},
+                headers={"Authorization": f"Bearer {admin_token}"},
+            )
+
+        assert response.status_code == 200
+        warning_records = [
+            record
+            for record in caplog.records
+            if "Failed to send status update side-effects" in record.getMessage()
+        ]
+        assert len(warning_records) == 1
+        assert "Exception" in warning_records[0].getMessage()
+        assert warning_records[0].exc_info is None
+        assert "victim@example.com" not in caplog.text
+
+    @pytest.mark.asyncio
     async def test_user_cannot_list_admin_orders(self, client, test_user, user_token):
         """Обычный пользователь не может получить список всех заказов."""
         response = await client.get(

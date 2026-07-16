@@ -54,6 +54,35 @@ class OrderService:
             order.payment = payments.get(order.id)
 
     @staticmethod
+    def _validate_status_transition(old_status: str, new_status: str) -> None:
+        """Validate an order status transition according to business.md §3.3.
+
+        No-op transitions are always allowed. Transitions to ``cancelled`` are
+        forbidden here; cancellation must go through the dedicated cancel
+        endpoint (refund/stock/CDEK side-effects).
+        """
+        if old_status == new_status:
+            return
+
+        if new_status == "cancelled":
+            raise HTTPException(
+                status_code=400,
+                detail="Use POST /admin/orders/{id}/cancel/ to cancel orders",
+            )
+
+        allowed = {
+            "pending": {"paid", "shipped"},
+            "paid": {"shipped", "refunding"},
+            "shipped": {"delivered"},
+            "refunding": {"refunded"},
+        }
+        if new_status not in allowed.get(old_status, set()):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid status transition from {old_status} to {new_status}",
+            )
+
+    @staticmethod
     async def create_order(current_user: User, order_data: OrderCreate, db: AsyncSession) -> Order:
         cart_result = await db.execute(
             select(Cart).where(Cart.user_id == current_user.id).options(selectinload(Cart.items))
@@ -454,14 +483,9 @@ class OrderService:
         if data.status is not None:
             if data.status not in allowed_statuses:
                 raise HTTPException(status_code=400, detail="Invalid status")
-            # Прямой перевод в cancelled через PUT запрещён: отмена должна идти
-            # через POST /admin/orders/{id}/cancel/ (refund/stock/CDEK).
-            # No-op cancelled→cancelled разрешён: frontend-форма шлёт текущий статус.
-            if data.status == "cancelled" and order.status != "cancelled":
-                raise HTTPException(
-                    status_code=400,
-                    detail="Use POST /admin/orders/{id}/cancel/ to cancel orders",
-                )
+            # State machine guard: отмена должна идти через POST /admin/orders/{id}/cancel/.
+            # No-op (old == new) разрешён — frontend-форма шлёт текущий статус.
+            OrderService._validate_status_transition(order.status, data.status)
             if order.status != data.status:
                 order.status = data.status
                 status_changed = True
@@ -785,9 +809,12 @@ class OrderService:
         if not order:
             raise HTTPException(status_code=404, detail="Order not found")
 
-        allowed_statuses = ["pending", "paid", "shipped", "delivered", "cancelled"]
+        allowed_statuses = ["pending", "paid", "shipped", "delivered", "cancelled", "refunding", "refunded"]
         if status_update.status not in allowed_statuses:
             raise HTTPException(status_code=400, detail="Invalid status")
+
+        # Отмена через PUT запрещена; no-op cancelled→cancelled разрешён.
+        OrderService._validate_status_transition(order.status, status_update.status)
 
         order.status = status_update.status
         await db.commit()
@@ -830,8 +857,13 @@ class OrderService:
                     message=f"Заказ №{full_order.id}: {label}",
                     order_id=full_order.id,
                 )
-            except Exception:
-                logger.exception("Failed to send status update side-effects for order %s", full_order.id)
+            except Exception as exc:
+                # Без traceback: SMTP-traceback может содержать email получателя (PII)
+                logger.warning(
+                    "Failed to send status update side-effects for order %s: %s",
+                    full_order.id,
+                    type(exc).__name__,
+                )
 
         await OrderService._ensure_payment_loaded(full_order, db)
         return full_order
