@@ -35,6 +35,22 @@ describe('ProductCard.vue', () => {
     expect(wrapper.text()).toMatch(/4\s999\s₽/)
   })
 
+  it('отображает цену с копейками', () => {
+    const router = createRouter({
+      history: createWebHistory(),
+      routes: [{ path: '/', component: ProductCard }],
+    })
+
+    const wrapper = mount(ProductCard, {
+      global: { plugins: [router] },
+      props: {
+        product: { id: 2, name: 'Test Product Cents', price: 4999.99, stock: 5 },
+      },
+    })
+
+    expect(wrapper.text()).toMatch(/4\s999,99\s₽/)
+  })
+
   it('содержит кнопку избранного', () => {
     const router = createRouter({
       history: createWebHistory(),

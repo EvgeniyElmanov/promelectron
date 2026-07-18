@@ -55,6 +55,7 @@ import { useAuth } from '@/composables/useAuth';
 import { useCart } from '@/composables/useCart';
 import { useToast } from '@/composables/useToast';
 import { getImageUrl } from '@/composables/useImageUrl';
+import { formatPrice } from '@/utils/price';
 
 const props = defineProps({
   product: { type: Object, required: true },
@@ -77,10 +78,7 @@ const placeholderBg = computed(() =>
   placeholderColors[props.product.id % placeholderColors.length]
 );
 
-const formattedPrice = computed(() => {
-  const parts = props.product.price.toFixed(0);
-  return Number(parts).toLocaleString('ru-RU');
-});
+const formattedPrice = computed(() => formatPrice(props.product.price));
 
 const goToProduct = () => {
   router.push(`/product/${props.product.id}`);
