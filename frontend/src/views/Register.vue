@@ -195,9 +195,11 @@ import { useRouter } from 'vue-router';
 import api from '@/services/api';
 import { register as apiRegister } from '@/api/auth';
 import { useAuth } from '@/composables/useAuth';
+import { useCart } from '@/composables/useCart';
 
 const router = useRouter();
 const { setAuth } = useAuth();
+const { mergeCartOnLogin } = useCart();
 
 const fullName = ref('');
 const email = ref('');
@@ -284,6 +286,12 @@ async function handleRegister() {
       role: selectedRole.value,
     });
     setAuth(response.data.access_token, response.data.user);
+    try {
+      await mergeCartOnLogin();
+    } catch {
+      // Если merge не удался, пользователь уже авторизован.
+      // Гостевые товары останутся в localStorage для повторной попытки.
+    }
     registrationSuccess.value = true;
     router.push('/');
   } catch (err) {

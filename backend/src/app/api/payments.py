@@ -2,7 +2,16 @@ import hmac
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from fastapi import APIRouter, Body, Depends, Header, HTTPException, Query, Request
+from fastapi import (
+    APIRouter,
+    Body,
+    Depends,
+    Header,
+    HTTPException,
+    Query,
+    Request,
+    status,
+)
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,7 +23,11 @@ from src.app.db.database import get_db
 from src.app.models.order import Order
 from src.app.models.payment import Payment
 from src.app.models.user import User
-from src.app.schemas.payment import PaymentCreateResponse, PaymentDebugSetStatusRequest, PaymentOut
+from src.app.schemas.payment import (
+    PaymentCreateResponse,
+    PaymentDebugSetStatusRequest,
+    PaymentOut,
+)
 from src.app.services.payment_service import PaymentService
 from src.app.services.yookassa_service import YooKassaService
 from src.app.utils.auth import get_current_active_user
@@ -23,11 +36,15 @@ router = APIRouter(prefix="/payments", tags=["payments"])
 
 
 class GuestPaymentRequest(BaseModel):
-    guest_email: str = Field(..., pattern=r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+    guest_email: str = Field(
+        ..., pattern=r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+    )
 
 
 class GuestMockConfirmRequest(BaseModel):
-    guest_email: str = Field(..., pattern=r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+    guest_email: str = Field(
+        ..., pattern=r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+    )
 
 
 @router.post("/{order_id}/", response_model=PaymentCreateResponse)
@@ -37,7 +54,9 @@ async def create_payment(
     db: AsyncSession = Depends(get_db),
 ):
     """Создать платёж для заказа через ЮKassa."""
-    payment = await PaymentService.create_payment(order_id=order_id, user_id=current_user.id, db=db)
+    payment = await PaymentService.create_payment(
+        order_id=order_id, user_id=current_user.id, db=db
+    )
     return PaymentCreateResponse(
         payment_id=payment.id,
         status=payment.status,
@@ -52,15 +71,14 @@ async def create_guest_payment(
     request_data: GuestPaymentRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    """Создать платёж для гостевого заказа через ЮKassa."""
-    payment = await PaymentService.create_guest_payment(
-        order_id=order_id, guest_email=request_data.guest_email, db=db
-    )
-    return PaymentCreateResponse(
-        payment_id=payment.id,
-        status=payment.status,
-        confirmation_url=payment.confirmation_url,
-        amount=payment.amount,
+    """Создание платежа для нового гостевого заказа отключено.
+
+    Возвращает 410 Gone. Исторические guest-заказы продолжают обрабатываться
+    через mock-confirm и webhook.
+    """
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="Guest checkout is disabled. Please log in or register.",
     )
 
 
@@ -68,7 +86,9 @@ async def create_guest_payment(
 async def mock_confirm_guest_payment(
     order_id: int,
     request_data: GuestMockConfirmRequest | None = Body(None),
-    guest_email: str | None = Query(None, pattern=r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'),
+    guest_email: str | None = Query(
+        None, pattern=r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     """Подтвердить mock-платёж для гостевого заказа (для dev-режима).
@@ -104,7 +124,9 @@ async def get_payment(
     db: AsyncSession = Depends(get_db),
 ):
     """Получить информацию о платеже."""
-    payment = await PaymentService.get_payment(payment_id=payment_id, user_id=current_user.id, db=db)
+    payment = await PaymentService.get_payment(
+        payment_id=payment_id, user_id=current_user.id, db=db
+    )
     return payment
 
 
@@ -115,7 +137,9 @@ async def cancel_payment(
     db: AsyncSession = Depends(get_db),
 ):
     """Отменить платёж (если ещё не оплачен)."""
-    payment = await PaymentService.cancel_payment(payment_id=payment_id, user_id=current_user.id, db=db)
+    payment = await PaymentService.cancel_payment(
+        payment_id=payment_id, user_id=current_user.id, db=db
+    )
     return payment
 
 
@@ -129,7 +153,9 @@ async def sync_payment_status(
 
     Полезно когда webhook не пришёл или нужно принудительно обновить статус.
     """
-    payment = await PaymentService.sync_payment_status(payment_id=payment_id, user_id=current_user.id, db=db)
+    payment = await PaymentService.sync_payment_status(
+        payment_id=payment_id, user_id=current_user.id, db=db
+    )
     return payment
 
 
@@ -143,7 +169,9 @@ async def sync_payment_status_by_order(
 
     Frontend-friendly endpoint — не нужно знать payment_id.
     """
-    payment = await PaymentService.sync_payment_status_by_order(order_id=order_id, user_id=current_user.id, db=db)
+    payment = await PaymentService.sync_payment_status_by_order(
+        order_id=order_id, user_id=current_user.id, db=db
+    )
     return payment
 
 
@@ -158,7 +186,9 @@ async def debug_yookassa_create(
     Полезен для диагностики: сравниваем прямой curl vs backend SDK.
     """
     if not settings.yookassa_test_mode:
-        raise HTTPException(status_code=403, detail="Debug endpoint only available in test mode")
+        raise HTTPException(
+            status_code=403, detail="Debug endpoint only available in test mode"
+        )
 
     body = await request.json()
     amount = Decimal(str(body.get("amount", "10.00")))
@@ -185,7 +215,9 @@ async def debug_set_payment_status(
     Используется в E2E-тестах для обхода нестабильного UI sandbox ЮKassa.
     """
     if not settings.yookassa_test_mode:
-        raise HTTPException(status_code=403, detail="Debug endpoint only available in test mode")
+        raise HTTPException(
+            status_code=403, detail="Debug endpoint only available in test mode"
+        )
 
     if x_seed_secret is None or not hmac.compare_digest(x_seed_secret, SEED_SECRET):
         raise HTTPException(status_code=403, detail="Forbidden")
@@ -225,7 +257,9 @@ async def debug_set_payment_status(
             raise HTTPException(status_code=404, detail="Order not found")
 
     if order.user_id is None and request_data.guest_email is None:
-        raise HTTPException(status_code=400, detail="guest_email is required for guest orders")
+        raise HTTPException(
+            status_code=400, detail="guest_email is required for guest orders"
+        )
 
     if payment.status in ("paid", "cancelled"):
         raise HTTPException(status_code=400, detail="Payment is in terminal status")

@@ -88,7 +88,10 @@ vi.mock('@/components/CdekDeliveryWidget.vue', () => ({
 
 const router = createRouter({
   history: createWebHistory(),
-  routes: [{ path: '/', component: { template: '<div>Home</div>' } }],
+  routes: [
+    { path: '/', component: { template: '<div>Home</div>' } },
+    { path: '/login', component: { template: '<div>Login</div>' } },
+  ],
 });
 
 const mockCartWithItems = {
@@ -404,16 +407,17 @@ describe('Cart.vue — гостевая корзина', () => {
     expect(checkoutBtn.text()).toContain('Оформить заказ');
   });
 
-  it('редиректит гостя на /guest-checkout при оформлении', async () => {
+  it('редиректит гостя на /login?redirect=/cart при оформлении', async () => {
     const push = vi.spyOn(router, 'push');
     const wrapper = mount(Cart, { global: { plugins: [router] } });
     await flushPromises();
 
     const checkoutBtn = wrapper.find('[data-testid="checkout-button"]');
+    expect(checkoutBtn.attributes('disabled')).toBeUndefined();
     await checkoutBtn.trigger('click');
     await flushPromises();
 
-    expect(push).toHaveBeenCalledWith('/guest-checkout');
+    expect(push).toHaveBeenCalledWith('/login?redirect=/cart');
   });
 
   it('не показывает блоки доставки и адреса для гостя', async () => {

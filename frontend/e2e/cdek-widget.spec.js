@@ -149,25 +149,4 @@ test.describe('CDEK Widget on Cart Page', () => {
   });
 });
 
-test.describe('CDEK Widget on Guest Checkout Page', () => {
-  test('guest user can select PVZ and see delivery price on checkout', async ({ page }) => {
-    await mockCdekWidget(page);
-    await mockSupplierCityCode(page, 44);
 
-    await addFirstProductToCart(page);
-    await page.goto('/guest-checkout');
-    await expect(page).toHaveURL('/guest-checkout');
-
-    const widget = page.locator('[data-testid="cdek-delivery-widget"]');
-    await expect(widget).toBeVisible();
-
-    await page.locator('[data-testid="cdek-open-selector"]').click();
-    const selected = page.locator('[data-testid="cdek-selected-delivery"]');
-    await expect(selected).toBeVisible({ timeout: 5000 });
-
-    await expect(selected).toContainText('Пункт выдачи');
-    await expect(selected).toContainText('Экспресс-экспедиция');
-    await expect(selected).toContainText('350 ₽');
-    await expect(selected).toContainText('Срок: 1-3 дн.');
-  });
-});

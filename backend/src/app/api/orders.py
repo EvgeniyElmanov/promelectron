@@ -1,6 +1,6 @@
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.app.utils.rate_limiter import conditional_limit
@@ -17,27 +17,34 @@ from src.app.schemas.order import (
     SupplierOrderItemOut,
 )
 from src.app.services.order_service import OrderService
-from src.app.utils.auth import get_current_active_admin, get_current_active_supplier, get_current_active_user
+from src.app.utils.auth import (
+    get_current_active_admin,
+    get_current_active_supplier,
+    get_current_active_user,
+)
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 
 
 @router.post("/create/", response_model=OrderOut)
 @conditional_limit("50/minute")
-async def create_order(request: Request,
+async def create_order(
+    request: Request,
     order_data: OrderCreate,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
     Create an order from the user's cart.
-    
+
     - Gets the current user
     - Transfers items from cart to order
     - Clears the cart after creating the order
     - Returns the created order
     """
-    return await OrderService.create_order(current_user=current_user, order_data=order_data, db=db)
+    return await OrderService.create_order(
+        current_user=current_user, order_data=order_data, db=db
+    )
 
 
 @router.post("/create-guest/", response_model=OrderOut)
@@ -48,13 +55,16 @@ async def create_guest_order(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Create an order without registration (guest checkout).
-    
-    - Accepts a list of items with product_id and quantity
-    - Validates stock and reduces it
-    - Returns the created order
+    Guest checkout creation is disabled.
+
+    This endpoint used to create orders without registration. It now returns
+    410 Gone so the frontend can redirect guests to login or registration.
+    Historical guest orders remain readable via GET /orders/guest/{order_id}/.
     """
-    return await OrderService.create_guest_order(order_data=order_data, db=db)
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="Guest checkout is disabled. Please log in or register.",
+    )
 
 
 @router.get("/guest/{order_id}/", response_model=OrderOut)
@@ -64,7 +74,9 @@ async def get_guest_order(
     db: AsyncSession = Depends(get_db),
 ):
     """Get a guest order by ID and email."""
-    return await OrderService.get_guest_order(order_id=order_id, guest_email=guest_email, db=db)
+    return await OrderService.get_guest_order(
+        order_id=order_id, guest_email=guest_email, db=db
+    )
 
 
 @router.get("/supplier/", response_model=List[SupplierOrderOut])
@@ -74,12 +86,18 @@ async def get_supplier_orders(
     current_user: User = Depends(get_current_active_supplier),
     db: AsyncSession = Depends(get_db),
 ):
-    supplier_result = await db.execute(select(Supplier).where(Supplier.user_id == current_user.id))
+    supplier_result = await db.execute(
+        select(Supplier).where(Supplier.user_id == current_user.id)
+    )
     supplier = supplier_result.scalars().first()
     if not supplier:
-        raise HTTPException(status_code=403, detail="You are not registered as a supplier")
+        raise HTTPException(
+            status_code=403, detail="You are not registered as a supplier"
+        )
 
-    orders = await OrderService.get_supplier_orders(supplier.id, db, skip=skip, limit=limit)
+    orders = await OrderService.get_supplier_orders(
+        supplier.id, db, skip=skip, limit=limit
+    )
     return [
         SupplierOrderOut(
             id=order.id,
@@ -112,10 +130,14 @@ async def get_supplier_order(
     current_user: User = Depends(get_current_active_supplier),
     db: AsyncSession = Depends(get_db),
 ):
-    supplier_result = await db.execute(select(Supplier).where(Supplier.user_id == current_user.id))
+    supplier_result = await db.execute(
+        select(Supplier).where(Supplier.user_id == current_user.id)
+    )
     supplier = supplier_result.scalars().first()
     if not supplier:
-        raise HTTPException(status_code=403, detail="You are not registered as a supplier")
+        raise HTTPException(
+            status_code=403, detail="You are not registered as a supplier"
+        )
 
     order = await OrderService.get_supplier_order_details(order_id, supplier.id, db)
     return SupplierOrderOut(
@@ -147,12 +169,18 @@ async def ship_supplier_order(
     current_user: User = Depends(get_current_active_supplier),
     db: AsyncSession = Depends(get_db),
 ):
-    supplier_result = await db.execute(select(Supplier).where(Supplier.user_id == current_user.id))
+    supplier_result = await db.execute(
+        select(Supplier).where(Supplier.user_id == current_user.id)
+    )
     supplier = supplier_result.scalars().first()
     if not supplier:
-        raise HTTPException(status_code=403, detail="You are not registered as a supplier")
+        raise HTTPException(
+            status_code=403, detail="You are not registered as a supplier"
+        )
 
-    order = await OrderService.update_supplier_order_status(order_id, supplier.id, "shipped", db)
+    order = await OrderService.update_supplier_order_status(
+        order_id, supplier.id, "shipped", db
+    )
     return SupplierOrderOut(
         id=order.id,
         buyer_name=order.user.full_name,
@@ -182,7 +210,9 @@ async def get_order(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
-    return await OrderService.get_order(order_id=order_id, current_user=current_user, db=db)
+    return await OrderService.get_order(
+        order_id=order_id, current_user=current_user, db=db
+    )
 
 
 @router.get("/", response_model=List[OrderOut])
@@ -200,12 +230,15 @@ async def cancel_order(
     db: AsyncSession = Depends(get_db),
 ):
     """Отменить заказ (только если статус pending)."""
-    return await OrderService.cancel_order(order_id=order_id, current_user=current_user, db=db)
+    return await OrderService.cancel_order(
+        order_id=order_id, current_user=current_user, db=db
+    )
 
 
 @router.put("/{order_id}/status/", response_model=OrderOut)
 @conditional_limit("10/minute")
-async def update_order_status(request: Request,
+async def update_order_status(
+    request: Request,
     order_id: int,
     status_update: OrderUpdateStatus,
     current_user: User = Depends(get_current_active_admin),
@@ -214,6 +247,3 @@ async def update_order_status(request: Request,
     return await OrderService.update_order_status(
         order_id=order_id, status_update=status_update, current_user=current_user, db=db
     )
-
-
-

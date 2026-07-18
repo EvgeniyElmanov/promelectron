@@ -1,4 +1,3 @@
-from decimal import Decimal
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -8,128 +7,109 @@ from src.app.models.order import Order
 from src.app.models.payment import Payment
 from src.app.models.recipient import Recipient
 from src.app.models.user import PasswordResetToken, User, UserAddress
+from src.app.schemas.order import GuestOrderCreate, GuestOrderItemCreate
+from src.app.services.order_service import OrderService
+from src.app.services.payment_service import PaymentService
+
+
+def _guest_order_data(test_product, cdek_delivery_payload, email, save_address=False):
+    return GuestOrderCreate(
+        items=[GuestOrderItemCreate(product_id=test_product.id, quantity=1)],
+        cdek_delivery=cdek_delivery_payload,
+        guest_email=email,
+        recipient_phone="+79990001122",
+        recipient_first_name="Иван",
+        recipient_last_name="Гость",
+        save_address=save_address,
+    )
+
+
+async def _create_guest_order(
+    test_session, test_product, cdek_delivery_payload, guest_email, save_address=False
+):
+    order_data = _guest_order_data(
+        test_product, cdek_delivery_payload, guest_email, save_address=save_address
+    )
+    return await OrderService.create_guest_order(order_data=order_data, db=test_session)
+
+
+async def _create_guest_payment(
+    test_session, order, guest_email, yookassa_payment_id="guest-yookassa-id"
+):
+    mock_yookassa = AsyncMock(
+        return_value={
+            "yookassa_payment_id": yookassa_payment_id,
+            "status": "pending",
+            "confirmation_url": "https://yoomoney.ru/checkout/guest",
+            "amount": order.total_price,
+            "created_at": "2026-06-02T12:00:00.000Z",
+        }
+    )
+    with (
+        patch(
+            "src.app.services.payment_service.YooKassaService.is_configured",
+            return_value=True,
+        ),
+        patch(
+            "src.app.services.payment_service.YooKassaService.create_payment",
+            mock_yookassa,
+        ),
+    ):
+        return await PaymentService.create_guest_payment(
+            order_id=order.id, guest_email=guest_email, db=test_session
+        )
 
 
 class TestGuestPaymentsAPI:
     """Тесты гостевой оплаты и автосоздания пользователя."""
 
     @pytest.mark.asyncio
-    async def test_create_guest_payment(self, client, test_product, cdek_delivery_payload):
-        """Гость может создать платёж для своего заказа."""
-        order_resp = await client.post(
-            "/api/v1/orders/create-guest/",
-            json={
-                "items": [{"product_id": test_product.id, "quantity": 1}],
-                "cdek_delivery": cdek_delivery_payload,
-                "guest_email": "guest@example.com",
-                "recipient_phone": "+79990001122",
-                "recipient_first_name": "Иван",
-                "recipient_last_name": "Гость",
-            },
+    async def test_create_guest_payment_returns_gone(
+        self, client, test_product, cdek_delivery_payload, test_session
+    ):
+        """Создание нового гостевого платежа отключено — 410 Gone."""
+        order = await _create_guest_order(
+            test_session, test_product, cdek_delivery_payload, "guest@example.com"
         )
-        order_id = order_resp.json()["id"]
-
-        expected_amount = Decimal(str(test_product.price)) + Decimal(str(cdek_delivery_payload["price"]))
-        mock_yookassa = AsyncMock(return_value={
-            "yookassa_payment_id": "guest-yookassa-id",
-            "status": "pending",
-            "confirmation_url": "https://yoomoney.ru/checkout/guest",
-            "amount": expected_amount,
-            "created_at": "2026-06-02T12:00:00.000Z",
-        })
-
-        with (
-            patch("src.app.services.payment_service.YooKassaService.is_configured", return_value=True),
-            patch("src.app.services.payment_service.YooKassaService.create_payment", mock_yookassa),
-        ):
-            payment_resp = await client.post(
-                f"/api/v1/payments/guest/{order_id}/",
-                json={"guest_email": "guest@example.com"},
-            )
-
-        assert payment_resp.status_code == 200
-        data = payment_resp.json()
-        assert data["status"] == "pending"
-        assert float(data["amount"]) == float(expected_amount)
-        assert data["confirmation_url"] == "https://yoomoney.ru/checkout/guest"
-
-    @pytest.mark.asyncio
-    async def test_create_guest_payment_wrong_email(self, client, test_product, cdek_delivery_payload):
-        """Платёж с неверным guest_email — 404."""
-        order_resp = await client.post(
-            "/api/v1/orders/create-guest/",
-            json={
-                "items": [{"product_id": test_product.id, "quantity": 1}],
-                "cdek_delivery": cdek_delivery_payload,
-                "guest_email": "guest@example.com",
-                "recipient_phone": "+79990001122",
-                "recipient_first_name": "Иван",
-                "recipient_last_name": "Гость",
-            },
-        )
-        order_id = order_resp.json()["id"]
 
         response = await client.post(
-            f"/api/v1/payments/guest/{order_id}/",
+            f"/api/v1/payments/guest/{order.id}/",
+            json={"guest_email": "guest@example.com"},
+        )
+        assert response.status_code == 410
+        assert "disabled" in response.json()["detail"].lower()
+
+    @pytest.mark.asyncio
+    async def test_create_guest_payment_wrong_email_returns_gone(
+        self, client, test_product, cdek_delivery_payload, test_session
+    ):
+        """Даже с неверным email создание guest-платежа возвращает 410."""
+        order = await _create_guest_order(
+            test_session, test_product, cdek_delivery_payload, "guest@example.com"
+        )
+
+        response = await client.post(
+            f"/api/v1/payments/guest/{order.id}/",
             json={"guest_email": "wrong@example.com"},
         )
-        assert response.status_code == 404
+        assert response.status_code == 410
 
     @pytest.mark.asyncio
-    async def test_create_guest_payment_invalid_email(self, client, test_product, cdek_delivery_payload):
-        """Невалидный email в запросе на оплату — 422."""
-        order_resp = await client.post(
-            "/api/v1/orders/create-guest/",
-            json={
-                "items": [{"product_id": test_product.id, "quantity": 1}],
-                "cdek_delivery": cdek_delivery_payload,
-                "guest_email": "guest@example.com",
-                "recipient_phone": "+79990001122",
-                "recipient_first_name": "Иван",
-                "recipient_last_name": "Гость",
-            },
-        )
-        order_id = order_resp.json()["id"]
-
-        response = await client.post(
-            f"/api/v1/payments/guest/{order_id}/",
-            json={"guest_email": "not-an-email"},
-        )
-        assert response.status_code == 422
-
-    @pytest.mark.asyncio
-    async def test_webhook_creates_user_from_guest(self, client, test_product, cdek_delivery_payload, test_session):
+    async def test_webhook_creates_user_from_guest(
+        self, client, test_product, cdek_delivery_payload, test_session
+    ):
         """После успешной оплаты гостевого заказа создаётся пользователь."""
-        order_resp = await client.post(
-            "/api/v1/orders/create-guest/",
-            json={
-                "items": [{"product_id": test_product.id, "quantity": 1}],
-                "cdek_delivery": cdek_delivery_payload,
-                "guest_email": "newuser@example.com",
-                "recipient_phone": "+79990001122",
-                "recipient_first_name": "Иван",
-                "recipient_last_name": "Гость",
-                "save_address": True,
-            },
+        guest_email = "newuser@example.com"
+        order = await _create_guest_order(
+            test_session,
+            test_product,
+            cdek_delivery_payload,
+            guest_email,
+            save_address=True,
         )
-        order_id = order_resp.json()["id"]
-
-        mock_yookassa = AsyncMock(return_value={
-            "yookassa_payment_id": "guest-yookassa-id",
-            "status": "pending",
-            "confirmation_url": "https://yoomoney.ru/checkout/guest",
-            "amount": Decimal(str(test_product.price)),
-            "created_at": "2026-06-02T12:00:00.000Z",
-        })
-
-        with (
-            patch("src.app.services.payment_service.YooKassaService.is_configured", return_value=True),
-            patch("src.app.services.payment_service.YooKassaService.create_payment", mock_yookassa),
-        ):
-            await client.post(
-                f"/api/v1/payments/guest/{order_id}/",
-                json={"guest_email": "newuser@example.com"},
-            )
+        await _create_guest_payment(
+            test_session, order, guest_email, yookassa_payment_id="guest-yookassa-id"
+        )
 
         webhook_payload = {
             "event": "payment.succeeded",
@@ -142,10 +122,18 @@ class TestGuestPaymentsAPI:
 
         mock_send_welcome = AsyncMock(return_value=None)
         with (
-            patch("src.app.services.payment_service.YooKassaService.capture_payment", AsyncMock()),
-            patch("src.app.services.payment_service.EmailService.send_welcome_email", mock_send_welcome),
+            patch(
+                "src.app.services.payment_service.YooKassaService.capture_payment",
+                AsyncMock(),
+            ),
+            patch(
+                "src.app.services.payment_service.EmailService.send_welcome_email",
+                mock_send_welcome,
+            ),
         ):
-            resp = await client.post("/api/v1/payments/yookassa/webhook/", json=webhook_payload)
+            resp = await client.post(
+                "/api/v1/payments/yookassa/webhook/", json=webhook_payload
+            )
         assert resp.status_code == 200
 
         # Проверяем, что welcome email отправлен с временным паролем и токеном
@@ -157,13 +145,15 @@ class TestGuestPaymentsAPI:
         assert call_kwargs["frontend_url"]
 
         # Проверяем, что заказ привязан к пользователю
-        result = await test_session.execute(select(Order).where(Order.id == order_id))
+        result = await test_session.execute(select(Order).where(Order.id == order.id))
         order = result.scalars().first()
         assert order.user_id is not None
         assert order.status == "paid"
 
         # Проверяем создание пользователя
-        user_result = await test_session.execute(select(User).where(User.email == "newuser@example.com"))
+        user_result = await test_session.execute(
+            select(User).where(User.email == guest_email)
+        )
         user = user_result.scalars().first()
         assert user is not None
         assert user.full_name == "Иван Гость"
@@ -200,35 +190,15 @@ class TestGuestPaymentsAPI:
         self, client, test_product, cdek_delivery_payload, test_session, test_user
     ):
         """Если пользователь с таким email уже есть, заказ привязывается к нему."""
-        order_resp = await client.post(
-            "/api/v1/orders/create-guest/",
-            json={
-                "items": [{"product_id": test_product.id, "quantity": 1}],
-                "cdek_delivery": cdek_delivery_payload,
-                "guest_email": test_user.email,
-                "recipient_phone": "+79990001122",
-                "recipient_first_name": "Иван",
-                "recipient_last_name": "Гость",
-            },
+        order = await _create_guest_order(
+            test_session, test_product, cdek_delivery_payload, test_user.email
         )
-        order_id = order_resp.json()["id"]
-
-        mock_yookassa = AsyncMock(return_value={
-            "yookassa_payment_id": "guest-yookassa-id",
-            "status": "pending",
-            "confirmation_url": "https://yoomoney.ru/checkout/guest",
-            "amount": Decimal(str(test_product.price)),
-            "created_at": "2026-06-02T12:00:00.000Z",
-        })
-
-        with (
-            patch("src.app.services.payment_service.YooKassaService.is_configured", return_value=True),
-            patch("src.app.services.payment_service.YooKassaService.create_payment", mock_yookassa),
-        ):
-            await client.post(
-                f"/api/v1/payments/guest/{order_id}/",
-                json={"guest_email": test_user.email},
-            )
+        await _create_guest_payment(
+            test_session,
+            order,
+            test_user.email,
+            yookassa_payment_id="guest-yookassa-id",
+        )
 
         webhook_payload = {
             "event": "payment.succeeded",
@@ -238,11 +208,16 @@ class TestGuestPaymentsAPI:
             },
         }
 
-        with patch("src.app.services.payment_service.YooKassaService.capture_payment", AsyncMock()):
-            resp = await client.post("/api/v1/payments/yookassa/webhook/", json=webhook_payload)
+        with patch(
+            "src.app.services.payment_service.YooKassaService.capture_payment",
+            AsyncMock(),
+        ):
+            resp = await client.post(
+                "/api/v1/payments/yookassa/webhook/", json=webhook_payload
+            )
         assert resp.status_code == 200
 
-        result = await test_session.execute(select(Order).where(Order.id == order_id))
+        result = await test_session.execute(select(Order).where(Order.id == order.id))
         order = result.scalars().first()
         assert order.user_id == test_user.id
         assert order.status == "paid"
@@ -258,36 +233,17 @@ class TestGuestPaymentsAPI:
         self, client, test_product, cdek_delivery_payload, test_session
     ):
         """Адрес не сохраняется без флага save_address."""
-        order_resp = await client.post(
-            "/api/v1/orders/create-guest/",
-            json={
-                "items": [{"product_id": test_product.id, "quantity": 1}],
-                "cdek_delivery": cdek_delivery_payload,
-                "guest_email": "nosave@example.com",
-                "recipient_phone": "+79990001122",
-                "recipient_first_name": "Иван",
-                "recipient_last_name": "Гость",
-                "save_address": False,
-            },
+        guest_email = "nosave@example.com"
+        order = await _create_guest_order(
+            test_session,
+            test_product,
+            cdek_delivery_payload,
+            guest_email,
+            save_address=False,
         )
-        order_id = order_resp.json()["id"]
-
-        mock_yookassa = AsyncMock(return_value={
-            "yookassa_payment_id": "guest-yookassa-id",
-            "status": "pending",
-            "confirmation_url": "https://yoomoney.ru/checkout/guest",
-            "amount": Decimal(str(test_product.price)),
-            "created_at": "2026-06-02T12:00:00.000Z",
-        })
-
-        with (
-            patch("src.app.services.payment_service.YooKassaService.is_configured", return_value=True),
-            patch("src.app.services.payment_service.YooKassaService.create_payment", mock_yookassa),
-        ):
-            await client.post(
-                f"/api/v1/payments/guest/{order_id}/",
-                json={"guest_email": "nosave@example.com"},
-            )
+        await _create_guest_payment(
+            test_session, order, guest_email, yookassa_payment_id="guest-yookassa-id"
+        )
 
         webhook_payload = {
             "event": "payment.succeeded",
@@ -297,11 +253,18 @@ class TestGuestPaymentsAPI:
             },
         }
 
-        with patch("src.app.services.payment_service.YooKassaService.capture_payment", AsyncMock()):
-            resp = await client.post("/api/v1/payments/yookassa/webhook/", json=webhook_payload)
+        with patch(
+            "src.app.services.payment_service.YooKassaService.capture_payment",
+            AsyncMock(),
+        ):
+            resp = await client.post(
+                "/api/v1/payments/yookassa/webhook/", json=webhook_payload
+            )
         assert resp.status_code == 200
 
-        user_result = await test_session.execute(select(User).where(User.email == "nosave@example.com"))
+        user_result = await test_session.execute(
+            select(User).where(User.email == guest_email)
+        )
         user = user_result.scalars().first()
         assert user is not None
 
@@ -315,40 +278,38 @@ class TestGuestPaymentsAPI:
         self, client, test_product, cdek_delivery_payload, test_session
     ):
         """Guest mock-confirm endpoint создаёт пользователя и привязывает заказ."""
-        order_resp = await client.post(
-            "/api/v1/orders/create-guest/",
-            json={
-                "items": [{"product_id": test_product.id, "quantity": 1}],
-                "cdek_delivery": cdek_delivery_payload,
-                "guest_email": "mockguest@example.com",
-                "recipient_phone": "+79990001122",
-                "recipient_first_name": "Мок",
-                "recipient_last_name": "Гость",
-                "save_address": True,
-            },
+        guest_email = "mockguest@example.com"
+        order = await _create_guest_order(
+            test_session,
+            test_product,
+            cdek_delivery_payload,
+            guest_email,
+            save_address=True,
         )
-        order_id = order_resp.json()["id"]
 
-        with patch("src.app.services.payment_service.YooKassaService.is_configured", return_value=False):
-            create_resp = await client.post(
-                f"/api/v1/payments/guest/{order_id}/",
-                json={"guest_email": "mockguest@example.com"},
+        with patch(
+            "src.app.services.payment_service.YooKassaService.is_configured",
+            return_value=False,
+        ):
+            await PaymentService.create_guest_payment(
+                order_id=order.id, guest_email=guest_email, db=test_session
             )
-        assert create_resp.status_code == 200
 
         confirm_resp = await client.post(
-            f"/api/v1/payments/guest/{order_id}/mock-confirm/",
-            json={"guest_email": "mockguest@example.com"},
+            f"/api/v1/payments/guest/{order.id}/mock-confirm/",
+            json={"guest_email": guest_email},
         )
         assert confirm_resp.status_code == 200
         assert confirm_resp.json()["status"] == "paid"
 
-        result = await test_session.execute(select(Order).where(Order.id == order_id))
+        result = await test_session.execute(select(Order).where(Order.id == order.id))
         order = result.scalars().first()
         assert order.user_id is not None
         assert order.status == "paid"
 
-        user_result = await test_session.execute(select(User).where(User.email == "mockguest@example.com"))
+        user_result = await test_session.execute(
+            select(User).where(User.email == guest_email)
+        )
         user = user_result.scalars().first()
         assert user is not None
 
@@ -358,132 +319,94 @@ class TestGuestPaymentsAPI:
         )
         recipient = recipient_result.scalars().first()
         assert recipient is not None
-        assert recipient.first_name == "Мок"
+        assert recipient.first_name == "Иван"
         assert recipient.last_name == "Гость"
         assert recipient.is_default is True
 
     @pytest.mark.asyncio
-    async def test_guest_mock_confirm_wrong_email(self, client, test_product, cdek_delivery_payload):
+    async def test_guest_mock_confirm_wrong_email(
+        self, client, test_product, cdek_delivery_payload, test_session
+    ):
         """Guest mock-confirm с неверным email возвращает 404."""
-        order_resp = await client.post(
-            "/api/v1/orders/create-guest/",
-            json={
-                "items": [{"product_id": test_product.id, "quantity": 1}],
-                "cdek_delivery": cdek_delivery_payload,
-                "guest_email": "mockguest2@example.com",
-                "recipient_phone": "+79990001122",
-                "recipient_first_name": "Мок",
-                "recipient_last_name": "Гость",
-            },
+        guest_email = "mockguest2@example.com"
+        order = await _create_guest_order(
+            test_session, test_product, cdek_delivery_payload, guest_email
         )
-        order_id = order_resp.json()["id"]
 
-        with patch("src.app.services.payment_service.YooKassaService.is_configured", return_value=False):
-            await client.post(
-                f"/api/v1/payments/guest/{order_id}/",
-                json={"guest_email": "mockguest2@example.com"},
+        with patch(
+            "src.app.services.payment_service.YooKassaService.is_configured",
+            return_value=False,
+        ):
+            await PaymentService.create_guest_payment(
+                order_id=order.id, guest_email=guest_email, db=test_session
             )
 
         confirm_resp = await client.post(
-            f"/api/v1/payments/guest/{order_id}/mock-confirm/",
+            f"/api/v1/payments/guest/{order.id}/mock-confirm/",
             json={"guest_email": "wrong@example.com"},
         )
         assert confirm_resp.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_guest_mock_confirm_query_email(self, client, test_product, cdek_delivery_payload):
+    async def test_guest_mock_confirm_query_email(
+        self, client, test_product, cdek_delivery_payload, test_session
+    ):
         """Guest mock-confirm принимает guest_email через query-параметр."""
-        order_resp = await client.post(
-            "/api/v1/orders/create-guest/",
-            json={
-                "items": [{"product_id": test_product.id, "quantity": 1}],
-                "cdek_delivery": cdek_delivery_payload,
-                "guest_email": "mockguest3@example.com",
-                "recipient_phone": "+79990001122",
-                "recipient_first_name": "Мок",
-                "recipient_last_name": "Гость",
-            },
+        guest_email = "mockguest3@example.com"
+        order = await _create_guest_order(
+            test_session, test_product, cdek_delivery_payload, guest_email
         )
-        order_id = order_resp.json()["id"]
 
-        with patch("src.app.services.payment_service.YooKassaService.is_configured", return_value=False):
-            await client.post(
-                f"/api/v1/payments/guest/{order_id}/",
-                json={"guest_email": "mockguest3@example.com"},
+        with patch(
+            "src.app.services.payment_service.YooKassaService.is_configured",
+            return_value=False,
+        ):
+            await PaymentService.create_guest_payment(
+                order_id=order.id, guest_email=guest_email, db=test_session
             )
 
         confirm_resp = await client.post(
-            f"/api/v1/payments/guest/{order_id}/mock-confirm/",
-            params={"guest_email": "mockguest3@example.com"},
+            f"/api/v1/payments/guest/{order.id}/mock-confirm/",
+            params={"guest_email": guest_email},
         )
         assert confirm_resp.status_code == 200
         assert confirm_resp.json()["status"] == "paid"
 
     @pytest.mark.asyncio
-    async def test_create_guest_payment_case_insensitive_email(
-        self, client, test_product, cdek_delivery_payload
+    async def test_create_guest_payment_case_insensitive_email_returns_gone(
+        self, client, test_product, cdek_delivery_payload, test_session
     ):
-        """Гостевой платёж ищет заказ по email без учёта регистра."""
-        order_resp = await client.post(
-            "/api/v1/orders/create-guest/",
-            json={
-                "items": [{"product_id": test_product.id, "quantity": 1}],
-                "cdek_delivery": cdek_delivery_payload,
-                "guest_email": "guest@example.com",
-                "recipient_phone": "+79990001122",
-                "recipient_first_name": "Иван",
-                "recipient_last_name": "Гость",
-            },
+        """Email в другом регистре не меняет ответ отключённого endpoint — 410."""
+        order = await _create_guest_order(
+            test_session, test_product, cdek_delivery_payload, "guest@example.com"
         )
-        order_id = order_resp.json()["id"]
 
-        mock_yookassa = AsyncMock(return_value={
-            "yookassa_payment_id": "guest-yookassa-id",
-            "status": "pending",
-            "confirmation_url": "https://yoomoney.ru/checkout/guest",
-            "amount": Decimal(str(test_product.price)),
-            "created_at": "2026-06-02T12:00:00.000Z",
-        })
-
-        with (
-            patch("src.app.services.payment_service.YooKassaService.is_configured", return_value=True),
-            patch("src.app.services.payment_service.YooKassaService.create_payment", mock_yookassa),
-        ):
-            payment_resp = await client.post(
-                f"/api/v1/payments/guest/{order_id}/",
-                json={"guest_email": "GUEST@EXAMPLE.COM"},
-            )
-
-        assert payment_resp.status_code == 200
-        assert payment_resp.json()["status"] == "pending"
+        response = await client.post(
+            f"/api/v1/payments/guest/{order.id}/",
+            json={"guest_email": "GUEST@EXAMPLE.COM"},
+        )
+        assert response.status_code == 410
 
     @pytest.mark.asyncio
     async def test_guest_mock_confirm_case_insensitive_email(
-        self, client, test_product, cdek_delivery_payload
+        self, client, test_product, cdek_delivery_payload, test_session
     ):
         """Подтверждение mock-платежа работает с email в другом регистре."""
-        order_resp = await client.post(
-            "/api/v1/orders/create-guest/",
-            json={
-                "items": [{"product_id": test_product.id, "quantity": 1}],
-                "cdek_delivery": cdek_delivery_payload,
-                "guest_email": "MockGuest@Example.COM",
-                "recipient_phone": "+79990001122",
-                "recipient_first_name": "Мок",
-                "recipient_last_name": "Гость",
-            },
+        guest_email = "MockGuest@Example.COM"
+        order = await _create_guest_order(
+            test_session, test_product, cdek_delivery_payload, guest_email
         )
-        order_id = order_resp.json()["id"]
 
-        with patch("src.app.services.payment_service.YooKassaService.is_configured", return_value=False):
-            create_resp = await client.post(
-                f"/api/v1/payments/guest/{order_id}/",
-                json={"guest_email": "mockguest@example.com"},
+        with patch(
+            "src.app.services.payment_service.YooKassaService.is_configured",
+            return_value=False,
+        ):
+            await PaymentService.create_guest_payment(
+                order_id=order.id, guest_email=guest_email, db=test_session
             )
-        assert create_resp.status_code == 200
 
         confirm_resp = await client.post(
-            f"/api/v1/payments/guest/{order_id}/mock-confirm/",
+            f"/api/v1/payments/guest/{order.id}/mock-confirm/",
             json={"guest_email": "MOCKGUEST@EXAMPLE.COM"},
         )
         assert confirm_resp.status_code == 200
@@ -494,35 +417,15 @@ class TestGuestPaymentsAPI:
         self, client, test_product, cdek_delivery_payload, test_session, test_user
     ):
         """Если email гостя отличается регистром от существующего пользователя — заказ привязывается."""
-        order_resp = await client.post(
-            "/api/v1/orders/create-guest/",
-            json={
-                "items": [{"product_id": test_product.id, "quantity": 1}],
-                "cdek_delivery": cdek_delivery_payload,
-                "guest_email": test_user.email.upper(),
-                "recipient_phone": "+79990001122",
-                "recipient_first_name": "Иван",
-                "recipient_last_name": "Гость",
-            },
+        order = await _create_guest_order(
+            test_session, test_product, cdek_delivery_payload, test_user.email.upper()
         )
-        order_id = order_resp.json()["id"]
-
-        mock_yookassa = AsyncMock(return_value={
-            "yookassa_payment_id": "guest-yookassa-id",
-            "status": "pending",
-            "confirmation_url": "https://yoomoney.ru/checkout/guest",
-            "amount": Decimal(str(test_product.price)),
-            "created_at": "2026-06-02T12:00:00.000Z",
-        })
-
-        with (
-            patch("src.app.services.payment_service.YooKassaService.is_configured", return_value=True),
-            patch("src.app.services.payment_service.YooKassaService.create_payment", mock_yookassa),
-        ):
-            await client.post(
-                f"/api/v1/payments/guest/{order_id}/",
-                json={"guest_email": test_user.email.upper()},
-            )
+        await _create_guest_payment(
+            test_session,
+            order,
+            test_user.email.upper(),
+            yookassa_payment_id="guest-yookassa-id",
+        )
 
         webhook_payload = {
             "event": "payment.succeeded",
@@ -532,11 +435,16 @@ class TestGuestPaymentsAPI:
             },
         }
 
-        with patch("src.app.services.payment_service.YooKassaService.capture_payment", AsyncMock()):
-            resp = await client.post("/api/v1/payments/yookassa/webhook/", json=webhook_payload)
+        with patch(
+            "src.app.services.payment_service.YooKassaService.capture_payment",
+            AsyncMock(),
+        ):
+            resp = await client.post(
+                "/api/v1/payments/yookassa/webhook/", json=webhook_payload
+            )
         assert resp.status_code == 200
 
-        result = await test_session.execute(select(Order).where(Order.id == order_id))
+        result = await test_session.execute(select(Order).where(Order.id == order.id))
         order = result.scalars().first()
         assert order.user_id == test_user.id
         assert order.status == "paid"
@@ -546,53 +454,43 @@ class TestGuestPaymentsAPI:
         self, client, test_product, cdek_delivery_payload, test_session
     ):
         """Webhook payment.canceled для гостевого заказа сохраняет cancellation_details."""
-        order_resp = await client.post(
-            "/api/v1/orders/create-guest/",
-            json={
-                "items": [{"product_id": test_product.id, "quantity": 1}],
-                "cdek_delivery": cdek_delivery_payload,
-                "guest_email": "canceledguest@example.com",
-                "recipient_phone": "+79990001122",
-                "recipient_first_name": "Иван",
-                "recipient_last_name": "Гость",
-            },
+        guest_email = "canceledguest@example.com"
+        order = await _create_guest_order(
+            test_session, test_product, cdek_delivery_payload, guest_email
         )
-        order_id = order_resp.json()["id"]
-
-        mock_yookassa = AsyncMock(return_value={
-            "yookassa_payment_id": "guest-canceled-id",
-            "status": "pending",
-            "confirmation_url": "https://yoomoney.ru/checkout/guest",
-            "amount": Decimal(str(test_product.price)),
-            "created_at": "2026-06-02T12:00:00.000Z",
-        })
-
-        with (
-            patch("src.app.services.payment_service.YooKassaService.is_configured", return_value=True),
-            patch("src.app.services.payment_service.YooKassaService.create_payment", mock_yookassa),
-        ):
-            await client.post(
-                f"/api/v1/payments/guest/{order_id}/",
-                json={"guest_email": "canceledguest@example.com"},
-            )
+        await _create_guest_payment(
+            test_session, order, guest_email, yookassa_payment_id="guest-canceled-id"
+        )
 
         webhook_payload = {
             "event": "payment.canceled",
             "object": {
                 "id": "guest-canceled-id",
                 "status": "canceled",
-                "cancellation_details": {"party": "payment_network", "reason": "insufficient_funds"},
+                "cancellation_details": {
+                    "party": "payment_network",
+                    "reason": "insufficient_funds",
+                },
             },
         }
 
-        resp = await client.post("/api/v1/payments/yookassa/webhook/", json=webhook_payload)
+        resp = await client.post(
+            "/api/v1/payments/yookassa/webhook/", json=webhook_payload
+        )
         assert resp.status_code == 200
 
-        result = await test_session.execute(select(Payment).where(Payment.order_id == order_id))
+        result = await test_session.execute(
+            select(Payment).where(Payment.order_id == order.id)
+        )
         payment = result.scalars().first()
         assert payment.status == "cancelled"
-        assert payment.yookassa_metadata.get("cancellation_details", {}).get("reason") == "insufficient_funds"
+        assert (
+            payment.yookassa_metadata.get("cancellation_details", {}).get("reason")
+            == "insufficient_funds"
+        )
 
-        order_result = await test_session.execute(select(Order).where(Order.id == order_id))
+        order_result = await test_session.execute(
+            select(Order).where(Order.id == order.id)
+        )
         order = order_result.scalars().first()
         assert order.status == "pending"

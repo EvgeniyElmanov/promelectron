@@ -13,9 +13,17 @@ vi.mock('@/services/api', () => ({
   },
 }))
 
+const mockMergeCartOnLogin = vi.hoisted(() => vi.fn())
+
 vi.mock('@/composables/useAuth', () => ({
   useAuth: () => ({
     setAuth: vi.fn(),
+  }),
+}))
+
+vi.mock('@/composables/useCart', () => ({
+  useCart: () => ({
+    mergeCartOnLogin: mockMergeCartOnLogin,
   }),
 }))
 
@@ -88,6 +96,7 @@ describe('Register.vue', () => {
       role: 'user',
     })
 
+    expect(mockMergeCartOnLogin).toHaveBeenCalled()
     expect(wrapper.find('[data-testid="register-success"]').exists()).toBe(true)
     expect(wrapper.text()).toContain('test@example.com')
   })

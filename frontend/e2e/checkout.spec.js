@@ -59,13 +59,6 @@ async function fillRecipientPhone(page, phone = '+79990001122') {
   await page.fill('[data-testid="recipient-phone"]', phone);
 }
 
-async function fillGuestContactInfo(page, email, firstName = 'Иван', lastName = 'Иванов', phone = '+79990001122') {
-  await page.fill('[data-testid="guest-email"]', email);
-  await page.fill('[data-testid="guest-first-name"]', firstName);
-  await page.fill('[data-testid="guest-last-name"]', lastName);
-  await page.fill('[data-testid="guest-phone"]', phone);
-}
-
 async function addFirstProductToCart(page) {
   await page.goto('/');
   const firstProduct = page.locator('[data-testid="product-card"]').first();
@@ -153,74 +146,6 @@ test.describe('Checkout Flow', () => {
     const payButton = page.locator('[data-testid="pay-button"]');
     await expect(payButton).toBeVisible();
     await expect(payButton).toContainText('Оплатить');
-  });
-
-  test('guest user can place an order and complete payment', async ({ page }) => {
-    const email = uniqueEmail();
-
-    await mockCdekWidget(page);
-
-    // Add product to cart as guest
-    await addFirstProductToCart(page);
-
-    // Navigate directly to guest checkout
-    await page.goto('/guest-checkout');
-    await expect(page).toHaveURL('/guest-checkout');
-    await expect(page.locator('[data-testid="guest-checkout-page"]')).toBeVisible();
-
-    // Select CDEK delivery
-    await selectCdekDelivery(page);
-
-    // Fill contact info and recipient name
-    await fillGuestContactInfo(page, email, 'Пётр', 'Петров', '+79990002233');
-
-    // Submit order
-    const createOrderResponse = page.waitForResponse(
-      response => response.url().includes('/orders/create-guest') && response.request().method() === 'POST',
-      { timeout: 30000 }
-    );
-    await page.locator('[data-testid="guest-checkout-submit"]').click();
-    const response = await createOrderResponse;
-    expect(response.status()).toBe(200);
-
-    // Verify order creation payload includes recipient names
-    const request = await response.request();
-    const requestBody = await request.postDataJSON();
-    expect(requestBody).toHaveProperty('guest_email', email);
-    expect(requestBody).toHaveProperty('guest_phone', '+79990002233');
-    expect(requestBody).toHaveProperty('recipient_first_name', 'Пётр');
-    expect(requestBody).toHaveProperty('recipient_last_name', 'Петров');
-    expect(requestBody.cdek_delivery).toHaveProperty('tariff_code', 136);
-
-    // Verify order response includes recipient names
-    const order = await response.json();
-    expect(order).toHaveProperty('recipient_first_name', 'Пётр');
-    expect(order).toHaveProperty('recipient_last_name', 'Петров');
-    expect(order).toHaveProperty('guest_email', email);
-
-    // Verify redirect to checkout page (guest email stored in sessionStorage, not URL)
-    await expect(page).toHaveURL(`/checkout/${order.id}`, { timeout: 30000 });
-    await expect(page.locator('[data-testid="checkout-page"]')).toBeVisible();
-
-    // Click pay button to create guest payment
-    const payResponsePromise = page.waitForResponse(
-      response => response.url().includes(`/payments/guest/${order.id}`) && response.request().method() === 'POST',
-      { timeout: 30000 }
-    );
-    await page.click('[data-testid="pay-button"]');
-    const payResponse = await payResponsePromise;
-    expect(payResponse.status()).toBe(200);
-
-    // Set payment status via debug endpoint instead of YooKassa UI
-    await setYooKassaPaymentStatus({
-      orderId: order.id,
-      status: 'succeeded',
-      guestEmail: email,
-    });
-
-    // Navigate to success page and verify order is loaded
-    await page.goto(`/payment/success?order_id=${order.id}`);
-    await verifyPaymentSuccessPage(page);
   });
 
   for (const card of SUCCESSFUL_CARDS) {

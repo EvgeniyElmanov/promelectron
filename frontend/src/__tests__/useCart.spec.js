@@ -13,6 +13,16 @@ vi.mock('@/composables/useAuth', () => ({
   }),
 }));
 
+const mockPost = vi.hoisted(() => vi.fn());
+const mockGet = vi.hoisted(() => vi.fn());
+
+vi.mock('@/services/api', () => ({
+  default: {
+    get: (...args) => mockGet(...args),
+    post: (...args) => mockPost(...args),
+  },
+}));
+
 const { useCart } = await import('@/composables/useCart');
 
 describe('useCart — гостевая корзина', () => {
@@ -66,5 +76,51 @@ describe('useCart — гостевая корзина', () => {
     const { getSelectedGuestCartItems } = useCart();
 
     expect(getSelectedGuestCartItems()).toHaveLength(1);
+  });
+});
+
+describe('useCart — merge при входе', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.clearAllMocks();
+    mockPost.mockResolvedValue({ data: {} });
+    mockGet.mockResolvedValue({ data: { items: [] } });
+  });
+
+  it('mergeCartOnLogin отправляет товары на /cart/merge и очищает localStorage', async () => {
+    localStorage.setItem(GUEST_CART_KEY, JSON.stringify([
+      { product_id: 1, quantity: 2, name: 'A', price: 1000, stock: 5, supplier_id: 1, selected: true },
+      { product_id: 2, quantity: 1, name: 'B', price: 2000, stock: 5, supplier_id: 1, selected: true },
+    ]));
+
+    const { mergeCartOnLogin, getGuestCartItems } = useCart();
+    await mergeCartOnLogin();
+
+    expect(mockPost).toHaveBeenCalledWith('/cart/merge', {
+      items: [
+        { product_id: 1, quantity: 2 },
+        { product_id: 2, quantity: 1 },
+      ],
+    });
+    expect(getGuestCartItems()).toHaveLength(0);
+  });
+
+  it('mergeCartOnLogin не вызывает запрос при пустой гостевой корзине', async () => {
+    const { mergeCartOnLogin } = useCart();
+    await mergeCartOnLogin();
+
+    expect(mockPost).not.toHaveBeenCalled();
+  });
+
+  it('mergeCartOnLogin не очищает localStorage при ошибке запроса', async () => {
+    localStorage.setItem(GUEST_CART_KEY, JSON.stringify([
+      { product_id: 1, quantity: 2, name: 'A', price: 1000, stock: 5, supplier_id: 1, selected: true },
+    ]));
+    mockPost.mockRejectedValue(new Error('Network error'));
+
+    const { mergeCartOnLogin, getGuestCartItems } = useCart();
+    await expect(mergeCartOnLogin()).rejects.toThrow('Network error');
+
+    expect(getGuestCartItems()).toHaveLength(1);
   });
 });

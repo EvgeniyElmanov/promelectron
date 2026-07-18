@@ -42,8 +42,25 @@ test.describe('Authentication', () => {
     await expect(page.locator('[data-testid="login-error"]')).toBeVisible();
   });
 
-  test('guest user can view cart and proceed to guest checkout', async ({ page }) => {
-    // Navigate first to set origin, then pre-populate guest cart
+  test('guest cart is merged after login from checkout redirect', async ({ page }) => {
+    const email = uniqueEmail();
+    const password = 'TestPassword123!';
+
+    // Register a user that will be used for login
+    await page.goto('/register');
+    await page.fill('[data-testid="register-name"]', 'Test User');
+    await page.fill('[data-testid="register-email"]', email);
+    await page.fill('[data-testid="register-password"]', password);
+    await page.fill('[data-testid="register-password-confirm"]', password);
+    await page.click('[data-testid="register-submit"]');
+    await expect(page).toHaveURL('/');
+
+    // Logout
+    await goToProfile(page);
+    await page.click('[data-testid="logout-button"]');
+    await expect(page).toHaveURL('/login');
+
+    // Pre-populate guest cart and open cart page
     await page.goto('/');
     await page.evaluate(() => {
       localStorage.setItem('guest_cart', JSON.stringify([
@@ -51,14 +68,21 @@ test.describe('Authentication', () => {
       ]));
     });
     await page.goto('/cart');
-    // Guest sees cart page, not redirected to login
     await expect(page.locator('[data-testid="cart-page"]')).toBeVisible();
-    await expect(page.locator('[data-testid="cart-title"]')).toContainText('Корзина');
 
-    // Checkout button redirects to guest checkout for guest
+    // Checkout button redirects guest to login with return URL
     const checkoutBtn = page.locator('[data-testid="checkout-button"]');
     await expect(checkoutBtn).toBeVisible();
     await checkoutBtn.click();
-    await expect(page).toHaveURL('/guest-checkout');
+    await expect(page).toHaveURL('/login?redirect=/cart');
+
+    // Login and expect cart merge + redirect back to cart
+    await page.fill('[data-testid="login-email"]', email);
+    await page.fill('[data-testid="login-password"]', password);
+    await page.click('[data-testid="login-submit"]');
+
+    await expect(page).toHaveURL('/cart');
+    await expect(page.locator('[data-testid="cart-item"]')).toHaveCount(1);
+    await expect(page.locator('[data-testid="cart-page"]')).toContainText('Test Product');
   });
 });

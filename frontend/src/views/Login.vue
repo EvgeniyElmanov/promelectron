@@ -150,7 +150,12 @@ async function handleLogin() {
       password: password.value,
     });
     setAuth(response.data.access_token, response.data.user);
-    await mergeCartOnLogin();
+    try {
+      await mergeCartOnLogin();
+    } catch {
+      // Если merge не удался, пользователь уже авторизован.
+      // Гостевые товары останутся в localStorage для повторной попытки.
+    }
     const redirect = route.query.redirect;
     router.push(typeof redirect === 'string' && redirect.startsWith('/') ? redirect : '/');
   } catch (err) {

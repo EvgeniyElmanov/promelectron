@@ -13,7 +13,7 @@
     <div class="guest-checkout__login-hint">
       <span>Уже есть аккаунт?</span>
       <router-link
-        to="/login?redirect=/guest-checkout"
+        to="/login?redirect=/cart"
         class="guest-checkout__login-link"
         data-testid="guest-login-link"
       >
@@ -281,6 +281,7 @@ const submitOrder = async () => {
 };
 
 onMounted(() => {
+  router.replace('/login?redirect=/cart');
   loadItems();
 });
 </script>
