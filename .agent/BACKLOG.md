@@ -23,7 +23,7 @@
 | 3 | Гостевая корзина: backend API | | backend-dev | P0 | **done** ✅ | — | 1 неделя | — |
 | 4 | Гостевая корзина: localStorage + merge при login | | frontend-dev | P0 | **done** ✅ | #3 | 1 неделя | — |
 | 5 | Убрать hardcoded secrets (SECRET_KEY, SEED_SECRET, docker-compose, Helm placeholders) | | backend-dev + devops | P0 | **done** ✅ | — | 2 дня | — |
-| 6 | Исправить Helm worker templates (Celery command + enabled flag) | | devops | P0 | **done** ✅ | — | 2 дня | — |
+| 6 | Удалить Celery worker из Helm, оставить `job-worker` deployment | | devops | P0 | **done** ✅ | — | 2 дня | — |
 | 7 | Подключить Sentry (backend + frontend) | | devops | P0 | **in_progress** | — | 3 дня | — |
 | 8 | Настроить backup БД (pg_dump → S3/MinIO) | | devops | P0 | **in_progress** | — | 2 дня | — |
 | 9 | E2E тесты гостевой корзины | | e2e-tester | P0 | **done** ✅ | #3, #4 | 2 дня | — |
@@ -88,7 +88,7 @@
 
 **Out of Scope:**
 - Полный отказ от fallback-режима (fallback на логирование остаётся для dev/local).
-- Перенос отправки email в Celery / job-worker (это задача #26 Sprint 2).
+- Перенос отправки email в `job_worker` (это задача #26 Sprint 2).
 - Настройка SPF/DKIM/DMARC (выполняется отдельно при появлении доступа к DNS).
 - Смена SMTP-провайдера после внедрения (будет отдельной задачей при необходимости).
 
@@ -111,14 +111,14 @@
 |---|--------|-------|-------|-----------|-------------|--------|
 | 17 | Distributed rate limiting (Redis-backed SlowAPI) | | backend-dev | P0 | — | 3 дня |
 | 18 | Убрать Alembic из lifespan → только Helm hook | | backend-dev | P0 | #6 | 1 день |
-| 19 | Добавить Celery Beat в Helm (CronJob) | | devops | P0 | #6 | 2 дня |
+| 19 | Добавить CronJob для периодических 1C/jobs задач (заменяет Celery Beat) | | devops | P0 | #6 | 2 дня |
 | 20 | PodSecurityContext + non-root в Helm | | devops | P0 | #6 | 2 дня |
 | 21 | Self-service onboarding продавцов (backend) | | backend-dev | P1 | — | 2 недели |
 | 22 | Self-service onboarding UI | | frontend-dev | P1 | #21 | 1 неделя |
 | 23 | Product variants (size/color/SKU matrix) backend | | backend-dev | P1 | #10 | 2 недели |
 | 24 | Product variants UI | | frontend-dev | P1 | #23 | 1 неделя |
 | 25 | E2E self-service onboarding | | e2e-tester | P1 | #21, #22 | 2 дня |
-| 26 | Перенести email/notification в Celery (async) | | backend-dev | P1 | #6, #19 | 1 неделя |
+| 26 | Перенести email/notification в `job_worker` (async) | | backend-dev | P1 | #6, #19 | 1 неделя |
 | 27 | Добавить `state` nonce в OAuth flow | | backend-dev | P2 | #11, #12 | 2 дня |
 | 28 | Lazy loading для admin/supplier views | | frontend-dev | P2 | — | 3 дня |
 | 40 | Унифицировать хранение OAuth секретов: перенести Google/Yandex из GitHub Secrets в SOPS | | devops | P2 | — | 1 день |

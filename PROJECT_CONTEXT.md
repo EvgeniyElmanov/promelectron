@@ -27,7 +27,7 @@ e2e_tests: "108/108"
 
 | Слой | Технологии |
 |------|-----------|
-| Backend | Python 3.12, FastAPI, SQLAlchemy 2.0 **async**, PostgreSQL 16, Redis 7, MinIO, Celery |
+| Backend | Python 3.12, FastAPI, SQLAlchemy 2.0 **async**, PostgreSQL 16, Redis 7, MinIO |
 | Frontend | Vue 3 + Vite + Composition API + Axios, nginx:alpine (runtime) |
 | Infra | Docker Compose (dev), K8s Helm (prod), GitHub Actions self-hosted runner → Harbor, kubectl, k9s, OpenVPN |
 | Tests | pytest (backend), vitest (frontend), Playwright (E2E) |
@@ -62,7 +62,7 @@ e2e_tests: "108/108"
 | **Убрать hardcoded secrets** | ✅ done | — | Все креды вынесены в GitHub Secrets / SOPS. SECRET_KEY восстановлен. |
 | **Sentry (мониторинг)** | ⏳ todo | — | Backend + frontend |
 | **Backup БД** | ⏳ todo | — | pg_dump → S3/MinIO |
-| **Helm worker templates** | ✅ done | — | Celery worker работает в K8s. |
+| **Helm worker templates** | ✅ done | — | `job_worker` деплоится в K8s. Celery удалён. |
 | **Product.price → Numeric(10,2)** | ⏳ todo | — | Ждёт отдельной задачи |
 | **Malformed Alembic revision** | ✅ done | — | Миграции чистые, история корректна |
 | **Yandex SMTP + email verification** | ✅ done | — | Реализовано и влито в main (#40). Backend + frontend + Helm values + SOPS TODOs. |
@@ -91,7 +91,7 @@ e2e_tests: "108/108"
 1. **SQLAlchemy 2.0 async** — все DB операции async. Никаких sync-библиотек в основном потоке.
 2. **Monolith** — все домены в одном FastAPI приложении. Микросервисы не раньше Фазы 3.
 3. **PostgreSQL single master** — нет read replicas.
-4. **Redis single-node** — кэш, rate limit, Celery брокер на одном инстансе.
+4. **Redis single-node** — кэш и rate limit на одном инстансе.
 5. **JWT 30 минут** — нет refresh tokens. Пользователи перелогиниваются.
 6. **Trailing slash обязателен** — `api.get('/categories/')`, не `'/categories'`. Иначе 307 → axios теряет заголовки.
 7. **SQLite ≠ PostgreSQL** — тесты только в Docker (`make test-backend`), никогда на SQLite.
@@ -105,7 +105,7 @@ e2e_tests: "108/108"
 
 ```
 Реальные платежи (ЮKassa)  →  Sub-orders / Комиссия / Возвраты
-Helm worker templates        →  Celery Beat / Email async / Background tasks
+Helm worker templates        →  job_worker / Email async / Background tasks
 Product.price → Numeric      →  Product variants / Seller payouts
 ```
 
@@ -261,6 +261,7 @@ make test-e2e      # Playwright
 ## История изменений (кратко)
 
 | Дата | Что изменилось | Кто |
+| 2026-07-18 | **cleanup/remove-celery**: удалена неиспользуемая Celery из backend (`celery_app.py`, `celery[redis]` из requirements, комментарии), Docker Compose (сервисы `worker` и `beat`), Helm (`worker-deployment.yaml` удалён, секция `worker` переименована в `jobWorker` для `job-worker-deployment.yaml`), документации (`PROJECT_CONTEXT.md`, `.agent/DECISIONS.md`) и Claude skills/commands. Redis оставлен для кэша и rate limit. Backend 414/414 ✅, lint чисто ✅. | backend-dev |
 | 2026-06-30 | **fix: async verification email (#43)**: регрессия в E2E после #40 — `UserService.register_user`/`resend_verification_email` блокировали ответ API синхронной отправкой письма, что на test-окружении с unreachable Yandex SMTP приводило к таймаутам и падению E2E регистрации. Исправлено: отправка запускается в фоновой `asyncio.create_task`, токен создаётся синхронно, ошибки логируются. Backend 320/320 ✅, lint чисто ✅, deploy + E2E на test после merge зелёные. | backend-dev / orchestrator |
 | 2026-06-30 | **yandex-smtp-and-email-verification — merged (#40)**: завершена frontend-часть (баннеры верификации, страницы `/verify-email/*`, обработка 302-редиректа), review fixes (rate limit на verify-email, `hmac.compare_digest`, PII redaction, DB-индексы, placeholder SMTP-данные), обновлены Helm values/`deploy.yml`/SOPS TODOs. QA: backend 320/320 ✅, frontend 243/243 ✅, E2E 108/108 ✅. PR #40 влит в `main` (merge commit `836cc13`). Issue #19 закрыт, статус в GitHub Projects — Done. | backend-dev / frontend-dev / devops / orchestrator |
 | 2026-06-26 | **yandex-smtp-and-email-verification (backend Phase 1+2)**: подключён Yandex SMTP (`SMTP_USE_TLS`/`SMTP_STARTTLS`), retry, fallback-логирование; добавлена верификация email — `User.email_verified`, `EmailVerificationToken`, Alembic-миграция `b3edea26617e`, `EmailService.send_verification_email`, `UserService` helpers, endpoints `GET /api/v1/auth/verify-email/` (302 redirect) и `POST /api/v1/auth/resend-verification/` (rate limit), OAuth callback выставляет `email_verified`. Trailing slash для `/register/`, `/login/`, `/me/`, `/me/password/`. Backend-тесты 315/315 ✅, `ruff check src/ tests/` чисто ✅, downgrade/upgrade head проходит ✅. Issue #43/#19. | backend-dev |
