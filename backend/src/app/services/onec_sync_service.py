@@ -287,7 +287,7 @@ def build_product_change(product: OnecProductOdata, version: datetime, supplier_
             "category_id": product.parent_key,
             "supplier_id": supplier_id,
             "is_active": True,
-            "price": Decimal("0"),
+            "price": 0.0,
         },
     )
 
@@ -297,7 +297,7 @@ def build_price_change(price: OnecPriceOdata, version: datetime) -> OnecChange:
         external_id=price.product_key,
         action="update",
         version=version,
-        data={"price": price.price},
+        data={"price": float(price.price)},
     )
 
 
