@@ -150,12 +150,11 @@ async function handleLogin() {
       password: password.value,
     });
     setAuth(response.data.access_token, response.data.user);
-    try {
-      await mergeCartOnLogin();
-    } catch {
-      // Если merge не удался, пользователь уже авторизован.
-      // Гостевые товары останутся в localStorage для повторной попытки.
-    }
+    // Merge cart запускаем в фоне, чтобы не блокировать редирект.
+    mergeCartOnLogin().catch(() => {
+      // Если merge не удался, гостевые товары останутся в localStorage
+      // и будут замерждены при следующем открытии корзины.
+    });
     const redirect = route.query.redirect;
     router.push(typeof redirect === 'string' && redirect.startsWith('/') ? redirect : '/');
   } catch (err) {

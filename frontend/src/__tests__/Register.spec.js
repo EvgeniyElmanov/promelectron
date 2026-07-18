@@ -13,7 +13,7 @@ vi.mock('@/services/api', () => ({
   },
 }))
 
-const mockMergeCartOnLogin = vi.hoisted(() => vi.fn())
+const mockMergeCartOnLogin = vi.hoisted(() => vi.fn(() => Promise.resolve()))
 
 vi.mock('@/composables/useAuth', () => ({
   useAuth: () => ({
