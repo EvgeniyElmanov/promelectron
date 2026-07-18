@@ -4,6 +4,10 @@ function uniqueEmail() {
   return `test_${Date.now()}_w${test.info().workerIndex}@example.com`;
 }
 
+function parsePrice(text) {
+  return parseFloat(text.replace('₽', '').replace(/\s/g, '').replace(',', '.'));
+}
+
 test.describe('Search & Filters', () => {
   test('search filters products by name', async ({ page }) => {
     await page.goto('/');
@@ -64,7 +68,7 @@ test.describe('Search & Filters', () => {
 
     // Extract prices and verify ascending order
     const prices = await page.locator('[data-testid="product-card"] [data-testid="product-price"]').allTextContents();
-    const numericPrices = prices.map(p => parseFloat(p.replace(/[^\d.]/g, '')));
+    const numericPrices = prices.map(parsePrice);
 
     for (let i = 1; i < numericPrices.length; i++) {
       expect(numericPrices[i]).toBeGreaterThanOrEqual(numericPrices[i - 1]);
@@ -85,7 +89,7 @@ test.describe('Search & Filters', () => {
       const prices = await page.locator('[data-testid="product-card"] [data-testid="product-price"]').allTextContents();
       expect(prices.length).toBeGreaterThan(0);
       for (const priceText of prices) {
-        const price = parseFloat(priceText.replace(/[^\d.]/g, ''));
+        const price = parsePrice(priceText);
         expect(price).toBeGreaterThanOrEqual(20000);
         expect(price).toBeLessThanOrEqual(50000);
       }
