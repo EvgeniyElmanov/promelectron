@@ -102,7 +102,7 @@ Axis-specific hints to include in the relevant prompts:
 
 - **Codebase:** "Find where the in-scope entities are defined (SQLAlchemy models / Alembic
   migrations / Pydantic schemas) and **when each record is written or updated** — the event /
-  service method / Celery task matters as much as the schema. Note enum values and their meaning.
+  service method / background job matters as much as the schema. Note enum values and their meaning.
   Cite exact file paths under `backend/` and `frontend/`."
 - **Database:** "Inspect the live schema for in-scope tables — exact column types, nullability, FKs,
   and enum/status values; read a few sample rows. SELECT only — never mutate. Prefer the project's

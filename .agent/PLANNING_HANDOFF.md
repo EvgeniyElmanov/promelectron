@@ -19,7 +19,7 @@
 Promelectron — маркетплейс в стиле Ozon.ru / Wildberries. Проект частично реализован, требуется доведение до production-ready состояния и дальнейшее масштабирование.
 
 ### 1.2 Текущий статус
-- **Backend:** FastAPI + SQLAlchemy 2.0 async + PostgreSQL 16 + Redis 7 + MinIO + Celery
+- **Backend:** FastAPI + SQLAlchemy 2.0 async + PostgreSQL 16 + Redis 7 + MinIO + `job_worker`
 - **Frontend:** Vue 3 + Vite + Axios
 - **Tests:** Backend 123/123 ✅, Frontend 80/80 ✅, E2E 95/95 ✅
 - **CI/CD:** GitHub Actions self-hosted runner → Harbor → K8s Helm
@@ -112,8 +112,8 @@ graph TD
 3. **Monolith** — все домены в одном FastAPI приложении
 4. **JWT 30min** — нет refresh tokens, пользователи перелогиниваются
 5. **PostgreSQL** — одна master БД, нет read replicas
-6. **Celery + Redis** — брокер и backend на одном Redis
-7. **Helm charts** — есть, но worker отключён, templates с битыми командами
+6. **job_worker** — собственный worker с таблицей `jobs` (CDEK, email, 1C sync)
+7. **Helm charts** — `job-worker` деплоится; Celery удалён
 
 ---
 

@@ -22,8 +22,6 @@ from src.app.services.notification_service import NotificationService
 from src.app.services.user_service import UserService
 from src.app.services.yookassa_service import YooKassaService
 
-# Imported lazily inside methods to avoid circular imports with Celery
-
 logger = logging.getLogger(__name__)
 
 

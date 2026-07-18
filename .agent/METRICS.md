@@ -90,7 +90,7 @@
 | TD-005 | `frontend/src/` | Нет Pinia — ad-hoc composables | P2 | M (2 недели) | Миграция cart, favorites, auth на Pinia | в бэклоге |
 | TD-006 | `frontend/src/router/index.js` | Нет lazy loading | P2 | XS (3 дня) | `() => import(...)` для admin/supplier views | в бэклоге |
 | TD-007 | `api/orders.py` | Supplier lookup дублируется 7× | P2 | S (1 неделя) | Extract `get_current_supplier_record` dependency | в бэклоге |
-| TD-008 | `services/*` | Side-effects в request thread | P2 | M (2 недели) | Перенести email/notification в Celery через event bus | Sprint 2 |
+| TD-008 | `services/*` | Side-effects в request thread | P2 | M (2 недели) | Перенести email/notification в `job_worker` через таблицу `jobs` | Sprint 2 |
 | TD-009 | `utils/rate_limiter.py` | In-memory rate limiting | P0 | S (1 неделя) | Redis-backed SlowAPI | Sprint 2 |
 | TD-010 | `main.py` | Alembic в lifespan (race condition) | P0 | XS (1 день) | Убрать из lifespan, оставить только Helm hook | Sprint 2 |
 | TD-011 | `api/auth.py` | OAuth без state параметра | P2 | XS (2 дня) | Добавить `state` nonce | Sprint 2 |
@@ -99,7 +99,7 @@
 | TD-014 | `core/config.py` | SECRET_KEY weak default | P0 | XS (2 дня) | Убрать default, требовать env var | Sprint 1 |
 | TD-015 | `frontend/nginx.conf` | Нет security headers | P2 | XS (1 день) | HSTS, X-Frame-Options, CSP | в бэклоге |
 | TD-016 | `alembic/versions/20260531_222559_guest_order_fields.py` | Malformed revision ID (`b1c2d3e4f5a6`) | P1 | XS (1 день) | Пересоздать миграцию | Sprint 1 |
-| TD-017 | `infra/helm/templates/worker-deployment.yaml` | Worker command не существует (`queue_worker` vs `celery_app`) | P0 | XS (1 день) | Исправить команду на `celery -A src.app.workers.celery_app worker` | Sprint 1 |
+| TD-017 | `infra/helm/templates/worker-deployment.yaml` | Celery worker deployment больше не нужен | P0 | XS (1 день) | Удалить `worker-deployment.yaml`, переименовать `worker:` → `jobWorker:` в values | Sprint 1 |
 | TD-018 | `frontend/src/views/` | `console.error` в production-коде | P2 | XS (1 дня) | Заменить на `console.warn` или убрать | Sprint 1 |
 
 ---
