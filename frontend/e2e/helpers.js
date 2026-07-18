@@ -324,6 +324,27 @@ async function waitForYooKassaOutcome(page, patterns, timeout) {
  * @returns {Promise<boolean>} true if the payment flow completed (success or
  *   manual exit), false if 3-D Secure could not be completed automatically.
  */
+/**
+ * Находит первый товар в наличии через API и возвращает его карточку на странице.
+ * Тесты больше не полагаются на порядок выдачи каталога.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<import('@playwright/test').Locator>}
+ */
+export async function getInStockProductCard(page) {
+  const response = await page.request.get('/api/v1/products/');
+  expect(response.ok()).toBeTruthy();
+  const data = await response.json();
+  const items = data.items || [];
+  const product = items.find((p) => (p.stock || 0) > 0);
+  if (!product) {
+    throw new Error('No in-stock product found in catalog');
+  }
+  const card = page.locator(`[data-product-id="${product.id}"]`);
+  await expect(card).toBeVisible();
+  return card;
+}
+
 export async function completeYooKassaPaymentIfNeeded(
   page,
   card = SUCCESSFUL_CARDS[1],

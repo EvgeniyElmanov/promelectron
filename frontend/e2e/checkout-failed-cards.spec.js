@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { goToCart, setYooKassaPaymentStatus } from './helpers.js';
+import { goToCart, setYooKassaPaymentStatus, getInStockProductCard } from './helpers.js';
 import { FAILED_CARDS } from './yookassa-test-cards.js';
 
 function uniqueEmail() {
@@ -17,6 +17,7 @@ async function fillAddress(page, prefix) {
 
 async function mockCdekWidget(page) {
   await page.addInitScript(() => {
+    window.__CDEK_MOCK_MODE__ = true;
     window.CDEKWidget = class MockCDEKWidget {
       constructor(options) {
         this.options = options;
@@ -54,8 +55,7 @@ async function fillRecipientPhone(page, phone = '+79990001122') {
 
 async function addFirstProductToCart(page) {
   await page.goto('/');
-  const firstProduct = page.locator('[data-testid="product-card"]').first();
-  await expect(firstProduct).toBeVisible();
+  const firstProduct = await getInStockProductCard(page);
   await firstProduct.locator('[data-testid="add-to-cart-button"]').click();
   await expect(page.locator('.toast--success')).toBeVisible({ timeout: 5000 });
   await page.waitForTimeout(300);

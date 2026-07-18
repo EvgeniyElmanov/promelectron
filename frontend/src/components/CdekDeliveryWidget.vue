@@ -192,15 +192,21 @@ async function openWidget() {
     detectedLocation.value = await detectUserLocation();
   }
 
-  await loadScript();
+  const hadInjectedWidget = !!window.CDEKWidget;
+  const canRunWithoutKey = hadInjectedWidget && window.__CDEK_MOCK_MODE__;
 
-  if (!window.CDEKWidget) {
+  // API-ключ обязателен для официального виджета с CDN.
+  // Если виджет был подменён моком (window.CDEKWidget) с флагом __CDEK_MOCK_MODE__,
+  // ключ не требуется — это используется в E2E-тестах.
+  if (!getApiKey() && !canRunWithoutKey) {
     loadError.value = true;
     isLoading.value = false;
     return;
   }
 
-  if (!getApiKey()) {
+  await loadScript();
+
+  if (!window.CDEKWidget) {
     loadError.value = true;
     isLoading.value = false;
     return;

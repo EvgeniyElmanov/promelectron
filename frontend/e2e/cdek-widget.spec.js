@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { goToCart } from './helpers.js';
+import { goToCart, getInStockProductCard } from './helpers.js';
 
 function uniqueEmail() {
   return `test_${Date.now()}_w${test.info().workerIndex}@example.com`;
@@ -7,8 +7,7 @@ function uniqueEmail() {
 
 async function addFirstProductToCart(page) {
   await page.goto('/');
-  const firstProduct = page.locator('[data-testid="product-card"]').first();
-  await expect(firstProduct).toBeVisible();
+  const firstProduct = await getInStockProductCard(page);
   await firstProduct.locator('[data-testid="add-to-cart-button"]').click();
   await expect(page.locator('.toast--success')).toBeVisible({ timeout: 5000 });
   await page.waitForTimeout(300);
@@ -44,6 +43,7 @@ async function mockSupplierCityCode(page, cityCode = 44) {
 
 async function mockCdekWidget(page) {
   await page.addInitScript(() => {
+    window.__CDEK_MOCK_MODE__ = true;
     window.CDEKWidget = class MockCDEKWidget {
       constructor(options) {
         this.options = options;
