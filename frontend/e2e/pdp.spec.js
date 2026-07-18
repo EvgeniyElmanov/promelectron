@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { goToCart } from './helpers.js';
+import { goToCart, getInStockProductCard } from './helpers.js';
 
 function uniqueEmail() {
   return `test_${Date.now()}_w${test.info().workerIndex}@example.com`;
@@ -30,7 +30,7 @@ test.describe('Product Detail Page', () => {
     await expect(page).toHaveURL('/');
 
     // Go to PDP
-    const firstCard = page.locator('[data-testid="product-card"]').first();
+    const firstCard = await getInStockProductCard(page);
     await firstCard.click();
     await expect(page.locator('[data-testid="pdp-title"]')).toBeVisible();
 

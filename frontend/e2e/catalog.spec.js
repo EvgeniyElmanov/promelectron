@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { goToCart } from './helpers.js';
+import { goToCart, getInStockProductCard } from './helpers.js';
 
 function uniqueEmail() {
   return `test_${Date.now()}_w${test.info().workerIndex}@example.com`;
@@ -27,8 +27,7 @@ test.describe('Catalog & Cart', () => {
     await expect(page).toHaveURL('/');
 
     // Add product to cart
-    const firstProduct = page.locator('[data-testid="product-card"]').first();
-    await expect(firstProduct).toBeVisible();
+    const firstProduct = await getInStockProductCard(page);
     await firstProduct.locator('[data-testid="add-to-cart-button"]').click();
     // Wait for success toast (not error)
     await expect(page.locator('.toast--success')).toBeVisible({ timeout: 5000 });

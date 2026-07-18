@@ -1,5 +1,5 @@
 <template>
-  <div class="product-card" data-testid="product-card" @click="goToProduct">
+  <div class="product-card" data-testid="product-card" :data-product-id="product.id" @click="goToProduct">
     <div
       class="product-card__image"
       :style="product.images?.length ? {} : { background: placeholderBg }"
