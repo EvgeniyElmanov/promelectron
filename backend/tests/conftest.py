@@ -427,6 +427,50 @@ async def test_order(test_session, test_user, test_product):
 
 
 @pytest.fixture
+async def admin_order(test_session, test_admin, test_product):
+    """Order owned by the admin user for legacy status endpoint tests."""
+    from src.app.models.cdek_order import CdekOrder
+    from src.app.models.order import Order, OrderItem
+
+    order = Order(
+        user_id=test_admin.id,
+        total_price=99.99,
+        status="pending",
+        shipping_address="Москва, ул. Ленина, д. 1",
+    )
+    test_session.add(order)
+    await test_session.flush()
+
+    cdek_order = CdekOrder(
+        order_id=order.id,
+        tariff_code=136,
+        delivery_mode="PVZ",
+        delivery_point="MSK123",
+        to_location={"code": 44, "city": "Москва", "address": "Москва, ул. Ленина, д. 1"},
+        price=350.00,
+        period_min=2,
+        period_max=4,
+    )
+    test_session.add(cdek_order)
+    await test_session.flush()
+
+    order.cdek_order_id = cdek_order.id
+    await test_session.commit()
+    await test_session.refresh(order)
+
+    order_item = OrderItem(
+        order_id=order.id,
+        product_id=test_product.id,
+        quantity=1,
+        price_at_time=99.99,
+    )
+    test_session.add(order_item)
+    await test_session.commit()
+    await test_session.refresh(order)
+    return order
+
+
+@pytest.fixture
 async def onec_mock_server():
     """Run the mock 1C OData server on a free port and return its base URL."""
     import uvicorn
