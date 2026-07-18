@@ -1,4 +1,4 @@
-import { expect, request } from '@playwright/test';
+import { expect, request, test } from '@playwright/test';
 import {
   DEFAULT_CARD_EXPIRY,
   SUCCESSFUL_CARDS,
@@ -335,11 +335,15 @@ export async function getInStockProductCard(page) {
   const response = await page.request.get('/api/v1/products/');
   expect(response.ok()).toBeTruthy();
   const data = await response.json();
-  const items = data.items || [];
-  const product = items.find((p) => (p.stock || 0) > 0);
-  if (!product) {
+  const items = (data.items || [])
+    .filter((p) => (p.stock || 0) > 0)
+    .sort((a, b) => b.stock - a.stock);
+  if (items.length === 0) {
     throw new Error('No in-stock product found in catalog');
   }
+  // Распределяем worker'ы по разным товарам, чтобы уменьшить конкуренцию за stock.
+  const workerIndex = test.info().workerIndex;
+  const product = items[workerIndex % items.length];
   const card = page.locator(`[data-product-id="${product.id}"]`);
   await expect(card).toBeVisible();
   return card;
