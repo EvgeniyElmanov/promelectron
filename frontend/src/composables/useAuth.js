@@ -44,6 +44,7 @@ export const useAuth = () => {
 
   const logout = () => {
     setAuth(null, null);
+    localStorage.removeItem('guest_cart');
   };
 
   const resendVerification = async (email) => {
