@@ -18,7 +18,7 @@
 | 1e | ЮKassa: Webhook endpoint + подпись | | backend-dev | P0 | **done** ✅ | 1d | 2 дня | BLK-010 |
 | 1f | ЮKassa: Frontend редирект + success page | | frontend-dev | P0 | **done** ✅ | 1d | 2 дня | — |
 | 1g | ЮKassa: Backend тесты | | backend-dev | P0 | **done** ✅ | 1e | 2 дня | — |
-| 1h | ЮKassa: E2E тест с тестовой картой | [#65](https://github.com/AutonomaCo/promelectron/issues/65) | e2e-tester | P0 | **done** ✅ | 1f, 1e | 2 дня | BLK-013 — E2E-карты flaky без реальных ключей; production-код оставлен, PR #95 заморожен |
+| 1h | ЮKassa: E2E тест с тестовой картой | | e2e-tester | P0 | **done** ✅ | 1f, 1e | 2 дня | — |
 | 2 | Webhook обработка платежей | | backend-dev | P0 | **done** ✅ | #1 | 3 дня | BLK-010 |
 | 3 | Гостевая корзина: backend API | | backend-dev | P0 | **done** ✅ | — | 1 неделя | — |
 | 4 | Гостевая корзина: localStorage + merge при login | | frontend-dev | P0 | **done** ✅ | #3 | 1 неделя | — |
@@ -225,11 +225,4 @@
 | — | [#61](https://github.com/AutonomaCo/promelectron/issues/61) | Technical Specification: cart-select-items-for-payment | 2026-07-01 |
 | — | [#63](https://github.com/AutonomaCo/promelectron/issues/63) | Technical Specification: fix-avatar-upload-notification | 2026-07-02 |
 | yookassa-test-card-scenarios | [#65](https://github.com/AutonomaCo/promelectron/issues/65) | ЮKassa: покрытие тестовыми сценариями банковских карт (test mode) | 2026-07-06 |
-| yookassa-card-test-coverage-65-follow-up | [#91](https://github.com/AutonomaCo/promelectron/issues/91) | fix(#65): follow-up fixes for YooKassa test-card coverage | 2026-07-14 |
 | — | [#66](https://github.com/AutonomaCo/promelectron/issues/66) | Specification: onec-integration | 2026-07-07 |
-| fix-rate-limit-register-login-crash | [#75](https://github.com/AutonomaCo/promelectron/issues/75) | Spec: fix-rate-limit-register-login-crash | 2026-07-12 |
-| fix-avatar-upload-kubernetes | [#77](https://github.com/AutonomaCo/promelectron/issues/77) | Writable `/app/uploads` for avatar upload in Kubernetes | 2026-07-12 |
-| — | Technical Specification: yookassa-e2e-ui-kassa-failed-3ds-0715 | [#96](https://github.com/AutonomaCo/promelectron/issues/96) | — | P1 | **backlog** | — | — | — |
-| — | Technical Specification: admin-orders-date-cancel | [#104](https://github.com/AutonomaCo/promelectron/issues/104) | — | P1 | **backlog** | — | — | — |
-| — | Technical Specification: admin-cancel-followups (--quick) | [#107](https://github.com/AutonomaCo/promelectron/issues/107) | — | P1 | **backlog** | — | — | — |
-| — | Bug Spec: fix-e2e-auth-after-guest-checkout | [#112](https://github.com/AutonomaCo/promelectron/issues/112) | — | P1 | **backlog** | — | — | — |

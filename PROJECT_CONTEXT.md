@@ -126,9 +126,9 @@ Product.price → Numeric      →  Product variants / Seller payouts
 | POST | `/api/v1/guest-cart/` | ✅ | Создать гостевую корзину |
 | GET | `/api/v1/guest-cart/{id}/` | ✅ | Получить гостевую корзину |
 | POST | `/api/v1/cart/merge/` | ✅ | Merge гостевой корзины при login |
-| POST | `/api/v1/orders/create-guest/` | ⚠️ | Создание новых гостевых заказов отключено (`410 Gone`); исторические заказы доступны |
+| POST | `/api/v1/orders/create-guest/` | ✅ | Создать гостевой заказ |
 | GET | `/api/v1/orders/guest/{order_id}/` | ✅ | Получить гостевой заказ по email |
-| POST | `/api/v1/payments/guest/{order_id}/` | ⚠️ | Создание новых guest-платежей отключено (`410 Gone`); mock-confirm/webhook исторических работают |
+| POST | `/api/v1/payments/guest/{order_id}/` | ✅ | Создать гостевой платёж ЮKassa |
 | POST | `/api/v1/payments/guest/{order_id}/mock-confirm/` | ✅ | Подтвердить mock-оплату гостевого заказа |
 | POST | `/api/v1/auth/password-reset-request/` | ✅ | Запросить сброс пароля |
 | POST | `/api/v1/auth/password-reset/` | ✅ | Подтвердить сброс пароля |
@@ -191,12 +191,6 @@ Product.price → Numeric      →  Product variants / Seller payouts
 | PATCH | `/api/v1/supplier/profile/` | ✅ | Обновление CDEK настроек поставщика |
 
 > **Trailing slash обязателен во всех путях.**
-
-### Debug endpoints (test mode only)
-| Метод | Путь | Auth | Описание |
-|-------|------|------|----------|
-| POST | `/api/v1/payments/debug/yookassa/create/` | JWT + `YOOKASSA_TEST_MODE=true` | Создать тестовый платёж напрямую в YooKassa без DB |
-| POST | `/api/v1/payments/debug/set-status/` | `x-seed-secret` + `YOOKASSA_TEST_MODE=true` | Детерминированно перевести платёж в `succeeded`/`canceled` (E2E) |
 
 ---
 
@@ -267,7 +261,6 @@ make test-e2e      # Playwright
 ## История изменений (кратко)
 
 | Дата | Что изменилось | Кто |
-| 2026-07-18 | **remove-guest-checkout** (backend): `POST /api/v1/orders/create-guest/` и `POST /api/v1/payments/guest/{order_id}/` возвращают `410 Gone`; исторические guest-заказы продолжают читаться через `GET /orders/guest/{order_id}/`, mock-confirm и webhook. Backend-тесты обновлены: `test_guest_orders.py`, `test_guest_payments.py`, `test_payments.py::TestPaymentDebugSetStatusAPI`. Модель БД не изменена, миграций нет. Целевые тесты 26/26 ✅, `lint-backend` чисто ✅. | backend-dev |
 | 2026-07-18 | **cleanup/remove-celery**: удалена неиспользуемая Celery из backend (`celery_app.py`, `celery[redis]` из requirements, комментарии), Docker Compose (сервисы `worker` и `beat`), Helm (`worker-deployment.yaml` удалён, секция `worker` переименована в `jobWorker` для `job-worker-deployment.yaml`), документации (`PROJECT_CONTEXT.md`, `.agent/DECISIONS.md`) и Claude skills/commands. Redis оставлен для кэша и rate limit. Backend 414/414 ✅, lint чисто ✅. | backend-dev |
 | 2026-06-30 | **fix: async verification email (#43)**: регрессия в E2E после #40 — `UserService.register_user`/`resend_verification_email` блокировали ответ API синхронной отправкой письма, что на test-окружении с unreachable Yandex SMTP приводило к таймаутам и падению E2E регистрации. Исправлено: отправка запускается в фоновой `asyncio.create_task`, токен создаётся синхронно, ошибки логируются. Backend 320/320 ✅, lint чисто ✅, deploy + E2E на test после merge зелёные. | backend-dev / orchestrator |
 | 2026-06-30 | **yandex-smtp-and-email-verification — merged (#40)**: завершена frontend-часть (баннеры верификации, страницы `/verify-email/*`, обработка 302-редиректа), review fixes (rate limit на verify-email, `hmac.compare_digest`, PII redaction, DB-индексы, placeholder SMTP-данные), обновлены Helm values/`deploy.yml`/SOPS TODOs. QA: backend 320/320 ✅, frontend 243/243 ✅, E2E 108/108 ✅. PR #40 влит в `main` (merge commit `836cc13`). Issue #19 закрыт, статус в GitHub Projects — Done. | backend-dev / frontend-dev / devops / orchestrator |
