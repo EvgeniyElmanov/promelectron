@@ -22,26 +22,31 @@ on:
         default: test
 
 env:
-  REGISTRY: ghcr.io
-  API_IMAGE: ghcr.io/autonomaco/promelectron-api
-  FRONTEND_IMAGE: ghcr.io/autonomaco/promelectron-frontend
+  REGISTRY: harbor.kubeadm.ru
+  API_IMAGE: harbor.kubeadm.ru/promelectron/promelectron-api
+  FRONTEND_IMAGE: harbor.kubeadm.ru/promelectron/promelectron-frontend
   KUBECONFIG_PATH: ${{ vars.KUBECONFIG_PATH }}
   SOPS_VERSION: "3.9.4"
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
+    runs-on: self-hosted
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Log in to GitHub Container Registry
+      - name: Log in to Harbor
         run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ${{ env.REGISTRY }} \
-            -u "${{ github.actor }}" --password-stdin
+          echo "${{ secrets.HARBOR_PASSWORD }}" | docker login ${{ env.REGISTRY }} \
+            -u "${{ secrets.HARBOR_USERNAME }}" --password-stdin
+
+      - name: Ensure Harbor project exists
+        run: |
+          curl -sf -o /dev/null \
+            -u "${{ secrets.HARBOR_USERNAME }}:${{ secrets.HARBOR_PASSWORD }}" \
+            -X POST "https://${{ env.REGISTRY }}/api/v2.0/projects" \
+            -H "Content-Type: application/json" \
+            -d '{"project_name":"promelectron","public":false}' || true
 
       - name: Build and push API image
         run: |
@@ -108,15 +113,15 @@ jobs:
               done
           echo "GNUPGHOME=$GNUPGHOME" >> "$GITHUB_ENV"
 
-      - name: Create imagePullSecret (test)
+      - name: Create Harbor imagePullSecret (test)
         env:
           KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
         run: |
           kubectl create namespace promelectron-test --dry-run=client -o yaml | kubectl apply -f -
-          kubectl create secret docker-registry registrycred \
+          kubectl create secret docker-registry harborcred \
             --docker-server=${{ env.REGISTRY }} \
-            --docker-username=${{ github.actor }} \
-            --docker-password=${{ secrets.GITHUB_TOKEN }} \
+            --docker-username=${{ secrets.HARBOR_USERNAME }} \
+            --docker-password=${{ secrets.HARBOR_PASSWORD }} \
             --namespace promelectron-test \
             --dry-run=client -o yaml | kubectl apply -f -
 
@@ -255,15 +260,15 @@ jobs:
               done
           echo "GNUPGHOME=$GNUPGHOME" >> "$GITHUB_ENV"
 
-      - name: Create imagePullSecret (prod)
+      - name: Create Harbor imagePullSecret (prod)
         env:
           KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
         run: |
           kubectl create namespace promelectron --dry-run=client -o yaml | kubectl apply -f -
-          kubectl create secret docker-registry registrycred \
+          kubectl create secret docker-registry harborcred \
             --docker-server=${{ env.REGISTRY }} \
-            --docker-username=${{ github.actor }} \
-            --docker-password=${{ secrets.GITHUB_TOKEN }} \
+            --docker-username=${{ secrets.HARBOR_USERNAME }} \
+            --docker-password=${{ secrets.HARBOR_PASSWORD }} \
             --namespace promelectron \
             --dry-run=client -o yaml | kubectl apply -f -
 
