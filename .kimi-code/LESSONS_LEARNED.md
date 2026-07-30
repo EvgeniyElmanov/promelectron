@@ -144,3 +144,15 @@ Backend-под уходил в CrashLoopBackOff при деплое в `promelec
 - [ ] `serial` mode — только для зависимых тестов
 - [ ] Rate limits — проверить на CI с `workers=4`
 - [ ] `ENVIRONMENT` в test — не `production`, если есть production-only ограничения
+
+---
+
+## 2026-07-30 | onec-universal-intake-0720: новое поле Settings роняет тесты с явными kwargs
+
+**Ошибка:** добавление поля `minio_intake_bucket` в `Settings` (config.py) уронило ~30 тестов (`test_email.py`, `test_auth.py`), которые конструируют `Settings(**kwargs)` с явным списком полей.
+
+**Причина:** тестовые хелперы перечисляют поля Settings вручную; новое обязательное поле dataclass ломает их конструктор.
+
+**Решение:** добавить новое поле в kwargs-хелперы этих тестов (коммит `test(onec): add minio_intake_bucket to Settings kwargs in test helpers`).
+
+**Профилактика:** при добавлении любого поля в `Settings` сразу grep'ать тесты на `Settings(` и обновлять явные kwargs; в перспективе — единая фабрика тестовых Settings.
