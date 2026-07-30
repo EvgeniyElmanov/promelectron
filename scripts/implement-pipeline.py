@@ -368,6 +368,8 @@ def find_project_item_id(issue_url: str) -> str:
             DEFAULT_PROJECT_OWNER,
             "--format",
             "json",
+            "--limit",
+            "100",
         ]
     ).get("items", [])
     for item in items:
@@ -514,6 +516,8 @@ def cmd_sync_backlog(args: argparse.Namespace) -> int:
             DEFAULT_PROJECT_OWNER,
             "--format",
             "json",
+            "--limit",
+            "100",
         ]
     ).get("items", [])
 
