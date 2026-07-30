@@ -40,7 +40,8 @@ class Settings:
             seed_on_start=os.getenv("SEED_ON_START", "true").lower() == "true",
             seed_products_count=int(os.getenv("SEED_PRODUCTS_COUNT", cls.seed_products_count)),
             catalog_seed=int(os.getenv("CATALOG_SEED", cls.catalog_seed)),
-            log_level=os.getenv("LOG_LEVEL", cls.log_level),
+            # logging требует верхний регистр; в K8s configmap LOG_LEVEL=info (lowercase)
+            log_level=os.getenv("LOG_LEVEL", cls.log_level).upper(),
             onec_mock_schema=onec_mock_schema,
         )
 
