@@ -1,0 +1,109 @@
+{
+  "date": "2026-07-30",
+  "source": "minio://onec-intake/",
+  "files": [
+    {
+      "file": "2026/07/30/124301_f70cfb46-bf20-4e0a-9d21-401e3ebbbf66.bin!import.xml",
+      "format": "commerceml",
+      "size": 9801,
+      "role": "import"
+    },
+    {
+      "file": "2026/07/30/124301_f70cfb46-bf20-4e0a-9d21-401e3ebbbf66.bin!offers.xml",
+      "format": "commerceml",
+      "size": 3418,
+      "role": "offers"
+    },
+    {
+      "file": "2026/07/30/124316_583b9209-94a2-49e0-8265-a4f6520452f7.bin!import.xml",
+      "format": "commerceml",
+      "size": 10615,
+      "role": "import"
+    },
+    {
+      "file": "2026/07/30/124316_583b9209-94a2-49e0-8265-a4f6520452f7.bin!offers.xml",
+      "format": "commerceml",
+      "size": 3433,
+      "role": "offers"
+    }
+  ],
+  "errors": [],
+  "commerceml": [
+    {
+      "file": "2026/07/30/124301_f70cfb46-bf20-4e0a-9d21-401e3ebbbf66.bin!import.xml",
+      "role": "import",
+      "products_count": 5,
+      "offers_count": 0,
+      "sample_fields": [
+        "Артикул",
+        "Группы",
+        "ЗначенияСвойств",
+        "Ид",
+        "Наименование",
+        "Описание"
+      ]
+    },
+    {
+      "file": "2026/07/30/124301_f70cfb46-bf20-4e0a-9d21-401e3ebbbf66.bin!offers.xml",
+      "role": "offers",
+      "products_count": 0,
+      "offers_count": 5,
+      "sample_fields": [
+        "Артикул",
+        "Ид",
+        "Количество",
+        "Наименование",
+        "Цены"
+      ]
+    },
+    {
+      "file": "2026/07/30/124316_583b9209-94a2-49e0-8265-a4f6520452f7.bin!import.xml",
+      "role": "import",
+      "products_count": 5,
+      "offers_count": 0,
+      "sample_fields": [
+        "Артикул",
+        "Группы",
+        "ЗначенияСвойств",
+        "Ид",
+        "Наименование",
+        "Описание"
+      ]
+    },
+    {
+      "file": "2026/07/30/124316_583b9209-94a2-49e0-8265-a4f6520452f7.bin!offers.xml",
+      "role": "offers",
+      "products_count": 0,
+      "offers_count": 5,
+      "sample_fields": [
+        "Артикул",
+        "Ид",
+        "Количество",
+        "Наименование",
+        "Цены"
+      ]
+    }
+  ],
+  "entity_names": {},
+  "stats": {
+    "entities": {},
+    "attributes": {
+      "total_definitions": 0,
+      "total_assignments": 0,
+      "attributes": []
+    },
+    "cross_references": {
+      "universe_size": 0,
+      "links": {}
+    },
+    "stock_summary": {
+      "rows": 0,
+      "negative_rows": 0,
+      "min_row_balance": 0,
+      "products": 0,
+      "negative_after_sum": 0,
+      "clamped_to_zero": 0,
+      "min_balance": 0
+    }
+  }
+}

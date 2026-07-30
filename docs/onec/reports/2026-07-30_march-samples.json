@@ -1,0 +1,3481 @@
+{
+  "date": "2026-07-30",
+  "source": "local:/home/evgeniy/Загрузки/Telegram Desktop/Архив (2)/tmp/ (glob=*.json)",
+  "files": [
+    {
+      "file": "attributes_def.json",
+      "format": "odata_json",
+      "size": 11957,
+      "entity": "ChartOfCharacteristicTypes_ДополнительныеРеквизитыИСведения",
+      "bucket": "attribute_defs",
+      "records": 5
+    },
+    {
+      "file": "categories.json",
+      "format": "odata_json",
+      "size": 1884,
+      "entity": "Catalog_КатегорииНоменклатуры",
+      "bucket": "categories",
+      "records": 10
+    },
+    {
+      "file": "price_types.json",
+      "format": "odata_json",
+      "size": 721,
+      "entity": "Catalog_ВидыЦен",
+      "bucket": "price_types",
+      "records": 5
+    },
+    {
+      "file": "pricelist_products.json",
+      "format": "odata_json",
+      "size": 161,
+      "entity": "Catalog_ПрайсЛисты_Номенклатура",
+      "bucket": "other",
+      "records": 0
+    },
+    {
+      "file": "prices_try.json",
+      "format": "odata_json",
+      "size": 4998,
+      "entity": "InformationRegister_ЦеныНоменклатуры",
+      "bucket": "prices",
+      "records": 3
+    },
+    {
+      "file": "product_attributes.json",
+      "format": "odata_json",
+      "size": 5626,
+      "entity": "Catalog_Номенклатура_ДополнительныеРеквизиты",
+      "bucket": "product_attributes",
+      "records": 10
+    },
+    {
+      "file": "product_files.json",
+      "format": "odata_json",
+      "size": 5995,
+      "entity": "Catalog_НоменклатураПрисоединенныеФайлы",
+      "bucket": "other",
+      "records": 3
+    },
+    {
+      "file": "product_folders.json",
+      "format": "odata_json",
+      "size": 1143,
+      "entity": "Catalog_Номенклатура",
+      "bucket": "products",
+      "records": 5
+    },
+    {
+      "file": "product_items.json",
+      "format": "odata_json",
+      "size": 3571,
+      "entity": "Catalog_Номенклатура",
+      "bucket": "products",
+      "records": 5
+    },
+    {
+      "file": "product_sample.json",
+      "format": "odata_json",
+      "size": 10350,
+      "entity": "Catalog_Номенклатура",
+      "bucket": "products",
+      "records": 1
+    },
+    {
+      "file": "property_values.json",
+      "format": "odata_json",
+      "size": 1521,
+      "entity": "Catalog_ЗначенияСвойствОбъектов",
+      "bucket": "property_values",
+      "records": 10
+    },
+    {
+      "file": "stock_balance.json",
+      "format": "odata_json",
+      "size": 2746,
+      "entity": "AccumulationRegister_ЗапасыНаСкладах_Balance",
+      "bucket": "stock",
+      "records": 5
+    },
+    {
+      "file": "stock_try1.json",
+      "format": "odata_json",
+      "size": 174,
+      "entity": "odata_error",
+      "error": {
+        "lang": "ru",
+        "value": "Сущность 'AccumulationRegister_ТоварыНаСкладах' не найдена"
+      }
+    },
+    {
+      "file": "stock_try2.json",
+      "format": "odata_json",
+      "size": 2720387,
+      "entity": "AccumulationRegister_ЗапасыНаСкладах",
+      "bucket": "other",
+      "records": 3
+    },
+    {
+      "file": "test_file_full.json",
+      "format": "odata_json",
+      "size": 2109,
+      "entity": "Catalog_НоменклатураПрисоединенныеФайлы",
+      "bucket": "other",
+      "records": 1
+    },
+    {
+      "file": "test_image.json",
+      "format": "odata_json",
+      "size": 271,
+      "entity": "Catalog_НоменклатураПрисоединенныеФайлы",
+      "bucket": "other",
+      "records": 1
+    },
+    {
+      "file": "units.json",
+      "format": "odata_json",
+      "size": 675,
+      "entity": "Catalog_КлассификаторЕдиницИзмерения",
+      "bucket": "units",
+      "records": 5
+    }
+  ],
+  "errors": [
+    {
+      "file": "stock_try1.json",
+      "error": "odata.error"
+    }
+  ],
+  "commerceml": [],
+  "entity_names": {
+    "attribute_defs": "ChartOfCharacteristicTypes_ДополнительныеРеквизитыИСведения",
+    "categories": "Catalog_КатегорииНоменклатуры",
+    "price_types": "Catalog_ВидыЦен",
+    "other": "Catalog_ПрайсЛисты_Номенклатура",
+    "prices": "InformationRegister_ЦеныНоменклатуры",
+    "product_attributes": "Catalog_Номенклатура_ДополнительныеРеквизиты",
+    "products": "Catalog_Номенклатура",
+    "property_values": "Catalog_ЗначенияСвойствОбъектов",
+    "stock": "AccumulationRegister_ЗапасыНаСкладах_Balance",
+    "units": "Catalog_КлассификаторЕдиницИзмерения"
+  },
+  "stats": {
+    "entities": {
+      "attribute_defs": {
+        "total": 5,
+        "active": 5,
+        "filtered_out": 0,
+        "fields": {
+          "DataVersion": {
+            "fill_rate": 1.0,
+            "types": {
+              "string": 5
+            },
+            "distinct": 5,
+            "examples": [
+              "\"AAAAABuj/as=\"",
+              "\"AAAAABuj/ag=\"",
+              "\"AAAAABuj/ak=\""
+            ]
+          },
+          "DeletionMark": {
+            "fill_rate": 1.0,
+            "types": {
+              "bool": 5
+            },
+            "distinct": 1,
+            "examples": [
+              "false",
+              "false",
+              "false"
+            ]
+          },
+          "Description": {
+            "fill_rate": 0.8,
+            "types": {
+              "string": 4
+            },
+            "distinct": 4,
+            "examples": [
+              "\"mF\"",
+              "\"V\"",
+              "\"Без канифоли\""
+            ]
+          },
+          "Predefined": {
+            "fill_rate": 1.0,
+            "types": {
+              "bool": 5
+            },
+            "distinct": 1,
+            "examples": [
+              "false",
+              "false",
+              "false"
+            ]
+          },
+          "PredefinedDataName": {
+            "fill_rate": 0.0,
+            "types": {},
+            "distinct": 0,
+            "examples": []
+          },
+          "Ref_Key": {
+            "fill_rate": 1.0,
+            "types": {
+              "string": 5
+            },
+            "distinct": 5,
+            "examples": [
+              "\"3ea85238-71ab-11eb-80d4-00155d006601\"",
+              "\"7ffcb01d-9f4b-11eb-80ca-d45d647f1831\"",
+              "\"7ffcb020-9f4b-11eb-80ca-d45d647f1831\""
+            ]
+          },
+          "ValueType": {
+            "fill_rate": 1.0,
+            "types": {
+              "object": 5
+            },
+            "distinct": 1,
+            "examples": [
+              "{\"Types\": [\"CatalogRef.ЗначенияСвойствОбъектов\"], \"NumberQualifiers\": {\"Allow...",
+              "{\"Types\": [\"CatalogRef.ЗначенияСвойствОбъектов\"], \"NumberQualifiers\": {\"Allow...",
+              "{\"Types\": [\"CatalogRef.ЗначенияСвойствОбъектов\"], \"NumberQualifiers\": {\"Allow..."
+            ]
+          },
+          "ВидСвойства": {
+            "fill_rate": 0.0,
+            "types": {},
+            "distinct": 0,
+            "examples": []
+          },
+          "Виден": {
+            "fill_rate": 1.0,
+            "types": {
+              "bool": 5
+            },
+            "distinct": 1,
+            "examples": [
+              "true",
+              "true",
+              "true"
+            ]
+          },
+          "ВладелецДополнительныхЗначений_Key": {
+            "fill_rate": 1.0,
+            "types": {
+              "string": 5
+            },
+            "distinct": 1,
+            "examples": [
+              "\"00000000-0000-0000-0000-000000000000\"",
+              "\"00000000-0000-0000-0000-000000000000\"",
+              "\"00000000-0000-0000-0000-000000000000\""
+            ]
+          },
+          "ВыводитьВВидеГиперссылки": {
+            "fill_rate": 1.0,
+            "types": {
+              "bool": 5
+            },
+            "distinct": 1,
+            "examples": [
+              "false",
+              "false",
+              "false"
+            ]
+          },
+          "ДополнительныеЗначенияИспользуются": {
+            "fill_rate": 1.0,
+            "types": {
+              "bool": 5
+            },
+            "distinct": 1,
+            "examples": [
+              "true",
+              "true",
+              "true"
+            ]
+          },
+          "ДополнительныеЗначенияСВесом": {
+            "fill_rate": 1.0,
+            "types": {
+              "bool": 5
+            },
+            "distinct": 1,
+            "examples": [
+              "false",
+              "false",
+              "false"
+            ]
+          },
+          "Доступен": {
+            "fill_rate": 1.0,
+            "types": {
+              "bool": 5
+            },
+            "distinct": 1,
+            "examples": [
+              "true",
+              "true",
+              "true"
+            ]
+          },
+          "ЗависимостиДополнительныхРеквизитов": {
+            "fill_rate": 1.0,
+            "types": {
+              "array": 5
+            },
+            "distinct": 1,
+            "examples": [
+              "[]",
+              "[]",
+              "[]"
+            ]
+          },
+          "Заголовок": {
+            "fill_rate": 0.8,
+            "types": {
+              "string": 4
+            },
+            "distinct": 4,
+            "examples": [
+              "\"mF\"",
+              "\"V\"",
+              "\"Без канифоли\""
+            ]
+          },
+          "ЗаголовокФормыВыбораЗначения": {
+            "fill_rate": 0.0,
+            "types": {},
+            "distinct": 0,
+            "examples": []
+          },
+          "ЗаголовокФормыВыбораЗначенияЯзык1": {
+            "fill_rate": 0.0,
+            "types": {},
+            "distinct": 0,
+            "examples": []
+          },
+          "ЗаголовокФормыВыбораЗначенияЯзык2": {
+            "fill_rate": 0.0,
+            "types": {},
+            "distinct": 0,
+            "examples": []
+          },
+          "ЗаголовокФормыЗначения": {
+            "fill_rate": 0.0,
+            "types": {},
+            "distinct": 0,
+            "examples": []
+          },
+          "ЗаголовокФормыЗначенияЯзык1": {
+            "fill_rate": 0.0,
+            "types": {},
+            "distinct": 0,
+            "examples": []
+          },
+          "ЗаголовокФормыЗначенияЯзык2": {
+            "fill_rate": 0.0,
+            "types": {},
+            "distinct": 0,
+            "examples": []
+          },
+          "ЗаголовокЯзык1": {
+            "fill_rate": 0.2,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"Бренд\""
+            ]
+          },
+          "ЗаголовокЯзык2": {
+            "fill_rate": 0.2,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"Бренд\""
+            ]
+          },
+          "ЗаполнятьОбязательно": {
+            "fill_rate": 1.0,
+            "types": {
+              "bool": 5
+            },
+            "distinct": 1,
+            "examples": [
+              "false",
+              "false",
+              "false"
+            ]
+          },
+          "ИдентификаторДляФормул": {
+            "fill_rate": 1.0,
+            "types": {
+              "string": 5
+            },
+            "distinct": 5,
+            "examples": [
+              "\"Идентификатор\"",
+              "\"МФ\"",
+              "\"V\""
+            ]
+          },
+          "Имя": {
+            "fill_rate": 1.0,
+            "types": {
+              "string": 5
+            },
+            "distinct": 5,
+            "examples": [
+              "\"_021bbc4847794910bb395caaa0225c1f\"",
+              "\"МФ_89db69c985f34448bc61b062c2d4e2cd\"",
+              "\"V_4aa60534f4224858a444ebaf27a8feaf\""
+            ]
+          },
+          "Комментарий": {
+            "fill_rate": 0.0,
+            "types": {},
+            "distinct": 0,
+            "examples": []
+          },
+          "МногострочноеПолеВвода": {
+            "fill_rate": 1.0,
+            "types": {
+              "number": 5
+            },
+            "distinct": 1,
+            "examples": [
+              "0",
+              "0",
+              "0"
+            ]
+          },
+          "НаборСвойств@navigationLinkUrl": {
+            "fill_rate": 1.0,
+            "types": {
+              "string": 5
+            },
+            "distinct": 5,
+            "examples": [
+              "\"ChartOfCharacteristicTypes_ДополнительныеРеквизитыИСведения(guid'3ea85238-71...",
+              "\"ChartOfCharacteristicTypes_ДополнительныеРеквизитыИСведения(guid'7ffcb01d-9f...",
+              "\"ChartOfCharacteristicTypes_ДополнительныеРеквизитыИСведения(guid'7ffcb020-9f..."
+            ]
+          },
+          "НаборСвойств_Key": {
+            "fill_rate": 1.0,
+            "types": {
+              "string": 5
+            },
+            "distinct": 4,
+            "examples": [
+              "\"79d9515c-5d6a-11eb-948a-f81a67046005\"",
+              "\"7ffcb017-9f4b-11eb-80ca-d45d647f1831\"",
+              "\"7ffcb017-9f4b-11eb-80ca-d45d647f1831\""
+            ]
+          },
+          "Подсказка": {
+            "fill_rate": 0.0,
+            "types": {},
+            "distinct": 0,
+            "examples": []
+          },
+          "ПодсказкаЯзык1": {
+            "fill_rate": 0.0,
+            "types": {},
+            "distinct": 0,
+            "examples": []
+          },
+          "ПодсказкаЯзык2": {
+            "fill_rate": 0.0,
+            "types": {},
+            "distinct": 0,
+            "examples": []
+          },
+          "Представления": {
+            "fill_rate": 1.0,
+            "types": {
+              "array": 5
+            },
+            "distinct": 1,
+            "examples": [
+              "[]",
+              "[]",
+              "[]"
+            ]
+          },
+          "ФорматСвойства": {
+            "fill_rate": 0.0,
+            "types": {},
+            "distinct": 0,
+            "examples": []
+          },
+          "ЦветСвойства": {
+            "fill_rate": 0.0,
+            "types": {},
+            "distinct": 0,
+            "examples": []
+          },
+          "ЭтоДополнительноеСведение": {
+            "fill_rate": 1.0,
+            "types": {
+              "bool": 5
+            },
+            "distinct": 1,
+            "examples": [
+              "false",
+              "false",
+              "false"
+            ]
+          }
+        }
+      },
+      "categories": {
+        "total": 10,
+        "active": 10,
+        "filtered_out": 0,
+        "fields": {
+          "Description": {
+            "fill_rate": 1.0,
+            "types": {
+              "string": 10
+            },
+            "distinct": 10,
+            "examples": [
+              "\"Аккумуляторы\"",
+              "\"Батарейки\"",
+              "\"Вентиляторы\""
+            ]
+          },
+          "IsFolder": {
+            "fill_rate": 1.0,
+            "types": {
+              "bool": 10
+            },
+            "distinct": 1,
+            "examples": [
+              "false",
+              "false",
+              "false"
+            ]
+          },
+          "Parent_Key": {
+            "fill_rate": 1.0,
+            "types": {
+              "string": 10
+            },
+            "distinct": 1,
+            "examples": [
+              "\"00000000-0000-0000-0000-000000000000\"",
+              "\"00000000-0000-0000-0000-000000000000\"",
+              "\"00000000-0000-0000-0000-000000000000\""
+            ]
+          },
+          "Ref_Key": {
+            "fill_rate": 1.0,
+            "types": {
+              "string": 10
+            },
+            "distinct": 10,
+            "examples": [
+              "\"cc702097-91e4-11eb-80c9-d45d647f1831\"",
+              "\"cc7020bf-91e4-11eb-80c9-d45d647f1831\"",
+              "\"10263cbd-8894-11eb-80c9-d45d647f1831\""
+            ]
+          }
+        }
+      },
+      "other": {
+        "total": 8,
+        "active": 8,
+        "filtered_out": 0,
+        "fields": {
+          "DataVersion": {
+            "fill_rate": 0.5,
+            "types": {
+              "string": 4
+            },
+            "distinct": 3,
+            "examples": [
+              "\"AAAAAAACNmo=\"",
+              "\"AAAAAAACNms=\"",
+              "\"AAAAAAACUTA=\""
+            ]
+          },
+          "DeletionMark": {
+            "fill_rate": 0.5,
+            "types": {
+              "bool": 4
+            },
+            "distinct": 1,
+            "examples": [
+              "false",
+              "false",
+              "false"
+            ]
+          },
+          "Description": {
+            "fill_rate": 0.5,
+            "types": {
+              "string": 4
+            },
+            "distinct": 3,
+            "examples": [
+              "\"0,022-5,5-1\"",
+              "\"0,022-5,5-2\"",
+              "\"0,22-50-1\""
+            ]
+          },
+          "Predefined": {
+            "fill_rate": 0.5,
+            "types": {
+              "bool": 4
+            },
+            "distinct": 1,
+            "examples": [
+              "false",
+              "false",
+              "false"
+            ]
+          },
+          "PredefinedDataName": {
+            "fill_rate": 0.0,
+            "types": {},
+            "distinct": 0,
+            "examples": []
+          },
+          "RecordSet": {
+            "fill_rate": 0.375,
+            "types": {
+              "array": 3
+            },
+            "distinct": 3,
+            "examples": [
+              "[{\"Period\": \"2021-01-28T00:00:00\", \"LineNumber\": \"1\", \"Active\": true, \"Record...",
+              "[{\"Period\": \"2021-01-29T00:00:00\", \"LineNumber\": \"1\", \"Active\": true, \"Record...",
+              "[{\"Period\": \"2021-03-06T11:14:10\", \"LineNumber\": \"1\", \"Active\": true, \"Record..."
+            ]
+          },
+          "Recorder": {
+            "fill_rate": 0.375,
+            "types": {
+              "string": 3
+            },
+            "distinct": 3,
+            "examples": [
+              "\"0846c91b-65e9-11eb-80d2-00155d006601\"",
+              "\"d22a463f-620d-11eb-948d-d45d64d20ea1\"",
+              "\"51e35a8c-7e39-11eb-80bd-94de80b28a88\""
+            ]
+          },
+          "Recorder_Type": {
+            "fill_rate": 0.375,
+            "types": {
+              "string": 3
+            },
+            "distinct": 2,
+            "examples": [
+              "\"StandardODATA.Document_ВводНачальныхОстатков\"",
+              "\"StandardODATA.Document_ВводНачальныхОстатков\"",
+              "\"StandardODATA.Document_ОприходованиеЗапасов\""
+            ]
+          },
+          "Ref_Key": {
+            "fill_rate": 0.625,
+            "types": {
+              "string": 5
+            },
+            "distinct": 4,
+            "examples": [
+              "\"5fe3006c-9c13-11eb-80c9-d45d647f1831\"",
+              "\"5fe3006d-9c13-11eb-80c9-d45d647f1831\"",
+              "\"759b633f-25e2-11ed-9cb6-94de80b28a88\""
+            ]
+          },
+          "Автор": {
+            "fill_rate": 0.5,
+            "types": {
+              "string": 4
+            },
+            "distinct": 1,
+            "examples": [
+              "\"4cc029d7-5d6b-11eb-948a-f81a67046005\"",
+              "\"4cc029d7-5d6b-11eb-948a-f81a67046005\"",
+              "\"4cc029d7-5d6b-11eb-948a-f81a67046005\""
+            ]
+          },
+          "Автор_Type": {
+            "fill_rate": 0.5,
+            "types": {
+              "string": 4
+            },
+            "distinct": 1,
+            "examples": [
+              "\"StandardODATA.Catalog_Пользователи\"",
+              "\"StandardODATA.Catalog_Пользователи\"",
+              "\"StandardODATA.Catalog_Пользователи\""
+            ]
+          },
+          "ВладелецФайла@navigationLinkUrl": {
+            "fill_rate": 0.5,
+            "types": {
+              "string": 4
+            },
+            "distinct": 3,
+            "examples": [
+              "\"Catalog_НоменклатураПрисоединенныеФайлы(guid'5fe3006c-9c13-11eb-80c9-d45d647...",
+              "\"Catalog_НоменклатураПрисоединенныеФайлы(guid'5fe3006d-9c13-11eb-80c9-d45d647...",
+              "\"Catalog_НоменклатураПрисоединенныеФайлы(guid'759b633f-25e2-11ed-9cb6-94de80b..."
+            ]
+          },
+          "ВладелецФайла_Key": {
+            "fill_rate": 0.5,
+            "types": {
+              "string": 4
+            },
+            "distinct": 2,
+            "examples": [
+              "\"bbc063ad-17f5-4c79-bf8c-1d287ab63870\"",
+              "\"bbc063ad-17f5-4c79-bf8c-1d287ab63870\"",
+              "\"f183c7dc-188f-4e68-83f5-ea4ebcf7bdb6\""
+            ]
+          },
+          "ДатаЗаема": {
+            "fill_rate": 0.5,
+            "types": {
+              "string": 4
+            },
+            "distinct": 1,
+            "examples": [
+              "\"0001-01-01T00:00:00\"",
+              "\"0001-01-01T00:00:00\"",
+              "\"0001-01-01T00:00:00\""
+            ]
+          },
+          "ДатаМодификацииУниверсальная": {
+            "fill_rate": 0.5,
+            "types": {
+              "string": 4
+            },
+            "distinct": 3,
+            "examples": [
+              "\"2021-04-13T09:18:26\"",
+              "\"2021-04-13T09:19:04\"",
+              "\"2022-08-27T08:31:16\""
+            ]
+          },
+          "ДатаСоздания": {
+            "fill_rate": 0.5,
+            "types": {
+              "string": 4
+            },
+            "distinct": 3,
+            "examples": [
+              "\"2021-04-13T14:20:02\"",
+              "\"2021-04-13T14:20:05\"",
+              "\"2022-08-27T13:32:30\""
+            ]
+          },
+          "Зашифрован": {
+            "fill_rate": 0.5,
+            "types": {
+              "bool": 4
+            },
+            "distinct": 1,
+            "examples": [
+              "false",
+              "false",
+              "false"
+            ]
+          },
+          "Изменил": {
+            "fill_rate": 0.5,
+            "types": {
+              "string": 4
+            },
+            "distinct": 1,
+            "examples": [
+              "\"4cc029d7-5d6b-11eb-948a-f81a67046005\"",
+              "\"4cc029d7-5d6b-11eb-948a-f81a67046005\"",
+              "\"4cc029d7-5d6b-11eb-948a-f81a67046005\""
+            ]
+          },
+          "Изменил_Type": {
+            "fill_rate": 0.5,
+            "types": {
+              "string": 4
+            },
+            "distinct": 1,
+            "examples": [
+              "\"StandardODATA.Catalog_Пользователи\"",
+              "\"StandardODATA.Catalog_Пользователи\"",
+              "\"StandardODATA.Catalog_Пользователи\""
+            ]
+          },
+          "ИндексКартинки": {
+            "fill_rate": 0.5,
+            "types": {
+              "string": 4
+            },
+            "distinct": 1,
+            "examples": [
+              "\"42\"",
+              "\"42\"",
+              "\"42\""
+            ]
+          },
+          "Описание": {
+            "fill_rate": 0.0,
+            "types": {},
+            "distinct": 0,
+            "examples": []
+          },
+          "ПодписанЭП": {
+            "fill_rate": 0.5,
+            "types": {
+              "bool": 4
+            },
+            "distinct": 1,
+            "examples": [
+              "false",
+              "false",
+              "false"
+            ]
+          },
+          "ПутьКФайлу": {
+            "fill_rate": 0.0,
+            "types": {},
+            "distinct": 0,
+            "examples": []
+          },
+          "Размер": {
+            "fill_rate": 0.5,
+            "types": {
+              "string": 4
+            },
+            "distinct": 3,
+            "examples": [
+              "\"123807\"",
+              "\"142696\"",
+              "\"159646\""
+            ]
+          },
+          "Расширение": {
+            "fill_rate": 0.5,
+            "types": {
+              "string": 4
+            },
+            "distinct": 1,
+            "examples": [
+              "\"jpg\"",
+              "\"jpg\"",
+              "\"jpg\""
+            ]
+          },
+          "Редактирует": {
+            "fill_rate": 0.0,
+            "types": {},
+            "distinct": 0,
+            "examples": []
+          },
+          "Редактирует_Type": {
+            "fill_rate": 0.5,
+            "types": {
+              "string": 4
+            },
+            "distinct": 1,
+            "examples": [
+              "\"StandardODATA.Undefined\"",
+              "\"StandardODATA.Undefined\"",
+              "\"StandardODATA.Undefined\""
+            ]
+          },
+          "СтатусИзвлеченияТекста": {
+            "fill_rate": 0.5,
+            "types": {
+              "string": 4
+            },
+            "distinct": 1,
+            "examples": [
+              "\"НеИзвлечен\"",
+              "\"НеИзвлечен\"",
+              "\"НеИзвлечен\""
+            ]
+          },
+          "ТекстХранилище_Base64Data": {
+            "fill_rate": 0.5,
+            "types": {
+              "string": 4
+            },
+            "distinct": 1,
+            "examples": [
+              "\"PFN0cmluZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMS9YTUxTY2hlbWEi\\r\\nIHhtbG5z...",
+              "\"PFN0cmluZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMS9YTUxTY2hlbWEi\\r\\nIHhtbG5z...",
+              "\"PFN0cmluZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMS9YTUxTY2hlbWEi\\r\\nIHhtbG5z..."
+            ]
+          },
+          "ТекстХранилище_Type": {
+            "fill_rate": 0.5,
+            "types": {
+              "string": 4
+            },
+            "distinct": 1,
+            "examples": [
+              "\"application/xml+xdto\"",
+              "\"application/xml+xdto\"",
+              "\"application/xml+xdto\""
+            ]
+          },
+          "ТипХраненияФайла": {
+            "fill_rate": 0.5,
+            "types": {
+              "string": 4
+            },
+            "distinct": 1,
+            "examples": [
+              "\"ВИнформационнойБазе\"",
+              "\"ВИнформационнойБазе\"",
+              "\"ВИнформационнойБазе\""
+            ]
+          },
+          "Том_Key": {
+            "fill_rate": 0.5,
+            "types": {
+              "string": 4
+            },
+            "distinct": 1,
+            "examples": [
+              "\"00000000-0000-0000-0000-000000000000\"",
+              "\"00000000-0000-0000-0000-000000000000\"",
+              "\"00000000-0000-0000-0000-000000000000\""
+            ]
+          },
+          "УдалитьСертификатыШифрования": {
+            "fill_rate": 0.5,
+            "types": {
+              "array": 4
+            },
+            "distinct": 1,
+            "examples": [
+              "[]",
+              "[]",
+              "[]"
+            ]
+          },
+          "УдалитьЭлектронныеПодписи": {
+            "fill_rate": 0.5,
+            "types": {
+              "array": 4
+            },
+            "distinct": 1,
+            "examples": [
+              "[]",
+              "[]",
+              "[]"
+            ]
+          },
+          "ФайлХранилище_Base64Data": {
+            "fill_rate": 0.0,
+            "types": {},
+            "distinct": 0,
+            "examples": []
+          },
+          "ФайлХранилище_Type": {
+            "fill_rate": 0.5,
+            "types": {
+              "string": 4
+            },
+            "distinct": 1,
+            "examples": [
+              "\"application/xml+xdto\"",
+              "\"application/xml+xdto\"",
+              "\"application/xml+xdto\""
+            ]
+          },
+          "ХранитьВерсии": {
+            "fill_rate": 0.5,
+            "types": {
+              "bool": 4
+            },
+            "distinct": 1,
+            "examples": [
+              "false",
+              "false",
+              "false"
+            ]
+          }
+        }
+      },
+      "price_types": {
+        "total": 5,
+        "active": 5,
+        "filtered_out": 0,
+        "fields": {
+          "DeletionMark": {
+            "fill_rate": 1.0,
+            "types": {
+              "bool": 5
+            },
+            "distinct": 1,
+            "examples": [
+              "false",
+              "false",
+              "false"
+            ]
+          },
+          "Description": {
+            "fill_rate": 1.0,
+            "types": {
+              "string": 5
+            },
+            "distinct": 5,
+            "examples": [
+              "\"БазаСВ\"",
+              "\"Копт\"",
+              "\"МинМП\""
+            ]
+          },
+          "Ref_Key": {
+            "fill_rate": 1.0,
+            "types": {
+              "string": 5
+            },
+            "distinct": 5,
+            "examples": [
+              "\"143c81a9-1094-11f0-8170-00155d0a290e\"",
+              "\"86e087df-620a-11eb-948d-d45d64d20ea1\"",
+              "\"616479e8-7dd8-11ed-9d18-94de80b28a88\""
+            ]
+          }
+        }
+      },
+      "prices": {
+        "total": 3,
+        "active": 3,
+        "filtered_out": 0,
+        "fields": {
+          "Period": {
+            "fill_rate": 1.0,
+            "types": {
+              "string": 3
+            },
+            "distinct": 1,
+            "examples": [
+              "\"2021-01-03T00:00:00\"",
+              "\"2021-01-03T00:00:00\"",
+              "\"2021-01-03T00:00:00\""
+            ]
+          },
+          "Автор_Key": {
+            "fill_rate": 1.0,
+            "types": {
+              "string": 3
+            },
+            "distinct": 1,
+            "examples": [
+              "\"00000000-0000-0000-0000-000000000000\"",
+              "\"00000000-0000-0000-0000-000000000000\"",
+              "\"00000000-0000-0000-0000-000000000000\""
+            ]
+          },
+          "Актуальность": {
+            "fill_rate": 1.0,
+            "types": {
+              "bool": 3
+            },
+            "distinct": 1,
+            "examples": [
+              "true",
+              "true",
+              "true"
+            ]
+          },
+          "ВалютаЦены_Key": {
+            "fill_rate": 1.0,
+            "types": {
+              "string": 3
+            },
+            "distinct": 1,
+            "examples": [
+              "\"00000000-0000-0000-0000-000000000000\"",
+              "\"00000000-0000-0000-0000-000000000000\"",
+              "\"00000000-0000-0000-0000-000000000000\""
+            ]
+          },
+          "ВидЦен@navigationLinkUrl": {
+            "fill_rate": 1.0,
+            "types": {
+              "string": 3
+            },
+            "distinct": 3,
+            "examples": [
+              "\"InformationRegister_ЦеныНоменклатуры(Period=datetime'2021-01-03T00:00:00', В...",
+              "\"InformationRegister_ЦеныНоменклатуры(Period=datetime'2021-01-03T00:00:00', В...",
+              "\"InformationRegister_ЦеныНоменклатуры(Period=datetime'2021-01-03T00:00:00', В..."
+            ]
+          },
+          "ВидЦен_Key": {
+            "fill_rate": 1.0,
+            "types": {
+              "string": 3
+            },
+            "distinct": 1,
+            "examples": [
+              "\"3d3bea35-5d6a-11eb-948a-f81a67046005\"",
+              "\"3d3bea35-5d6a-11eb-948a-f81a67046005\"",
+              "\"3d3bea35-5d6a-11eb-948a-f81a67046005\""
+            ]
+          },
+          "ВключаяХарактеристики": {
+            "fill_rate": 1.0,
+            "types": {
+              "bool": 3
+            },
+            "distinct": 1,
+            "examples": [
+              "false",
+              "false",
+              "false"
+            ]
+          },
+          "ДокументУстановки": {
+            "fill_rate": 1.0,
+            "types": {
+              "string": 3
+            },
+            "distinct": 1,
+            "examples": [
+              "\"00000000-0000-0000-0000-000000000000\"",
+              "\"00000000-0000-0000-0000-000000000000\"",
+              "\"00000000-0000-0000-0000-000000000000\""
+            ]
+          },
+          "ДокументУстановки_Type": {
+            "fill_rate": 1.0,
+            "types": {
+              "string": 3
+            },
+            "distinct": 1,
+            "examples": [
+              "\"StandardODATA.Document_УстановкаЦенНоменклатуры\"",
+              "\"StandardODATA.Document_УстановкаЦенНоменклатуры\"",
+              "\"StandardODATA.Document_УстановкаЦенНоменклатуры\""
+            ]
+          },
+          "ЕдиницаИзмерения": {
+            "fill_rate": 1.0,
+            "types": {
+              "string": 3
+            },
+            "distinct": 1,
+            "examples": [
+              "\"79d95159-5d6a-11eb-948a-f81a67046005\"",
+              "\"79d95159-5d6a-11eb-948a-f81a67046005\"",
+              "\"79d95159-5d6a-11eb-948a-f81a67046005\""
+            ]
+          },
+          "ЕдиницаИзмерения_Type": {
+            "fill_rate": 1.0,
+            "types": {
+              "string": 3
+            },
+            "distinct": 1,
+            "examples": [
+              "\"StandardODATA.Catalog_КлассификаторЕдиницИзмерения\"",
+              "\"StandardODATA.Catalog_КлассификаторЕдиницИзмерения\"",
+              "\"StandardODATA.Catalog_КлассификаторЕдиницИзмерения\""
+            ]
+          },
+          "Номенклатура@navigationLinkUrl": {
+            "fill_rate": 1.0,
+            "types": {
+              "string": 3
+            },
+            "distinct": 3,
+            "examples": [
+              "\"InformationRegister_ЦеныНоменклатуры(Period=datetime'2021-01-03T00:00:00', В...",
+              "\"InformationRegister_ЦеныНоменклатуры(Period=datetime'2021-01-03T00:00:00', В...",
+              "\"InformationRegister_ЦеныНоменклатуры(Period=datetime'2021-01-03T00:00:00', В..."
+            ]
+          },
+          "Номенклатура_Key": {
+            "fill_rate": 1.0,
+            "types": {
+              "string": 3
+            },
+            "distinct": 3,
+            "examples": [
+              "\"18f0067f-c41b-4e0a-bb07-efea606525c1\"",
+              "\"55bc83ac-8fec-45f9-9c76-764dbc2af86e\"",
+              "\"7f4665b7-9f84-443a-9b55-88d92f43d7fe\""
+            ]
+          },
+          "Характеристика_Key": {
+            "fill_rate": 1.0,
+            "types": {
+              "string": 3
+            },
+            "distinct": 1,
+            "examples": [
+              "\"00000000-0000-0000-0000-000000000000\"",
+              "\"00000000-0000-0000-0000-000000000000\"",
+              "\"00000000-0000-0000-0000-000000000000\""
+            ]
+          },
+          "Цена": {
+            "fill_rate": 1.0,
+            "types": {
+              "number": 3
+            },
+            "distinct": 3,
+            "examples": [
+              "280",
+              "310",
+              "490"
+            ]
+          }
+        }
+      },
+      "product_attributes": {
+        "total": 10,
+        "active": 10,
+        "filtered_out": 0,
+        "fields": {
+          "LineNumber": {
+            "fill_rate": 1.0,
+            "types": {
+              "string": 10
+            },
+            "distinct": 4,
+            "examples": [
+              "\"1\"",
+              "\"2\"",
+              "\"3\""
+            ]
+          },
+          "Ref_Key": {
+            "fill_rate": 1.0,
+            "types": {
+              "string": 10
+            },
+            "distinct": 3,
+            "examples": [
+              "\"cfb4c4ec-8652-460f-8007-af5e12d09811\"",
+              "\"cfb4c4ec-8652-460f-8007-af5e12d09811\"",
+              "\"cfb4c4ec-8652-460f-8007-af5e12d09811\""
+            ]
+          },
+          "Значение": {
+            "fill_rate": 1.0,
+            "types": {
+              "string": 10
+            },
+            "distinct": 10,
+            "examples": [
+              "\"d7c8435d-a19a-11eb-80ca-d45d647f1831\"",
+              "\"d7c8434a-a19a-11eb-80ca-d45d647f1831\"",
+              "\"d7c8434f-a19a-11eb-80ca-d45d647f1831\""
+            ]
+          },
+          "Значение_Type": {
+            "fill_rate": 1.0,
+            "types": {
+              "string": 10
+            },
+            "distinct": 1,
+            "examples": [
+              "\"StandardODATA.Catalog_ЗначенияСвойствОбъектов\"",
+              "\"StandardODATA.Catalog_ЗначенияСвойствОбъектов\"",
+              "\"StandardODATA.Catalog_ЗначенияСвойствОбъектов\""
+            ]
+          },
+          "Свойство@navigationLinkUrl": {
+            "fill_rate": 1.0,
+            "types": {
+              "string": 10
+            },
+            "distinct": 10,
+            "examples": [
+              "\"Catalog_Номенклатура_ДополнительныеРеквизиты(Ref_Key=guid'cfb4c4ec-8652-460f...",
+              "\"Catalog_Номенклатура_ДополнительныеРеквизиты(Ref_Key=guid'cfb4c4ec-8652-460f...",
+              "\"Catalog_Номенклатура_ДополнительныеРеквизиты(Ref_Key=guid'cfb4c4ec-8652-460f..."
+            ]
+          },
+          "Свойство_Key": {
+            "fill_rate": 1.0,
+            "types": {
+              "string": 10
+            },
+            "distinct": 10,
+            "examples": [
+              "\"7ffcb01d-9f4b-11eb-80ca-d45d647f1831\"",
+              "\"7ffcb020-9f4b-11eb-80ca-d45d647f1831\"",
+              "\"d7c8434d-a19a-11eb-80ca-d45d647f1831\""
+            ]
+          },
+          "ТекстоваяСтрока": {
+            "fill_rate": 0.0,
+            "types": {},
+            "distinct": 0,
+            "examples": []
+          }
+        }
+      },
+      "products": {
+        "total": 11,
+        "active": 1,
+        "filtered_out": 10,
+        "fields": {
+          "Code": {
+            "fill_rate": 1.0,
+            "types": {
+              "string": 11
+            },
+            "distinct": 10,
+            "examples": [
+              "\"НФ-00000027\"",
+              "\"НФ-00000024\"",
+              "\"НФ-00000026\""
+            ]
+          },
+          "DataVersion": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"AAAAABN7VJ0=\""
+            ]
+          },
+          "DeletionMark": {
+            "fill_rate": 0.5455,
+            "types": {
+              "bool": 6
+            },
+            "distinct": 1,
+            "examples": [
+              "false",
+              "false",
+              "false"
+            ]
+          },
+          "Description": {
+            "fill_rate": 1.0,
+            "types": {
+              "string": 11
+            },
+            "distinct": 10,
+            "examples": [
+              "\"Кабель\"",
+              "\"Коммутация\"",
+              "\"Установочные изделия\""
+            ]
+          },
+          "IsFolder": {
+            "fill_rate": 1.0,
+            "types": {
+              "bool": 11
+            },
+            "distinct": 2,
+            "examples": [
+              "true",
+              "true",
+              "true"
+            ]
+          },
+          "Parent_Key": {
+            "fill_rate": 1.0,
+            "types": {
+              "string": 11
+            },
+            "distinct": 1,
+            "examples": [
+              "\"00000000-0000-0000-0000-000000000000\"",
+              "\"00000000-0000-0000-0000-000000000000\"",
+              "\"00000000-0000-0000-0000-000000000000\""
+            ]
+          },
+          "Predefined": {
+            "fill_rate": 0.0909,
+            "types": {
+              "bool": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "false"
+            ]
+          },
+          "PredefinedDataName": {
+            "fill_rate": 0.0,
+            "types": {},
+            "distinct": 0,
+            "examples": []
+          },
+          "Ref_Key": {
+            "fill_rate": 1.0,
+            "types": {
+              "string": 11
+            },
+            "distinct": 10,
+            "examples": [
+              "\"3a2f9e81-71a9-11eb-80d4-00155d006601\"",
+              "\"bd1060d4-71a8-11eb-80d4-00155d006601\"",
+              "\"d8aacb9c-71a8-11eb-80d4-00155d006601\""
+            ]
+          },
+          "АвтоматическиГенерироватьПартии": {
+            "fill_rate": 0.0909,
+            "types": {
+              "bool": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "false"
+            ]
+          },
+          "АлкогольнаяПродукция": {
+            "fill_rate": 0.0909,
+            "types": {
+              "bool": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "false"
+            ]
+          },
+          "Артикул": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"25-211-10м SCC-17 BC\""
+            ]
+          },
+          "ВариантОграниченияСертификата": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"ПоНоменклатуре\""
+            ]
+          },
+          "ВариантПечатиНабора": {
+            "fill_rate": 0.0,
+            "types": {},
+            "distinct": 0,
+            "examples": []
+          },
+          "ВерхняяГраницаОстатков": {
+            "fill_rate": 0.0909,
+            "types": {
+              "number": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "0"
+            ]
+          },
+          "Вес": {
+            "fill_rate": 0.0909,
+            "types": {
+              "number": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "0"
+            ]
+          },
+          "ВесПоСертификатуТовара": {
+            "fill_rate": 0.0909,
+            "types": {
+              "number": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "0"
+            ]
+          },
+          "Весовой": {
+            "fill_rate": 0.0909,
+            "types": {
+              "bool": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "false"
+            ]
+          },
+          "ВидАлкогольнойПродукции_Key": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"00000000-0000-0000-0000-000000000000\""
+            ]
+          },
+          "ВидМаркировки": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"НеМаркируется\""
+            ]
+          },
+          "ВидПодакцизногоТовара": {
+            "fill_rate": 0.0,
+            "types": {},
+            "distinct": 0,
+            "examples": []
+          },
+          "ВидСтавкиНДС": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"Общая\""
+            ]
+          },
+          "ВыписыватьГарантийныйТалон": {
+            "fill_rate": 0.0909,
+            "types": {
+              "bool": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "false"
+            ]
+          },
+          "Высота": {
+            "fill_rate": 0.0909,
+            "types": {
+              "number": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "0"
+            ]
+          },
+          "ГарантийныйСрок": {
+            "fill_rate": 0.0909,
+            "types": {
+              "number": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "0"
+            ]
+          },
+          "ДатаИзменения": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"2024-09-30T14:29:46\""
+            ]
+          },
+          "ДатаОкончанияДействия": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"0001-01-01T00:00:00\""
+            ]
+          },
+          "Длина": {
+            "fill_rate": 0.0909,
+            "types": {
+              "number": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "0"
+            ]
+          },
+          "Договор_Key": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"00000000-0000-0000-0000-000000000000\""
+            ]
+          },
+          "ДополнительныеРеквизиты": {
+            "fill_rate": 0.0909,
+            "types": {
+              "array": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "[]"
+            ]
+          },
+          "ЕдиницаДляОтчетов_Key": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"00000000-0000-0000-0000-000000000000\""
+            ]
+          },
+          "ЕдиницаДляЦенников_Key": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"00000000-0000-0000-0000-000000000000\""
+            ]
+          },
+          "ЕдиницаИзмерения@navigationLinkUrl": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"Catalog_Номенклатура(guid'62ee84f5-d58c-11eb-80cf-d45d647f1831')/ЕдиницаИзме..."
+            ]
+          },
+          "ЕдиницаИзмерения_Key": {
+            "fill_rate": 0.5455,
+            "types": {
+              "string": 6
+            },
+            "distinct": 1,
+            "examples": [
+              "\"79d95159-5d6a-11eb-948a-f81a67046005\"",
+              "\"79d95159-5d6a-11eb-948a-f81a67046005\"",
+              "\"79d95159-5d6a-11eb-948a-f81a67046005\""
+            ]
+          },
+          "ЕдиницаИзмеренияДляРасчетаАкциза_Key": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"00000000-0000-0000-0000-000000000000\""
+            ]
+          },
+          "ЕдиницаИзмеренияСрокаГодности": {
+            "fill_rate": 0.0,
+            "types": {},
+            "distinct": 0,
+            "examples": []
+          },
+          "ЗапретитьВводДробногоКоличества": {
+            "fill_rate": 0.0909,
+            "types": {
+              "bool": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "false"
+            ]
+          },
+          "Знаменатель": {
+            "fill_rate": 0.0909,
+            "types": {
+              "number": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "0"
+            ]
+          },
+          "Изготовитель_Key": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"00000000-0000-0000-0000-000000000000\""
+            ]
+          },
+          "ИмпортнаяАлкогольнаяПродукция": {
+            "fill_rate": 0.0909,
+            "types": {
+              "bool": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "false"
+            ]
+          },
+          "ИндивидуальныеНастройкиПолитикиУчетаСерий": {
+            "fill_rate": 0.0909,
+            "types": {
+              "bool": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "false"
+            ]
+          },
+          "ИсключитьИзПрайсЛистов": {
+            "fill_rate": 0.0909,
+            "types": {
+              "bool": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "true"
+            ]
+          },
+          "ИспользоватьДатуПроизводстваПартии": {
+            "fill_rate": 0.0909,
+            "types": {
+              "bool": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "false"
+            ]
+          },
+          "ИспользоватьДатуПроизводстваСерии": {
+            "fill_rate": 0.0909,
+            "types": {
+              "bool": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "false"
+            ]
+          },
+          "ИспользоватьЗаписьСкладскогоЖурналаВЕТИСПартии": {
+            "fill_rate": 0.0909,
+            "types": {
+              "bool": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "false"
+            ]
+          },
+          "ИспользоватьИдентификаторПартииВЕТИСПартии": {
+            "fill_rate": 0.0909,
+            "types": {
+              "bool": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "false"
+            ]
+          },
+          "ИспользоватьНаборыЕдиницИзмерения": {
+            "fill_rate": 0.0909,
+            "types": {
+              "bool": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "false"
+            ]
+          },
+          "ИспользоватьНомерПартии": {
+            "fill_rate": 0.0909,
+            "types": {
+              "bool": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "false"
+            ]
+          },
+          "ИспользоватьПартии": {
+            "fill_rate": 0.0909,
+            "types": {
+              "bool": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "false"
+            ]
+          },
+          "ИспользоватьПроизводителяВЕТИСПартии": {
+            "fill_rate": 0.0909,
+            "types": {
+              "bool": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "false"
+            ]
+          },
+          "ИспользоватьСерииИзКатегории": {
+            "fill_rate": 0.0909,
+            "types": {
+              "bool": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "false"
+            ]
+          },
+          "ИспользоватьСерииНоменклатуры": {
+            "fill_rate": 0.0909,
+            "types": {
+              "bool": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "false"
+            ]
+          },
+          "ИспользоватьСрокГодностиПартии": {
+            "fill_rate": 0.0909,
+            "types": {
+              "bool": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "false"
+            ]
+          },
+          "ИспользоватьСрокГодностиСерии": {
+            "fill_rate": 0.0909,
+            "types": {
+              "bool": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "false"
+            ]
+          },
+          "ИспользоватьУникальныеСерии": {
+            "fill_rate": 0.0909,
+            "types": {
+              "bool": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "false"
+            ]
+          },
+          "ИспользоватьХарактеристики": {
+            "fill_rate": 0.0909,
+            "types": {
+              "bool": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "false"
+            ]
+          },
+          "КатегорияНоменклатуры@navigationLinkUrl": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"Catalog_Номенклатура(guid'62ee84f5-d58c-11eb-80cf-d45d647f1831')/КатегорияНо..."
+            ]
+          },
+          "КатегорияНоменклатуры_Key": {
+            "fill_rate": 0.5455,
+            "types": {
+              "string": 6
+            },
+            "distinct": 2,
+            "examples": [
+              "\"89128980-7c07-11eb-80d5-00155d006601\"",
+              "\"79d95157-5d6a-11eb-948a-f81a67046005\"",
+              "\"79d95157-5d6a-11eb-948a-f81a67046005\""
+            ]
+          },
+          "КиЗГИСМ": {
+            "fill_rate": 0.0909,
+            "types": {
+              "bool": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "false"
+            ]
+          },
+          "КиЗГИСМGTIN": {
+            "fill_rate": 0.0,
+            "types": {},
+            "distinct": 0,
+            "examples": []
+          },
+          "КиЗГИСМВид": {
+            "fill_rate": 0.0,
+            "types": {},
+            "distinct": 0,
+            "examples": []
+          },
+          "КиЗГИСМРазмер": {
+            "fill_rate": 0.0,
+            "types": {},
+            "distinct": 0,
+            "examples": []
+          },
+          "КиЗГИСМСпособВыпускаВОборот": {
+            "fill_rate": 0.0,
+            "types": {},
+            "distinct": 0,
+            "examples": []
+          },
+          "КодВидаПодакцизногоТовара_Key": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"00000000-0000-0000-0000-000000000000\""
+            ]
+          },
+          "КодМедицинскогоИзделия": {
+            "fill_rate": 0.0,
+            "types": {},
+            "distinct": 0,
+            "examples": []
+          },
+          "КодОКПД2": {
+            "fill_rate": 0.0,
+            "types": {},
+            "distinct": 0,
+            "examples": []
+          },
+          "КодТРУ": {
+            "fill_rate": 0.0,
+            "types": {},
+            "distinct": 0,
+            "examples": []
+          },
+          "КоличествоПериодовДействия": {
+            "fill_rate": 0.0909,
+            "types": {
+              "number": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "1"
+            ]
+          },
+          "Комментарий": {
+            "fill_rate": 0.0,
+            "types": {},
+            "distinct": 0,
+            "examples": []
+          },
+          "КоэффициентЕдиницыДляОтчетов": {
+            "fill_rate": 0.0909,
+            "types": {
+              "number": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "1"
+            ]
+          },
+          "КоэффициентПересчета": {
+            "fill_rate": 0.0909,
+            "types": {
+              "number": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "0"
+            ]
+          },
+          "Крепость": {
+            "fill_rate": 0.0909,
+            "types": {
+              "number": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "0"
+            ]
+          },
+          "МетодОценки": {
+            "fill_rate": 0.0,
+            "types": {},
+            "distinct": 0,
+            "examples": []
+          },
+          "НаборЕдиницИзмерения_Key": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"00000000-0000-0000-0000-000000000000\""
+            ]
+          },
+          "НаименованиеПолное": {
+            "fill_rate": 0.5455,
+            "types": {
+              "string": 6
+            },
+            "distinct": 5,
+            "examples": [
+              "\"10м/лот 2х0,50мм2 медный (Cu 99,9%) прозрачный, нелуженый\"",
+              "\"Доставка\"",
+              "\"Комиссия (Услуги комиссионера)\""
+            ]
+          },
+          "НаправлениеДеятельности@navigationLinkUrl": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"Catalog_Номенклатура(guid'62ee84f5-d58c-11eb-80cf-d45d647f1831')/Направление..."
+            ]
+          },
+          "НаправлениеДеятельности_Key": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"79d950da-5d6a-11eb-948a-f81a67046005\""
+            ]
+          },
+          "Недействителен": {
+            "fill_rate": 0.0909,
+            "types": {
+              "bool": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "false"
+            ]
+          },
+          "НижняяГраницаОстатков": {
+            "fill_rate": 0.0909,
+            "types": {
+              "number": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "0"
+            ]
+          },
+          "НоменклатураГруппыЦеновыеГруппы": {
+            "fill_rate": 0.0909,
+            "types": {
+              "array": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "[]"
+            ]
+          },
+          "Номинал": {
+            "fill_rate": 0.0909,
+            "types": {
+              "number": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "0"
+            ]
+          },
+          "НормаВремени": {
+            "fill_rate": 0.0909,
+            "types": {
+              "number": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "0"
+            ]
+          },
+          "Объем": {
+            "fill_rate": 0.0909,
+            "types": {
+              "number": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "0"
+            ]
+          },
+          "ОбъемДАЛ": {
+            "fill_rate": 0.0909,
+            "types": {
+              "number": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "0"
+            ]
+          },
+          "Операции0_Key": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"00000000-0000-0000-0000-000000000000\""
+            ]
+          },
+          "Периодичность": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"Год\""
+            ]
+          },
+          "ПодакцизныйТовар": {
+            "fill_rate": 0.0909,
+            "types": {
+              "bool": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "false"
+            ]
+          },
+          "ПодарочныйСертификатПринимаетКОплатеТолькоОрганизациеяЭмитент": {
+            "fill_rate": 0.0909,
+            "types": {
+              "bool": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "false"
+            ]
+          },
+          "ПодконтрольнаяПродукцияВЕТИС": {
+            "fill_rate": 0.0909,
+            "types": {
+              "bool": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "false"
+            ]
+          },
+          "ПолитикаУчетаСерий_Key": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"00000000-0000-0000-0000-000000000000\""
+            ]
+          },
+          "Поставщик_Key": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"00000000-0000-0000-0000-000000000000\""
+            ]
+          },
+          "ПрепаратОтпускаетсяПоДокументу": {
+            "fill_rate": 0.0909,
+            "types": {
+              "bool": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "false"
+            ]
+          },
+          "ПризнакПредметаРасчета": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"Услуга\""
+            ]
+          },
+          "ПриходоватьПодарочныйСертификатПриОплате": {
+            "fill_rate": 0.0909,
+            "types": {
+              "bool": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "false"
+            ]
+          },
+          "ПроверятьЗаполнениеПартий": {
+            "fill_rate": 0.0909,
+            "types": {
+              "bool": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "false"
+            ]
+          },
+          "ПроверятьЗаполнениеХарактеристики": {
+            "fill_rate": 0.0909,
+            "types": {
+              "bool": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "false"
+            ]
+          },
+          "ПродаетсяВРозлив": {
+            "fill_rate": 0.0909,
+            "types": {
+              "bool": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "false"
+            ]
+          },
+          "Производитель_Key": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"00000000-0000-0000-0000-000000000000\""
+            ]
+          },
+          "ПроизводительИмпортерАлкогольнойПродукции_Key": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"00000000-0000-0000-0000-000000000000\""
+            ]
+          },
+          "ПроизвольныйНоминал": {
+            "fill_rate": 0.0909,
+            "types": {
+              "bool": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "false"
+            ]
+          },
+          "ПрослеживаемыйКомплект": {
+            "fill_rate": 0.0909,
+            "types": {
+              "bool": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "false"
+            ]
+          },
+          "ПрослеживаемыйТовар": {
+            "fill_rate": 0.0909,
+            "types": {
+              "bool": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "false"
+            ]
+          },
+          "РеквизитДопУпорядочиванияУНФ": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"0\""
+            ]
+          },
+          "РекомендуемЗаказать": {
+            "fill_rate": 0.0909,
+            "types": {
+              "bool": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "false"
+            ]
+          },
+          "Склад@navigationLinkUrl": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"Catalog_Номенклатура(guid'62ee84f5-d58c-11eb-80cf-d45d647f1831')/Склад\""
+            ]
+          },
+          "Склад_Key": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"4cc029c8-5d6b-11eb-948a-f81a67046005\""
+            ]
+          },
+          "СпособОграниченияСертификата": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"НеОграничен\""
+            ]
+          },
+          "СпособПополнения": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"Закупка\""
+            ]
+          },
+          "СпособРасчетаЦеныНабора": {
+            "fill_rate": 0.0,
+            "types": {},
+            "distinct": 0,
+            "examples": []
+          },
+          "СредствоИндивидуальнойЗащиты": {
+            "fill_rate": 0.0909,
+            "types": {
+              "bool": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "false"
+            ]
+          },
+          "СрокГодности": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"0\""
+            ]
+          },
+          "СрокДействияФлагаНовинка": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"0001-01-01T00:00:00\""
+            ]
+          },
+          "СрокИсполненияЗаказа": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"0\""
+            ]
+          },
+          "СрокПополнения": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"0\""
+            ]
+          },
+          "СтранаПроисхождения@navigationLinkUrl": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"Catalog_Номенклатура(guid'62ee84f5-d58c-11eb-80cf-d45d647f1831')/СтранаПроис..."
+            ]
+          },
+          "СтранаПроисхождения_Key": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"5574af83-6144-11eb-948d-d45d64d20ea1\""
+            ]
+          },
+          "СчетУчетаАкцизаПоИмпорту_Key": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"00000000-0000-0000-0000-000000000000\""
+            ]
+          },
+          "СчетУчетаДоходов@navigationLinkUrl": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"Catalog_Номенклатура(guid'62ee84f5-d58c-11eb-80cf-d45d647f1831')/СчетУчетаДо..."
+            ]
+          },
+          "СчетУчетаДоходов_Key": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"79d950d2-5d6a-11eb-948a-f81a67046005\""
+            ]
+          },
+          "СчетУчетаЗапасов@navigationLinkUrl": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"Catalog_Номенклатура(guid'62ee84f5-d58c-11eb-80cf-d45d647f1831')/СчетУчетаЗа..."
+            ]
+          },
+          "СчетУчетаЗапасов_Key": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"79d950a7-5d6a-11eb-948a-f81a67046005\""
+            ]
+          },
+          "СчетУчетаЗатрат@navigationLinkUrl": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"Catalog_Номенклатура(guid'62ee84f5-d58c-11eb-80cf-d45d647f1831')/СчетУчетаЗа..."
+            ]
+          },
+          "СчетУчетаЗатрат_Key": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"79d950cf-5d6a-11eb-948a-f81a67046005\""
+            ]
+          },
+          "СчетУчетаНДСПоПриобретеннымЦенностям@navigationLinkUrl": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"Catalog_Номенклатура(guid'62ee84f5-d58c-11eb-80cf-d45d647f1831')/СчетУчетаНД..."
+            ]
+          },
+          "СчетУчетаНДСПоПриобретеннымЦенностям_Key": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"e12d4138-28f3-11ef-815c-00155d0a290e\""
+            ]
+          },
+          "СчетУчетаНДСПоРеализации@navigationLinkUrl": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"Catalog_Номенклатура(guid'62ee84f5-d58c-11eb-80cf-d45d647f1831')/СчетУчетаНД..."
+            ]
+          },
+          "СчетУчетаНДСПоРеализации_Key": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"e12d4137-28f3-11ef-815c-00155d0a290e\""
+            ]
+          },
+          "ТНВЭДГИСМ": {
+            "fill_rate": 0.0,
+            "types": {},
+            "distinct": 0,
+            "examples": []
+          },
+          "ТипНоменклатуры": {
+            "fill_rate": 0.5455,
+            "types": {
+              "string": 6
+            },
+            "distinct": 2,
+            "examples": [
+              "\"Запас\"",
+              "\"Услуга\"",
+              "\"Услуга\""
+            ]
+          },
+          "ТипСрокаДействия": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"БезОграниченияСрока\""
+            ]
+          },
+          "ТоварнаяНоменклатураВЭД_Key": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"00000000-0000-0000-0000-000000000000\""
+            ]
+          },
+          "ТолькоПоддержкаОстаткаПриРасчетеПотребностей": {
+            "fill_rate": 0.0909,
+            "types": {
+              "bool": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "false"
+            ]
+          },
+          "ТочностьУказанияСрокаГодностиСерии": {
+            "fill_rate": 0.0,
+            "types": {},
+            "distinct": 0,
+            "examples": []
+          },
+          "УдалитьВидПродукцииИС": {
+            "fill_rate": 0.0,
+            "types": {},
+            "distinct": 0,
+            "examples": []
+          },
+          "УдалитьОбувнаяПродукция": {
+            "fill_rate": 0.0909,
+            "types": {
+              "bool": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "false"
+            ]
+          },
+          "УдалитьСпецификация_Key": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"00000000-0000-0000-0000-000000000000\""
+            ]
+          },
+          "УдалитьСтавкаНДС_Key": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"00000000-0000-0000-0000-000000000000\""
+            ]
+          },
+          "УдалитьТабачнаяПродукция": {
+            "fill_rate": 0.0909,
+            "types": {
+              "bool": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "false"
+            ]
+          },
+          "УдалитьШиныИПокрышки": {
+            "fill_rate": 0.0909,
+            "types": {
+              "bool": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "false"
+            ]
+          },
+          "ФайлКартинки_Key": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"00000000-0000-0000-0000-000000000000\""
+            ]
+          },
+          "ФиксированнаяСтоимость": {
+            "fill_rate": 0.0909,
+            "types": {
+              "bool": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "true"
+            ]
+          },
+          "ХарактеристикаЦен_Key": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"00000000-0000-0000-0000-000000000000\""
+            ]
+          },
+          "ЦеноваяГруппа_Key": {
+            "fill_rate": 0.5455,
+            "types": {
+              "string": 6
+            },
+            "distinct": 1,
+            "examples": [
+              "\"00000000-0000-0000-0000-000000000000\"",
+              "\"00000000-0000-0000-0000-000000000000\"",
+              "\"00000000-0000-0000-0000-000000000000\""
+            ]
+          },
+          "ЧастичноеПогашение": {
+            "fill_rate": 0.0909,
+            "types": {
+              "bool": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "false"
+            ]
+          },
+          "Числитель": {
+            "fill_rate": 0.0909,
+            "types": {
+              "number": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "0"
+            ]
+          },
+          "Ширина": {
+            "fill_rate": 0.0909,
+            "types": {
+              "number": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "0"
+            ]
+          },
+          "Штрихкод": {
+            "fill_rate": 0.0,
+            "types": {},
+            "distinct": 0,
+            "examples": []
+          },
+          "ЭтоАгентскаяУслуга": {
+            "fill_rate": 0.0909,
+            "types": {
+              "bool": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "false"
+            ]
+          },
+          "ЭтоНабор": {
+            "fill_rate": 0.0909,
+            "types": {
+              "bool": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "false"
+            ]
+          },
+          "ЭтоНовинка": {
+            "fill_rate": 0.0909,
+            "types": {
+              "bool": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "false"
+            ]
+          },
+          "Ячейка_Key": {
+            "fill_rate": 0.0909,
+            "types": {
+              "string": 1
+            },
+            "distinct": 1,
+            "examples": [
+              "\"00000000-0000-0000-0000-000000000000\""
+            ]
+          }
+        }
+      },
+      "property_values": {
+        "total": 10,
+        "active": 10,
+        "filtered_out": 0,
+        "fields": {
+          "Description": {
+            "fill_rate": 1.0,
+            "types": {
+              "string": 10
+            },
+            "distinct": 10,
+            "examples": [
+              "\"10,0мм2\"",
+              "\"16,0мм2\"",
+              "\"1шт\""
+            ]
+          },
+          "Owner_Key": {
+            "fill_rate": 1.0,
+            "types": {
+              "string": 10
+            },
+            "distinct": 4,
+            "examples": [
+              "\"d62aec37-7c07-11eb-80d5-00155d006601\"",
+              "\"d62aec37-7c07-11eb-80d5-00155d006601\"",
+              "\"facc9c07-8874-11eb-80c9-d45d647f1831\""
+            ]
+          },
+          "Ref_Key": {
+            "fill_rate": 1.0,
+            "types": {
+              "string": 10
+            },
+            "distinct": 10,
+            "examples": [
+              "\"ec985347-7d67-11eb-80bc-94de80b28a88\"",
+              "\"ec98534a-7d67-11eb-80bc-94de80b28a88\"",
+              "\"facc9c0a-8874-11eb-80c9-d45d647f1831\""
+            ]
+          }
+        }
+      },
+      "stock": {
+        "total": 5,
+        "active": 5,
+        "filtered_out": 0,
+        "fields": {
+          "КоличествоBalance": {
+            "fill_rate": 1.0,
+            "types": {
+              "number": 5
+            },
+            "distinct": 5,
+            "examples": [
+              "10",
+              "8",
+              "-4"
+            ]
+          },
+          "КоличествоИнтBalance": {
+            "fill_rate": 1.0,
+            "types": {
+              "number": 5
+            },
+            "distinct": 1,
+            "examples": [
+              "0",
+              "0",
+              "0"
+            ]
+          },
+          "Номенклатура_Key": {
+            "fill_rate": 1.0,
+            "types": {
+              "string": 5
+            },
+            "distinct": 4,
+            "examples": [
+              "\"e717e47f-9f8f-11ec-80e1-d45d647f1831\"",
+              "\"359405ac-25b3-11ec-80d4-d45d647f1831\"",
+              "\"359405ac-25b3-11ec-80d4-d45d647f1831\""
+            ]
+          },
+          "Организация_Key": {
+            "fill_rate": 1.0,
+            "types": {
+              "string": 5
+            },
+            "distinct": 1,
+            "examples": [
+              "\"3d3bea34-5d6a-11eb-948a-f81a67046005\"",
+              "\"3d3bea34-5d6a-11eb-948a-f81a67046005\"",
+              "\"3d3bea34-5d6a-11eb-948a-f81a67046005\""
+            ]
+          },
+          "Партия_Key": {
+            "fill_rate": 1.0,
+            "types": {
+              "string": 5
+            },
+            "distinct": 1,
+            "examples": [
+              "\"00000000-0000-0000-0000-000000000000\"",
+              "\"00000000-0000-0000-0000-000000000000\"",
+              "\"00000000-0000-0000-0000-000000000000\""
+            ]
+          },
+          "СтруктурнаяЕдиница_Key": {
+            "fill_rate": 1.0,
+            "types": {
+              "string": 5
+            },
+            "distinct": 2,
+            "examples": [
+              "\"3d3bea38-5d6a-11eb-948a-f81a67046005\"",
+              "\"3d3bea38-5d6a-11eb-948a-f81a67046005\"",
+              "\"4cc029c8-5d6b-11eb-948a-f81a67046005\""
+            ]
+          },
+          "Характеристика_Key": {
+            "fill_rate": 1.0,
+            "types": {
+              "string": 5
+            },
+            "distinct": 1,
+            "examples": [
+              "\"00000000-0000-0000-0000-000000000000\"",
+              "\"00000000-0000-0000-0000-000000000000\"",
+              "\"00000000-0000-0000-0000-000000000000\""
+            ]
+          },
+          "Ячейка_Key": {
+            "fill_rate": 1.0,
+            "types": {
+              "string": 5
+            },
+            "distinct": 1,
+            "examples": [
+              "\"00000000-0000-0000-0000-000000000000\"",
+              "\"00000000-0000-0000-0000-000000000000\"",
+              "\"00000000-0000-0000-0000-000000000000\""
+            ]
+          }
+        }
+      },
+      "units": {
+        "total": 5,
+        "active": 5,
+        "filtered_out": 0,
+        "fields": {
+          "Code": {
+            "fill_rate": 1.0,
+            "types": {
+              "string": 5
+            },
+            "distinct": 5,
+            "examples": [
+              "\"004 \"",
+              "\"889\"",
+              "\"642\""
+            ]
+          },
+          "Description": {
+            "fill_rate": 1.0,
+            "types": {
+              "string": 5
+            },
+            "distinct": 5,
+            "examples": [
+              "\"блистер\"",
+              "\"бухта\"",
+              "\"ед\""
+            ]
+          },
+          "Ref_Key": {
+            "fill_rate": 1.0,
+            "types": {
+              "string": 5
+            },
+            "distinct": 5,
+            "examples": [
+              "\"369651c0-615e-11eb-948d-d45d64d20ea1\"",
+              "\"3061dec5-615e-11eb-948d-d45d64d20ea1\"",
+              "\"1fddb261-5fd5-11f0-8179-00155d0a290e\""
+            ]
+          }
+        }
+      }
+    },
+    "attributes": {
+      "total_definitions": 5,
+      "total_assignments": 10,
+      "attributes": [
+        {
+          "guid": "11693eaf-8c69-11eb-80c9-d45d647f1831",
+          "name": "11693eaf-8c69-11eb-80c9-d45d647f1831",
+          "value_type": "unknown",
+          "assignments": 1,
+          "fill_rate": 0.1,
+          "distinct": 1,
+          "top_values": [
+            {
+              "value": "<broken:11693eb7-8c69-11eb-80c9-d45d647f1831>",
+              "count": 1
+            }
+          ],
+          "numeric_candidate": false,
+          "numeric_unit": "",
+          "numeric_examples": [],
+          "missing_definition": true,
+          "source": "product_attributes"
+        },
+        {
+          "guid": "2b57a5d6-8ca8-11eb-80c9-d45d647f1831",
+          "name": "2b57a5d6-8ca8-11eb-80c9-d45d647f1831",
+          "value_type": "unknown",
+          "assignments": 1,
+          "fill_rate": 0.1,
+          "distinct": 1,
+          "top_values": [
+            {
+              "value": "<broken:2b57a5de-8ca8-11eb-80c9-d45d647f1831>",
+              "count": 1
+            }
+          ],
+          "numeric_candidate": false,
+          "numeric_unit": "",
+          "numeric_examples": [],
+          "missing_definition": true,
+          "source": "product_attributes"
+        },
+        {
+          "guid": "4625e3ef-7c0a-11eb-80d5-00155d006601",
+          "name": "4625e3ef-7c0a-11eb-80d5-00155d006601",
+          "value_type": "unknown",
+          "assignments": 0,
+          "fill_rate": 0.0,
+          "distinct": 1,
+          "top_values": [
+            {
+              "value": "6",
+              "count": 1
+            }
+          ],
+          "numeric_candidate": false,
+          "numeric_unit": "",
+          "numeric_examples": [],
+          "missing_definition": true,
+          "source": "property_values"
+        },
+        {
+          "guid": "7ffcb020-9f4b-11eb-80ca-d45d647f1831",
+          "name": "V",
+          "value_type": "enum",
+          "assignments": 1,
+          "fill_rate": 0.1,
+          "distinct": 1,
+          "top_values": [
+            {
+              "value": "<broken:d7c8434a-a19a-11eb-80ca-d45d647f1831>",
+              "count": 1
+            }
+          ],
+          "numeric_candidate": false,
+          "numeric_unit": "",
+          "numeric_examples": [],
+          "missing_definition": false,
+          "source": "product_attributes"
+        },
+        {
+          "guid": "d62aec37-7c07-11eb-80d5-00155d006601",
+          "name": "d62aec37-7c07-11eb-80d5-00155d006601",
+          "value_type": "unknown",
+          "assignments": 0,
+          "fill_rate": 0.0,
+          "distinct": 2,
+          "top_values": [
+            {
+              "value": "10,0мм2",
+              "count": 1
+            },
+            {
+              "value": "16,0мм2",
+              "count": 1
+            }
+          ],
+          "numeric_candidate": true,
+          "numeric_unit": "мм²",
+          "numeric_examples": [
+            {
+              "raw": "10,0мм2",
+              "number": 10.0,
+              "unit": "мм²"
+            },
+            {
+              "raw": "16,0мм2",
+              "number": 16.0,
+              "unit": "мм²"
+            }
+          ],
+          "missing_definition": true,
+          "source": "property_values"
+        },
+        {
+          "guid": "d7c8434d-a19a-11eb-80ca-d45d647f1831",
+          "name": "d7c8434d-a19a-11eb-80ca-d45d647f1831",
+          "value_type": "unknown",
+          "assignments": 1,
+          "fill_rate": 0.1,
+          "distinct": 1,
+          "top_values": [
+            {
+              "value": "<broken:d7c8434f-a19a-11eb-80ca-d45d647f1831>",
+              "count": 1
+            }
+          ],
+          "numeric_candidate": false,
+          "numeric_unit": "",
+          "numeric_examples": [],
+          "missing_definition": true,
+          "source": "product_attributes"
+        },
+        {
+          "guid": "db711a41-906f-11eb-80c9-d45d647f1831",
+          "name": "db711a41-906f-11eb-80c9-d45d647f1831",
+          "value_type": "unknown",
+          "assignments": 1,
+          "fill_rate": 0.1,
+          "distinct": 1,
+          "top_values": [
+            {
+              "value": "<broken:db711a48-906f-11eb-80c9-d45d647f1831>",
+              "count": 1
+            }
+          ],
+          "numeric_candidate": false,
+          "numeric_unit": "",
+          "numeric_examples": [],
+          "missing_definition": true,
+          "source": "product_attributes"
+        },
+        {
+          "guid": "db711a4c-906f-11eb-80c9-d45d647f1831",
+          "name": "db711a4c-906f-11eb-80c9-d45d647f1831",
+          "value_type": "unknown",
+          "assignments": 1,
+          "fill_rate": 0.1,
+          "distinct": 1,
+          "top_values": [
+            {
+              "value": "<broken:db711a4d-906f-11eb-80c9-d45d647f1831>",
+              "count": 1
+            }
+          ],
+          "numeric_candidate": false,
+          "numeric_unit": "",
+          "numeric_examples": [],
+          "missing_definition": true,
+          "source": "product_attributes"
+        },
+        {
+          "guid": "db711a50-906f-11eb-80c9-d45d647f1831",
+          "name": "db711a50-906f-11eb-80c9-d45d647f1831",
+          "value_type": "unknown",
+          "assignments": 1,
+          "fill_rate": 0.1,
+          "distinct": 1,
+          "top_values": [
+            {
+              "value": "<broken:db711a51-906f-11eb-80c9-d45d647f1831>",
+              "count": 1
+            }
+          ],
+          "numeric_candidate": false,
+          "numeric_unit": "",
+          "numeric_examples": [],
+          "missing_definition": true,
+          "source": "product_attributes"
+        },
+        {
+          "guid": "db711a54-906f-11eb-80c9-d45d647f1831",
+          "name": "db711a54-906f-11eb-80c9-d45d647f1831",
+          "value_type": "unknown",
+          "assignments": 1,
+          "fill_rate": 0.1,
+          "distinct": 1,
+          "top_values": [
+            {
+              "value": "<broken:db711a6e-906f-11eb-80c9-d45d647f1831>",
+              "count": 1
+            }
+          ],
+          "numeric_candidate": false,
+          "numeric_unit": "",
+          "numeric_examples": [],
+          "missing_definition": true,
+          "source": "product_attributes"
+        },
+        {
+          "guid": "facc9c04-8874-11eb-80c9-d45d647f1831",
+          "name": "facc9c04-8874-11eb-80c9-d45d647f1831",
+          "value_type": "unknown",
+          "assignments": 0,
+          "fill_rate": 0.0,
+          "distinct": 2,
+          "top_values": [
+            {
+              "value": "2016/2025/2032",
+              "count": 1
+            },
+            {
+              "value": "AA",
+              "count": 1
+            }
+          ],
+          "numeric_candidate": false,
+          "numeric_unit": "",
+          "numeric_examples": [],
+          "missing_definition": true,
+          "source": "property_values"
+        },
+        {
+          "guid": "facc9c07-8874-11eb-80c9-d45d647f1831",
+          "name": "facc9c07-8874-11eb-80c9-d45d647f1831",
+          "value_type": "unknown",
+          "assignments": 0,
+          "fill_rate": 0.0,
+          "distinct": 5,
+          "top_values": [
+            {
+              "value": "1шт",
+              "count": 1
+            },
+            {
+              "value": "2шт",
+              "count": 1
+            },
+            {
+              "value": "3шт",
+              "count": 1
+            },
+            {
+              "value": "4шт",
+              "count": 1
+            },
+            {
+              "value": "5шт",
+              "count": 1
+            }
+          ],
+          "numeric_candidate": true,
+          "numeric_unit": "шт",
+          "numeric_examples": [
+            {
+              "raw": "1шт",
+              "number": 1.0,
+              "unit": "шт"
+            },
+            {
+              "raw": "2шт",
+              "number": 2.0,
+              "unit": "шт"
+            },
+            {
+              "raw": "3шт",
+              "number": 3.0,
+              "unit": "шт"
+            }
+          ],
+          "missing_definition": true,
+          "source": "property_values"
+        },
+        {
+          "guid": "7ffcb01d-9f4b-11eb-80ca-d45d647f1831",
+          "name": "mF",
+          "value_type": "enum",
+          "assignments": 1,
+          "fill_rate": 0.1,
+          "distinct": 1,
+          "top_values": [
+            {
+              "value": "<broken:d7c8435d-a19a-11eb-80ca-d45d647f1831>",
+              "count": 1
+            }
+          ],
+          "numeric_candidate": false,
+          "numeric_unit": "",
+          "numeric_examples": [],
+          "missing_definition": false,
+          "source": "product_attributes"
+        },
+        {
+          "guid": "bf791d3c-3f00-11ed-80e8-d45d647f1831",
+          "name": "Бренд",
+          "value_type": "enum",
+          "assignments": 1,
+          "fill_rate": 0.1,
+          "distinct": 1,
+          "top_values": [
+            {
+              "value": "<broken:844f1c1e-3f12-11ed-80e8-d45d647f1831>",
+              "count": 1
+            }
+          ],
+          "numeric_candidate": false,
+          "numeric_unit": "",
+          "numeric_examples": [],
+          "missing_definition": false,
+          "source": "product_attributes"
+        }
+      ]
+    },
+    "cross_references": {
+      "universe_size": 52,
+      "links": {
+        "attribute_defs.НаборСвойств_Key": {
+          "ok": 0,
+          "broken": 5,
+          "broken_examples": [
+            "79d9515c-5d6a-11eb-948a-f81a67046005",
+            "7ffcb017-9f4b-11eb-80ca-d45d647f1831",
+            "7ffcb017-9f4b-11eb-80ca-d45d647f1831"
+          ]
+        },
+        "other.ВладелецФайла_Key": {
+          "ok": 0,
+          "broken": 4,
+          "broken_examples": [
+            "bbc063ad-17f5-4c79-bf8c-1d287ab63870",
+            "bbc063ad-17f5-4c79-bf8c-1d287ab63870",
+            "f183c7dc-188f-4e68-83f5-ea4ebcf7bdb6"
+          ]
+        },
+        "prices.ВидЦен_Key": {
+          "ok": 0,
+          "broken": 3,
+          "broken_examples": [
+            "3d3bea35-5d6a-11eb-948a-f81a67046005",
+            "3d3bea35-5d6a-11eb-948a-f81a67046005",
+            "3d3bea35-5d6a-11eb-948a-f81a67046005"
+          ]
+        },
+        "prices.Номенклатура_Key": {
+          "ok": 0,
+          "broken": 3,
+          "broken_examples": [
+            "18f0067f-c41b-4e0a-bb07-efea606525c1",
+            "55bc83ac-8fec-45f9-9c76-764dbc2af86e",
+            "7f4665b7-9f84-443a-9b55-88d92f43d7fe"
+          ]
+        },
+        "product_attributes.Свойство_Key": {
+          "ok": 3,
+          "broken": 7,
+          "broken_examples": [
+            "d7c8434d-a19a-11eb-80ca-d45d647f1831",
+            "db711a41-906f-11eb-80c9-d45d647f1831",
+            "db711a4c-906f-11eb-80c9-d45d647f1831"
+          ]
+        },
+        "products.ЕдиницаИзмерения_Key": {
+          "ok": 0,
+          "broken": 6,
+          "broken_examples": [
+            "79d95159-5d6a-11eb-948a-f81a67046005",
+            "79d95159-5d6a-11eb-948a-f81a67046005",
+            "79d95159-5d6a-11eb-948a-f81a67046005"
+          ]
+        },
+        "products.КатегорияНоменклатуры_Key": {
+          "ok": 0,
+          "broken": 6,
+          "broken_examples": [
+            "89128980-7c07-11eb-80d5-00155d006601",
+            "79d95157-5d6a-11eb-948a-f81a67046005",
+            "79d95157-5d6a-11eb-948a-f81a67046005"
+          ]
+        },
+        "products.НаправлениеДеятельности_Key": {
+          "ok": 0,
+          "broken": 1,
+          "broken_examples": [
+            "79d950da-5d6a-11eb-948a-f81a67046005"
+          ]
+        },
+        "products.Склад_Key": {
+          "ok": 0,
+          "broken": 1,
+          "broken_examples": [
+            "4cc029c8-5d6b-11eb-948a-f81a67046005"
+          ]
+        },
+        "products.СтранаПроисхождения_Key": {
+          "ok": 0,
+          "broken": 1,
+          "broken_examples": [
+            "5574af83-6144-11eb-948d-d45d64d20ea1"
+          ]
+        },
+        "products.СчетУчетаДоходов_Key": {
+          "ok": 0,
+          "broken": 1,
+          "broken_examples": [
+            "79d950d2-5d6a-11eb-948a-f81a67046005"
+          ]
+        },
+        "products.СчетУчетаЗапасов_Key": {
+          "ok": 0,
+          "broken": 1,
+          "broken_examples": [
+            "79d950a7-5d6a-11eb-948a-f81a67046005"
+          ]
+        },
+        "products.СчетУчетаЗатрат_Key": {
+          "ok": 0,
+          "broken": 1,
+          "broken_examples": [
+            "79d950cf-5d6a-11eb-948a-f81a67046005"
+          ]
+        },
+        "products.СчетУчетаНДСПоПриобретеннымЦенностям_Key": {
+          "ok": 0,
+          "broken": 1,
+          "broken_examples": [
+            "e12d4138-28f3-11ef-815c-00155d0a290e"
+          ]
+        },
+        "products.СчетУчетаНДСПоРеализации_Key": {
+          "ok": 0,
+          "broken": 1,
+          "broken_examples": [
+            "e12d4137-28f3-11ef-815c-00155d0a290e"
+          ]
+        },
+        "property_values.Owner_Key": {
+          "ok": 0,
+          "broken": 10,
+          "broken_examples": [
+            "d62aec37-7c07-11eb-80d5-00155d006601",
+            "d62aec37-7c07-11eb-80d5-00155d006601",
+            "facc9c07-8874-11eb-80c9-d45d647f1831"
+          ]
+        },
+        "stock.Номенклатура_Key": {
+          "ok": 0,
+          "broken": 5,
+          "broken_examples": [
+            "e717e47f-9f8f-11ec-80e1-d45d647f1831",
+            "359405ac-25b3-11ec-80d4-d45d647f1831",
+            "359405ac-25b3-11ec-80d4-d45d647f1831"
+          ]
+        },
+        "stock.Организация_Key": {
+          "ok": 0,
+          "broken": 5,
+          "broken_examples": [
+            "3d3bea34-5d6a-11eb-948a-f81a67046005",
+            "3d3bea34-5d6a-11eb-948a-f81a67046005",
+            "3d3bea34-5d6a-11eb-948a-f81a67046005"
+          ]
+        },
+        "stock.СтруктурнаяЕдиница_Key": {
+          "ok": 0,
+          "broken": 5,
+          "broken_examples": [
+            "3d3bea38-5d6a-11eb-948a-f81a67046005",
+            "3d3bea38-5d6a-11eb-948a-f81a67046005",
+            "4cc029c8-5d6b-11eb-948a-f81a67046005"
+          ]
+        }
+      }
+    },
+    "stock_summary": {
+      "rows": 5,
+      "negative_rows": 1,
+      "min_row_balance": -4,
+      "products": 4,
+      "negative_after_sum": 0,
+      "clamped_to_zero": 0,
+      "min_balance": 1
+    }
+  }
+}
