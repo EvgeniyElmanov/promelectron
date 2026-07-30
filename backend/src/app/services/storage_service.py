@@ -1,6 +1,7 @@
 import io
 import os
-from typing import Protocol
+import shutil
+from typing import BinaryIO, Protocol
 
 from aiobotocore.session import get_session
 from fastapi import UploadFile
@@ -11,6 +12,11 @@ from src.app.core.config import settings
 
 class StorageService(Protocol):
     async def upload(self, key: str, file: UploadFile) -> str:
+        ...
+
+    async def upload_raw(
+        self, key: str, data: BinaryIO | bytes, content_type: str, bucket: str | None = None
+    ) -> str:
         ...
 
     async def upload_image(self, key: str, file: UploadFile, content: bytes | None = None) -> dict:
@@ -39,6 +45,21 @@ class LocalStorageService:
     async def upload(self, key: str, file: UploadFile) -> str:
         content = await file.read()
         return self._upload_bytes(key, content, file.content_type or "application/octet-stream")
+
+    async def upload_raw(
+        self, key: str, data: BinaryIO | bytes, content_type: str, bucket: str | None = None
+    ) -> str:
+        if bucket:
+            key = f"{bucket}/{key}"
+        if isinstance(data, bytes):
+            return self._upload_bytes(key, data, content_type)
+        # Stream file-like bodies to disk in chunks instead of materializing
+        # the whole payload in memory (up to 100 MB per intake request).
+        filepath = os.path.join("uploads", key)
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        with open(filepath, "wb") as buffer:
+            shutil.copyfileobj(data, buffer, length=1024 * 1024)
+        return f"/uploads/{key}"
 
     async def upload_image(self, key: str, file: UploadFile, content: bytes | None = None) -> dict:
         if content is None:
@@ -108,13 +129,17 @@ class MinioStorageService:
         self.secure = settings.minio_secure
         self.session = get_session()
 
-    async def _ensure_bucket(self, client) -> None:
+    async def _ensure_bucket(self, client, bucket: str | None = None) -> None:
+        bucket = bucket or self.bucket
         try:
-            await client.head_bucket(Bucket=self.bucket)
+            await client.head_bucket(Bucket=bucket)
         except Exception:
-            await client.create_bucket(Bucket=self.bucket)
+            await client.create_bucket(Bucket=bucket)
 
-    async def _upload_bytes(self, key: str, content: bytes, content_type: str) -> str:
+    async def _upload_bytes(
+        self, key: str, content: bytes, content_type: str, bucket: str | None = None
+    ) -> str:
+        bucket = bucket or self.bucket
         async with self.session.create_client(
             "s3",
             endpoint_url=self.endpoint,
@@ -122,18 +147,43 @@ class MinioStorageService:
             aws_secret_access_key=self.secret_key,
             use_ssl=self.secure,
         ) as client:
-            await self._ensure_bucket(client)
+            await self._ensure_bucket(client, bucket)
             await client.put_object(
-                Bucket=self.bucket,
+                Bucket=bucket,
                 Key=key,
                 Body=content,
                 ContentType=content_type,
             )
-        return self.get_url(key)
+        return self.get_url(key, bucket=bucket)
 
     async def upload(self, key: str, file: UploadFile) -> str:
         content = await file.read()
         return await self._upload_bytes(key, content, file.content_type or "application/octet-stream")
+
+    async def upload_raw(
+        self, key: str, data: BinaryIO | bytes, content_type: str, bucket: str | None = None
+    ) -> str:
+        if isinstance(data, bytes):
+            return await self._upload_bytes(key, data, content_type, bucket=bucket)
+        # Pass the file-like body straight to put_object: botocore chunks
+        # seekable file objects itself, so a 100 MB intake payload never gets
+        # materialized in RAM.
+        bucket = bucket or self.bucket
+        async with self.session.create_client(
+            "s3",
+            endpoint_url=self.endpoint,
+            aws_access_key_id=self.access_key,
+            aws_secret_access_key=self.secret_key,
+            use_ssl=self.secure,
+        ) as client:
+            await self._ensure_bucket(client, bucket)
+            await client.put_object(
+                Bucket=bucket,
+                Key=key,
+                Body=data,
+                ContentType=content_type,
+            )
+        return self.get_url(key, bucket=bucket)
 
     async def upload_image(self, key: str, file: UploadFile, content: bytes | None = None) -> dict:
         if content is None:
@@ -172,10 +222,11 @@ class MinioStorageService:
 
         return result
 
-    def get_url(self, key: str) -> str:
+    def get_url(self, key: str, bucket: str | None = None) -> str:
+        bucket = bucket or self.bucket
         scheme = "https" if self.secure else "http"
         host = self.endpoint.replace("http://", "").replace("https://", "")
-        return f"{scheme}://{host}/{self.bucket}/{key}"
+        return f"{scheme}://{host}/{bucket}/{key}"
 
     async def delete(self, key: str) -> None:
         prefix = self.get_url("")

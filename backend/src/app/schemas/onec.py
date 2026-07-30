@@ -28,6 +28,11 @@ class OnecWebhookResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class OnecIntakeResponse(BaseModel):
+    intake_id: UUID
+    received_bytes: int
+
+
 # ─── OData-сущности 1С:УНФ (pull fallback) ───────────────────────────────────
 
 

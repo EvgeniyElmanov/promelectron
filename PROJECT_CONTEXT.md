@@ -190,6 +190,11 @@ Product.price → Numeric      →  Product variants / Seller payouts
 | GET | `/api/v1/supplier/profile/` | ✅ | Профиль поставщика (CDEK настройки) |
 | PATCH | `/api/v1/supplier/profile/` | ✅ | Обновление CDEK настроек поставщика |
 
+### 1С интеграция
+| Метод | Путь | Статус | Описание |
+|-------|------|--------|----------|
+| POST | `/api/v1/onec/intake/` | ✅ | Универсальный приём сырых выгрузок 1С (raw → MinIO `onec-intake` + `onec_intake_log`, лимит 100 МБ, 202, #118) |
+
 > **Trailing slash обязателен во всех путях.**
 
 ---

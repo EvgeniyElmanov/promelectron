@@ -6,6 +6,7 @@ from .favorite import Favorite as Favorite
 from .job import Job as Job
 from .notification import Notification as Notification
 from .onec_sync import OnecChangeLog as OnecChangeLog
+from .onec_sync import OnecIntakeLog as OnecIntakeLog
 from .order import Order as Order, OrderItem as OrderItem
 from .payment import Payment as Payment
 from .product import Product as Product
@@ -30,6 +31,7 @@ __all__ = [
     "Job",
     "Notification",
     "OnecChangeLog",
+    "OnecIntakeLog",
     "Order",
     "OrderItem",
     "Payment",
