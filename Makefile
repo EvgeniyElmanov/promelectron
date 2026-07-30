@@ -3,11 +3,14 @@ COMPOSE_BACKEND  := docker compose -f backend/docker-compose.yml -p promelectron
 COMPOSE_FRONTEND := docker compose -f frontend/docker-compose.yml -p promelectron
 COMPOSE          := docker compose -f backend/docker-compose.yml -f frontend/docker-compose.yml -p promelectron
 DOCKER_USER      := --user $(shell id -u):$(shell id -g)
+# venv проекта: из корня main-репо — ./venv, из worktree .worktrees/<id>/ — ../../venv.
+# Переопределяется через make VENV=...
+VENV             ?= $(shell [ -d $(CURDIR)/venv ] && echo $(CURDIR)/venv || echo $(CURDIR)/../../venv)
 
 .PHONY: help dev dev-backend dev-frontend stop logs \
-        test test-backend test-frontend test-e2e test-visual test-full \
+        test test-backend test-onec-mock test-frontend test-e2e test-visual test-full \
         migrate migrate-down migrate-generate migrate-history seed \
-        lint lint-backend lint-frontend format format-backend format-frontend \
+        lint lint-backend lint-onec-mock lint-frontend format format-backend format-frontend \
         build clean status \
         agent-context agent-status agent-audit
 
@@ -53,6 +56,13 @@ test-backend: ## Запустить pytest (поднимает postgres/redis ч
 	  -e SECRET_KEY=test-secret-key-32-chars-minimum \
 	  api sh -c "pytest tests/ -v --tb=short"
 
+test-onec-mock: ## Запустить pytest мок-сервера 1С (Docker-PG, схема onec_mock_test, pytest на хосте)
+	$(COMPOSE_BACKEND) up -d postgres
+	cd mocks/onec-server && \
+	  ONEC_MOCK_SCHEMA=onec_mock_test \
+	  DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/promelectron \
+	  $(VENV)/bin/pytest
+
 test-frontend: ## Запустить vitest
 	$(COMPOSE_FRONTEND) run --rm $(DOCKER_USER) frontend sh -c "npm install --silent && npm test"
 
@@ -95,7 +105,10 @@ seed: ## Залить тестовые данные
 
 # ─── Линт / Форматирование ──────────────────────────────────────────────────
 
-lint: lint-backend lint-frontend ## Линт всего проекта
+lint: lint-backend lint-onec-mock lint-frontend ## Линт всего проекта
+
+lint-onec-mock: ## Линт мок-сервера 1С (ruff)
+	$(VENV)/bin/ruff check mocks/onec-server/
 
 lint-backend: ## Линт Python (ruff)
 	$(COMPOSE_BACKEND) run --rm --entrypoint "" $(DOCKER_USER) api ruff check src/

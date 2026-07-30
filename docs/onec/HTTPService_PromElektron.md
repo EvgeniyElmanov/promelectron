@@ -5,6 +5,9 @@
 > Backend Promelectron уже готов принимать push по `POST /api/v1/onec/webhook/` (см. `backend/src/app/api/onec.py`).
 >
 > Изображения из 1С вынесены в отдельную задачу и не входят в MVP.
+>
+> Для разработки без реальной 1С есть мок-сервер `mocks/onec-server/` (Фаза 7, issue #124) —
+> симулятор 1С:УНФ, генерирующий инкрементальные CommerceML 2.x пакеты: см. `mocks/onec-server/README.md`.
 
 ---
 

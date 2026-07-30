@@ -25,6 +25,7 @@ env:
   REGISTRY: harbor.kubeadm.ru
   API_IMAGE: harbor.kubeadm.ru/promelectron/promelectron-api
   FRONTEND_IMAGE: harbor.kubeadm.ru/promelectron/promelectron-frontend
+  ONEC_MOCK_IMAGE: harbor.kubeadm.ru/promelectron/promelectron-onec-mock
   KUBECONFIG_PATH: ${{ vars.KUBECONFIG_PATH }}
   SOPS_VERSION: "3.9.4"
 
@@ -64,6 +65,14 @@ jobs:
             -t ${{ env.FRONTEND_IMAGE }}-test:${{ github.sha }} \
             frontend/
           docker push ${{ env.FRONTEND_IMAGE }}-test:${{ github.sha }}
+
+      - name: Build and push 1C mock (test)
+        if: github.event_name == 'push' || inputs.environment == 'test' || inputs.environment == 'all'
+        run: |
+          docker build -f mocks/onec-server/Dockerfile \
+            -t ${{ env.ONEC_MOCK_IMAGE }}:${{ github.sha }} \
+            mocks/onec-server/
+          docker push ${{ env.ONEC_MOCK_IMAGE }}:${{ github.sha }}
 
       - name: Build and push frontend (prod)
         if: inputs.environment == 'prod' || inputs.environment == 'all'
@@ -179,6 +188,7 @@ jobs:
             -f infra/helm/stage/test/secret.yml \
             --set api.image=${{ env.API_IMAGE }}:${{ github.sha }} \
             --set frontend.image=${{ env.FRONTEND_IMAGE }}-test:${{ github.sha }} \
+            --set onecMock.image=${{ env.ONEC_MOCK_IMAGE }}:${{ github.sha }} \
             "${OVERRIDES[@]}" \
             --namespace promelectron-test \
             --create-namespace \

@@ -84,6 +84,8 @@ services:
       CDEK_SECURE: ${CDEK_SECURE:-RmAmgvSgSl1yirlz9QupbzOJVqhCxcP5}
       CDEK_API_URL: ${CDEK_API_URL:-https://api.edu.cdek.ru}
       CDEK_TEST_MODE: ${CDEK_TEST_MODE:-true}
+      # Ключ intake/webhook 1С; в dev совпадает с дефолтом onec-mock (см. сервис onec-mock ниже).
+      ONEC_WEBHOOK_API_KEY: ${ONEC_WEBHOOK_API_KEY:-dev-onec-api-key}
     volumes:
       - .:/app
     depends_on:
@@ -147,6 +149,29 @@ services:
       redis:
         condition: service_healthy
     command: python -m src.app.workers.job_worker
+    restart: unless-stopped
+
+  # 1C:УНФ mock server (Фаза 7, issue #124) — dev/test инструмент
+  onec-mock:
+    build:
+      context: ../mocks/onec-server
+      dockerfile: Dockerfile
+    ports:
+      - "8100:8100"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/promelectron
+      ONEC_TARGET_URL: http://api:8000/api/v1/onec/intake/
+      ONEC_API_KEY: ${ONEC_WEBHOOK_API_KEY:-dev-onec-api-key}
+      SYNC_INTERVAL_MINUTES: ${ONEC_MOCK_SYNC_INTERVAL_MINUTES:-30}
+      SEED_ON_START: ${ONEC_MOCK_SEED_ON_START:-true}
+      SEED_PRODUCTS_COUNT: ${ONEC_MOCK_SEED_PRODUCTS_COUNT:-200}
+      CATALOG_SEED: ${ONEC_MOCK_CATALOG_SEED:-42}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_started
     restart: unless-stopped
 
 volumes:
