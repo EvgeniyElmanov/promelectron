@@ -24,13 +24,12 @@ disableModelInvocation: false
 
 ---
 
-## Ограничения API (Kimi K2.7-Code)
+## Ограничения API (Kimi K3)
 
-- Thinking mode обязателен (`thinking={"type":"enabled"}`); `reasoning_content` должен сохраняться между multi-turn tool calls.
+- Thinking mode всегда включён, отключить нельзя; глубина задаётся `reasoning_effort` (`low`/`high`/`max`, default `max`). В multi-turn tool calls возвращай полное assistant message unchanged, включая `reasoning_content`.
 - Не считай переключение языка внутреннего рассуждения ошибкой. Пользовательские ответы, отчёты и артефакты должны соответствовать языку пользователя.
-- `tool_choice` может быть только `"auto"` или `"none"`.
 - Sampling-параметры фиксированы: `temperature=1.0`, `top_p=0.95`, `n=1`, `presence_penalty=0.0`, `frequency_penalty=0.0`.
-- Контекстное окно 256K; при анализе больших бэклогов суммируй и читай только релевантные секции.
+- Контекстное окно 1M (у варианта `k3-256k` — 256K); при анализе больших бэклогов суммируй и читай только релевантные секции.
 
 ---
 

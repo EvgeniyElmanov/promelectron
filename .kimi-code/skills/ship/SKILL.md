@@ -24,11 +24,10 @@ disableModelInvocation: false
 
 ---
 
-## Ограничения API (Kimi K2.7-Code)
+## Ограничения API (Kimi K3)
 
-- Thinking mode обязателен (`thinking={"type":"enabled"}`); `reasoning_content` должен сохраняться между multi-turn tool calls (особенно при повторных попытках `gh pr create` / `git push`).
+- Thinking mode всегда включён, отключить нельзя; глубина задаётся `reasoning_effort` (`low`/`high`/`max`, default `max`). В multi-turn tool calls возвращай полное assistant message unchanged, включая `reasoning_content` (особенно при повторных попытках `gh pr create` / `git push`).
 - Не считай переключение языка внутреннего рассуждения ошибкой. Главное — финальные ответы, title/body PR и артефакты на языке пользователя.
-- `tool_choice` может быть только `"auto"` или `"none"`.
 - Sampling-параметры фиксированы: `temperature=1.0`, `top_p=0.95`, `n=1`, `presence_penalty=0.0`, `frequency_penalty=0.0`.
 
 ---

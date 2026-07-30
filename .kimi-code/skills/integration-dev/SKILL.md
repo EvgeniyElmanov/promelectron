@@ -69,7 +69,7 @@ bash scripts/stop_dev.sh
 
 ---
 
-## API constraints (Kimi K2.7-Code)
+## API constraints (Kimi K3)
 
 - Thinking mode обязателен; `reasoning_content` должен сохраняться между multi-turn tool calls.
 - Не считай переключение языка внутреннего рассуждения ошибкой. Пользовательские ответы, отчёты и артефакты должны соответствовать языку пользователя.

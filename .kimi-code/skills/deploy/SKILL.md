@@ -16,7 +16,7 @@ arguments: "<test|prod>"
 ## Язык
 
 Следуй [Rule: Agent Commons](../../rules/agent-commons.md) > Language Rule / Языковое правило.
-Kimi K2.7-Code работает в обязательном thinking mode; `reasoning_content` должен сохраняться между multi-turn tool calls.
+Kimi K3 работает в обязательном thinking mode (отключить нельзя; глубина задаётся `reasoning_effort`); в multi-turn tool calls возвращай полное assistant message unchanged, включая `reasoning_content`.
 Пользовательские ответы, отчёты и артефакты должны соответствовать языку пользователя.
 
 ---

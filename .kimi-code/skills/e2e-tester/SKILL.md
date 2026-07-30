@@ -34,7 +34,7 @@ disableModelInvocation: true
 6. [Rule: Agent Commons](../../rules/agent-commons.md)
 7. [Rule: Golden Path](../../rules/golden-path.md)
 
-### Ограничения API (Kimi K2.7-Code)
+### Ограничения API (Kimi K3)
 
 - Thinking mode обязателен; `reasoning_content` должен сохраняться между multi-turn tool calls.
 - Не считай переключение языка внутреннего рассуждения ошибкой. Пользовательские ответы, отчёты и артефакты должны соответствовать языку пользователя.

@@ -26,7 +26,7 @@ disableModelInvocation: true
 Следуй [Rule: Agent Commons](../../rules/agent-commons.md) > Language Rule / Языковое правило.
 Все требования к русскому языку и преамбулы для субагентов живут там.
 
-Kimi K2.7-Code работает в **обязательном thinking mode**; `reasoning_content` должен сохраняться между multi-turn tool calls.
+Kimi K3 работает в **обязательном thinking mode** (отключить нельзя; глубина задаётся `reasoning_effort`); в multi-turn tool calls возвращай полное assistant message unchanged, включая `reasoning_content`.
 Если внутреннее рассуждение иногда переключается на английский, **не считай это ошибкой** — единственное жёсткое требование: пользовательские ответы, отчёты и артефакты должны соответствовать языку пользователя.
 
 ---
@@ -104,7 +104,7 @@ Shared rules (reference markdown, не skills):
 
 ---
 
-## 4. Проверка размера контекста (Kimi K2.7-Code)
+## 4. Проверка размера контекста (Kimi K3)
 
 Перед запуском субагентов оцени размер контекста задачи:
 
@@ -115,7 +115,7 @@ python scripts/implement-pipeline.py check-context <task-id>
 - Если `ESTIMATED_TOKENS` >= 150000, читай `.agent/runs/<task-id>/CONTEXT_SUMMARY.md` вместо полной истории.
 - Логируй оценочное количество токенов в `.agent/SESSION_LOG.md`.
 
-Kimi K2.7-Code имеет контекстное окно 256K с обязательным thinking mode. Удержание ниже 150K оставляет место для `reasoning_content`, выводов инструментов и системных инструкций.
+Kimi K3 имеет контекстное окно 1M токенов с обязательным thinking mode. Порог 150K — консервативный дефолт, безопасный и для варианта `k3-256k` (256K); он оставляет место для `reasoning_content`, выводов инструментов и системных инструкций.
 
 ---
 

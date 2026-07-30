@@ -22,7 +22,7 @@ disableModelInvocation: true
 - [ ] `.agent/BLOCKERS.md`
 - [ ] `.agent/SESSION_LOG.md`
 - [ ] Релевантный role skill из `.kimi-code/skills/<role>/SKILL.md`
-- [ ] [Rule: Agent Commons](agent-commons.md) — язык, retry policy, API constraints Kimi K2.7-Code
+- [ ] [Rule: Agent Commons](agent-commons.md) — язык, retry policy, API constraints Kimi K3
 - [ ] [Rule: Security](security.md) — всегда; lightweight pass для любой задачи, extended для auth/payments/PII/uploads/orders/webhooks
 
 ### Обязательные проверки

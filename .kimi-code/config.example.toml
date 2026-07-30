@@ -2,7 +2,7 @@
 # Copy relevant sections into ~/.kimi-code/config.toml
 # Project-level config.toml is NOT supported by Kimi Code CLI.
 
-default_model = "kimi-k2.7-code"
+default_model = "kimi-code/k3"
 default_thinking = true
 default_permission_mode = "manual"
 # default_permission_mode = "auto"   # разрешить read-only автоматически; править/запускать — всё ещё с approval
@@ -14,10 +14,13 @@ telemetry = true
 # NOTE: There is no "default_yolo" field in Kimi Code CLI.
 # Use default_permission_mode = "manual" | "auto" | "yolo" instead.
 
-# Kimi K2.7-Code specifics:
-# - Context window: 256K tokens (262,144).
-# - Thinking mode is mandatory and cannot be disabled.
-# - For multi-turn tool calls, preserve reasoning_content from assistant messages.
+# Kimi K3 specifics:
+# - Context window: 1M tokens (1,048,576); a 256K variant (k3-256k) is also available.
+# - Thinking mode is always enabled and cannot be disabled; control depth via
+#   reasoning_effort = "low" | "high" | "max" (default "max").
+# - For multi-turn tool calls, return the complete assistant message unchanged
+#   (including reasoning_content).
+# - Automatic prefix caching: keep the stable part of subagent prompts at the front.
 # - Project retry policy: transient errors (502/504/timeout) are retried up to 4
 #   attempts (3 retries) with exponential backoff via scripts/agent_retry.py.
 
@@ -37,14 +40,21 @@ api_key = ""
 # base_url = "https://api.moonshot.ai/v1"
 # api_key = ""
 
-[models."kimi-k2.7-code"]
+[models."kimi-code/k3"]
 provider = "managed:kimi-code"
-model = "kimi-k2.7-code"
-max_context_size = 262144
+model = "k3"
+max_context_size = 1048576
 
-# [models."kimi-k2.7-code-highspeed"]
+# Вариант с окном 256K (дешевле/быстрее для простых ролей — ревьюеров и т.п.)
+# [models."kimi-code/k3-256k"]
+# provider = "managed:kimi-code"
+# model = "k3-256k"
+# max_context_size = 262144
+
+# Direct Kimi API (OpenAI-compatible) highspeed variant:
+# [models."kimi-k3-highspeed"]
 # provider = "moonshot"
-# model = "kimi-k2.7-code-highspeed"
+# model = "kimi-k3-highspeed"
 # max_context_size = 262144
 
 # ─── Permission Rules for /skill:implement pipeline ───

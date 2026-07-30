@@ -36,9 +36,9 @@ WORKTREES_ROOT = PROJECT_ROOT / ".worktrees"
 AGENT_RUNS_DIR = PROJECT_ROOT / ".agent" / "runs"
 BACKLOG_FILE = PROJECT_ROOT / ".agent" / "BACKLOG.md"
 
-# Context management thresholds for Kimi K2.7 (256K context window).
-# We use a conservative threshold to leave room for system prompt,
-# reasoning_content, and tool outputs.
+# Context management thresholds for Kimi K3 (1M context window; 256K for k3-256k).
+# We use a conservative threshold that is safe for both window sizes and leaves
+# room for system prompt, reasoning_content, and tool outputs.
 # Aligned with .kimi-code/rules/agent-commons.md.
 CONTEXT_THRESHOLD = 150_000
 CHARS_PER_TOKEN = 4

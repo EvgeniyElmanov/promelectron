@@ -53,7 +53,7 @@ mkdir -p "$AGENT_DIR/review"
 
 ---
 
-## Step 2: Проверка размера контекста (Kimi K2.7-Code)
+## Step 2: Проверка размера контекста (Kimi K3)
 
 Следуй [Rule: Agent Commons](../../rules/agent-commons.md) > Context Size Check перед запуском субагентов.
 
