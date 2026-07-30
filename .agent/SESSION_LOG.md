@@ -3310,3 +3310,8 @@
   - Метрики: `.agent/runs/onec-universal-intake-0720/metrics.json`; ESTIMATED_TOKENS=5725.
   - Урок: новое поле Settings ломает тесты с явными kwargs → LESSONS_LEARNED.md.
   - Баг пайплайна (не исправлен, предложение пользователю): `scripts/implement-pipeline.py find_project_item_id` вызывает `gh project item-list` без `--limit` (default 30) — падает на досках >30 items.
+
+### 2026-07-30 | orchestrator | onec-universal-intake-0720 — merge
+  - PR #125 влит в `main` (squash). Issue #118 закрыт (Closes), статус на доске → Done.
+  - Перед merge в main ушли: фикс пайплайна (`--limit 100` в item-list, `8206323`) и фабрика `make_settings` в conftest (`c56c168`); feature-ветка синхронизирована merge'ем (`b8bd97e`), 427 passed.
+  - Follow-up: smoke-check intake на test-окружении (curl + sha256 объекта в MinIO); rate limiter на X-Forwarded-For — отдельная задача.
