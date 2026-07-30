@@ -9,61 +9,9 @@ from src.app.services.email_service import EmailService
 
 
 def _make_settings(**overrides) -> Settings:
-    kwargs = {
-        "secret_key": original_settings.secret_key,
-        "algorithm": original_settings.algorithm,
-        "access_token_expire_minutes": original_settings.access_token_expire_minutes,
-        "database_url": original_settings.database_url,
-        "google_client_id": original_settings.google_client_id,
-        "google_client_secret": original_settings.google_client_secret,
-        "yandex_client_id": original_settings.yandex_client_id,
-        "yandex_client_secret": original_settings.yandex_client_secret,
-        "frontend_url": original_settings.frontend_url,
-        "smtp_host": original_settings.smtp_host,
-        "smtp_port": original_settings.smtp_port,
-        "smtp_user": original_settings.smtp_user,
-        "smtp_password": original_settings.smtp_password,
-        "smtp_from": original_settings.smtp_from,
-        "smtp_from_name": original_settings.smtp_from_name,
-        "smtp_use_tls": original_settings.smtp_use_tls,
-        "smtp_starttls": original_settings.smtp_starttls,
-        "email_verify_token_ttl_minutes": original_settings.email_verify_token_ttl_minutes,
-        "verify_base_url": original_settings.verify_base_url,
-        "redis_url": original_settings.redis_url,
-        "api_base_url": original_settings.api_base_url,
-        "storage_backend": original_settings.storage_backend,
-        "minio_endpoint": original_settings.minio_endpoint,
-        "minio_access_key": original_settings.minio_access_key,
-        "minio_secret_key": original_settings.minio_secret_key,
-        "minio_bucket": original_settings.minio_bucket,
-        "minio_secure": original_settings.minio_secure,
-        "onec_api_url": original_settings.onec_api_url,
-        "onec_login": original_settings.onec_login,
-        "onec_password": original_settings.onec_password,
-        "onec_price_type_key": original_settings.onec_price_type_key,
-        "onec_warehouse_key": original_settings.onec_warehouse_key,
-        "onec_webhook_api_key": original_settings.onec_webhook_api_key,
-        "onec_default_supplier_id": original_settings.onec_default_supplier_id,
-        "yookassa_shop_id": original_settings.yookassa_shop_id,
-        "yookassa_secret_key": original_settings.yookassa_secret_key,
-        "yookassa_webhook_secret": original_settings.yookassa_webhook_secret,
-        "yookassa_test_mode": original_settings.yookassa_test_mode,
-        "yookassa_vat_code": original_settings.yookassa_vat_code,
-        "yookassa_tax_system_code": original_settings.yookassa_tax_system_code,
-        "yookassa_receipt_enabled": original_settings.yookassa_receipt_enabled,
-        "yookassa_capture_auto": original_settings.yookassa_capture_auto,
-        "google_oauth_enabled": original_settings.google_oauth_enabled,
-        "cdek_account": original_settings.cdek_account,
-        "cdek_secure": original_settings.cdek_secure,
-        "cdek_api_url": original_settings.cdek_api_url,
-        "cdek_test_mode": original_settings.cdek_test_mode,
-        "cdek_sync_cron_interval_seconds": original_settings.cdek_sync_cron_interval_seconds,
-        "cdek_terminal_statuses": original_settings.cdek_terminal_statuses,
-        "job_worker_sleep_seconds": original_settings.job_worker_sleep_seconds,
-        "job_max_attempts": original_settings.job_max_attempts,
-    }
-    kwargs.update(overrides)
-    return Settings(**kwargs)
+    from tests.conftest import make_settings
+
+    return make_settings(**overrides)
 
 
 class TestEmailService:

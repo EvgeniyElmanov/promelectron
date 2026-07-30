@@ -28,6 +28,19 @@ else:
 TEMPLATE_DB_NAME = "promelectron_test_template"
 
 
+def make_settings(**overrides):
+    """Фабрика тестовых Settings: копия глобального settings с переопределениями.
+
+    Использует dataclasses.replace — новые поля Settings подхватываются
+    автоматически, явный список полей в тестах больше не нужен.
+    """
+    import dataclasses
+
+    from src.app.core.config import settings
+
+    return dataclasses.replace(settings, **overrides)
+
+
 def _admin_url():
     return TEST_DATABASE_URL.rsplit("/", 1)[0] + "/postgres"
 

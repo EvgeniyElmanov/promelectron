@@ -276,63 +276,9 @@ class TestAuthAPI:
 
 
 def _make_oauth_settings(overrides: dict):
-    from src.app.core.config import Settings, settings as original
+    from tests.conftest import make_settings
 
-    kwargs = {
-        "secret_key": original.secret_key,
-        "algorithm": original.algorithm,
-        "access_token_expire_minutes": original.access_token_expire_minutes,
-        "database_url": original.database_url,
-        "google_client_id": original.google_client_id,
-        "google_client_secret": original.google_client_secret,
-        "yandex_client_id": original.yandex_client_id,
-        "yandex_client_secret": original.yandex_client_secret,
-        "frontend_url": original.frontend_url,
-        "smtp_host": original.smtp_host,
-        "smtp_port": original.smtp_port,
-        "smtp_user": original.smtp_user,
-        "smtp_password": original.smtp_password,
-        "smtp_from": original.smtp_from,
-        "smtp_from_name": original.smtp_from_name,
-        "smtp_use_tls": original.smtp_use_tls,
-        "smtp_starttls": original.smtp_starttls,
-        "email_verify_token_ttl_minutes": original.email_verify_token_ttl_minutes,
-        "verify_base_url": original.verify_base_url,
-        "redis_url": original.redis_url,
-        "api_base_url": original.api_base_url,
-        "storage_backend": original.storage_backend,
-        "minio_endpoint": original.minio_endpoint,
-        "minio_access_key": original.minio_access_key,
-        "minio_secret_key": original.minio_secret_key,
-        "minio_bucket": original.minio_bucket,
-        "minio_secure": original.minio_secure,
-        "onec_api_url": original.onec_api_url,
-        "onec_login": original.onec_login,
-        "onec_password": original.onec_password,
-        "onec_price_type_key": original.onec_price_type_key,
-        "onec_warehouse_key": original.onec_warehouse_key,
-        "onec_webhook_api_key": original.onec_webhook_api_key,
-        "onec_default_supplier_id": original.onec_default_supplier_id,
-        "yookassa_shop_id": original.yookassa_shop_id,
-        "yookassa_secret_key": original.yookassa_secret_key,
-        "yookassa_webhook_secret": original.yookassa_webhook_secret,
-        "yookassa_test_mode": original.yookassa_test_mode,
-        "yookassa_vat_code": original.yookassa_vat_code,
-        "yookassa_tax_system_code": original.yookassa_tax_system_code,
-        "yookassa_receipt_enabled": original.yookassa_receipt_enabled,
-        "yookassa_capture_auto": original.yookassa_capture_auto,
-        "google_oauth_enabled": original.google_oauth_enabled,
-        "cdek_account": original.cdek_account,
-        "cdek_secure": original.cdek_secure,
-        "cdek_api_url": original.cdek_api_url,
-        "cdek_test_mode": original.cdek_test_mode,
-        "cdek_sync_cron_interval_seconds": original.cdek_sync_cron_interval_seconds,
-        "cdek_terminal_statuses": original.cdek_terminal_statuses,
-        "job_worker_sleep_seconds": original.job_worker_sleep_seconds,
-        "job_max_attempts": original.job_max_attempts,
-    }
-    kwargs.update(overrides)
-    return Settings(**kwargs)
+    return make_settings(**overrides)
 
 
 class TestOAuth:
