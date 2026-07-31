@@ -26,6 +26,8 @@ from src.app.api.payments import router as payments_router
 from src.app.api.products import router as products_router
 from src.app.api.recipients import router as recipients_router
 from src.app.api.reviews import router as reviews_router
+from src.app.api.search import router as search_router
+from src.app.api.admin_search import router as admin_search_router
 from src.app.api.seed import router as seed_router
 from src.app.api.users import router as users_router
 from src.app.api.ws import router as ws_router
@@ -116,6 +118,8 @@ app.include_router(reviews_router, prefix="/api/v1", tags=["reviews"])
 app.include_router(favorites_router, prefix="/api/v1", tags=["favorites"])
 app.include_router(seed_router, prefix="/api/v1", tags=["seed"])
 app.include_router(cdek_router, prefix="/api/v1", tags=["cdek"])
+app.include_router(search_router, prefix="/api/v1", tags=["search"])
+app.include_router(admin_search_router, prefix="/api/v1", tags=["admin-search"])
 app.include_router(delivery_methods_router, prefix="/api/v1", tags=["delivery-methods"])
 
 
