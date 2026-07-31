@@ -165,6 +165,7 @@ jobs:
           OVR_MINIO_ROOT_PASSWORD: ${{ secrets.MINIO_ROOT_PASSWORD }}
           OVR_SMTP_USER: ${{ secrets.SMTP_USER }}
           OVR_SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          OVR_MEILISEARCH_MASTER_KEY: ${{ secrets.MEILISEARCH_MASTER_KEY }}
         run: |
           set -euo pipefail
           # Build --set-string overrides for every secret whose GitHub Secret is non-empty.
@@ -175,7 +176,7 @@ jobs:
                      YOOKASSA_SHOP_ID YOOKASSA_SECRET_KEY CDEK_ACCOUNT CDEK_SECURE \
                      YANDEX_CLIENT_ID YANDEX_CLIENT_SECRET GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET \
                      MINIO_ACCESS_KEY MINIO_SECRET_KEY MINIO_ROOT_USER MINIO_ROOT_PASSWORD \
-                     SMTP_USER SMTP_PASSWORD; do
+                     SMTP_USER SMTP_PASSWORD MEILISEARCH_MASTER_KEY; do
             var="OVR_${key}"
             val="${!var:-}"
             [ -n "$val" ] || continue
@@ -312,6 +313,7 @@ jobs:
           OVR_MINIO_ROOT_PASSWORD: ${{ secrets.MINIO_ROOT_PASSWORD }}
           OVR_SMTP_USER: ${{ secrets.SMTP_USER }}
           OVR_SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          OVR_MEILISEARCH_MASTER_KEY: ${{ secrets.MEILISEARCH_MASTER_KEY }}
         run: |
           set -euo pipefail
           # Build --set-string overrides for every secret whose GitHub Secret is non-empty.
@@ -322,7 +324,7 @@ jobs:
                      YOOKASSA_SHOP_ID YOOKASSA_SECRET_KEY CDEK_ACCOUNT CDEK_SECURE \
                      YANDEX_CLIENT_ID YANDEX_CLIENT_SECRET GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET \
                      MINIO_ACCESS_KEY MINIO_SECRET_KEY MINIO_ROOT_USER MINIO_ROOT_PASSWORD \
-                     SMTP_USER SMTP_PASSWORD; do
+                     SMTP_USER SMTP_PASSWORD MEILISEARCH_MASTER_KEY; do
             var="OVR_${key}"
             val="${!var:-}"
             [ -n "$val" ] || continue

@@ -3402,3 +3402,30 @@
 ### 2026-07-31 | orchestrator | onec-attribute-loader-0731 — merge
 - PR #131 влит в `main` (squash) по одобрению пользователя. Issue #120 закрыт (Closes), статус на доске → Done.
 - Worktree и ветка удалены. Следующий шаг по эпику #117: Фаза 5 (#121) — Meilisearch.
+
+### 2026-07-31 | devops | meilisearch-search-121 — пункт 1 чек-листа (infra)
+- Issue #121 (Фаза 5 эпика #117): сервис `meilisearch` (getmeili/meilisearch:v1.50) в `backend/docker-compose.yml` + env `MEILISEARCH_URL`/`MEILISEARCH_MASTER_KEY` в api и job-worker; helm-тройка `meilisearch-{deployment,service,pvc}.yaml` по паттерну redis; секция `meilisearch` в values (base 1Gi/5Gi, test 512Mi/2Gi); `MEILISEARCH_URL` в `env.open`; сильный test-ключ в `stage/test/secret.yml`; инструкции SOPS в `secrets.TODO.md` (test+prod, приватный PGP-ключ недоступен); поля `meilisearch_url`/`meilisearch_master_key` в `Settings` (опциональные, без fail-fast); `.env.example` (backend + корневой).
+- Проверки: `docker compose config` зелёный; `helm template` test (29 ресурсов) и prod (27) зелёные, `MEILISEARCH_MASTER_KEY` рендерится из secret.yml через `promelectron-secrets`; `make lint-backend` зелёный (первый прогон упал на медленном старте meilisearch-контейнера — unhealthy по timeout, после готовности повтор зелёный).
+- Коммит `9803d78` `feat(infra): add Meilisearch service to compose and helm` (12 файлов). requirements.txt не трогал — зона backend-dev (пункт 2).
+
+### 2026-07-31 | backend-dev | meilisearch-search-121 — пункты 2–7 чек-листа (фаза 5)
+- Issue #121 (Фаза 5 эпика #117): `search_service.py` (sync SDK `meilisearch==0.42.0`, provisioning settings ДО документов, `wait_for_task`), `search_indexing.py` (сборка документа, partial update, full reindex со swap), handlers `SEARCH_INDEX_PRODUCTS`/`SEARCH_REINDEX_FULL` в `job_worker.py`, публичный API `api/search.py` (`/search/`, `/suggestions/`, `/facet-values/`, disjunctive multi-search D-08), админ-API `api/admin_search.py` (attributes CRUD + идемпотентный reindex 202/200), feature flag `catalog_search_meilisearch` (404 при выкл.).
+- 6 коммитов по чек-листу (`a9fd7c8`..`4557eed`). Baseline перед стартом: 479 passed/1 skipped.
+- Отклонения от плана: (1) `brand` исключён из документа/settings — колонки нет в `Product` (PLAN R5/Q2); (2) `sortableAttributes` дополнен `id` для sort=newest; (3) кэш главного `/search/` — вручную тем же ключом/TTL 60s вместо `@cache_response` (декоратор съедает `request`, а нужен разбор динамических `attr.<code>`); (4) healthcheck meilisearch в compose исправлен на `127.0.0.1` (localhost→::1, connection refused) — попал в коммит devops `9803d78`.
+- Тесты: 46 новых (`test_search_service.py`, `test_search_index_jobs.py`, `test_search_api.py`) зелёные; полный `make test-backend` — см. итог ниже/в отчёте оркестратору.
+- Lint: `make lint-backend` красный на baseline (ruff 0.16.1, 435 pre-existing ошибок: B008/UP045/BLE001 по всему legacy-коду); мои файлы добавляют 12 warnings тех же классов (FastAPI-идиома `Depends` в дефолтах, cache try/except — как в `utils/cache.py`).
+
+### 2026-07-31 | backend-dev | meilisearch-search-121 — фиксы ревью (итерация 1)
+- Code review итерации 1 дал FIXES_NEEDED (2 HIGH, 2 MEDIUM, 4 LOW). Исправлено одним коммитом `fix(search): address review findings`:
+  - F001 (HIGH): все sync SDK-вызовы в `reindex_full` обёрнуты в `asyncio.to_thread` (provision/ensure, swap, delete, wait_for_task) — event loop job_worker больше не блокируется на время reindex.
+  - F002 (HIGH): новый `ensure_index_exists` (get/create без settings) — serving-индекс `products` только ensure-exists; `update_settings` применяется только к `products_new` (D-06).
+  - F003 (MEDIUM): `schemas/search.py` (`SearchResponse`/`SearchItemOut`/`FacetOut`) + `response_model` на `GET /api/v1/search/`; `attributesToRetrieve` ограничен полями карточки — сырые поля документа (`description`, `onec_id`) не уходят наружу.
+  - F004 (MEDIUM, решение пользователя — чинить): после успешного swap handler ставит компенсационный `Job(SEARCH_INDEX_PRODUCTS)` для товаров с `updated_at >= started_at` (watermark времени старта reindex; helper `find_products_updated_since`, включая soft-deleted).
+  - F005/F006/F007 (LOW): удалён мёртвый конфиг `catalog_search_meilisearch_enabled` + дубли `MEILISEARCH_*` в обоих `.env.example`; `depends_on` meilisearch в compose → `service_started`; `_build_cache_key` → публичный `build_cache_key`. F008 (plaintext key в stage/test/secret.yml) — WONTFIX по решению (существующий паттерн).
+- Тесты: +9 новых (spy на to_thread, settings только на products_new, compensation job, watermark, контракт без сырых полей, ensure_index_exists). Статусы в `review/findings.md` обновлены (F001–F007 FIXED, F008 WONTFIX).
+
+### PR и завершение пайплайна meilisearch-search-121 (2026-07-31)
+- Ревью итерация 2: **APPROVED** (все 7 фиксов VERIFIED, F008 WONTFIX; регрессий не найдено).
+- Полный `make test-backend` после фиксов: **534 passed, 1 skipped** (Docker).
+- PR: https://github.com/AutonomaCo/promelectron/pull/132 (9 коммитов: infra + client + jobs + API + admin + flag + tests + docs + review fixes). Issue #121 → In review.
+- Уроки записаны в `.kimi-code/LESSONS_LEARNED.md` (healthcheck 127.0.0.1; sync SDK в async job_worker + «settings никогда вживую» + компенсация partial updates после swap).
