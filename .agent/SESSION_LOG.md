@@ -1,3 +1,56 @@
+### 2026-07-31 | implement (backend-dev) | onec-attribute-loader-0731 — EXECUTE DONE, готово к ревью
+  Issue #120 (Фаза 4 эпика #117). Worktree `.worktrees/onec-attribute-loader-0731`, ветка `feature/onec-attribute-loader-0731`.
+  Что сделано (строго по PLAN.md, 4 шага = 4 коммита по чек-листу issue):
+  - Модели `Attribute` (code unique, value_type enum number/enum/bool/string, unit NULL, is_filterable default false, sort, onec_id unique NULL) и `ProductAttributeValue` (typed-колонки value_number/value_text/value_bool, option_id без FK, unique(product_id, attribute_id)) в `backend/src/app/models/attribute.py` + миграция `194ccff2a461` (autogenerate-drift вычищен до двух create_table + индексов + drop enum в downgrade; upgrade/downgrade/upgrade проверены). Таблица `attribute_options` НЕ создана (out of scope).
+  - `StorageService.download_raw(key, bucket=None) -> bytes` в Protocol + Local + Minio (FileNotFoundError на NoSuchKey/404 — единый контракт) — gap, выявленный оркестратором.
+  - Парсер единиц `onec_units.py`: «10,0мм2» → (10.0, «мм²»), запятая → точка, диапазон «1,5-2,5» → текст (без warning), «2016/2025/2032» (единица без букв) → текст, нечисловое → текст + warning-лог; KNOWN_UNITS продублирована из анализатора Фазы 3 с комментарием о синхронизации.
+  - Загрузчик `onec_intake_loader.py` + handler `ONEC_INTAKE_PROCESS` в `job_worker.py`: `download_raw` → детект формата (ZIP → CommerceML import/offers, OData JSON по odata.metadata) → upsert по `onec_id` (categories → products → attribute defs → values → prices → stock) по `docs/onec/FORMAT_MAP.md`, батчи 1000 с commit на батч; правило «активные» (IsFolder/ТипНоменклатуры≠Запас skip; DeletionMark=true → is_active=false); нормализация единиц на импорте (unit фиксируется в справочнике по первому числовому значению, D-10); цены только по `ONEC_PRICE_TYPE_KEY` + Актуальность; остатки суммой с клампом ≥ 0 (B-02); отчёт `onec_intake_log.status` = parsed/failed (+ error), счётчики в `processing_log` job'а; enqueue `SEARCH_INDEX_PRODUCTS` (handler — Фаза 5, падения Unknown job_type до неё приняты, задокументировано в коде и INTAKE_ENDPOINT.md).
+  Тесты: 4 (модели) + 5 (download_raw) + 22 (onec_units) + 13 (загрузчик: идемпотентность, DeletionMark, «10,0мм2»→10.0/мм², цены/остатки, категории с parent, CommerceML ZIP, failed-кейсы, enqueue, handler) — все зелёные в Docker; ruff чисто.
+  Коммиты: 8f9ef0f (models+migration), 8f9c29d (download_raw), 487311e (onec_units), da43df2 (loader+handler). Не запушено.
+  Отклонения от PLAN.md: (1) новый env `ONEC_PRICE_TYPE_ID` не добавлялся — использован существующий `ONEC_PRICE_TYPE_KEY` (уже в Settings и onec_client); (2) KNOWN_UNITS не перенесена из scripts/ в src/, а продублирована — анализатор загружается через importlib и не может импортировать src.app.
+  Блокеры: нет. Следующий шаг: code-reviewer → QA gate → PR. Известные ограничения: полный импорт ~100K на стенде не прогонялся (unit-тесты на фикстурах); enum-значения из `Catalog_ЗначенияСвойствОбъектов` резолвятся только в пределах одного пакета (in-run кэш), иначе GUID-строкой в value_text + warning.
+  Дополнение (review итерация 1, вердикт FIXES_NEEDED → все 7 findings FIXED, коммит 1e915c8):
+  - F001 (HIGH): `_load_cml_import`/`_load_cml_offers`/`_load_odata_stock` — батчи 1000 с commit на батч.
+  - F002 (HIGH): защита от дублей sku — pre-check конфликта (in-run + БД), занятый sku не присваивается (warning + stats.errors), poison-файл исключён; тест есть.
+  - F003 (MEDIUM): цены ≤ 0 игнорируются (B-01, warning + errors); новый товар создаётся `is_active=False` до первой валидной цены > 0; undelete — только при price > 0 (иначе reparse активировал бы товар без цены — поймано тестом F007). Тесты есть.
+  - F004: лимит распаковки ZIP 400 МБ (zip-bomb → ValueError → failed); тест есть.
+  - F005: сниффинг формата по первым 64 КБ, без полного json.loads.
+  - F006: убраны избыточные PK-индексы (`index=True` на id + 2 create_index/drop_index в миграции 194ccff2a461).
+  - F007: dirty-tracking (`cache.touched`) — SEARCH_INDEX_PRODUCTS ставится только на реально изменённые товары; reparse без изменений job не ставит (тест есть).
+  Целевые тесты 49/49 ✅, ruff чисто, миграция upgrade/downgrade/upgrade перепроверена.
+  Дополнение (review итерация 2, вердикт FIXES_NEEDED → F008/F009 FIXED, коммит e7c3de8):
+  - F008 (HIGH): O(N²) скан кэша при проверке sku заменён индексом `cache.skus` (sku → onec_id, O(1)); все записи в кэш через `_register_product`; DB-select только при промахе; переназначение sku чистит старый ключ. Тесты: конфликт с БД-товаром, освобождение ключа при смене артикула.
+  - F009 (MEDIUM): цена активирует только никогда не оценённый товар (`was_unpriced` фиксируется ДО присвоения цены — первая версия проверяла после, поймано регрессией); soft-deleted с ненулевой ценой ценой не реанимируется, восстановление — только товарным документом. Тест: DeletionMark-файл → prices-файл → is_active=False, цена обновлена.
+  Целевые тесты 21/21 ✅, ruff чисто.
+
+### 2026-07-30 | implement (backend-dev) | onec-format-analyzer-0730 — EXECUTE DONE (шаги 1–4), готово к ревью
+  Issue #119 (Фаза 3 эпика #117). Worktree `.worktrees/onec-format-analyzer-0730`, ветка `feature/onec-format-analyzer-0730`.
+  Что сделано (по PLAN.md, шаги 1–4; шаг 5 — после мёрджа PR #125):
+  - `scripts/onec_format_analyzer.py` (~700 строк, stdlib + ленивый aiobotocore, без импорта приложения): сниффинг формата (ZIP magic → OData JSON → CommerceML → unknown), рекурсивный ZIP, реестр 9 сущностей + «прочие», классификация `#Collection(StandardODATA...)` и `/@Element`, статистика полей (fill rate, distinct, примеры), счётчики «всего/активных» по D-09, анализ характеристик (джойн по GUID, типы enum/number/string/bool, top-N, numeric-кандидаты «10,0мм2» → 10.0 мм²; второй проход по Owner_Key в property_values), перекрёстные ссылки по GUID (NULL GUID = NULL, D-08), сводка остатков (сумма, кламп ≥ 0, min построчный −4), CLI `--path` | `--minio` (D-07), отчёты markdown+JSON (D-05).
+  - `backend/tests/test_onec_format_analyzer.py`: 32 self-contained теста (importlib, без БД/app-фикстур), incl. MinIO-итератор с моком aiobotocore и CLI end-to-end; module-level skip, когда scripts/ не смонтирован (docker test-backend монтирует только backend/).
+  - Прогон по мартовским сэмплам: `docs/onec/reports/2026-07-30_march-samples.md` + `.json` — 17 JSON классифицированы (в task.md упоминалось «20 файлов» — фактически в каталоге 17 JSON + metadata.xml + логи/бинарники), 5 видов цен, отрицательный остаток −4, numeric-кандидаты мм²/шт.
+  - `docs/onec/FORMAT_MAP.md` — 6 разделов, маппинг сверен с моделями `Product`/`Category`/`OnecChangeLog`; решение по видам цен (один базовый вид → products.price, GUID — env-конфиг Фазы 4); правило «активные» (D-08/D-09); CommerceML-диалект мока Фазы 7.
+  Коммиты: 7 шт (e7203dd..a809005), conventional. Не запушено.
+  Отклонения от PLAN.md: (1) код анализа характеристик вошёл в коммит шага 1 (скрипт писался целиком), коммит шага 2 несёт тесты атрибутов/ссылок; (2) два дополнительных коммита — feat (numeric-кандидаты по Owner_Key, min_row_balance) и fix (буквенная единица в кандидатах) по фактуре прогона сэмплов; (3) фактическое число JSON в сэмплах — 17, не 20.
+  Блокеры: нет. Следующий шаг: code-reviewer → QA gate → PR; шаг 5 (живой MinIO) после мёрджа PR #125.
+  Дополнение (шаг 5, после мёрджа PR #125): origin/main вмержен (3ca9fb9, конфликтов нет). Живой MinIO — контейнер `backend-minio-1` (сеть backend_default, не порт-exposed; endpoint 172.18.0.3:9000, dev-creds minioadmin из compose), бакет `onec-intake` (env `MINIO_INTAKE_BUCKET`, ключи `YYYY/MM/DD/HHmmss_<uuid4>.bin`). Прогон `--minio` → `docs/onec/reports/2026-07-30_minio-onec-intake.md/.json`: 2 ZIP-пакета CommerceML (import+offers, мок Фазы 7, по 5 товаров) — сниффинг/распаковка/роли отработали, unknown нет. OData-выгрузок живьём пока не было; дельта зафиксирована в FORMAT_MAP.md (расхождений с разделом 6 нет). Коммит 3923e61. pytest 32/32, ruff чисто. Полный `make test-backend` (docker): 414 passed, 1 skipped (skip = наш модуль, т.к. в контейнер монтируется только backend/).
+
+### 2026-07-30 | implement (backend-dev) | onec-mock-server-0730 — EXECUTE DONE, готово к ревью
+  Issue #124 (Фаза 7 эпика #117). Worktree `.worktrees/onec-mock-server-0730`, ветка `feature/onec-mock-server-0730`.
+  Что сделано (строго по PLAN.md, 8 шагов = 8 коммитов по чек-листу issue):
+  - Новый standalone-сервис `mocks/onec-server/` (FastAPI + APScheduler в одном процессе, без Celery/Redis; импортов backend нет, D-01): Dockerfile, requirements, ruff-конфиг, `Settings` по env (D-10).
+  - Виртуальный каталог в PG-схеме `onec_mock` (D-03): модели categories/attributes/products/product_attribute_values/change_log/sent_changes/scenario_runs, `CREATE SCHEMA IF NOT EXISTS` + create_all на старте (без Alembic), детерминированный seeder (CATALOG_SEED=42, 200 товаров). Схема конфигурируема env `ONEC_MOCK_SCHEMA` (тесты → `onec_mock_test`).
+  - Генератор CommerceML 2.x за интерфейсом `PackageGenerator` (D-05): валидный 2.10, `СодержитТолькоИзменения="true"`, Классификатор/Каталог/Предложения, `ПометкаУдаления` для удалённых, ZIP import.xml+offers.xml (D-02).
+  - 7 детерминированных сценариев мутаций (D-06) с журналом `scenario_runs`; ROUND_HALF_UP для цен, stock ≥ 0.
+  - Sender (D-07): httpx, заголовки по D-02, успех 200/202 → batch_id в change_log + sent_changes(success); сбой → retry backoff 1/5/15 мин (max 3/тик, sleep инъектируем), pending сохраняется; `package_zip` в sent_changes для duplicate_batch; resend_last + corrupt_checksum.
+  - API управления (D-08, без auth): POST `/trigger/`, POST `/scenario/` (422 на неизвестный), GET `/status/`, GET `/history/` (limit ≤100, offset) — trailing slash везде.
+  - Тесты: 27 pytest против Docker-PG (схема `onec_mock_test`, DROP per test), MockTransport + fake clock; Makefile `test-onec-mock`/`lint-onec-mock` (VENV из основного репо).
+  - Infra (D-09): сервис `onec-mock` в backend/docker-compose.yml (порт 8100); helm onec-mock-{deployment,service}.yaml за `onecMock.enabled` (default false; test=true, prod=false), ClusterIP, без ingress, ONEC_API_KEY ← secretKeyRef promelectron-secrets/ONEC_WEBHOOK_API_KEY; CI build/push образа `promelectron-onec-mock` в deploy.yml + `--set onecMock.image` в test-деплое; SOPS TODO дополнен; README мока, ссылка в docs/onec/HTTPService_PromElektron.md, PROJECT_CONTEXT.md, .env.example.
+  Проверки: pytest 27/27 ✅, ruff чисто ✅, `helm template` test рендерит Deployment+Service мока / prod не рендерит ✅, `docker compose config` ✅, backend/src и frontend не затронуты ✅. Не запушено.
+  Отклонения от PLAN.md: нет (в т.ч. решение по открытому вопросу — onec-mock в compose добавлен на шаге 8, тесты на хосте из venv).
+  Известные ограничения: end-to-end стыковка с intake возможна после мержа Фазы 1 (#118); ротация change_log/sent_changes — ручная (out of scope по спеке).
+  Блокеры: нет. Следующий шаг: code-reviewer → QA gate → PR.
+
 ### 2026-07-30 | implement (backend-dev) | onec-universal-intake-0720 — EXECUTE DONE, готово к ревью
   Issue #118 (Фаза 1 эпика #117). Worktree `.worktrees/onec-universal-intake-0720`, ветка `feature/onec-universal-intake-0720`.
   Что сделано (строго по PLAN.md, шаги 1–11):
@@ -3315,3 +3368,37 @@
   - PR #125 влит в `main` (squash). Issue #118 закрыт (Closes), статус на доске → Done.
   - Перед merge в main ушли: фикс пайплайна (`--limit 100` в item-list, `8206323`) и фабрика `make_settings` в conftest (`c56c168`); feature-ветка синхронизирована merge'ем (`b8bd97e`), 427 passed.
   - Follow-up: smoke-check intake на test-окружении (curl + sha256 объекта в MinIO); rate limiter на X-Forwarded-For — отдельная задача.
+
+## 2026-07-30 | onec-mock-server-0730 — smoke E2E с живым intake (Фаза 1 в main)
+
+- Ветка синхронизирована merge'ем origin/main (Фаза 1 #125), конфликтов нет.
+- Smoke: compose (postgres+minio+api+onec-mock) → `POST /scenario/` (new_products, send_now) → intake ответил **202**, ZIP (`import.xml`+`offers.xml`, CommerceML 2.10, 5 товаров/предложений) в MinIO `onec-intake`, 2 записи в `onec_intake_log`.
+- Retry сработал вживую: первый батч получил 401 дважды (несовпадение ключей), третья попытка — 202.
+- Найден и исправлен инфра-баг: сервис `api` в dev compose не получал `ONEC_WEBHOOK_API_KEY` (backend ждал placeholder `change-me`, мок слал `dev-onec-api-key`) — коммит `dca90f5`, запушено в PR #126.
+- Smoke-стек остановлен (`down -v`), пользовательский стек promelectron-* не тронут.
+
+## 2026-07-30 | onec-mock: падение деплоя в test после PR #126 — диагностика и фикс
+
+- Деплой #126 в test упал: под onec-mock CrashLoopBackOff — configmap передаёт `LOG_LEVEL=info` (lowercase), `logging.basicConfig` падал с `ValueError: Unknown level`.
+- PR #128: нормализация `log_level.upper()` в `Settings.from_env` + регрессионный тест (29/29 зелёные). Влит.
+- Вторая причина: PR #128 не триггернул deploy.yml — path-фильтр не включал `mocks/**`. PR #129 добавляет `mocks/**` в триггер.
+- Ручной деплой в test (workflow_dispatch, run 30546003516): success; под onec-mock Running; боевой `POST /scenario/` → intake test-окружения ответил **202**, 9 изменений отправлено, checksum зафиксирован.
+- Замечено: GitHub Actions artifact storage quota исчерпана (warn при upload артефактов e2e, на статус run не влияет; пересчитывается каждые 6–12 ч).
+
+## 2026-07-31 — admin-order-modal-details (только issue)
+- Создан GitHub Issue #130 «Админка: полная информация о заказе в модалке + перенос кнопок действий», добавлен на доску проекта.
+- Решения: модалка со всей информацией о заказе (позиции с фото-миниатюрами ~48px + лайтбокс, покупатель, адрес/CDEK, оплата, сумма, даты); кнопки «Подтвердить отправку»/«Отменить заказ» переносятся в модалку и убираются из таблицы; отмена — с confirm-диалогом.
+- Реализация не выполнялась (issue-only). Координационная плоскость: .agent/runs/admin-order-modal-details/
+
+### 2026-07-31 | orchestrator | onec-attribute-loader-0731 — полный пайплайн, PR открыт
+- Issue #120 (Фаза 4 эпика #117): модель атрибутов + загрузчик каталога из intake-файлов. Ветка `feature/onec-attribute-loader-0731`, worktree `.worktrees/onec-attribute-loader-0731`.
+- Спека переиспользована из ранее одобренной `catalog-meilisearch-filters-1c-0720` (D-01, D-05, D-10). План человеком одобрен; решение: `SEARCH_INDEX_PRODUCTS` ставить без handler до Фазы 5 (падения приняты, задокументированы).
+- backend-dev: 4 feat-коммита по чек-листу issue + 2 fix-коммита по ревью. Модели `Attribute`/`ProductAttributeValue` + миграция `194ccff2a461`, `download_raw` в StorageService, парсер `onec_units.py`, загрузчик `onec_intake_loader.py` + handler `ONEC_INTAKE_PROCESS`.
+- code-reviewer: 3 итерации, 9 findings (2 HIGH, 2 MEDIUM, 5 LOW) — все VERIFIED, вердикт APPROVED. Урок записан в LESSONS_LEARNED.md (фиксы ревью сами внесли HIGH/MEDIUM на итерации 2).
+- Тесты: `make test-backend` (Docker) 479 passed, 1 skipped (ожидаемый skip анализатора); lint чисто; миграция upgrade/downgrade/upgrade зелёные.
+- PR #131: https://github.com/AutonomaCo/promelectron/pull/131 — issue #120 → In review.
+- Метрики: `.agent/runs/onec-attribute-loader-0731/metrics.json`; ESTIMATED_TOKENS=11265.
+
+### 2026-07-31 | orchestrator | onec-attribute-loader-0731 — merge
+- PR #131 влит в `main` (squash) по одобрению пользователя. Issue #120 закрыт (Closes), статус на доске → Done.
+- Worktree и ветка удалены. Следующий шаг по эпику #117: Фаза 5 (#121) — Meilisearch.
