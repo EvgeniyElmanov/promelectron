@@ -1,5 +1,7 @@
 from pydantic import BaseModel, ConfigDict
 
+from src.app.models.attribute import AttributeValueType
+
 
 class AttributeOut(BaseModel):
     """Справочник характеристик (admin view, Phase 5 #121)."""
@@ -9,7 +11,7 @@ class AttributeOut(BaseModel):
     id: int
     code: str
     name: str
-    value_type: str
+    value_type: AttributeValueType
     unit: str | None
     is_filterable: bool
     sort: int
