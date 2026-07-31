@@ -49,6 +49,20 @@ BASE_FACET_META: list[dict[str, Any]] = [
     {"code": "price", "name": "Цена", "value_type": "number", "unit": None},
 ]
 
+# Only the product-card fields of the public contract (schemas/search.py,
+# review F003) — raw document fields like ``description``/``onec_id`` never
+# leave the server.
+SEARCH_HIT_ATTRIBUTES = [
+    "id",
+    "sku",
+    "name",
+    "price",
+    "stock",
+    "category_id",
+    "categories",
+    "attrs",
+]
+
 
 class SearchQueryError(ValueError):
     """Invalid search query parameters (mapped to HTTP 400)."""
@@ -291,6 +305,7 @@ async def search_products(
             "q": q or "",
             "filter": filters,
             "facets": facet_fields,
+            "attributesToRetrieve": SEARCH_HIT_ATTRIBUTES,
             "page": page,
             "hitsPerPage": hits_per_page,
             **({"sort": SORT_MAP[sort]} if sort else {}),

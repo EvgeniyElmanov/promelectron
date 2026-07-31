@@ -84,6 +84,27 @@ class TestProvisionIndex:
             search_service.provision_index(client, "products", [])
 
 
+class TestEnsureIndexExists:
+    """F002: serving index gets ensure-exists WITHOUT live settings."""
+
+    def test_creates_missing_index_without_settings(self):
+        client = MagicMock()
+        client.get_index.side_effect = MeilisearchError("index not found")
+
+        search_service.ensure_index_exists(client, "products")
+
+        client.create_index.assert_called_once_with("products", {"primaryKey": "id"})
+        client.index.assert_not_called()  # no update_settings
+
+    def test_existing_index_is_noop(self):
+        client = MagicMock()
+
+        search_service.ensure_index_exists(client, "products")
+
+        client.create_index.assert_not_called()
+        client.index.assert_not_called()
+
+
 class TestWaitForTask:
     def test_succeeded_returns(self):
         client = MagicMock()

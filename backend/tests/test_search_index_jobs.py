@@ -2,14 +2,19 @@
 
 Covers: typed attribute document build (D-10), categories denormalization
 (D-07), partial update + delete of soft-deleted (D-06), full reindex swap
-flow order (settings BEFORE documents → swap → delete old) and failure
-propagation for job retry.
+flow order (settings BEFORE documents → swap → delete old), failure
+propagation for job retry, review fixes: sync SDK calls off the event loop
+(F001), no live settings on the serving index (F002), compensation reindex
+of products changed during the swap window (F004).
 """
 
+import asyncio
+from datetime import datetime, timezone
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from sqlalchemy import select
 
 from src.app.models.attribute import (
     Attribute,
@@ -211,7 +216,7 @@ class TestSearchIndexProductsHandler:
 class TestSearchReindexFullHandler:
     async def test_swap_flow_order(self, test_session, catalog, monkeypatch):
         client = _client_mock()
-        # indexes do not exist yet → provision creates them
+        # indexes do not exist yet → ensure/provision creates them
         from meilisearch.errors import MeilisearchError
 
         client.get_index.side_effect = MeilisearchError("index not found")
@@ -241,6 +246,61 @@ class TestSearchReindexFullHandler:
         client.delete_index.assert_called_once_with("products_new")
         assert "indexed" in job.processing_log[-1]
 
+    async def test_serving_index_settings_not_touched(
+        self, test_session, catalog, monkeypatch
+    ):
+        """F002: update_settings applies ONLY to products_new; the serving
+        index gets ensure-exists (get/create) without live settings."""
+        client = _client_mock()
+        monkeypatch.setattr(job_worker, "get_meili_client", lambda: client)
+
+        job = Job(job_type="SEARCH_REINDEX_FULL", payload={})
+        test_session.add(job)
+        await test_session.commit()
+
+        await job_worker.handle_search_reindex_full(job, test_session)
+
+        # Both indexes are ensured to exist (swap fails on a missing index)
+        ensured = {c.args[0] for c in client.get_index.call_args_list}
+        assert ensured == {"products", "products_new"}
+        # Every client.index(<uid>) call (settings + documents) targets the
+        # staging index — the serving index is never touched directly
+        index_uids = {c.args[0] for c in client.index.call_args_list}
+        assert index_uids == {"products_new"}
+        client.index.return_value.update_settings.assert_called_once()
+
+    async def test_sync_sdk_calls_run_via_to_thread(
+        self, test_session, catalog, monkeypatch
+    ):
+        """F001: blocking sync SDK calls never run on the event loop."""
+        client = _client_mock()
+        monkeypatch.setattr(job_worker, "get_meili_client", lambda: client)
+
+        real_to_thread = asyncio.to_thread
+        seen: list[str] = []
+
+        async def spy(func, *args, **kwargs):
+            seen.append(repr(func))
+            return await real_to_thread(func, *args, **kwargs)
+
+        monkeypatch.setattr(asyncio, "to_thread", spy)
+
+        job = Job(job_type="SEARCH_REINDEX_FULL", payload={})
+        test_session.add(job)
+        await test_session.commit()
+
+        await job_worker.handle_search_reindex_full(job, test_session)
+
+        names = " ".join(seen)
+        for token in (
+            "ensure_index_exists",
+            "provision_index",
+            "swap_indexes",
+            "delete_index",
+            "wait_for_task",
+        ):
+            assert token in names, f"{token} was not dispatched via asyncio.to_thread"
+
     async def test_failed_task_aborts_before_swap(
         self, test_session, catalog, monkeypatch
     ):
@@ -256,3 +316,78 @@ class TestSearchReindexFullHandler:
 
         client.swap_indexes.assert_not_called()
         client.delete_index.assert_not_called()
+
+    async def test_no_compensation_job_when_nothing_changed(
+        self, test_session, catalog, monkeypatch
+    ):
+        """F004: no products changed during reindex → no compensation job."""
+        client = _client_mock()
+        monkeypatch.setattr(job_worker, "get_meili_client", lambda: client)
+
+        job = Job(job_type="SEARCH_REINDEX_FULL", payload={})
+        test_session.add(job)
+        await test_session.commit()
+
+        await job_worker.handle_search_reindex_full(job, test_session)
+
+        result = await test_session.execute(
+            select(Job).where(Job.job_type == "SEARCH_INDEX_PRODUCTS")
+        )
+        assert result.scalars().all() == []
+        assert "reindexed_after_swap" not in job.processing_log[-1]
+
+    async def test_compensation_job_for_products_changed_during_reindex(
+        self, test_session, catalog, monkeypatch
+    ):
+        """F004: a product updated while the swap-reindex ran is re-enqueued
+        for partial indexing after the swap (watermark = updated_at)."""
+        client = _client_mock()
+        monkeypatch.setattr(job_worker, "get_meili_client", lambda: client)
+
+        real_reindex_full = job_worker.reindex_full
+
+        async def reindex_and_touch(db, client_arg, **kwargs):
+            # Simulate a 1C partial update landing mid-reindex
+            catalog.product.price = 999.0
+            await db.flush()
+            return await real_reindex_full(db, client_arg, **kwargs)
+
+        monkeypatch.setattr(job_worker, "reindex_full", reindex_and_touch)
+
+        job = Job(job_type="SEARCH_REINDEX_FULL", payload={})
+        test_session.add(job)
+        await test_session.commit()
+
+        await job_worker.handle_search_reindex_full(job, test_session)
+
+        result = await test_session.execute(
+            select(Job).where(Job.job_type == "SEARCH_INDEX_PRODUCTS")
+        )
+        compensation = result.scalars().all()
+        assert len(compensation) == 1
+        assert compensation[0].payload["product_ids"] == [catalog.product.id]
+        assert "'reindexed_after_swap': 1" in job.processing_log[-1]
+
+
+class TestFindProductsUpdatedSince:
+    async def test_watermark_filters_old_rows(self, test_session, catalog):
+        watermark = datetime.now(timezone.utc)
+        catalog.product.price = 500.0
+        await test_session.flush()
+
+        ids = await search_indexing.find_products_updated_since(
+            test_session, watermark
+        )
+        assert ids == [catalog.product.id]
+
+    async def test_includes_soft_deleted(self, test_session, catalog):
+        watermark = datetime.now(timezone.utc)
+        catalog.deleted.stock = 5
+        await test_session.flush()
+
+        ids = await search_indexing.find_products_updated_since(
+            test_session, watermark
+        )
+        # soft-deleted products are included — the partial handler routes
+        # them to delete-batch
+        assert catalog.deleted.id in ids

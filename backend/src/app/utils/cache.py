@@ -8,7 +8,7 @@ from fastapi.encoders import jsonable_encoder
 from src.app.core.redis_client import redis_client
 
 
-def _build_cache_key(request: Request) -> str:
+def build_cache_key(request: Request) -> str:
     path = request.url.path
     query = str(request.query_params)
     if query:
@@ -31,7 +31,7 @@ def cache_response(ttl_seconds: int):
             if request is None:
                 return await func(*args, **kwargs)
 
-            cache_key = _build_cache_key(request)
+            cache_key = build_cache_key(request)
 
             try:
                 cached = await redis_client.get(cache_key)

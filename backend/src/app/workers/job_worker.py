@@ -25,6 +25,7 @@ from src.app.services.onec_sync_service import (
 from src.app.services.search_indexing import (
     build_product_documents,
     delete_products,
+    find_products_updated_since,
     index_products_partial,
     reindex_full,
 )
@@ -184,7 +185,23 @@ async def handle_search_reindex_full(job: Job, db: AsyncSession) -> None:
         seconds=settings.search_reindex_timeout_seconds
     )
     client = await asyncio.to_thread(get_meili_client)
+    # Watermark for the F004 compensation below: partial updates that land in
+    # the serving index during the reindex are lost after the swap.
+    started_at = datetime.now(timezone.utc)
     stats = await reindex_full(db, client)
+
+    # Compensation (review F004): re-enqueue products changed since the
+    # reindex start so their partial updates are re-applied to the NEW index.
+    # Watermark = products.updated_at (onupdate on every write path, D-06).
+    changed_ids = await find_products_updated_since(db, started_at)
+    if changed_ids:
+        db.add(
+            Job(
+                job_type="SEARCH_INDEX_PRODUCTS",
+                payload={"product_ids": changed_ids},
+            )
+        )
+        stats["reindexed_after_swap"] = len(changed_ids)
     job.processing_log.append(f"search reindex full: {stats}"[:500])
 
 

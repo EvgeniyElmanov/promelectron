@@ -15,6 +15,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections.abc import Iterable
+from datetime import datetime
 from typing import Any
 
 import meilisearch
@@ -27,6 +28,7 @@ from src.app.models.product import Product
 from src.app.services.search_service import (
     PRODUCTS_INDEX,
     PRODUCTS_INDEX_NEW,
+    ensure_index_exists,
     get_filterable_attr_codes,
     provision_index,
     wait_for_task,
@@ -185,6 +187,22 @@ def delete_products(
     return len(ids)
 
 
+async def find_products_updated_since(db: AsyncSession, since: datetime) -> list[int]:
+    """Ids of products whose row changed at or after ``since`` (watermark).
+
+    Compensation for partial updates lost during a swap-reindex (review F004):
+    every write path (1C webhook/intake apply, admin edits) updates the
+    ``products`` row, and ``updated_at`` has an ``onupdate`` trigger, so this
+    watermark catches exactly the products whose partial update may have
+    landed in the pre-swap index. Inactive products are included — the
+    partial handler routes them to delete-batch.
+    """
+    result = await db.execute(
+        select(Product.id).where(Product.updated_at >= since).order_by(Product.id)
+    )
+    return [row[0] for row in result.all()]
+
+
 async def reindex_full(
     db: AsyncSession,
     client: meilisearch.Client,
@@ -192,18 +210,24 @@ async def reindex_full(
 ) -> dict[str, int]:
     """Zero-downtime full reindex via swap indexes (D-06).
 
-    Flow: provision settings in ``products_new`` (BEFORE any documents) →
-    load all active products in batches → ``POST /swap-indexes`` (atomic) →
-    delete the old index content (``products_new`` after the swap). A failed
-    task raises and aborts the flow BEFORE the swap, so the serving index is
-    never touched by a broken build; the job worker retries the job.
+    Flow: ensure the serving index exists (settings NOT touched — D-06) →
+    provision settings in ``products_new`` (BEFORE any documents) → load all
+    active products in batches → ``POST /swap-indexes`` (atomic) → delete the
+    old index content (``products_new`` after the swap). A failed task raises
+    and aborts the flow BEFORE the swap, so the serving index is never touched
+    by a broken build; the job worker retries the job.
+
+    All sync Meilisearch SDK calls run via ``asyncio.to_thread`` so the job
+    worker event loop (shared with CDEK/payments/intake jobs) is never
+    blocked for the duration of a reindex (review F001).
     """
     filterable_codes = await get_filterable_attr_codes(db)
 
-    # Ensure both indexes exist before swap (swap fails on a missing index)
-    # and apply settings to products_new BEFORE documents.
-    provision_index(client, PRODUCTS_INDEX, filterable_codes)
-    provision_index(client, PRODUCTS_INDEX_NEW, filterable_codes)
+    # Ensure both indexes exist before swap (swap fails on a missing index).
+    # Settings are applied ONLY to products_new BEFORE documents — never
+    # "live" on the serving index (review F002, spec Risks).
+    await asyncio.to_thread(ensure_index_exists, client, PRODUCTS_INDEX)
+    await asyncio.to_thread(provision_index, client, PRODUCTS_INDEX_NEW, filterable_codes)
 
     indexed = 0
     last_id = 0
@@ -222,14 +246,14 @@ async def reindex_full(
         last_id = batch_ids[-1]
 
     # Atomic swap: serving index keeps working during the whole build (D-06).
-    swap_task = client.swap_indexes(
-        [{"indexes": [PRODUCTS_INDEX, PRODUCTS_INDEX_NEW]}]
+    swap_task = await asyncio.to_thread(
+        client.swap_indexes, [{"indexes": [PRODUCTS_INDEX, PRODUCTS_INDEX_NEW]}]
     )
-    wait_for_task(client, swap_task.task_uid)
+    await asyncio.to_thread(wait_for_task, client, swap_task.task_uid)
 
     # After the swap, ``products_new`` holds the OLD index — drop it.
-    delete_task = client.delete_index(PRODUCTS_INDEX_NEW)
-    wait_for_task(client, delete_task.task_uid)
+    delete_task = await asyncio.to_thread(client.delete_index, PRODUCTS_INDEX_NEW)
+    await asyncio.to_thread(wait_for_task, client, delete_task.task_uid)
 
     return {"indexed": indexed}
 

@@ -19,10 +19,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.app.core.redis_client import redis_client
 from src.app.db.database import get_db
+from src.app.schemas.search import SearchResponse
 from src.app.services import feature_flags, search_query
 from src.app.services.search_query import SearchQueryError
 from src.app.services.search_service import SearchUnavailableError
-from src.app.utils.cache import _build_cache_key, cache_response
+from src.app.utils.cache import build_cache_key, cache_response
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +38,11 @@ async def require_search_flag() -> None:
         raise HTTPException(status_code=404, detail="Not Found")
 
 
-@router.get("/", dependencies=[Depends(require_search_flag)])
+@router.get(
+    "/",
+    dependencies=[Depends(require_search_flag)],
+    response_model=SearchResponse,
+)
 async def search_products(
     request: Request,
     q: str | None = None,
@@ -50,7 +55,7 @@ async def search_products(
     db: AsyncSession = Depends(get_db),
 ):
     """Catalog search with facets (OR inside a group / AND between groups)."""
-    cache_key = _build_cache_key(request)
+    cache_key = build_cache_key(request)
     try:
         cached = await redis_client.get(cache_key)
         if cached is not None:

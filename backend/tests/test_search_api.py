@@ -6,7 +6,6 @@ multi-search, range filters, feature-flag gating, caching, trailing slash,
 admin guards and idempotent reindex.
 """
 
-from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -120,6 +119,31 @@ class TestSearchEndpoint:
         assert facets["cross_section_mm2"]["stats"] == {"min": 0.5, "max": 10.0}
         assert facets["color"]["values"] == [{"value": "чёрный", "count": 1}]
         assert "internal_note" not in facets
+        # F003: only product-card fields are retrieved from Meilisearch
+        assert queries[0]["attributesToRetrieve"] == [
+            "id", "sku", "name", "price", "stock", "category_id",
+            "categories", "attrs",
+        ]
+
+    async def test_raw_document_fields_stay_on_server(
+        self, client, search_attributes, flag_on, monkeypatch
+    ):
+        """F003: stable contract — raw Meilisearch fields are not exposed."""
+        payload = _multi_search_payload()
+        payload["results"][0]["hits"][0].update(
+            {"description": "служебное описание", "onec_id": "guid-123"}
+        )
+        _mock_multi_search(monkeypatch, payload)
+        response = await client.get("/api/v1/search/", params={"q": "кабель"})
+        assert response.status_code == 200
+        item = response.json()["items"][0]
+        assert item["name"] == "Кабель USB-C 1м"
+        assert "description" not in item
+        assert "onec_id" not in item
+        assert set(item) == {
+            "id", "sku", "name", "price", "stock", "category_id",
+            "categories", "attrs",
+        }
 
     async def test_numeric_attr_filter_unquoted(
         self, client, search_attributes, flag_on, monkeypatch

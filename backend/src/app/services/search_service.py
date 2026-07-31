@@ -134,6 +134,21 @@ async def get_filterable_attr_codes(db: AsyncSession) -> list[str]:
     return [row[0] for row in result.all()]
 
 
+def ensure_index_exists(client: meilisearch.Client, index_uid: str) -> None:
+    """Create the index if missing — WITHOUT touching settings.
+
+    Used for the serving index in the swap-reindex flow: the swap fails on a
+    missing index, but applying settings "live" to the serving index would
+    trigger a full reindexing in Meilisearch outside swap control (D-06,
+    spec Risks). Settings are applied only to ``products_new`` via
+    ``provision_index``.
+    """
+    try:
+        client.get_index(index_uid)
+    except MeilisearchError:
+        client.create_index(index_uid, {"primaryKey": PRIMARY_KEY})
+
+
 def provision_index(
     client: meilisearch.Client,
     index_uid: str,
@@ -141,14 +156,11 @@ def provision_index(
 ) -> None:
     """Create the index if missing and apply settings BEFORE documents (D-06).
 
-    Called only from the swap-reindex flow — settings are never changed
-    "live" on the serving index (spec Risks: filterableAttributes growth
-    triggers reindexing in Meilisearch).
+    Called only on the staging index (``products_new``) in the swap-reindex
+    flow — settings are never changed "live" on the serving index (spec
+    Risks: filterableAttributes growth triggers reindexing in Meilisearch).
     """
-    try:
-        client.get_index(index_uid)
-    except MeilisearchError:
-        client.create_index(index_uid, {"primaryKey": PRIMARY_KEY})
+    ensure_index_exists(client, index_uid)
     task = client.index(index_uid).update_settings(
         index_settings(filterable_attr_codes)
     )
