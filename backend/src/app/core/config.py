@@ -68,8 +68,6 @@ class Settings:
     cdek_terminal_statuses: frozenset[str]
     job_worker_sleep_seconds: int
     job_max_attempts: int
-    meilisearch_url: str | None
-    meilisearch_master_key: str | None
     search_reindex_timeout_seconds: int
 
 
@@ -213,8 +211,6 @@ settings = Settings(
     ),
     job_worker_sleep_seconds=_parse_int_env("JOB_WORKER_SLEEP_SECONDS", 60),
     job_max_attempts=_parse_int_env("JOB_MAX_ATTEMPTS", 5),
-    meilisearch_url=os.getenv("MEILISEARCH_URL") or None,
-    meilisearch_master_key=os.getenv("MEILISEARCH_MASTER_KEY") or None,
     search_reindex_timeout_seconds=_parse_int_env("SEARCH_REINDEX_TIMEOUT_SECONDS", 3600),
 )
 
