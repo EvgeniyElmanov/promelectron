@@ -42,6 +42,8 @@ class Settings:
     minio_bucket: str
     minio_intake_bucket: str
     minio_secure: bool
+    meilisearch_url: str | None
+    meilisearch_master_key: str | None
     onec_api_url: str | None
     onec_login: str | None
     onec_password: str | None
@@ -66,6 +68,9 @@ class Settings:
     cdek_terminal_statuses: frozenset[str]
     job_worker_sleep_seconds: int
     job_max_attempts: int
+    meilisearch_url: str | None
+    meilisearch_master_key: str | None
+    search_reindex_timeout_seconds: int
 
 
 def _parse_int_env(name: str, default: int) -> int:
@@ -177,6 +182,10 @@ settings = Settings(
     minio_bucket=os.getenv("MINIO_BUCKET", "promelectron-uploads"),
     minio_intake_bucket=os.getenv("MINIO_INTAKE_BUCKET", "onec-intake"),
     minio_secure=os.getenv("MINIO_SECURE", "true").lower() == "true",
+    # Meilisearch включается feature flag `catalog_search_meilisearch`; до внедрения
+    # клиента поля опциональны (None = поиск недоступен, backend стартует).
+    meilisearch_url=os.getenv("MEILISEARCH_URL"),
+    meilisearch_master_key=os.getenv("MEILISEARCH_MASTER_KEY"),
     onec_api_url=os.getenv("ONEC_API_URL"),
     onec_login=os.getenv("ONEC_LOGIN"),
     onec_password=os.getenv("ONEC_PASSWORD"),
@@ -204,6 +213,9 @@ settings = Settings(
     ),
     job_worker_sleep_seconds=_parse_int_env("JOB_WORKER_SLEEP_SECONDS", 60),
     job_max_attempts=_parse_int_env("JOB_MAX_ATTEMPTS", 5),
+    meilisearch_url=os.getenv("MEILISEARCH_URL") or None,
+    meilisearch_master_key=os.getenv("MEILISEARCH_MASTER_KEY") or None,
+    search_reindex_timeout_seconds=_parse_int_env("SEARCH_REINDEX_TIMEOUT_SECONDS", 3600),
 )
 
 SECRET_KEY = settings.secret_key

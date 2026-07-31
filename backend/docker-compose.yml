@@ -39,6 +39,22 @@ services:
     volumes:
       - minio_data:/data
 
+  meilisearch:
+    image: getmeili/meilisearch:v1.50
+    ports:
+      - "7700:7700"
+    environment:
+      MEILI_MASTER_KEY: ${MEILISEARCH_MASTER_KEY:-dev-meili-master-key-change-in-prod}
+      MEILI_ENV: development
+      MEILI_NO_ANALYTICS: "true"
+    volumes:
+      - meilisearch_data:/meili_data
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:7700/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
 
   api:
     build:
@@ -86,6 +102,8 @@ services:
       CDEK_TEST_MODE: ${CDEK_TEST_MODE:-true}
       # Ключ intake/webhook 1С; в dev совпадает с дефолтом onec-mock (см. сервис onec-mock ниже).
       ONEC_WEBHOOK_API_KEY: ${ONEC_WEBHOOK_API_KEY:-dev-onec-api-key}
+      MEILISEARCH_URL: http://meilisearch:7700
+      MEILISEARCH_MASTER_KEY: ${MEILISEARCH_MASTER_KEY:-dev-meili-master-key-change-in-prod}
     volumes:
       - .:/app
     depends_on:
@@ -95,6 +113,8 @@ services:
         condition: service_healthy
       minio:
         condition: service_started
+      meilisearch:
+        condition: service_healthy
     command: uvicorn src.app.main:app --host 0.0.0.0 --port 8000 --reload
 
   job-worker:
@@ -141,12 +161,16 @@ services:
       CDEK_TERMINAL_STATUSES: ${CDEK_TERMINAL_STATUSES:-DELIVERED,NOT_DELIVERED,RETURNED,CANCELLED}
       JOB_WORKER_SLEEP_SECONDS: ${JOB_WORKER_SLEEP_SECONDS:-60}
       JOB_MAX_ATTEMPTS: ${JOB_MAX_ATTEMPTS:-5}
+      MEILISEARCH_URL: http://meilisearch:7700
+      MEILISEARCH_MASTER_KEY: ${MEILISEARCH_MASTER_KEY:-dev-meili-master-key-change-in-prod}
     volumes:
       - .:/app
     depends_on:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      meilisearch:
         condition: service_healthy
     command: python -m src.app.workers.job_worker
     restart: unless-stopped
@@ -178,3 +202,4 @@ volumes:
   postgres_data:
   redis_data:
   minio_data:
+  meilisearch_data:
