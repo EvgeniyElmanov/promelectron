@@ -17,6 +17,7 @@ from src.app.models.order import Order
 from src.app.services.cdek_client import CdekAPIError, CdekClient
 from src.app.services.cdek_service import CdekService
 from src.app.services.email_service import EmailService
+from src.app.services.onec_intake_loader import process_intake
 from src.app.services.onec_sync_service import handle_onec_apply_changes, run_onec_full_sync
 
 logger = logging.getLogger(__name__)
@@ -127,12 +128,28 @@ async def handle_onec_full_sync_job(job: Job, db: AsyncSession) -> None:
     await run_onec_full_sync(db, default_supplier_id=settings.onec_default_supplier_id)
 
 
+async def handle_onec_intake_process_job(job: Job, db: AsyncSession) -> None:
+    """Parse a raw 1C intake file from MinIO and upsert it into the catalog.
+
+    The loader enqueues SEARCH_INDEX_PRODUCTS jobs for touched products.
+    NB: the SEARCH_INDEX_PRODUCTS handler itself lands in Phase 5 (epic #117);
+    until then those jobs fail with "Unknown job_type" — accepted behavior
+    (decision for #120, 2026-07-31).
+    """
+    intake_id = job.payload.get("intake_id")
+    if not intake_id:
+        raise ValueError("ONEC_INTAKE_PROCESS job missing intake_id")
+    stats = await process_intake(db, intake_id)
+    job.processing_log.append(f"intake {intake_id}: {stats.summary()}"[:500])
+
+
 HANDLERS: dict[str, Callable[[Job, AsyncSession], Awaitable[None]]] = {
     "CDEK_CREATE_ORDER": handle_cdek_create_order,
     "CDEK_SYNC_ORDER_STATUS": handle_cdek_sync_status,
     "SEND_EMAIL": handle_send_email,
     "ONEC_APPLY_CHANGES": handle_onec_apply_changes_job,
     "ONEC_FULL_SYNC": handle_onec_full_sync_job,
+    "ONEC_INTAKE_PROCESS": handle_onec_intake_process_job,
 }
 
 

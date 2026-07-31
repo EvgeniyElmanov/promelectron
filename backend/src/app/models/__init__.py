@@ -1,3 +1,6 @@
+from .attribute import Attribute as Attribute
+from .attribute import AttributeValueType as AttributeValueType
+from .attribute import ProductAttributeValue as ProductAttributeValue
 from .cart import Cart as Cart, CartItem as CartItem
 from .category import Category as Category
 from .cdek_order import CdekOrder as CdekOrder, CdekStatusHistory as CdekStatusHistory
@@ -20,6 +23,8 @@ from .user import User as User
 from .user import UserAddress as UserAddress
 
 __all__ = [
+    "Attribute",
+    "AttributeValueType",
     "Cart",
     "CartItem",
     "Category",
@@ -37,6 +42,7 @@ __all__ = [
     "Payment",
     "PasswordResetToken",
     "Product",
+    "ProductAttributeValue",
     "Recipient",
     "Review",
     "SocialAccount",

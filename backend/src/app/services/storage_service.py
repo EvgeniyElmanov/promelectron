@@ -19,6 +19,9 @@ class StorageService(Protocol):
     ) -> str:
         ...
 
+    async def download_raw(self, key: str, bucket: str | None = None) -> bytes:
+        ...
+
     async def upload_image(self, key: str, file: UploadFile, content: bytes | None = None) -> dict:
         ...
 
@@ -60,6 +63,20 @@ class LocalStorageService:
         with open(filepath, "wb") as buffer:
             shutil.copyfileobj(data, buffer, length=1024 * 1024)
         return f"/uploads/{key}"
+
+    async def download_raw(self, key: str, bucket: str | None = None) -> bytes:
+        """Read a raw object back from local storage.
+
+        Raises FileNotFoundError when the object does not exist (same
+        contract as MinioStorageService.download_raw).
+        """
+        if bucket:
+            key = f"{bucket}/{key}"
+        filepath = os.path.join("uploads", key)
+        if not os.path.exists(filepath):
+            raise FileNotFoundError(f"Object not found in local storage: {key}")
+        with open(filepath, "rb") as buffer:
+            return buffer.read()
 
     async def upload_image(self, key: str, file: UploadFile, content: bytes | None = None) -> dict:
         if content is None:
@@ -184,6 +201,34 @@ class MinioStorageService:
                 ContentType=content_type,
             )
         return self.get_url(key, bucket=bucket)
+
+    async def download_raw(self, key: str, bucket: str | None = None) -> bytes:
+        """Read a raw object back from MinIO.
+
+        Raises FileNotFoundError when the object does not exist (same
+        contract as LocalStorageService.download_raw). Returns the whole
+        body as bytes: intake files are capped at 100 MB and the parser
+        materializes them anyway.
+        """
+        bucket = bucket or self.bucket
+        async with self.session.create_client(
+            "s3",
+            endpoint_url=self.endpoint,
+            aws_access_key_id=self.access_key,
+            aws_secret_access_key=self.secret_key,
+            use_ssl=self.secure,
+        ) as client:
+            try:
+                response = await client.get_object(Bucket=bucket, Key=key)
+            except Exception as exc:
+                error_code = getattr(exc, "response", {}).get("Error", {}).get("Code")
+                if error_code in ("NoSuchKey", "NoSuchBucket", "404"):
+                    raise FileNotFoundError(
+                        f"Object not found in MinIO: {bucket}/{key}"
+                    ) from exc
+                raise
+            async with response["Body"] as stream:
+                return await stream.read()
 
     async def upload_image(self, key: str, file: UploadFile, content: bytes | None = None) -> dict:
         if content is None:
