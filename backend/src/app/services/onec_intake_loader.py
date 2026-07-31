@@ -990,9 +990,7 @@ async def process_intake(session: AsyncSession, intake_id: str) -> LoadStats:
 
         # Постановка job SEARCH_INDEX_PRODUCTS на реально изменённые товары
         # (F007: идемпотентный reparse без изменений job не ставит).
-        # NB: handler для SEARCH_INDEX_PRODUCTS появится в Фазе 5 (эпик #117);
-        # до тех пор такие job'ы будут падать с "Unknown job_type" — это
-        # осознанно принятое поведение (решение по #120, 2026-07-31).
+        # Handler — ``handle_search_index_products`` в job_worker (Фаза 5, #121).
         touched_ids = [p.id for p in cache.touched if p.id is not None]
         if touched_ids:
             session.add(

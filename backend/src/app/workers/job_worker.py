@@ -18,7 +18,18 @@ from src.app.services.cdek_client import CdekAPIError, CdekClient
 from src.app.services.cdek_service import CdekService
 from src.app.services.email_service import EmailService
 from src.app.services.onec_intake_loader import process_intake
-from src.app.services.onec_sync_service import handle_onec_apply_changes, run_onec_full_sync
+from src.app.services.onec_sync_service import (
+    handle_onec_apply_changes,
+    run_onec_full_sync,
+)
+from src.app.services.search_indexing import (
+    build_product_documents,
+    delete_products,
+    find_products_updated_since,
+    index_products_partial,
+    reindex_full,
+)
+from src.app.services.search_service import get_meili_client
 
 logger = logging.getLogger(__name__)
 
@@ -131,16 +142,67 @@ async def handle_onec_full_sync_job(job: Job, db: AsyncSession) -> None:
 async def handle_onec_intake_process_job(job: Job, db: AsyncSession) -> None:
     """Parse a raw 1C intake file from MinIO and upsert it into the catalog.
 
-    The loader enqueues SEARCH_INDEX_PRODUCTS jobs for touched products.
-    NB: the SEARCH_INDEX_PRODUCTS handler itself lands in Phase 5 (epic #117);
-    until then those jobs fail with "Unknown job_type" — accepted behavior
-    (decision for #120, 2026-07-31).
+    The loader enqueues SEARCH_INDEX_PRODUCTS jobs for touched products;
+    those are handled by ``handle_search_index_products`` (Phase 5, #121).
     """
     intake_id = job.payload.get("intake_id")
     if not intake_id:
         raise ValueError("ONEC_INTAKE_PROCESS job missing intake_id")
     stats = await process_intake(db, intake_id)
     job.processing_log.append(f"intake {intake_id}: {stats.summary()}"[:500])
+
+
+async def handle_search_index_products(job: Job, db: AsyncSession) -> None:
+    """Partial reindex of changed products (Phase 5, D-06).
+
+    Payload: ``{"product_ids": [...], "deleted_ids": [...]?}``. Active
+    products are upserted in batches of ~1000; soft-deleted/missing ones go
+    to delete-batch. Sync Meilisearch calls run via ``asyncio.to_thread`` so
+    the worker event loop stays responsive (D-04).
+    """
+    product_ids = job.payload.get("product_ids") or []
+    deleted_ids = job.payload.get("deleted_ids") or []
+    if not product_ids and not deleted_ids:
+        job.processing_log.append("search index: empty payload, nothing to do")
+        return
+
+    client = await asyncio.to_thread(get_meili_client)
+    documents, gone_ids = await build_product_documents(db, product_ids)
+    to_delete = sorted(set(deleted_ids) | set(gone_ids))
+
+    indexed = await asyncio.to_thread(index_products_partial, client, documents)
+    deleted = await asyncio.to_thread(delete_products, client, to_delete)
+    job.processing_log.append(f"search index: indexed={indexed} deleted={deleted}"[:500])
+
+
+async def handle_search_reindex_full(job: Job, db: AsyncSession) -> None:
+    """Full zero-downtime reindex via swap indexes (Phase 5, D-06).
+
+    Long-running: the default job timeout (2 * worker sleep) is too short
+    for 10–100K SKU, so extend it for the duration of the reindex (PLAN R6).
+    """
+    job.timeout = datetime.now(timezone.utc) + timedelta(
+        seconds=settings.search_reindex_timeout_seconds
+    )
+    client = await asyncio.to_thread(get_meili_client)
+    # Watermark for the F004 compensation below: partial updates that land in
+    # the serving index during the reindex are lost after the swap.
+    started_at = datetime.now(timezone.utc)
+    stats = await reindex_full(db, client)
+
+    # Compensation (review F004): re-enqueue products changed since the
+    # reindex start so their partial updates are re-applied to the NEW index.
+    # Watermark = products.updated_at (onupdate on every write path, D-06).
+    changed_ids = await find_products_updated_since(db, started_at)
+    if changed_ids:
+        db.add(
+            Job(
+                job_type="SEARCH_INDEX_PRODUCTS",
+                payload={"product_ids": changed_ids},
+            )
+        )
+        stats["reindexed_after_swap"] = len(changed_ids)
+    job.processing_log.append(f"search reindex full: {stats}"[:500])
 
 
 HANDLERS: dict[str, Callable[[Job, AsyncSession], Awaitable[None]]] = {
@@ -150,6 +212,8 @@ HANDLERS: dict[str, Callable[[Job, AsyncSession], Awaitable[None]]] = {
     "ONEC_APPLY_CHANGES": handle_onec_apply_changes_job,
     "ONEC_FULL_SYNC": handle_onec_full_sync_job,
     "ONEC_INTAKE_PROCESS": handle_onec_intake_process_job,
+    "SEARCH_INDEX_PRODUCTS": handle_search_index_products,
+    "SEARCH_REINDEX_FULL": handle_search_reindex_full,
 }
 
 
