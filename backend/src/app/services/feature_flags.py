@@ -15,7 +15,7 @@ logger = getLogger(__name__)
 
 # Зарегистрированные фичатоглы проекта.
 # Добавляй сюда новые тоглы, чтобы они появлялись в админке.
-KNOWN_FEATURE_FLAGS = ["google_oauth"]
+KNOWN_FEATURE_FLAGS = ["google_oauth", "catalog_search_meilisearch"]
 
 
 async def is_enabled(flag: str, default: bool = False) -> bool:

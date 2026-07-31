@@ -69,6 +69,7 @@ class Settings:
     job_worker_sleep_seconds: int
     job_max_attempts: int
     search_reindex_timeout_seconds: int
+    catalog_search_meilisearch_enabled: bool
 
 
 def _parse_int_env(name: str, default: int) -> int:
@@ -212,6 +213,10 @@ settings = Settings(
     job_worker_sleep_seconds=_parse_int_env("JOB_WORKER_SLEEP_SECONDS", 60),
     job_max_attempts=_parse_int_env("JOB_MAX_ATTEMPTS", 5),
     search_reindex_timeout_seconds=_parse_int_env("SEARCH_REINDEX_TIMEOUT_SECONDS", 3600),
+    catalog_search_meilisearch_enabled=os.getenv(
+        "CATALOG_SEARCH_MEILISEARCH_ENABLED", "false"
+    ).lower()
+    == "true",
 )
 
 SECRET_KEY = settings.secret_key
