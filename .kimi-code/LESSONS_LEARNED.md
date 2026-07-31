@@ -204,3 +204,27 @@ Backend-под уходил в CrashLoopBackOff при деплое в `promelec
 **Решение:** индекс `cache.skus: dict[str, str]` (O(1) проверка) + активация ценой только «ещё неоценённого» товара (`was_unpriced` до присвоения).
 
 **Профилактика:** каждый фикс ревью проверять двумя вопросами: «как это масштабируется на 100K?» и «что произойдёт на границе прогонов (in-run кэш vs состояние в БД)?»; reviewer на итерациях >1 обязан делать инкрементальное ревью именно фиксов, а не только верификацию.
+
+---
+
+## 2026-07-31 | meilisearch-search-121: healthcheck `localhost` в compose блокирует тесты
+
+**Ошибка:** healthcheck сервиса `meilisearch` в `backend/docker-compose.yml` использовал `localhost:7700/health` — внутри контейнера `localhost` резолвится в `::1`, Meilisearch слушает только IPv4 → `connection refused`, контейнер `unhealthy`, `make test-backend` и `depends_on: service_healthy` блокировались.
+
+**Причина:** wget в alpine-образе Meilisearch по умолчанию идёт на IPv6-loopback.
+
+**Решение:** `127.0.0.1` вместо `localhost` в healthcheck.
+
+**Профилактика:** в healthcheck'ах compose всегда использовать `127.0.0.1`, не `localhost`; после добавления нового сервиса с `depends_on: service_healthy` — прогон `docker compose up` с холодного старта (первый запуск образа может не уложиться в окно healthcheck).
+
+---
+
+## 2026-07-31 | meilisearch-search-121: swap-reindex «вживую» + блокировка event loop job_worker
+
+**Ошибка:** первая реализация `reindex_full` (а) применяла `update_settings` к живому обслуживающему индексу (нарушение D-06 «никогда вживую» — лишняя полная переиндексация прямо перед swap) и (б) вызывала sync Meilisearch SDK прямо в async-функции — event loop job_worker вставал на весь reindex, стопоря CDEK/платежи/intake.
+
+**Причина:** sync SDK выбран осознанно (D-04), но граница sync/async не была проведена явно: async-обёртка написана «снаружи», а длинная цепочка вызовов внутри осталась блокирующей; ensure-index и provision-settings слиплись в одну функцию.
+
+**Решение:** `ensure_index_exists` (get/create, без settings) для serving-индекса отдельно от `provision_index` (settings — только на `products_new`); все sync-вызовы в `reindex_full` через `asyncio.to_thread` + регрессионный тест со spy на `to_thread`.
+
+**Профилактика:** правило «sync SDK в async-коде = каждый вызов через `to_thread`, включая poll-циклы со sleep»; любой код, меняющий index settings, по умолчанию подозрителен на «вживую» — settings только на новом индексе перед swap; partial updates, пришедшие во время reindex, требуют компенсации (watermark + повторный enqueue после swap) — закладывать сразу в дизайн swap-flow.
