@@ -47,7 +47,7 @@ export interface PopularCategory {
 export interface MiniProduct {
   id: number;
   name: string;
-  price: number;
+  price?: number;
   image?: string;
 }
 
@@ -100,6 +100,28 @@ function mapProductItem(item: any): MiniProduct {
     price: item.price,
     image: item.images?.[0] || item.image || undefined,
   };
+}
+
+/**
+ * D-06 (issue #122): backend Фазы 5 отдаёт `/search/suggestions/` в форме
+ * `{suggestions: [{type: "product", id, name}]}` (без price/image, без
+ * queries/categories/brands) и возвращает 200 — fallback по catch не сработает.
+ * Принимаем обе формы: новую маппим в `Suggestions` (price/image опциональны,
+ * SearchBar рендерит их под v-if), старую (`{queries, categories, brands,
+ * products}`) — как есть. Обогащение suggestions — backend follow-up.
+ */
+function normalizeSuggestions(data: any): Suggestions {
+  if (data && Array.isArray(data.suggestions)) {
+    return {
+      queries: [],
+      categories: [],
+      brands: [],
+      products: data.suggestions
+        .filter((s: any) => s && s.type === 'product')
+        .map((s: any) => ({ id: s.id, name: s.name })),
+    };
+  }
+  return data as Suggestions;
 }
 
 export function useSearchSuggestions() {
@@ -166,8 +188,8 @@ export function useSearchSuggestions() {
       const { data } = await api.get<Suggestions>('/search/suggestions/', {
         params: { q: q.trim() },
       });
-      suggestions.value = data;
-      setCached(key, data);
+      suggestions.value = normalizeSuggestions(data);
+      setCached(key, suggestions.value);
     } catch (err: any) {
       // Fallback to existing /products/ API when search endpoints are not ready
       try {

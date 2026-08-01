@@ -177,6 +177,28 @@ describe('SearchBar.vue', () => {
     expect(wrapper.text()).toContain('₽');
   });
 
+  it('показывает товары без цены/фото (новая форма backend suggestions, D-06)', async () => {
+    mockState.suggestions = {
+      queries: [],
+      categories: [],
+      brands: [],
+      products: [{ id: 1, name: 'Смартфон Xiaomi' }],
+    };
+
+    const wrapper = mount(SearchBar, {
+      props: { modelValue: 'xiaomi' },
+    });
+    await wrapper.find('input[type="text"]').trigger('focus');
+    await nextTick();
+
+    const product = wrapper.find('[data-testid="search-bar-product-suggestion"]');
+    expect(product.exists()).toBe(true);
+    expect(wrapper.text()).toContain('Смартфон Xiaomi');
+    // price/image отсутствуют — блоки цены и картинки не рендерятся (v-if)
+    expect(product.find('.search-bar__product-price').exists()).toBe(false);
+    expect(product.find('.search-bar__product-img').exists()).toBe(false);
+  });
+
   it('показывает "Ничего не найдено" при отсутствии результатов', async () => {
     mockState.suggestions = {
       queries: [],

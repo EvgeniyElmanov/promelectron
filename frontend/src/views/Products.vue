@@ -7,20 +7,19 @@
     <div class="home__section">
       <div class="home__filters">
         <select
-          v-model="selectedSort"
+          v-model="currentSort"
           class="home__sort-select"
           data-testid="sort-select"
-          @change="applyFilters"
         >
           <option value="">По умолчанию</option>
           <option value="price_asc">Цена: по возрастанию</option>
           <option value="price_desc">Цена: по убыванию</option>
-          <option value="rating_desc">По рейтингу</option>
+          <option v-if="!searchAvailable" value="rating_desc">По рейтингу</option>
           <option value="newest">Сначала новые</option>
           <option value="name_asc">По названию (А-Я)</option>
         </select>
 
-        <div class="home__price-filter">
+        <div v-if="!searchAvailable" class="home__price-filter">
           <input
             v-model.number="minPrice"
             type="number"
@@ -44,7 +43,7 @@
         </div>
       </div>
 
-      <div class="home__rating-filter">
+      <div v-if="!searchAvailable" class="home__rating-filter">
         <span class="home__rating-label">Рейтинг:</span>
         <button
           v-for="n in 5"
@@ -66,47 +65,67 @@
         </button>
       </div>
 
-      <div class="home__header-row">
-        <h2 class="home__section-title" data-testid="products-section-title">Популярные товары</h2>
-        <span class="home__count" data-testid="products-count">
-          <template v-if="total !== null">{{ total }} товаров</template>
-          <template v-else>&nbsp;</template>
-        </span>
+      <div class="home__catalog" :class="{ 'home__catalog--search': searchAvailable }">
+        <details v-if="searchAvailable" class="home__filter-panel-wrap" open>
+          <summary class="home__filter-panel-summary">Фильтры</summary>
+          <FilterPanel
+            :facets="facets"
+            :selected="catalog.selected"
+            :price-range="catalog.priceRange"
+            :category-id="categoryId"
+            :category-options="allCategories"
+            @toggle="catalog.toggleFacetValue"
+            @price="onFilterPrice"
+            @range="onFilterRange"
+            @category="catalog.setCategory"
+            @reset="catalog.reset"
+          />
+        </details>
+
+        <div class="home__listing">
+          <div class="home__header-row">
+            <h2 class="home__section-title" data-testid="products-section-title">Популярные товары</h2>
+            <span class="home__count" data-testid="products-count">
+              <template v-if="displayTotal !== null">{{ displayTotal }} товаров</template>
+              <template v-else>&nbsp;</template>
+            </span>
+          </div>
+
+          <!-- Skeleton grid replaces product grid during initial load -->
+          <div v-if="displayLoading && displayProducts.length === 0" class="home__grid">
+            <SkeletonProductCard v-for="i in 8" :key="'sk' + i" />
+          </div>
+
+          <div v-else-if="displayProducts.length === 0 && !displayLoading" class="home__empty" data-testid="products-empty">
+            Товары не найдены
+          </div>
+
+          <div v-else class="home__grid">
+            <ProductCard
+              v-for="product in displayProducts"
+              :key="product.id"
+              :product="product"
+            />
+          </div>
+
+          <!-- Inline spinner for infinite scroll append loading -->
+          <div v-if="displayLoading && displayProducts.length > 0" class="home__loading-more">
+            <div class="home__spinner" />
+          </div>
+
+          <!-- Intersection Observer target for infinite scroll -->
+          <div ref="loadMoreTrigger" class="home__load-trigger" />
+
+          <button
+            v-if="displayHasMore && !displayLoading && displayProducts.length > 0"
+            class="home__load-more"
+            data-testid="load-more-btn"
+            @click="onLoadMore"
+          >
+            Показать ещё
+          </button>
+        </div>
       </div>
-
-      <!-- Skeleton grid replaces product grid during initial load -->
-      <div v-if="loading && products.length === 0" class="home__grid">
-        <SkeletonProductCard v-for="i in 8" :key="'sk' + i" />
-      </div>
-
-      <div v-else-if="products.length === 0 && !loading" class="home__empty" data-testid="products-empty">
-        Товары не найдены
-      </div>
-
-      <div v-else class="home__grid">
-        <ProductCard
-          v-for="product in products"
-          :key="product.id"
-          :product="product"
-        />
-      </div>
-
-      <!-- Inline spinner for infinite scroll append loading -->
-      <div v-if="loading && products.length > 0" class="home__loading-more">
-        <div class="home__spinner" />
-      </div>
-
-      <!-- Intersection Observer target for infinite scroll -->
-      <div ref="loadMoreTrigger" class="home__load-trigger" />
-
-      <button
-        v-if="hasMore && !loading && products.length > 0"
-        class="home__load-more"
-        data-testid="load-more-btn"
-        @click="loadMore"
-      >
-        Показать ещё
-      </button>
     </div>
   </div>
 </template>
@@ -119,6 +138,9 @@ import SearchBar from '@/components/SearchBar.vue';
 import CategoryChips from '@/components/CategoryChips.vue';
 import PromoBanner from '@/components/PromoBanner.vue';
 import SkeletonProductCard from '@/components/SkeletonProductCard.vue';
+import FilterPanel from '@/components/FilterPanel.vue';
+import { useCatalogSearch } from '@/composables/useCatalogSearch';
+import { useCategories } from '@/composables/useCategories';
 import api from '@/services/api';
 
 const route = useRoute();
@@ -136,7 +158,33 @@ const limit = 20;
 const total = ref(null);
 const loadMoreTrigger = ref(null);
 
+// Search-режим (feature flag `catalog_search_meilisearch`, D-01/D-05):
+// probe решает, работаем ли через /api/v1/search/ или legacy /products/.
+const catalog = useCatalogSearch();
+const { searchAvailable, facets, categoryId } = catalog;
+const { allCategories, fetchAllCategories } = useCategories();
+
 const hasMore = computed(() => total.value === null || products.value.length < total.value);
+
+// Унифицированные значения для шаблона: активный источник (search или legacy).
+const displayProducts = computed(() => (searchAvailable.value ? catalog.items.value : products.value));
+const displayTotal = computed(() => (searchAvailable.value ? catalog.total.value : total.value));
+const displayLoading = computed(() => (searchAvailable.value ? catalog.loading.value : loading.value));
+const displayHasMore = computed(() => (searchAvailable.value ? catalog.hasMore.value : hasMore.value));
+
+// Селектор сортировки делегирует в активный режим
+// (`rating_desc` в search-режиме недоступен — backend его не поддерживает).
+const currentSort = computed({
+  get: () => (searchAvailable.value ? catalog.sort.value : selectedSort.value),
+  set: (value) => {
+    if (searchAvailable.value) {
+      catalog.setSort(value);
+    } else {
+      selectedSort.value = value;
+      applyFilters();
+    }
+  },
+});
 
 let searchTimeout = null;
 let abortController = null;
@@ -187,11 +235,26 @@ const loadMore = () => {
   fetchProducts(true);
 };
 
-const handleCategorySelect = (categoryId) => {
-  selectedCategory.value = categoryId;
+const onLoadMore = () => {
+  if (searchAvailable.value) {
+    catalog.loadMore();
+  } else {
+    loadMore();
+  }
+};
+
+const handleCategorySelect = (categoryIdValue) => {
+  if (searchAvailable.value) {
+    catalog.setCategory(categoryIdValue);
+    return;
+  }
+  selectedCategory.value = categoryIdValue;
   skip.value = 0;
   fetchProducts();
 };
+
+const onFilterPrice = ({ min, max }) => catalog.setPrice(min, max);
+const onFilterRange = (code, { min, max }) => catalog.setRange(code, min, max);
 
 const applyFilters = () => {
   skip.value = 0;
@@ -204,6 +267,10 @@ const toggleRatingFilter = (rating) => {
 };
 
 watch(searchQuery, () => {
+  if (searchAvailable.value) {
+    catalog.setQuery(searchQuery.value);
+    return;
+  }
   clearTimeout(searchTimeout);
   searchTimeout = setTimeout(() => {
     skip.value = 0;
@@ -224,8 +291,10 @@ watch(
     if (q !== searchQuery.value) {
       clearTimeout(searchTimeout);
       searchQuery.value = q;
-      skip.value = 0;
-      fetchProducts();
+      if (!searchAvailable.value) {
+        skip.value = 0;
+        fetchProducts();
+      }
     }
   }
 );
@@ -234,13 +303,22 @@ onMounted(async () => {
   if (route.query.q) {
     searchQuery.value = String(route.query.q);
   }
-  await fetchProducts();
+  // Probe сначала: решает, какой режим грузить (последовательно, без гонки).
+  const available = await catalog.probe();
+  if (available) {
+    fetchAllCategories();
+    catalog.initFromUrl();
+    catalog.q.value = searchQuery.value;
+    await catalog.load();
+  } else {
+    await fetchProducts();
+  }
 
   // Infinite scroll via IntersectionObserver
   if (loadMoreTrigger.value && 'IntersectionObserver' in window) {
     const observer = new IntersectionObserver((entries) => {
-      if (entries[0].isIntersecting && hasMore.value && !loading.value && products.value.length > 0) {
-        loadMore();
+      if (entries[0].isIntersecting && displayHasMore.value && !displayLoading.value && displayProducts.value.length > 0) {
+        onLoadMore();
       }
     }, { rootMargin: '100px' });
     observer.observe(loadMoreTrigger.value);
@@ -261,6 +339,65 @@ onMounted(async () => {
 
 .home__section {
   padding: 12px;
+}
+
+.home__catalog--search {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.home__filter-panel-summary {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 10px 12px;
+  background: var(--color-bg-white);
+  border-radius: 12px;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+}
+
+.home__filter-panel-summary::before {
+  content: '▾ ';
+  color: var(--color-text-secondary);
+}
+
+.home__filter-panel-wrap:not([open]) > .home__filter-panel-summary::before {
+  content: '▸ ';
+}
+
+.home__filter-panel-wrap .filter-panel {
+  margin-top: 8px;
+}
+
+.home__listing {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (min-width: 768px) {
+  .home__catalog--search {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .home__filter-panel-wrap {
+    width: 260px;
+    flex-shrink: 0;
+    position: sticky;
+    top: 12px;
+  }
+
+  /* На desktop панель всегда развёрнута, summary не нужен */
+  .home__filter-panel-summary {
+    display: none;
+  }
+
+  .home__filter-panel-wrap .filter-panel {
+    margin-top: 0;
+  }
 }
 
 .home__filters {
@@ -356,7 +493,7 @@ onMounted(async () => {
     grid-template-columns: repeat(3, 1fr);
     gap: 12px;
   }
-  
+
   .home__section {
     padding: 16px;
   }
