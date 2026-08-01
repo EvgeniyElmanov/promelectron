@@ -258,6 +258,14 @@ def cmd_cleanup(args: argparse.Namespace) -> int:
 def parse_existing_issue(task_text: str) -> str | None:
     """Return issue number if task.md already references a GitHub issue."""
     match = re.search(r"github_issue:\s*#?(\d+)", task_text, re.IGNORECASE)
+    if match:
+        return match.group(1)
+    # Fallback: header-style record, e.g. "## github_issue\n#122 https://..."
+    match = re.search(
+        r"^#+\s*github_issue\s*\n+\s*(?:-\s*)?#(\d+)",
+        task_text,
+        re.IGNORECASE | re.MULTILINE,
+    )
     return match.group(1) if match else None
 
 

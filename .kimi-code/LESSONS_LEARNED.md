@@ -228,3 +228,15 @@ Backend-под уходил в CrashLoopBackOff при деплое в `promelec
 **Решение:** `ensure_index_exists` (get/create, без settings) для serving-индекса отдельно от `provision_index` (settings — только на `products_new`); все sync-вызовы в `reindex_full` через `asyncio.to_thread` + регрессионный тест со spy на `to_thread`.
 
 **Профилактика:** правило «sync SDK в async-коде = каждый вызов через `to_thread`, включая poll-циклы со sleep»; любой код, меняющий index settings, по умолчанию подозрителен на «вживую» — settings только на новом индексе перед swap; partial updates, пришедшие во время reindex, требуют компенсации (watermark + повторный enqueue после swap) — закладывать сразу в дизайн swap-flow.
+
+---
+
+## 2026-08-01 | catalog-filter-panel-122: create-issue создал дубль issue из-за формата task.md
+
+**Ошибка:** `implement-pipeline.py create-issue` не увидел существующий `github_issue: #122` в `task.md` и создал дубль #134, который пришлось закрывать как duplicate.
+
+**Причина:** скрипт парсит строку формата `- github_issue: #N`, а оркестратор записал issue отдельным заголовком `## github_issue` — парсер это не распознал.
+
+**Решение:** в `task.md` связанный issue всегда писать в секции `## GitHub` строкой `- github_issue: #N` (inline-формат, который читает скрипт).
+
+**Профилактика:** перед запуском `create-issue` проверять `grep -n "github_issue:" .agent/runs/<task-id>/task.md`; скрипту полезна валидация «header-style записи» (skill-worthy правка, вынесена в отчёт).
