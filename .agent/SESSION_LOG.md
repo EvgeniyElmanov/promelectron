@@ -3453,3 +3453,18 @@
 
 - 2026-08-01 | catalog-filter-panel-122: PR #135 влит в main (merge commit), issue #122 → Done. Ревью: 1 итерация (APPROVED). QA: лёгкий (vitest 303/303, lint). E2E — на CI (probe-skip). Follow-ups: backend images в SearchItemOut, контракт /search/suggestions/.
 - 2026-08-01 | catalog-filter-panel-122 (follow-up): PR #136 влит — фиксы LOW findings F001–F003 (stale error, числовые enum-чекбоксы из URL, откат флага mid-session). vitest 307/307.
+
+### 2026-08-01 | backend-dev | search-api-followups-0801 — dev-фаза (#137, #138)
+- #137: `images` добавлен в документ Meilisearch (`search_indexing.py::_product_document`, `product.images or []`), в `SEARCH_HIT_ATTRIBUTES` (`search_query.py`) и в `SearchItemOut` (default `[]` — индекс до reindex'а поля не содержит).
+- #138: `/api/v1/search/suggestions/` переведён на контракт `SuggestionsResponse` `{queries, categories, brands, products}` (products с `price`/`image` = `images[0] || None`); старая форма `{suggestions: [...]}` убрана; `attributesToHighlight` убран (фронт `_formatted` не читает); `response_model=SuggestionsResponse` на эндпоинте, устаревший docstring заменён.
+- Тесты: `test_search_api.py` — +2 кейса images (present/default `[]`), обновлены ассерты `attributesToRetrieve`/`set(item)`, `TestSuggestionsEndpoint` переписан на новый контракт (+кейс `image=None`); `test_search_index_jobs.py` — +2 теста документа с `images` и NULL→`[]`.
+- Операционный шаг после деплоя: full reindex job для наполнения `images` в существующем индексе.
+
+### 2026-08-01 | orchestrator | search-api-followups-0801 — PR открыт (#137, #138)
+- Ревью: 1 итерация, **APPROVED** (1 LOW не блокер: теоретический None в hit.id).
+- Тесты: **539 passed, 1 skipped** (чистый прогон; первый упал с 417 ложных errors из-за гонки двух параллельных прогонов по template-БД — урок записан в LESSONS_LEARNED).
+- PR: https://github.com/AutonomaCo/promelectron/pull/140 (коммит 1d3066e). Issues #137 и #138 → In review.
+- Estimated tokens: ~3.6K; QA: лёгкий (тесты разработчика + полный прогон), --qa не задан.
+- Операционный шаг после деплоя: full reindex job (images в существующем индексе).
+- 2026-08-01 | search-api-followups-0801: PR #140 влит в main. Issues #137/#138 → Done (CLOSED). Эпик #117 закрыт с итоговым комментарием. Операционный шаг после деплоя: full reindex job (images).
+- 2026-08-01 | search-api-followups-0801 | post-deploy test: полный reindex выполнен (jobs 3342, 3343, 3344 — все completed, indexed: 7). E2E-проверка images: временно выставлен `images=['e2e-verify-image.jpg']` у товара id=1 → поле доехало в индекс Meilisearch → значение откачено, документ снова `[]`. Все тестовые товары в PG имеют пустые images, поэтому в выдаче `images: []` — корректно. Feature flag `catalog_search_meilisearch` на test выключен (source: default) — /api/v1/search/ отдаёт 404 до включения флага. Prod-окружение в кластере не развёрнуто (namespace promelectron пуст) — reindex там делать нечего.

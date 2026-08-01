@@ -240,3 +240,15 @@ Backend-под уходил в CrashLoopBackOff при деплое в `promelec
 **Решение:** в `task.md` связанный issue всегда писать в секции `## GitHub` строкой `- github_issue: #N` (inline-формат, который читает скрипт).
 
 **Профилактика:** перед запуском `create-issue` проверять `grep -n "github_issue:" .agent/runs/<task-id>/task.md`; скрипту полезна валидация «header-style записи» (skill-worthy правка, вынесена в отчёт).
+
+---
+
+## 2026-08-01 | search-api-followups-0801: гонка двух прогонов `make test-backend` → 417 ложных errors
+
+**Ошибка:** developer-субагент оставил свой прогон `make test-backend` в фоне, оркестратор запустил свой поверх — второй прогон упал с 417 errors `template database "promelectron_test_template" does not exist` (122 passed / 417 errors).
+
+**Причина:** тестовый хелпер создаёт per-worker БД из общего template и **дропает template при teardown**; параллельный прогон в том же Docker-PG ловит окно, когда template уже удалён. Повторный одиночный прогон — 539 passed зелёные.
+
+**Решение:** оркестратор перед запуском тестов проверяет отсутствие живых фоновых pytest (`ps aux | grep pytest`) и дожидается/останавливает фоновые прогоны субагентов; developer-субагенту запрещено оставлять фоновые тесты после отчёта.
+
+**Профилактика:** в одном Docker-PG одновременно только один `make test-backend`; если видишь `InvalidCatalogNameError ... template ... does not exist` пачкой — это гонка прогонов, а не регрессия кода: проверь параллельные pytest и перезапусти.

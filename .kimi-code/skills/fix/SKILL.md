@@ -240,7 +240,7 @@ Rules:
 
 Before finishing:
 1. Write/update a regression test that would have failed before the fix and passes now.
-2. Run the role-specific tests in $WORKTREE: make -C "$WORKTREE" test-backend или make -C "$WORKTREE" test-frontend.
+2. Run the role-specific tests in $WORKTREE: make -C "$WORKTREE" test-backend или make -C "$WORKTREE" test-frontend. Тесты — только foreground, дождись результата; NEVER оставляй фоновый прогон после отчёта (Rule: Agent Commons > Single Test Run Rule).
 3. Run lint: make -C "$WORKTREE" lint-backend / make -C "$WORKTREE" lint-frontend.
 4. If golden path affected → verify the corresponding scenario.
 5. Update $PROJECT_ROOT/.agent/SESSION_LOG.md.

@@ -93,6 +93,7 @@ TESTS_PASSED | TESTS_FAILED
 - If a test fails, keep the full log.
 - If status is `TESTS_FAILED`, explicitly list which Acceptance Criteria failed.
 - After developer fixes, repeat the full QA cycle.
+- `make test-backend` — только foreground и дождись результата; NEVER оставляй фоновый прогон и не запускай параллельно с другими прогонами. Каноника: [Rule: Agent Commons](../../rules/agent-commons.md) > Single Test Run Rule.
 
 ---
 

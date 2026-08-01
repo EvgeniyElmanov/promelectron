@@ -59,6 +59,21 @@ Important: Kimi K3 always has thinking mode enabled (it cannot be disabled; conf
 
 ---
 
+## Правило одиночного прогона тестов (Single Test Run Rule)
+
+**В одном Docker-PG одновременно выполняется только один `make test-backend`.**
+
+Тестовый хелпер backend создаёт per-worker БД из общего template database и дропает его при teardown. Два параллельных прогона (например, фоновый прогон субагента + прогон оркестратора/QA) дают гонку: второй прогон падает пачкой `InvalidCatalogNameError: template database "promelectron_test_template" does not exist` — это НЕ регрессия кода (см. `.kimi-code/LESSONS_LEARNED.md`, 2026-08-01: 417 ложных errors при зелёном коде).
+
+Обязательно для всех ролей (developer, qa, e2e-tester, reviewer) и оркестратора:
+
+- Запускай `make test-backend` только в **foreground** и дожидайся результата.
+- **NEVER** оставляй фоновый прогон тестов после своего отчёта; если запустил в фоне — останови или дождись завершения.
+- Оркестратор перед собственным прогоном проверяет отсутствие живых pytest (`ps aux | grep pytest`) и дожидается/останавливает фоновые прогоны субагентов.
+- Диагноз «это гонка, а не код»: массовый `InvalidCatalogNameError ... template ... does not exist` → проверь параллельные pytest и перезапусти одиночный прогон.
+
+---
+
 ## Ограничения модели и API (Kimi K3)
 
 Pipeline ориентирован на модель **Kimi K3** (2.8T, контекстное окно 1M токенов).
