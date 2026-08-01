@@ -190,4 +190,54 @@ describe('useCatalogSearch', () => {
     expect(router.currentRoute.value.query['attr.brand']).toBeUndefined();
     expect(catalog.selected.size).toBe(0);
   });
+
+  it('F001: ошибка устаревшего (stale) запроса не пишется в error', async () => {
+    let rejectStale;
+    searchProducts
+      .mockImplementationOnce(() => new Promise((_, reject) => { rejectStale = reject; }))
+      .mockResolvedValueOnce(SEARCH_RESPONSE);
+    const { catalog } = await mountCatalog();
+
+    const firstLoad = catalog.load(); // станет stale
+    catalog.toggleFacetValue('brand', 'Samsung'); // новый запрос
+    await vi.waitFor(() => expect(searchProducts).toHaveBeenCalledTimes(2));
+
+    rejectStale({ response: { status: 503 } });
+    await firstLoad;
+
+    expect(catalog.error.value).toBeNull();
+    expect(catalog.items.value).toEqual(SEARCH_RESPONSE.items);
+    expect(catalog.loading.value).toBe(false);
+  });
+
+  it('F002: числовое значение фасета из URL отмечается и снимается по числу из фасетов', async () => {
+    const { catalog } = await mountCatalog('/?attr.size=2.5');
+    catalog.initFromUrl();
+    expect(catalog.selected.get('size').has('2.5')).toBe(true);
+
+    // Backend отдаёт значение числом 2.5 — toggle не должен создавать дубликат,
+    // а должен снять выбор.
+    catalog.toggleFacetValue('size', 2.5);
+    await vi.waitFor(() => expect(searchProducts).toHaveBeenCalledTimes(1));
+    expect(catalog.selected.has('size')).toBe(false);
+    expect(searchProducts.mock.calls[0][0]['attr.size']).toBeUndefined();
+  });
+
+  it('F003: 404 в обычном запросе сбрасывает searchAvailable и кэш probe (fallback без ошибки)', async () => {
+    const { catalog } = await mountCatalog();
+    expect(await catalog.probe()).toBe(true);
+    expect(catalog.searchAvailable.value).toBe(true);
+
+    // Флаг выключили mid-session: обычный запрос получает 404.
+    searchProducts.mockRejectedValueOnce({ response: { status: 404 } });
+    await catalog.load();
+
+    expect(catalog.searchAvailable.value).toBe(false);
+    expect(catalog.error.value).toBeNull();
+
+    // Кэш probe сброшен — следующий probe делает реальный запрос.
+    searchProducts.mockRejectedValueOnce({ response: { status: 404 } });
+    expect(await catalog.probe()).toBe(false);
+    expect(searchProducts).toHaveBeenCalledTimes(3);
+  });
 });
