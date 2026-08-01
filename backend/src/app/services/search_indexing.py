@@ -121,6 +121,7 @@ def _product_document(
         "category_id": product.category_id,
         "categories": categories,
         "attrs": attr_values,
+        "images": product.images or [],
     }
 
 

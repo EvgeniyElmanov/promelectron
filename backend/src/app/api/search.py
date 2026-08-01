@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.app.core.redis_client import redis_client
 from src.app.db.database import get_db
-from src.app.schemas.search import SearchResponse
+from src.app.schemas.search import SearchResponse, SuggestionsResponse
 from src.app.services import feature_flags, search_query
 from src.app.services.search_query import SearchQueryError
 from src.app.services.search_service import SearchUnavailableError
@@ -90,13 +90,23 @@ async def search_products(
     return response
 
 
-@router.get("/suggestions/", dependencies=[Depends(require_search_flag)])
+@router.get(
+    "/suggestions/",
+    dependencies=[Depends(require_search_flag)],
+    response_model=SuggestionsResponse,
+)
 @cache_response(ttl_seconds=60)
 async def search_suggestions(
     q: str | None = None,
     limit: int = Query(default=10, ge=1, le=10),
 ):
-    """Search box suggestions (contract matches useSearchSuggestions.ts)."""
+    """Search box suggestions (issue #138).
+
+    Contract ``SuggestionsResponse``: ``products`` — top-N hits with
+    ``id``/``name``/``price`` and primary ``image``; ``queries``/``categories``/
+    ``brands`` — reserved groups, currently empty. Matches the shape typed by
+    the frontend ``useSearchSuggestions.ts``.
+    """
     try:
         return await search_query.search_suggestions(q=q, limit=limit)
     except SearchUnavailableError as exc:

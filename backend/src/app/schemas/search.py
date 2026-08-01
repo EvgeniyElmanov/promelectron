@@ -21,6 +21,29 @@ class SearchItemOut(BaseModel):
     category_id: int | None = None
     categories: dict[str, str] = {}
     attrs: dict[str, Any] = {}
+    images: list[str] = []
+
+
+class SuggestionProduct(BaseModel):
+    """One product suggestion (``image`` — primary photo or ``None``, D-05)."""
+
+    id: int
+    name: str
+    price: float | None = None
+    image: str | None = None
+
+
+class SuggestionsResponse(BaseModel):
+    """Contract of ``GET /api/v1/search/suggestions/`` (issue #138).
+
+    ``queries``/``categories``/``brands`` are empty until real data sources
+    exist for them (D-04); ``products`` carries top-N hits with price/image.
+    """
+
+    queries: list[str] = []
+    categories: list = []
+    brands: list[str] = []
+    products: list[SuggestionProduct] = []
 
 
 class FacetValueOut(BaseModel):

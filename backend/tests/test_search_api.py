@@ -122,8 +122,30 @@ class TestSearchEndpoint:
         # F003: only product-card fields are retrieved from Meilisearch
         assert queries[0]["attributesToRetrieve"] == [
             "id", "sku", "name", "price", "stock", "category_id",
-            "categories", "attrs",
+            "categories", "attrs", "images",
         ]
+
+    async def test_images_returned_when_present(
+        self, client, search_attributes, flag_on, monkeypatch
+    ):
+        payload = _multi_search_payload()
+        payload["results"][0]["hits"][0]["images"] = ["uploads/a.jpg", "uploads/b.jpg"]
+        _mock_multi_search(monkeypatch, payload)
+        response = await client.get("/api/v1/search/", params={"q": "кабель"})
+        assert response.status_code == 200
+        assert response.json()["items"][0]["images"] == [
+            "uploads/a.jpg",
+            "uploads/b.jpg",
+        ]
+
+    async def test_images_default_empty_before_reindex(
+        self, client, search_attributes, flag_on, monkeypatch
+    ):
+        """Index built before #137 has no images field — response must not break."""
+        _mock_multi_search(monkeypatch, _multi_search_payload())
+        response = await client.get("/api/v1/search/", params={"q": "кабель"})
+        assert response.status_code == 200
+        assert response.json()["items"][0]["images"] == []
 
     async def test_raw_document_fields_stay_on_server(
         self, client, search_attributes, flag_on, monkeypatch
@@ -142,7 +164,7 @@ class TestSearchEndpoint:
         assert "onec_id" not in item
         assert set(item) == {
             "id", "sku", "name", "price", "stock", "category_id",
-            "categories", "attrs",
+            "categories", "attrs", "images",
         }
 
     async def test_numeric_attr_filter_unquoted(
@@ -294,23 +316,59 @@ class TestSearchEndpoint:
 
 class TestSuggestionsEndpoint:
     async def test_contract(self, client, flag_on, monkeypatch):
-        monkeypatch.setattr(
-            search_query,
-            "search_async",
-            AsyncMock(
-                return_value={
-                    "hits": [{"id": 1, "name": "Кабель USB-C", "sku": "USB-C-1M"}]
-                }
-            ),
+        search_mock = AsyncMock(
+            return_value={
+                "hits": [
+                    {
+                        "id": 1,
+                        "name": "Кабель USB-C",
+                        "price": 350.0,
+                        "images": ["uploads/usb-c.jpg"],
+                    }
+                ]
+            }
         )
+        monkeypatch.setattr(search_query, "search_async", search_mock)
         monkeypatch.setattr(search_query, "get_meili_client", lambda: MagicMock())
         response = await client.get(
             "/api/v1/search/suggestions/", params={"q": "каб", "limit": 5}
         )
         assert response.status_code == 200
         assert response.json() == {
-            "suggestions": [{"type": "product", "id": 1, "name": "Кабель USB-C"}]
+            "queries": [],
+            "categories": [],
+            "brands": [],
+            "products": [
+                {
+                    "id": 1,
+                    "name": "Кабель USB-C",
+                    "price": 350.0,
+                    "image": "uploads/usb-c.jpg",
+                }
+            ],
         }
+        params = search_mock.call_args.args[3]
+        assert params["limit"] == 5
+        assert params["attributesToRetrieve"] == ["id", "name", "price", "images"]
+
+    async def test_image_null_when_no_images(self, client, flag_on, monkeypatch):
+        monkeypatch.setattr(
+            search_query,
+            "search_async",
+            AsyncMock(
+                return_value={
+                    "hits": [{"id": 2, "name": "Кабель HDMI", "price": 500.0}]
+                }
+            ),
+        )
+        monkeypatch.setattr(search_query, "get_meili_client", lambda: MagicMock())
+        response = await client.get(
+            "/api/v1/search/suggestions/", params={"q": "каб"}
+        )
+        assert response.status_code == 200
+        product = response.json()["products"][0]
+        assert product["image"] is None
+        assert product["price"] == 500.0
 
 
 class TestFacetValuesEndpoint:

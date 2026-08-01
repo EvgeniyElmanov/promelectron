@@ -61,6 +61,7 @@ SEARCH_HIT_ATTRIBUTES = [
     "category_id",
     "categories",
     "attrs",
+    "images",
 ]
 
 
@@ -351,7 +352,12 @@ async def search_products(
 async def search_suggestions(
     q: str | None, limit: int
 ) -> dict[str, Any]:
-    """Quick product suggestions for the search box (frontend contract)."""
+    """Quick product suggestions for the search box (frontend contract, #138).
+
+    Returns the ``SuggestionsResponse`` shape: ``products`` carry top-N hits
+    with ``price`` and primary ``image``; ``queries``/``categories``/``brands``
+    stay empty until real data sources exist for them (D-04).
+    """
     try:
         client = get_meili_client()
         result = await search_async(
@@ -360,8 +366,7 @@ async def search_suggestions(
             q or "",
             {
                 "limit": limit,
-                "attributesToRetrieve": ["id", "name", "sku"],
-                "attributesToHighlight": ["name"],
+                "attributesToRetrieve": ["id", "name", "price", "images"],
             },
         )
     except SearchUnavailableError:
@@ -369,10 +374,18 @@ async def search_suggestions(
     except MeilisearchError as exc:
         raise SearchUnavailableError(f"Meilisearch request failed: {exc}") from exc
     return {
-        "suggestions": [
-            {"type": "product", "id": hit.get("id"), "name": hit.get("name")}
+        "queries": [],
+        "categories": [],
+        "brands": [],
+        "products": [
+            {
+                "id": hit.get("id"),
+                "name": hit.get("name"),
+                "price": hit.get("price"),
+                "image": (hit.get("images") or [None])[0],
+            }
             for hit in result.get("hits", [])
-        ]
+        ],
     }
 
 
