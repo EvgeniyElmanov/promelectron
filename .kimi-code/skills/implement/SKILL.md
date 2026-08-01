@@ -395,7 +395,7 @@ Rules:
 - If the approved PLAN.md becomes unworkable mid-flight: stop, report to orchestrator, revise PLAN.md, and get re-approval before continuing.
 
 Before finishing:
-1. Run the role-specific tests in $WORKTREE (e.g. make -C "$WORKTREE" test-backend; make -C "$WORKTREE" test-frontend).
+1. Run the role-specific tests in $WORKTREE (e.g. make -C "$WORKTREE" test-backend; make -C "$WORKTREE" test-frontend). Тесты — только foreground, дождись результата; NEVER оставляй фоновый прогон после отчёта (Rule: Agent Commons > Single Test Run Rule).
 2. Run lint (make -C "$WORKTREE" lint-backend / make -C "$WORKTREE" lint-frontend) in $WORKTREE.
 3. Update $PROJECT_ROOT/.agent/SESSION_LOG.md (do NOT write session log only inside worktree).
 
@@ -538,6 +538,8 @@ Do NOT edit source code. Only write findings.
 ---
 
 ## Step 7: QA / Пирамида тестирования
+
+> **Перед любым прогоном `make test-backend`** (своим или субагента): убедись, что нет живых фоновых pytest от developer-субагентов (`ps aux | grep pytest`); дождись или останови их. Параллельные прогоны рушат общий template database — см. [Rule: Agent Commons](../../rules/agent-commons.md) > Single Test Run Rule.
 
 ### Лёгкая QA (по умолчанию)
 

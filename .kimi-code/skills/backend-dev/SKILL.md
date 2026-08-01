@@ -90,6 +90,7 @@ model → schema → service → route handler → tests
 2. Запусти `make -C "$WORKTREE" lint-backend` — ноль ошибок.
 3. Если затронут критический путь из [Rule: Golden Path](../../rules/golden-path.md), проверь его.
 4. НЕ пушь. Жди ревью.
+5. **Одиночный прогон тестов:** `make test-backend` только в foreground, дождись результата до отчёта; NEVER оставляй фоновый прогон. Каноника: [Rule: Agent Commons](../../rules/agent-commons.md) > Single Test Run Rule.
 
 ### После завершения
 
