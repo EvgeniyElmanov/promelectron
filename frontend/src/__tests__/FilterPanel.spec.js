@@ -124,6 +124,25 @@ describe('FilterPanel.vue', () => {
     expect(wrapper.emitted('range')).toEqual([['power', { min: 10, max: 1500 }]]);
   });
 
+  it('F002: числовое значение фасета отмечено, если selected содержит строку из URL', () => {
+    const wrapper = mountPanel({
+      facets: [
+        {
+          code: 'thickness',
+          name: 'Толщина',
+          value_type: 'enum',
+          values: [
+            { value: 2.5, count: 4 },
+            { value: 3, count: 2 },
+          ],
+        },
+      ],
+      selected: new Map([['thickness', new Set(['2.5'])]]),
+    });
+    expect(wrapper.find('[data-testid="filter-value-thickness-0"]').element.checked).toBe(true);
+    expect(wrapper.find('[data-testid="filter-value-thickness-1"]').element.checked).toBe(false);
+  });
+
   it('кнопка сброса эмитит reset', async () => {
     const wrapper = mountPanel();
     await wrapper.find('[data-testid="filter-reset"]').trigger('click');

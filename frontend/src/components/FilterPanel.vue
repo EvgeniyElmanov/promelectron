@@ -230,7 +230,9 @@ function onCategoryClick(name) {
 }
 
 function isSelected(code, value) {
-  return props.selected.get(code)?.has(value) ?? false;
+  // F002: selected хранит строки (URL query — строки); значения фасетов
+  // backend могут быть числами — сравниваем через String().
+  return props.selected.get(code)?.has(String(value)) ?? false;
 }
 
 // --- Цена ---

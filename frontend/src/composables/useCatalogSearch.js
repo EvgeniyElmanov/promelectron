@@ -165,7 +165,18 @@ export function useCatalogSearch() {
       pages.value = data.pages;
       facets.value = data.facets || [];
     } catch (err) {
+      // F001: устаревший запрос игнорируем полностью — не трогаем
+      // error/items/loading, актуальный запрос уже летит.
+      if (currentFetchId !== fetchId) return;
       if (err?.code !== 'ERR_CANCELED' && err?.name !== 'AbortError') {
+        // F003: 404 в обычном запросе — флаг выключили mid-session.
+        // Сбрасываем кэш probe и откатываемся на legacy /products/ без
+        // показа ошибки (UI переключится на fallback-режим).
+        if (err?.response?.status === 404) {
+          probePromise = null;
+          searchAvailable.value = false;
+          return;
+        }
         error.value = err;
       }
     } finally {
@@ -182,12 +193,15 @@ export function useCatalogSearch() {
   };
 
   const toggleFacetValue = (code, value) => {
+    // F002: нормализация к строке — значения из URL и из фасетов backend
+    // могут различаться по типу ("2.5" из query vs 2.5 из JSON).
+    const key = String(value);
     if (!selected.has(code)) selected.set(code, new Set());
     const values = selected.get(code);
-    if (values.has(value)) {
-      values.delete(value);
+    if (values.has(key)) {
+      values.delete(key);
     } else {
-      values.add(value);
+      values.add(key);
     }
     if (values.size === 0) selected.delete(code);
     applyAndLoad();
