@@ -160,6 +160,21 @@ class TestBuildProductDocuments:
         )
         assert docs[0]["categories"] == {"lvl0": "Кабели"}
 
+    async def test_document_contains_product_images(self, test_session, catalog):
+        catalog.product.images = ["uploads/usb-c-1.jpg", "uploads/usb-c-2.jpg"]
+        await test_session.commit()
+        docs, _ = await search_indexing.build_product_documents(
+            test_session, [catalog.product.id]
+        )
+        assert docs[0]["images"] == ["uploads/usb-c-1.jpg", "uploads/usb-c-2.jpg"]
+
+    async def test_document_images_default_empty(self, test_session, catalog):
+        """Product.images may be NULL on old rows → document must carry []."""
+        docs, _ = await search_indexing.build_product_documents(
+            test_session, [catalog.product.id]
+        )
+        assert docs[0]["images"] == []
+
     async def test_empty_input(self, test_session):
         docs, deleted = await search_indexing.build_product_documents(test_session, [])
         assert docs == [] and deleted == []
