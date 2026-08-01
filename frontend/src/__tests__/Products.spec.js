@@ -1,7 +1,8 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory, createMemoryHistory } from 'vue-router'
 import Products from '@/views/Products.vue'
+import { __resetSearchProbeForTests } from '@/composables/useCatalogSearch'
 
 const mockProducts = [
   { id: 1, name: 'Product 1', price: 9999, stock: 10 },
@@ -13,9 +14,39 @@ const mockCategories = [
   { id: 2, name: 'Одежда', description: null, parent_id: null },
 ]
 
+const mockSearchResponse = {
+  items: [
+    { id: 1, sku: 'SKU-1', name: 'Search Product 1', price: 9999, stock: 10, category_id: 1, categories: {}, attrs: {} },
+  ],
+  total: 1,
+  page: 1,
+  pages: 1,
+  facets: [
+    {
+      code: 'brand',
+      name: 'Бренд',
+      value_type: 'enum',
+      values: [
+        { value: 'Samsung', count: 5 },
+        { value: 'LG', count: 3 },
+      ],
+    },
+  ],
+}
+
+const mocks = vi.hoisted(() => ({ searchEnabled: false }))
+
 vi.mock('@/services/api', () => ({
   default: {
     get: vi.fn((url) => {
+      if (url === '/search/') {
+        if (!mocks.searchEnabled) {
+          const err = new Error('Not Found')
+          err.response = { status: 404 }
+          return Promise.reject(err)
+        }
+        return Promise.resolve({ data: mockSearchResponse })
+      }
       if (url === '/products/') {
         return Promise.resolve({ data: { items: mockProducts, total: mockProducts.length } })
       }
@@ -30,18 +61,27 @@ vi.mock('@/services/api', () => ({
   },
 }))
 
-describe('Products.vue', () => {
-  it('отображает заголовок "Популярные товары"', async () => {
-    const router = createRouter({
-      history: createWebHistory(),
-      routes: [{ path: '/', component: Products }],
-    })
+beforeEach(() => {
+  mocks.searchEnabled = false
+  __resetSearchProbeForTests()
+})
 
-    const wrapper = mount(Products, {
-      global: {
-        plugins: [router],
-      },
-    })
+function mountWithWebHistory() {
+  const router = createRouter({
+    history: createWebHistory(),
+    routes: [{ path: '/', component: Products }],
+  })
+
+  return mount(Products, {
+    global: {
+      plugins: [router],
+    },
+  })
+}
+
+describe('Products.vue (legacy /products/ при выключенном флаге)', () => {
+  it('отображает заголовок "Популярные товары"', async () => {
+    const wrapper = mountWithWebHistory()
 
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('Популярные товары')
@@ -49,16 +89,7 @@ describe('Products.vue', () => {
   })
 
   it('отображает строку поиска', async () => {
-    const router = createRouter({
-      history: createWebHistory(),
-      routes: [{ path: '/', component: Products }],
-    })
-
-    const wrapper = mount(Products, {
-      global: {
-        plugins: [router],
-      },
-    })
+    const wrapper = mountWithWebHistory()
 
     const input = wrapper.find('input[type="text"]')
     expect(input.exists()).toBe(true)
@@ -66,16 +97,7 @@ describe('Products.vue', () => {
   })
 
   it('отображает карточки товаров', async () => {
-    const router = createRouter({
-      history: createWebHistory(),
-      routes: [{ path: '/', component: Products }],
-    })
-
-    const wrapper = mount(Products, {
-      global: {
-        plugins: [router],
-      },
-    })
+    const wrapper = mountWithWebHistory()
 
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('Product 1')
@@ -84,16 +106,7 @@ describe('Products.vue', () => {
   })
 
   it('отображает количество товаров', async () => {
-    const router = createRouter({
-      history: createWebHistory(),
-      routes: [{ path: '/', component: Products }],
-    })
-
-    const wrapper = mount(Products, {
-      global: {
-        plugins: [router],
-      },
-    })
+    const wrapper = mountWithWebHistory()
 
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('2 товаров')
@@ -101,16 +114,7 @@ describe('Products.vue', () => {
   })
 
   it('отображает фильтр по рейтингу', async () => {
-    const router = createRouter({
-      history: createWebHistory(),
-      routes: [{ path: '/', component: Products }],
-    })
-
-    const wrapper = mount(Products, {
-      global: {
-        plugins: [router],
-      },
-    })
+    const wrapper = mountWithWebHistory()
 
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('Рейтинг:')
@@ -122,16 +126,7 @@ describe('Products.vue', () => {
   })
 
   it('отображает селектор сортировки с новыми опциями', async () => {
-    const router = createRouter({
-      history: createWebHistory(),
-      routes: [{ path: '/', component: Products }],
-    })
-
-    const wrapper = mount(Products, {
-      global: {
-        plugins: [router],
-      },
-    })
+    const wrapper = mountWithWebHistory()
 
     const select = wrapper.find('[data-testid="sort-select"]')
     expect(select.exists()).toBe(true)
@@ -140,5 +135,67 @@ describe('Products.vue', () => {
     const values = options.map(o => o.attributes('value'))
     expect(values).toContain('rating_desc')
     expect(values).toContain('name_asc')
+  })
+
+  it('при 404 на /search/ FilterPanel не рендерится (fallback)', async () => {
+    const wrapper = mountWithWebHistory()
+
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('Product 1')
+    })
+    expect(wrapper.find('[data-testid="filter-panel"]').exists()).toBe(false)
+  })
+})
+
+describe('Products.vue (search-режим при включённом флаге)', () => {
+  beforeEach(() => {
+    mocks.searchEnabled = true
+  })
+
+  async function mountSearchMode(url = '/') {
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: '/', component: Products }],
+    })
+    await router.push(url)
+    await router.isReady()
+    return mount(Products, {
+      global: {
+        plugins: [router],
+      },
+    })
+  }
+
+  it('рендерит FilterPanel и скрывает legacy-фильтры', async () => {
+    const wrapper = await mountSearchMode()
+
+    await vi.waitFor(() => {
+      expect(wrapper.find('[data-testid="filter-panel"]').exists()).toBe(true)
+    })
+    expect(wrapper.find('[data-testid="rating-filter-1"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="min-price-input"]').exists()).toBe(false)
+    // rating_desc недоступен в search-режиме (backend не поддерживает)
+    const values = wrapper.find('[data-testid="sort-select"]').findAll('option').map(o => o.attributes('value'))
+    expect(values).not.toContain('rating_desc')
+  })
+
+  it('показывает товары и счётчики фасетов из /search/', async () => {
+    const wrapper = await mountSearchMode()
+
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('Search Product 1')
+      expect(wrapper.text()).toContain('1 товаров')
+      expect(wrapper.text()).toContain('(5)')
+    })
+  })
+
+  it('восстанавливает выбранный фасет из URL query', async () => {
+    const wrapper = await mountSearchMode('/?attr.brand=Samsung')
+
+    await vi.waitFor(() => {
+      expect(wrapper.find('[data-testid="filter-panel"]').exists()).toBe(true)
+    })
+    const checkbox = wrapper.find('[data-testid="filter-value-brand-0"]')
+    expect(checkbox.element.checked).toBe(true)
   })
 })
