@@ -336,27 +336,15 @@
                     {{ orderStatusLabel(order.status) }}
                   </span>
                 </td>
-                <td>{{ order.delivery_method?.name || '—' }}</td>
+                <td>{{ order.cdek_order ? 'CDEK' : '—' }}</td>
                 <td>{{ order.tracking_number || '—' }}</td>
                 <td>{{ formatDateTimeShort(order.created_at) }}</td>
                 <td class="admin__table-actions">
                   <button
-                    v-if="order.status === 'paid'"
-                    class="admin__btn admin__btn--small admin__btn--success"
-                    :data-testid="`admin-order-ship-btn-${order.id}`"
-                    @click="handleShipOrder(order.id)"
+                    class="admin__icon-btn admin__icon-btn--edit"
+                    :data-testid="`admin-order-open-btn-${order.id}`"
+                    @click="openEditOrderModal(order)"
                   >
-                    Подтвердить отправку
-                  </button>
-                  <button
-                    v-if="order.status === 'pending' || order.status === 'paid'"
-                    class="admin__btn admin__btn--small admin__btn--danger"
-                    :data-testid="`admin-order-cancel-btn-${order.id}`"
-                    @click="handleCancelOrder(order)"
-                  >
-                    Отменить заказ
-                  </button>
-                  <button class="admin__icon-btn admin__icon-btn--edit" @click="openEditOrderModal(order)">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
                       <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
@@ -486,120 +474,12 @@
       </div>
     </div>
 
-    <!-- Order Status Modal -->
-    <div v-if="showOrderModal" class="modal-overlay" @click.self="closeOrderModal">
-      <div class="modal">
-        <div class="modal__header">
-          <h3>Заказ №{{ editingOrder?.id }}</h3>
-          <button class="modal__close" @click="closeOrderModal">&times;</button>
-        </div>
-        <div class="order-modal__tabs">
-          <button
-            class="order-modal__tab"
-            :class="{ 'order-modal__tab--active': activeOrderModalTab === 'order' }"
-            data-testid="order-modal-tab-order"
-            @click="activeOrderModalTab = 'order'"
-          >
-            Заказ
-          </button>
-          <button
-            v-if="editingOrder?.cdek_order"
-            class="order-modal__tab"
-            :class="{ 'order-modal__tab--active': activeOrderModalTab === 'cdek' }"
-            data-testid="order-modal-tab-cdek"
-            @click="activeOrderModalTab = 'cdek'"
-          >
-            CDEK
-          </button>
-        </div>
-        <form v-show="activeOrderModalTab === 'order'" class="modal__form" @submit.prevent="handleOrderSubmit">
-          <div class="field">
-            <label class="field__label">Статус</label>
-            <select v-model="orderForm.status" class="field__input">
-              <option value="pending">Ожидает оплаты</option>
-              <option value="paid">Оплачен</option>
-              <option value="shipped">Отправлен</option>
-              <option value="delivered">Доставлен</option>
-              <option v-if="orderForm.status === 'cancelled'" value="cancelled" disabled>Отменён</option>
-            </select>
-          </div>
-          <div class="field">
-            <label class="field__label">Трек-номер</label>
-            <input v-model="orderForm.tracking_number" class="field__input" placeholder="Например, 1234567890" />
-          </div>
-          <div v-if="editingOrderRecipientName" class="order-modal__recipient" data-testid="order-modal-recipient">
-            <div class="info-list">
-              <div class="info-row">
-                <span class="info-label">Получатель</span>
-                <span class="info-value" data-testid="order-modal-recipient-name">{{ editingOrderRecipientName }}</span>
-              </div>
-              <div v-if="editingOrderRecipientPhone" class="info-row">
-                <span class="info-label">Телефон</span>
-                <span class="info-value" data-testid="order-modal-recipient-phone">{{ editingOrderRecipientPhone }}</span>
-              </div>
-            </div>
-          </div>
-          <button type="submit" class="modal__submit" :disabled="submittingOrderStatus">
-            {{ submittingOrderStatus ? 'Сохранение...' : 'Сохранить' }}
-          </button>
-        </form>
-        <div v-show="activeOrderModalTab === 'cdek'" class="order-modal__cdek" data-testid="order-modal-cdek-tab">
-          <div class="info-list">
-            <div class="info-row">
-              <span class="info-label">cdek_uuid</span>
-              <span class="info-value info-value--monospace">{{ editingOrder.cdek_order.cdek_uuid || '—' }}</span>
-            </div>
-            <div class="info-row">
-              <span class="info-label">cdek_number</span>
-              <span class="info-value info-value--monospace">{{ editingOrder.cdek_order.cdek_number || '—' }}</span>
-            </div>
-            <div class="info-row">
-              <span class="info-label">tracking_number</span>
-              <span class="info-value info-value--monospace">{{ editingOrder.cdek_order.tracking_number || '—' }}</span>
-            </div>
-            <div class="info-row">
-              <span class="info-label">cdek_status</span>
-              <span class="info-value">{{ editingOrder.cdek_order.cdek_status || '—' }}</span>
-            </div>
-            <div class="info-row">
-              <span class="info-label">status_date_time</span>
-              <span class="info-value">{{ editingOrder.cdek_order.status_date_time ? formatShortDate(editingOrder.cdek_order.status_date_time) : '—' }}</span>
-            </div>
-            <div class="info-row">
-              <span class="info-label">status_city</span>
-              <span class="info-value">{{ editingOrder.cdek_order.status_city || '—' }}</span>
-            </div>
-          </div>
-          <div v-if="editingOrder.cdek_order.tracking_url" class="order-modal__cdek-track">
-            <a
-              :href="editingOrder.cdek_order.tracking_url"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="order-modal__track-link"
-              data-testid="order-modal-cdek-tracking-link"
-            >
-              Отследить в CDEK
-            </a>
-          </div>
-          <div v-if="cdekStatusHistory.length" class="order-modal__cdek-history" data-testid="order-modal-cdek-history">
-            <h4 class="order-modal__cdek-history-title">История статусов</h4>
-            <div class="order-modal__history-list">
-              <div
-                v-for="entry in cdekStatusHistory"
-                :key="entry.id"
-                class="order-modal__history-item"
-              >
-                <div class="order-modal__history-status">{{ entry.cdek_status_name || entry.cdek_status }}</div>
-                <div class="order-modal__history-meta">
-                  <span v-if="entry.status_date_time">{{ formatShortDate(entry.status_date_time) }}</span>
-                  <span v-if="entry.city">{{ entry.city }}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <!-- Order Details Modal -->
+    <AdminOrderModal
+      v-model:visible="showOrderModal"
+      :order-id="selectedOrderId"
+      @updated="fetchOrders"
+    />
     <!-- User Details Modal -->
     <UserDetailsModal
       v-model:visible="showUserModal"
@@ -615,12 +495,12 @@ import { ref, onMounted, onUnmounted, computed } from 'vue';
 import api from '@/services/api';
 import { useToast } from '@/composables/useToast';
 import { useCategories } from '@/composables/useCategories';
-import { shipOrderAdmin, cancelOrderAdmin } from '@/api/orders';
 import { formatPriceCurrency as formatPrice } from '@/utils/price';
 import { formatShortDate, formatDateTimeShort } from '@/utils/date';
 import { orderStatusLabel } from '@/utils/order';
 import SkeletonAdminTable from '@/components/SkeletonAdminTable.vue';
 import UserDetailsModal from '@/components/admin/UserDetailsModal.vue';
+import AdminOrderModal from '@/components/admin/AdminOrderModal.vue';
 
 const { add: toast } = useToast();
 const {
@@ -720,33 +600,9 @@ const deliveryError = ref('');
 const submittingDelivery = ref(false);
 const deliveryForm = ref({ name: '', description: '', base_price: 0, estimated_days: '', is_active: true });
 
-// Order Status Modal
+// Order Details Modal
 const showOrderModal = ref(false);
-const editingOrder = ref(null);
-const orderForm = ref({ status: '', tracking_number: '' });
-const submittingOrderStatus = ref(false);
-const activeOrderModalTab = ref('order');
-
-const cdekStatusHistory = computed(() => {
-  const history = editingOrder.value?.cdek_order?.status_history || [];
-  return [...history].sort((a, b) => {
-    const aDate = a.status_date_time ? new Date(a.status_date_time) : 0;
-    const bDate = b.status_date_time ? new Date(b.status_date_time) : 0;
-    return bDate - aDate;
-  });
-});
-
-const editingOrderRecipientName = computed(() => {
-  const r = editingOrder.value?.recipient;
-  if (r) {
-    return [r.last_name, r.first_name, r.patronymic].filter(Boolean).join(' ');
-  }
-  return [editingOrder.value?.recipient_last_name, editingOrder.value?.recipient_first_name].filter(Boolean).join(' ');
-});
-
-const editingOrderRecipientPhone = computed(() => {
-  return editingOrder.value?.recipient?.phone || editingOrder.value?.guest_phone || '';
-});
+const selectedOrderId = ref(null);
 
 // KPI computed
 const kpiData = computed(() => [
@@ -1049,19 +905,8 @@ const fetchOrders = async () => {
 };
 
 const openEditOrderModal = (order) => {
-  editingOrder.value = order;
-  orderForm.value = {
-    status: order.status,
-    tracking_number: order.tracking_number || '',
-  };
-  activeOrderModalTab.value = 'order';
+  selectedOrderId.value = order.id;
   showOrderModal.value = true;
-};
-
-const closeOrderModal = () => {
-  showOrderModal.value = false;
-  editingOrder.value = null;
-  activeOrderModalTab.value = 'order';
 };
 
 const openUserModal = (userId, guestData = null) => {
@@ -1075,45 +920,6 @@ const handleViewOrderFromModal = (order) => {
   selectedUserId.value = null;
   selectedGuestData.value = null;
   openEditOrderModal(order);
-};
-
-const handleOrderSubmit = async () => {
-  submittingOrderStatus.value = true;
-  try {
-    await api.put(`/admin/orders/${editingOrder.value.id}`, orderForm.value);
-    toast('Заказ обновлён', 'success');
-    closeOrderModal();
-    fetchOrders();
-  } catch (err) {
-    toast(err.response?.data?.detail || 'Ошибка обновления заказа', 'error');
-  } finally {
-    submittingOrderStatus.value = false;
-  }
-};
-
-const handleShipOrder = async (orderId) => {
-  try {
-    await shipOrderAdmin(orderId);
-    toast('Заказ отправлен', 'success');
-    await fetchOrders();
-  } catch (err) {
-    toast(err.response?.data?.detail || 'Не удалось подтвердить отправку', 'error');
-  }
-};
-
-const handleCancelOrder = async (order) => {
-  let message = 'Отменить заказ?';
-  if (order.status === 'paid') {
-    message = 'Заказ уже оплачен. При отмене деньги будут автоматически возвращены покупателю. Отменить заказ?';
-  }
-  if (!confirm(message)) return;
-  try {
-    await cancelOrderAdmin(order.id);
-    toast('Заказ отменён', 'success');
-    await fetchOrders();
-  } catch (err) {
-    toast(err.response?.data?.detail || 'Не удалось отменить заказ', 'error');
-  }
 };
 
 const fetchFeatureFlags = async () => {
@@ -1759,144 +1565,4 @@ onMounted(() => {
   background: #e8f0fe;
 }
 
-.order-modal__tabs {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
-  border-bottom: 1px solid var(--color-border);
-  padding-bottom: 8px;
-}
-
-.order-modal__tab {
-  padding: 8px 16px;
-  border-radius: 10px;
-  border: 1px solid var(--color-border);
-  background: var(--color-bg-white);
-  color: var(--color-text-secondary);
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.order-modal__tab--active {
-  background: var(--color-primary);
-  color: #fff;
-  border-color: var(--color-primary);
-}
-
-.order-modal__recipient {
-  margin-top: 4px;
-  padding: 12px;
-  border-radius: 10px;
-  background: var(--color-bg);
-}
-
-.order-modal__recipient .info-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.order-modal__recipient .info-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  font-size: 14px;
-}
-
-.order-modal__recipient .info-label {
-  color: var(--color-text-secondary);
-}
-
-.order-modal__recipient .info-value {
-  color: var(--color-text);
-  font-weight: 500;
-  text-align: right;
-  word-break: break-all;
-}
-
-.order-modal__cdek .info-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.order-modal__cdek .info-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  font-size: 14px;
-}
-
-.order-modal__cdek .info-label {
-  color: var(--color-text-secondary);
-}
-
-.order-modal__cdek .info-value {
-  color: var(--color-text);
-  font-weight: 500;
-  text-align: right;
-  word-break: break-all;
-}
-
-.order-modal__cdek .info-value--monospace {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 13px;
-}
-
-.order-modal__cdek-track {
-  margin-top: 16px;
-}
-
-.order-modal__track-link {
-  display: inline-block;
-  padding: 10px 16px;
-  border-radius: 10px;
-  background: var(--color-primary);
-  color: #fff;
-  font-size: 14px;
-  font-weight: 500;
-  text-decoration: none;
-}
-
-.order-modal__cdek-history {
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid var(--color-border);
-}
-
-.order-modal__cdek-history-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-text);
-  margin-bottom: 12px;
-}
-
-.order-modal__history-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.order-modal__history-item {
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: var(--color-bg);
-}
-
-.order-modal__history-status {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--color-text);
-  margin-bottom: 4px;
-}
-
-.order-modal__history-meta {
-  display: flex;
-  gap: 12px;
-  font-size: 12px;
-  color: var(--color-text-secondary);
-}
 </style>
