@@ -166,7 +166,14 @@
           </div>
           <div class="field">
             <label class="field__label">Трек-номер</label>
-            <input v-model="orderForm.tracking_number" class="field__input" placeholder="Например, 1234567890" />
+            <!-- CDEK — источник истины: если номер пришёл из CDEK, ручной ввод отключён -->
+            <input
+              v-model="orderForm.tracking_number"
+              class="field__input"
+              :placeholder="isCdekTracking ? 'Присвоен CDEK' : 'Например, 1234567890'"
+              :disabled="isCdekTracking"
+              data-testid="order-modal-tracking-input"
+            />
           </div>
 
           <button type="submit" class="modal__submit" :disabled="submitting" data-testid="order-modal-save-btn">
@@ -367,6 +374,9 @@ const recipientName = computed(() => {
 const recipientPhone = computed(() => {
   return detail.value?.recipient?.phone || detail.value?.guest_phone || '';
 });
+
+// Трек из CDEK редактировать нельзя — номер присваивает и обновляет CDEK.
+const isCdekTracking = computed(() => Boolean(detail.value?.cdek_order?.tracking_number));
 
 const paymentMethod = computed(() => {
   return detail.value?.payment?.yookassa_payment_id ? 'ЮKassa' : '—';

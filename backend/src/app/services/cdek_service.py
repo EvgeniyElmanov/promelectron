@@ -515,6 +515,13 @@ class CdekService:
             cdek_order.tracking_number = cdek_number
             changed = True
 
+        # Проброс трек-номера в заказ. Раньше order.tracking_number заполнялся
+        # только при ship; если CDEK присвоил cdek_number позже, поле заказа
+        # оставалось пустым. Источник истины — CDEK: ручное значение не перетираем.
+        if order and cdek_number and not order.tracking_number:
+            order.tracking_number = cdek_number
+            changed = True
+
         if status_code and cdek_order.cdek_status != status_code:
             cdek_order.cdek_status = status_code
             changed = True

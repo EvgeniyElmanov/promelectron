@@ -421,6 +421,33 @@ class TestCdekService:
         assert "Доставлен" in notification.message
 
     @pytest.mark.asyncio
+    async def test_apply_cdek_status_propagates_tracking_to_order(self, test_order, test_session):
+        """cdek_number пробрасывается в order.tracking_number, если оно пустое (автосинк после ship)."""
+        test_order.tracking_number = None
+        await test_session.commit()
+
+        cdek_order = await _load_cdek_order(test_session, test_order.cdek_order_id)
+        payload = {"entity": {"cdek_number": "1109876543", "statuses": []}}
+        changed = await CdekService.apply_cdek_status(cdek_order, payload, test_session)
+        assert changed is True
+
+        refreshed_order = await _load_order_with_cdek(test_session, test_order.id)
+        assert refreshed_order.tracking_number == "1109876543"
+
+    @pytest.mark.asyncio
+    async def test_apply_cdek_status_keeps_manual_tracking(self, test_order, test_session):
+        """Ручной трек-номер заказа НЕ перетирается номером CDEK."""
+        test_order.tracking_number = "MANUAL-123"
+        await test_session.commit()
+
+        cdek_order = await _load_cdek_order(test_session, test_order.cdek_order_id)
+        payload = {"entity": {"cdek_number": "1109876543", "statuses": []}}
+        await CdekService.apply_cdek_status(cdek_order, payload, test_session)
+
+        refreshed_order = await _load_order_with_cdek(test_session, test_order.id)
+        assert refreshed_order.tracking_number == "MANUAL-123"
+
+    @pytest.mark.asyncio
     async def test_apply_cdek_status_no_email_when_unchanged(self, test_order, test_session):
         """apply_cdek_status не создаёт уведомлений, если статус не изменился."""
         test_order.status = "delivered"
