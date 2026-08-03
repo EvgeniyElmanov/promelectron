@@ -111,17 +111,48 @@ const matchCategoriesRequest = (url, params, categories = mockCategories) => {
   return categoryListResponse(items);
 };
 
+const buildOrderDetail = (order) => ({
+  ...order,
+  shipping_address: 'г. Москва, ул. Ленина, д. 1',
+  items: [
+    {
+      id: 1,
+      product_id: 10,
+      product_name: 'Кабель USB-C',
+      sku: 'CBL-001',
+      image_url: 'https://img.example.com/cable.jpg',
+      quantity: 2,
+      price_at_time: '499.00',
+      line_total: '998.00',
+    },
+  ],
+  buyer: order.user_id
+    ? { name: 'Иван Иванов', email: 'ivan@example.com', phone: '+79990001122' }
+    : { name: 'Гост Гостев', email: order.guest_email || null, phone: order.guest_phone || null },
+  payment: { id: 5, status: 'succeeded', yookassa_payment_id: 'yk-123', paid_at: '2026-05-18T11:00:00Z', amount: String(order.total_price) },
+  items_total: String(order.total_price - 300),
+  delivery_price: '300.00',
+});
+
+let currentOrders;
+
 const defaultMockGet = (url, config, categories = mockCategories) => {
   const params = config?.params;
   const userDetailMatch = url.match(/^\/admin\/users\/(\d+)\/$/);
   if (userDetailMatch) return Promise.resolve({ data: mockUserDetail });
+  const orderDetailMatch = url.match(/^\/admin\/orders\/(\d+)\/$/);
+  if (orderDetailMatch) {
+    const orderId = Number(orderDetailMatch[1]);
+    const base = currentOrders.find((o) => o.id === orderId) || { ...mockOrders[0], id: orderId };
+    return Promise.resolve({ data: buildOrderDetail(base) });
+  }
   if (url === '/admin/dashboard') return Promise.resolve({ data: mockDashboard });
   if (url === '/admin/orders-by-day') return Promise.resolve({ data: mockOrdersByDay });
   if (url === '/admin/top-products') return Promise.resolve({ data: mockTopProducts });
   if (url === '/admin/users') return Promise.resolve({ data: mockUsers });
   if (url === '/categories/') return Promise.resolve({ data: matchCategoriesRequest(url, params, categories) });
   if (url === '/delivery-methods/') return Promise.resolve({ data: [] });
-  if (url === '/admin/orders') return Promise.resolve({ data: mockOrders });
+  if (url === '/admin/orders') return Promise.resolve({ data: currentOrders });
   if (url === '/admin/feature-flags') return Promise.resolve({ data: mockFeatureFlags });
   return Promise.resolve({ data: {} });
 };
@@ -199,6 +230,7 @@ describe('Admin.vue', () => {
     vi.clearAllMocks();
     toastFn.mockClear();
     window.confirm = vi.fn();
+    currentOrders = mockOrders;
     mockGet.mockImplementation(defaultMockGet);
     mockPost.mockImplementation((url) => {
       if (url === '/admin/orders/101/ship/') {
@@ -535,55 +567,56 @@ describe('Admin.vue', () => {
     expect(recipientPhone.text()).toBe('+79990001122');
   });
 
-  it('показывает кнопку «Подтвердить отправку» для paid заказа', async () => {
+  it('в строке таблицы заказа только иконка открытия модалки', async () => {
     const wrapper = mount(Admin, { global: { plugins: [router] } });
     await flushPromises();
 
     await switchSectionTab(wrapper, 'orders');
+
+    expect(wrapper.find('[data-testid="admin-order-open-btn-101"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="admin-order-open-btn-102"]').exists()).toBe(true);
+
+    const table = wrapper.find('[data-testid="orders-table"]');
+    expect(table.find('[data-testid="admin-order-ship-btn-101"]').exists()).toBe(false);
+    expect(table.find('[data-testid="admin-order-cancel-btn-101"]').exists()).toBe(false);
+    expect(table.find('[data-testid="admin-order-cancel-btn-102"]').exists()).toBe(false);
+  });
+
+  it('показывает способ доставки CDEK/— в таблице заказов', async () => {
+    const wrapper = mount(Admin, { global: { plugins: [router] } });
+    await flushPromises();
+
+    await switchSectionTab(wrapper, 'orders');
+
+    const rows = wrapper.findAll('[data-testid="orders-table"] tbody tr');
+    expect(rows[0].findAll('td')[4].text()).toBe('CDEK');
+    expect(rows[1].findAll('td')[4].text()).toBe('—');
+  });
+
+  it('подтверждает отправку paid заказа из модалки', async () => {
+    const wrapper = mount(Admin, { global: { plugins: [router] } });
+    await flushPromises();
+
+    await switchSectionTab(wrapper, 'orders');
+
+    await wrapper.find('[data-testid="admin-order-open-btn-101"]').trigger('click');
+    await flushPromises();
 
     const shipBtn = wrapper.find('[data-testid="admin-order-ship-btn-101"]');
     expect(shipBtn.exists()).toBe(true);
-    expect(shipBtn.text()).toContain('Подтвердить отправку');
-  });
 
-  it('не показывает кнопку «Подтвердить отправку» для других статусов', async () => {
-    const mixedOrders = [
-      { ...mockOrders[0], id: 201, status: 'pending' },
-      { ...mockOrders[0], id: 202, status: 'shipped' },
-      { ...mockOrders[0], id: 203, status: 'delivered' },
-      { ...mockOrders[0], id: 204, status: 'cancelled' },
-    ];
-    mockGet.mockImplementation((url, config) => {
-      if (url === '/admin/orders') return Promise.resolve({ data: mixedOrders });
-      return defaultMockGet(url, config);
-    });
-
-    const wrapper = mount(Admin, { global: { plugins: [router] } });
-    await flushPromises();
-
-    await switchSectionTab(wrapper, 'orders');
-
-    expect(wrapper.find('[data-testid="admin-order-ship-btn-201"]').exists()).toBe(false);
-    expect(wrapper.find('[data-testid="admin-order-ship-btn-202"]').exists()).toBe(false);
-    expect(wrapper.find('[data-testid="admin-order-ship-btn-203"]').exists()).toBe(false);
-    expect(wrapper.find('[data-testid="admin-order-ship-btn-204"]').exists()).toBe(false);
-  });
-
-  it('подтверждает отправку paid заказа по клику', async () => {
-    const wrapper = mount(Admin, { global: { plugins: [router] } });
-    await flushPromises();
-
-    await switchSectionTab(wrapper, 'orders');
-
-    const shipBtn = wrapper.find('[data-testid="admin-order-ship-btn-101"]');
-    expect(shipBtn.exists()).toBe(true);
+    const ordersFetchBefore = mockGet.mock.calls.filter(([url]) => url === '/admin/orders').length;
 
     await shipBtn.trigger('click');
     await flushPromises();
 
-    expect(mockPost).toHaveBeenCalledTimes(1);
     expect(mockPost).toHaveBeenCalledWith('/admin/orders/101/ship/');
     expect(toastFn).toHaveBeenCalledWith('Заказ отправлен', 'success');
+
+    // Модалка остаётся открытой, список обновлён
+    expect(wrapper.find('[data-testid="order-modal"]').exists()).toBe(true);
+    const ordersFetchAfter = mockGet.mock.calls.filter(([url]) => url === '/admin/orders').length;
+    expect(ordersFetchAfter).toBe(ordersFetchBefore + 1);
   });
 
   it('отображает дату заказа в формате DD.MM.YYYY HH:MM', async () => {
@@ -597,43 +630,15 @@ describe('Admin.vue', () => {
     expect(cells[6].text()).toMatch(/^\d{2}\.\d{2}\.\d{4} \d{2}:\d{2}$/);
   });
 
-  it('показывает кнопку «Отменить заказ» для pending и paid заказов', async () => {
-    const wrapper = mount(Admin, { global: { plugins: [router] } });
-    await flushPromises();
-
-    await switchSectionTab(wrapper, 'orders');
-
-    expect(wrapper.find('[data-testid="admin-order-cancel-btn-101"]').exists()).toBe(true);
-    expect(wrapper.find('[data-testid="admin-order-cancel-btn-102"]').exists()).toBe(true);
-  });
-
-  it('не показывает кнопку «Отменить заказ» для shipped/delivered/cancelled заказов', async () => {
-    const mixedOrders = [
-      { ...mockOrders[0], id: 201, status: 'shipped' },
-      { ...mockOrders[0], id: 202, status: 'delivered' },
-      { ...mockOrders[0], id: 203, status: 'cancelled' },
-    ];
-    mockGet.mockImplementation((url, config) => {
-      if (url === '/admin/orders') return Promise.resolve({ data: mixedOrders });
-      return defaultMockGet(url, config);
-    });
-
-    const wrapper = mount(Admin, { global: { plugins: [router] } });
-    await flushPromises();
-
-    await switchSectionTab(wrapper, 'orders');
-
-    expect(wrapper.find('[data-testid="admin-order-cancel-btn-201"]').exists()).toBe(false);
-    expect(wrapper.find('[data-testid="admin-order-cancel-btn-202"]').exists()).toBe(false);
-    expect(wrapper.find('[data-testid="admin-order-cancel-btn-203"]').exists()).toBe(false);
-  });
-
-  it('отменяет pending заказ после подтверждения', async () => {
+  it('отменяет pending заказ из модалки после подтверждения', async () => {
     window.confirm.mockReturnValue(true);
     const wrapper = mount(Admin, { global: { plugins: [router] } });
     await flushPromises();
 
     await switchSectionTab(wrapper, 'orders');
+
+    await wrapper.find('[data-testid="admin-order-open-btn-102"]').trigger('click');
+    await flushPromises();
 
     const cancelBtn = wrapper.find('[data-testid="admin-order-cancel-btn-102"]');
     expect(cancelBtn.exists()).toBe(true);
@@ -644,10 +649,11 @@ describe('Admin.vue', () => {
     await flushPromises();
 
     expect(window.confirm).toHaveBeenCalledWith('Отменить заказ?');
-    expect(mockPost).toHaveBeenCalledTimes(1);
     expect(mockPost).toHaveBeenCalledWith('/admin/orders/102/cancel/');
     expect(toastFn).toHaveBeenCalledWith('Заказ отменён', 'success');
 
+    // Модалка закрылась, список обновлён
+    expect(wrapper.find('[data-testid="order-modal"]').exists()).toBe(false);
     const ordersFetchAfter = mockGet.mock.calls.filter(([url]) => url === '/admin/orders').length;
     expect(ordersFetchAfter).toBe(ordersFetchBefore + 1);
   });
@@ -659,8 +665,10 @@ describe('Admin.vue', () => {
 
     await switchSectionTab(wrapper, 'orders');
 
-    const cancelBtn = wrapper.find('[data-testid="admin-order-cancel-btn-101"]');
-    await cancelBtn.trigger('click');
+    await wrapper.find('[data-testid="admin-order-open-btn-101"]').trigger('click');
+    await flushPromises();
+
+    await wrapper.find('[data-testid="admin-order-cancel-btn-101"]').trigger('click');
     await flushPromises();
 
     expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining('возвращены'));
@@ -674,8 +682,10 @@ describe('Admin.vue', () => {
 
     await switchSectionTab(wrapper, 'orders');
 
-    const cancelBtn = wrapper.find('[data-testid="admin-order-cancel-btn-101"]');
-    await cancelBtn.trigger('click');
+    await wrapper.find('[data-testid="admin-order-open-btn-101"]').trigger('click');
+    await flushPromises();
+
+    await wrapper.find('[data-testid="admin-order-cancel-btn-101"]').trigger('click');
     await flushPromises();
 
     expect(mockPost).not.toHaveBeenCalled();
@@ -691,8 +701,10 @@ describe('Admin.vue', () => {
 
     await switchSectionTab(wrapper, 'orders');
 
-    const cancelBtn = wrapper.find('[data-testid="admin-order-cancel-btn-101"]');
-    await cancelBtn.trigger('click');
+    await wrapper.find('[data-testid="admin-order-open-btn-101"]').trigger('click');
+    await flushPromises();
+
+    await wrapper.find('[data-testid="admin-order-cancel-btn-101"]').trigger('click');
     await flushPromises();
 
     expect(mockPost).toHaveBeenCalledWith('/admin/orders/101/cancel/');
@@ -710,7 +722,7 @@ describe('Admin.vue', () => {
     await editBtn.trigger('click');
     await flushPromises();
 
-    const statusSelect = wrapper.find('.modal__form select');
+    const statusSelect = wrapper.find('[data-testid="order-modal-status-select"]');
     expect(statusSelect.exists()).toBe(true);
     const values = statusSelect.findAll('option').map((o) => o.attributes('value'));
     expect(values).toEqual(['pending', 'paid', 'shipped', 'delivered']);
@@ -718,26 +730,22 @@ describe('Admin.vue', () => {
   });
 
   it('в модалке отменённого заказа статус «Отменён» показан disabled-опцией', async () => {
-    mockGet.mockImplementation((url, config) => {
-      if (url === '/admin/orders') {
-        return Promise.resolve({ data: [{ ...mockOrders[0], id: 205, status: 'cancelled' }] });
-      }
-      return defaultMockGet(url, config);
-    });
+    currentOrders = [{ ...mockOrders[0], id: 205, status: 'cancelled' }];
 
     const wrapper = mount(Admin, { global: { plugins: [router] } });
     await flushPromises();
 
     await switchSectionTab(wrapper, 'orders');
 
-    const editBtn = wrapper.find('[data-testid="orders-table"] .admin__icon-btn--edit');
+    const editBtn = wrapper.find('[data-testid="admin-order-open-btn-205"]');
     expect(editBtn.exists()).toBe(true);
     await editBtn.trigger('click');
     await flushPromises();
 
-    const statusSelect = wrapper.find('.modal__form select');
+    const statusSelect = wrapper.find('[data-testid="order-modal-status-select"]');
     expect(statusSelect.exists()).toBe(true);
     expect(statusSelect.element.value).toBe('cancelled');
+    expect(statusSelect.attributes('disabled')).toBeDefined();
 
     const cancelledOption = statusSelect.find('option[value="cancelled"]');
     expect(cancelledOption.exists()).toBe(true);

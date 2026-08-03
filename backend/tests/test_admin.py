@@ -581,6 +581,197 @@ class TestAdminOrders:
         assert response.status_code == 403
 
 
+class TestAdminOrderDetail:
+    """Тесты деталки заказа для админки (GET /admin/orders/{id}/)."""
+
+    @pytest.mark.asyncio
+    async def test_get_order_detail_as_admin(self, client, test_session, test_admin, admin_token, test_order, test_user, test_product):
+        """Админ получает полную деталку: позиции, покупатель, оплата, итоги."""
+        from datetime import datetime, timezone
+
+        from src.app.models.payment import Payment
+
+        test_user.full_name = "Иван Иванов"
+        test_user.phone = "+79990001122"
+        test_product.sku = "CBL-001"
+        test_product.images = ["https://minio/img1.jpg"]
+        payment = Payment(
+            order_id=test_order.id,
+            amount=Decimal("99.99"),
+            status="succeeded",
+            yookassa_payment_id="yk-detail-1",
+            paid_at=datetime(2026, 7, 31, 12, 0, tzinfo=timezone.utc),
+        )
+        test_session.add(payment)
+        await test_session.commit()
+
+        response = await client.get(
+            f"/api/v1/admin/orders/{test_order.id}/",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+
+        assert data["id"] == test_order.id
+        assert data["status"] == "pending"
+
+        item = data["items"][0]
+        assert item["product_id"] == test_product.id
+        assert item["product_name"] == "Test Product"
+        assert item["sku"] == "CBL-001"
+        assert item["image_url"] == "https://minio/img1.jpg"
+        assert item["quantity"] == 1
+        assert Decimal(str(item["price_at_time"])) == Decimal("99.99")
+        assert Decimal(str(item["line_total"])) == Decimal("99.99")
+
+        assert data["buyer"] == {"name": "Иван Иванов", "email": "testuser@example.com", "phone": "+79990001122"}
+
+        assert data["payment"]["status"] == "succeeded"
+        assert data["payment"]["yookassa_payment_id"] == "yk-detail-1"
+        assert data["payment"]["paid_at"] is not None
+
+        assert Decimal(str(data["items_total"])) == Decimal("99.99")
+        assert Decimal(str(data["delivery_price"])) == Decimal("0.00")
+        assert Decimal(str(data["total_price"])) == Decimal("99.99")
+
+    @pytest.mark.asyncio
+    async def test_get_order_detail_not_found(self, client, test_admin, admin_token):
+        """404 для несуществующего заказа."""
+        response = await client.get(
+            "/api/v1/admin/orders/999999/",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert response.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_get_order_detail_forbidden_for_user(self, client, test_user, user_token, test_order):
+        """Обычный пользователь не имеет доступа."""
+        response = await client.get(
+            f"/api/v1/admin/orders/{test_order.id}/",
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert response.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_get_order_detail_unauthorized(self, client, test_order):
+        """403 без токена."""
+        response = await client.get(f"/api/v1/admin/orders/{test_order.id}/")
+        assert response.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_get_order_detail_guest_buyer(self, client, test_session, test_admin, admin_token, test_product):
+        """Гостевой заказ: buyer собирается из guest-полей."""
+        from src.app.models.order import Order, OrderItem
+
+        order = Order(
+            user_id=None,
+            total_price=Decimal("199.98"),
+            status="pending",
+            guest_email="guest@example.com",
+            guest_name="Гость Гостев",
+            guest_phone="+79990003344",
+        )
+        test_session.add(order)
+        await test_session.flush()
+        test_session.add(
+            OrderItem(order_id=order.id, product_id=test_product.id, quantity=2, price_at_time=Decimal("99.99"))
+        )
+        await test_session.commit()
+
+        response = await client.get(
+            f"/api/v1/admin/orders/{order.id}/",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["buyer"] == {"name": "Гость Гостев", "email": "guest@example.com", "phone": "+79990003344"}
+        assert Decimal(str(data["items_total"])) == Decimal("199.98")
+        assert Decimal(str(data["delivery_price"])) == Decimal("0.00")
+
+    @pytest.mark.asyncio
+    async def test_get_order_detail_no_payment(self, client, test_admin, admin_token, test_order):
+        """Заказ без платежа: payment = null."""
+        response = await client.get(
+            f"/api/v1/admin/orders/{test_order.id}/",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert response.status_code == 200
+        assert response.json()["payment"] is None
+
+    @pytest.mark.asyncio
+    async def test_get_order_detail_delivery_price(self, client, test_session, test_admin, admin_token, test_user, test_product):
+        """delivery_price = total_price − items_total (доставка > 0)."""
+        from src.app.models.order import Order, OrderItem
+
+        order = Order(user_id=test_user.id, total_price=Decimal("449.99"), status="pending")
+        test_session.add(order)
+        await test_session.flush()
+        test_session.add(
+            OrderItem(order_id=order.id, product_id=test_product.id, quantity=1, price_at_time=Decimal("99.99"))
+        )
+        await test_session.commit()
+
+        response = await client.get(
+            f"/api/v1/admin/orders/{order.id}/",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert Decimal(str(data["items_total"])) == Decimal("99.99")
+        assert Decimal(str(data["delivery_price"])) == Decimal("350.00")
+
+    @pytest.mark.asyncio
+    async def test_get_order_detail_delivery_price_clamp(self, client, test_session, test_admin, admin_token, test_user, test_product):
+        """Аномалия: total_price < items_total → delivery_price clamp к 0."""
+        from src.app.models.order import Order, OrderItem
+
+        order = Order(user_id=test_user.id, total_price=Decimal("50.00"), status="pending")
+        test_session.add(order)
+        await test_session.flush()
+        test_session.add(
+            OrderItem(order_id=order.id, product_id=test_product.id, quantity=1, price_at_time=Decimal("99.99"))
+        )
+        await test_session.commit()
+
+        response = await client.get(
+            f"/api/v1/admin/orders/{order.id}/",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert response.status_code == 200
+        assert Decimal(str(response.json()["delivery_price"])) == Decimal("0.00")
+
+    @pytest.mark.asyncio
+    async def test_build_admin_order_detail_deleted_product(self, test_session, test_order):
+        """Unit: удалённый/отсутствующий товар позиции → fallback название, image_url = None."""
+        from sqlalchemy.orm import selectinload
+
+        from src.app.models.cdek_order import CdekOrder
+        from src.app.models.order import Order, OrderItem
+        from src.app.services.order_service import OrderService
+
+        result = await test_session.execute(
+            select(Order)
+            .where(Order.id == test_order.id)
+            .options(
+                selectinload(Order.items).selectinload(OrderItem.product),
+                selectinload(Order.user),
+                selectinload(Order.payment),
+                selectinload(Order.recipient),
+                selectinload(Order.cdek_order).selectinload(CdekOrder.status_history),
+            )
+        )
+        order = result.scalars().first()
+        # Отвязываем от сессии, чтобы подмена product не триггерила autoflush/lazy load.
+        test_session.expunge(order)
+        order.items[0].product = None
+
+        detail = OrderService.build_admin_order_detail(order)
+        item = detail.items[0]
+        assert item.product_name == f"Товар #{item.product_id}"
+        assert item.sku is None
+        assert item.image_url is None
+
+
 class TestAdminCancelOrder:
     """Тесты отмены заказа админом (POST /admin/orders/{id}/cancel/)."""
 

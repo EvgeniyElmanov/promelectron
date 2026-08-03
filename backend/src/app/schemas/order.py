@@ -5,6 +5,7 @@ from typing import Any, List, Optional
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from src.app.schemas.cdek_order import CdekLocation, CdekOrderOut
+from src.app.schemas.payment import PaymentOut
 from src.app.schemas.recipient import CountryCode, RecipientOut
 
 
@@ -204,3 +205,40 @@ class OrderOut(BaseModel):
             # Preserve the DB column value (e.g. user_cancelled) when no YooKassa reason.
             cleaned["cancellation_reason"] = data.__dict__.get("cancellation_reason")
         return cleaned
+
+
+class AdminOrderItemOut(BaseModel):
+    """Позиция заказа в админской деталке: с названием, артикулом и фото товара."""
+
+    id: int
+    product_id: int
+    product_name: str
+    sku: Optional[str] = None
+    image_url: Optional[str] = None
+    quantity: int
+    price_at_time: Decimal
+    line_total: Decimal
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AdminOrderBuyerOut(BaseModel):
+    """Покупатель (не получатель): из user для авторизованного, из guest-полей для гостя."""
+
+    name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AdminOrderDetailOut(OrderOut):
+    """Расширенная деталка заказа для админки (GET /admin/orders/{order_id}/)."""
+
+    items: List[AdminOrderItemOut]
+    buyer: Optional[AdminOrderBuyerOut] = None
+    payment: Optional[PaymentOut] = None
+    items_total: Decimal
+    delivery_price: Decimal
+
+    model_config = ConfigDict(from_attributes=True)
