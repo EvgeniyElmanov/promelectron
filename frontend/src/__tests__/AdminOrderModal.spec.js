@@ -351,6 +351,24 @@ describe('AdminOrderModal.vue', () => {
     expect(wrapper.find('[data-testid="order-modal-delivery-method"]').text()).toBe('—');
   });
 
+  it('трек-номер read-only, когда номер пришёл из CDEK', async () => {
+    const wrapper = mountModal();
+    await flushPromises();
+
+    const input = wrapper.find('[data-testid="order-modal-tracking-input"]');
+    expect(input.exists()).toBe(true);
+    expect(input.attributes('disabled')).toBeDefined();
+  });
+
+  it('трек-номер редактируем без cdek_order', async () => {
+    detailResponse = buildDetail({ cdek_order: null });
+    const wrapper = mountModal();
+    await flushPromises();
+
+    const input = wrapper.find('[data-testid="order-modal-tracking-input"]');
+    expect(input.attributes('disabled')).toBeUndefined();
+  });
+
   it('показывает ошибку при неудачной загрузке деталей', async () => {
     mockGet.mockRejectedValue({ response: { data: { detail: 'Not found' } } });
     const wrapper = mountModal();
