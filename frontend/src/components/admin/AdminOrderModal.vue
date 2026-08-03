@@ -265,7 +265,7 @@
 </template>
 
 <script setup>
-import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
+import { ref, watch, computed, onUnmounted } from 'vue';
 import { getAdminOrder, updateAdminOrder } from '@/api/admin';
 import { shipOrderAdmin, cancelOrderAdmin } from '@/api/orders';
 import { useToast } from '@/composables/useToast';
@@ -372,12 +372,20 @@ const paymentMethod = computed(() => {
   return detail.value?.payment?.yookassa_payment_id ? 'ЮKassa' : '—';
 });
 
-const discountAmount = computed(() => {
+// Скидка считается в копейках, чтобы float-округление не давало ложный показ.
+const discountKopecks = computed(() => {
   if (!detail.value) return 0;
-  return Number(detail.value.items_total) + Number(detail.value.delivery_price) - Number(detail.value.total_price);
+  const toKopecks = (v) => Math.round(Number(v) * 100);
+  return (
+    toKopecks(detail.value.items_total) +
+    toKopecks(detail.value.delivery_price) -
+    toKopecks(detail.value.total_price)
+  );
 });
 
-const hasDiscount = computed(() => discountAmount.value !== 0);
+const discountAmount = computed(() => discountKopecks.value / 100);
+
+const hasDiscount = computed(() => discountKopecks.value !== 0);
 
 const openLightbox = (url) => {
   lightboxUrl.value = url;
@@ -393,8 +401,13 @@ const onKeydown = (event) => {
   }
 };
 
-onMounted(() => {
-  document.addEventListener('keydown', onKeydown);
+// Esc-listener живёт только пока открыт лайтбокс (F-003, review).
+watch(lightboxUrl, (url) => {
+  if (url) {
+    document.addEventListener('keydown', onKeydown);
+  } else {
+    document.removeEventListener('keydown', onKeydown);
+  }
 });
 
 onUnmounted(() => {

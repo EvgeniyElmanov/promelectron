@@ -34,6 +34,30 @@ from src.app.services.yookassa_service import YooKassaService
 logger = logging.getLogger(__name__)
 
 
+def _safe_image_url(url: str | None) -> str | None:
+    """Пропустить только доверенные URL изображений (F-004, security review).
+
+    Фото товаров — данные поставщика; рендер чужого URL в админке — это
+    потенциальный tracking-beacon. Разрешены: относительные пути нашего
+    хранилища (`/uploads/...`) и URL на хосте MinIO из конфигурации.
+    Всё остальное заменяем на None (frontend покажет placeholder).
+    """
+    if not url:
+        return None
+    if url.startswith("/"):
+        return url
+    from urllib.parse import urlparse
+
+    from src.app.core.config import settings
+
+    host = urlparse(url).hostname
+    if not host or not settings.minio_endpoint:
+        return None
+    endpoint = settings.minio_endpoint
+    allowed_host = urlparse(endpoint if "://" in endpoint else f"https://{endpoint}").hostname
+    return url if host == allowed_host else None
+
+
 class OrderService:
     @staticmethod
     async def _ensure_payment_loaded(order: Order, db: AsyncSession) -> None:
@@ -435,7 +459,7 @@ class OrderService:
                     product_id=item.product_id,
                     product_name=product.name if product else f"Товар #{item.product_id}",
                     sku=product.sku if product else None,
-                    image_url=images[0] if images else None,
+                    image_url=_safe_image_url(images[0]) if images else None,
                     quantity=item.quantity,
                     price_at_time=item.price_at_time,
                     line_total=line_total,

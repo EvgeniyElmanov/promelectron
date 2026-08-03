@@ -1,5 +1,7 @@
 from typing import List, Optional
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -27,6 +29,8 @@ from src.app.services.onec_sync_service import create_onec_full_sync_job
 from src.app.core.config import settings
 from src.app.utils.auth import get_current_active_admin
 from src.app.utils.rate_limiter import conditional_limit
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -108,6 +112,8 @@ async def get_admin_order_detail(
 ):
     """Деталка заказа для админской модалки: позиции с фото, покупатель, оплата, итоги."""
     order = await OrderService.get_admin_order_detail(order_id=order_id, db=db)
+    # Audit просмотра PII: только id, без персональных данных (F-005, security review).
+    logger.info("Admin user id=%s viewed order id=%s", current_user.id, order_id)
     return OrderService.build_admin_order_detail(order)
 
 
