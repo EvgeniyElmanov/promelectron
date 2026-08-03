@@ -9,6 +9,18 @@ function parsePrice(text) {
 }
 
 test.describe('Search & Filters', () => {
+  // В meilisearch-режиме (feature flag catalog_search_meilisearch) часть
+  // legacy-контролов скрыта, а тексты категорий дублируются в FilterPanel —
+  // селекторы зависят от режима.
+  let flagOn = false;
+
+  test.beforeAll(async ({ request }) => {
+    const probe = await request.get('/api/v1/search/', {
+      params: { page: 1, hits_per_page: 1 },
+    });
+    flagOn = probe.status() === 200;
+  });
+
   test('search filters products by name', async ({ page }) => {
     await page.goto('/');
     await expect(page.locator('[data-testid="search-bar"]')).toBeVisible();
@@ -34,7 +46,8 @@ test.describe('Search & Filters', () => {
 
     // Wait for categories and products to load
     await expect(page.locator('[data-testid="product-card"]').first()).toBeVisible();
-    const laptopChip = page.getByText('Ноутбуки');
+    // Scope к chips: в meilisearch-режиме название категории есть и в FilterPanel.
+    const laptopChip = page.locator('[data-testid="category-chips"]').getByText('Ноутбуки');
     await expect(laptopChip).toBeVisible({ timeout: 10000 });
 
     // Count all products before filter
@@ -64,15 +77,16 @@ test.describe('Search & Filters', () => {
     // Select price ascending
     const sortSelect = page.locator('[data-testid="sort-select"]');
     await sortSelect.selectOption('price_asc');
-    await page.waitForTimeout(400);
 
-    // Extract prices and verify ascending order
-    const prices = await page.locator('[data-testid="product-card"] [data-testid="product-price"]').allTextContents();
-    const numericPrices = prices.map(parsePrice);
-
-    for (let i = 1; i < numericPrices.length; i++) {
-      expect(numericPrices[i]).toBeGreaterThanOrEqual(numericPrices[i - 1]);
-    }
+    // Extract prices and verify ascending order (ждём применения сортировки)
+    await expect(async () => {
+      const prices = await page.locator('[data-testid="product-card"] [data-testid="product-price"]').allTextContents();
+      const numericPrices = prices.map(parsePrice);
+      expect(numericPrices.length).toBeGreaterThan(0);
+      for (let i = 1; i < numericPrices.length; i++) {
+        expect(numericPrices[i]).toBeGreaterThanOrEqual(numericPrices[i - 1]);
+      }
+    }).toPass({ timeout: 10000 });
   });
 
   test('price range filter', async ({ page }) => {
@@ -80,9 +94,16 @@ test.describe('Search & Filters', () => {
     await expect(page.locator('[data-testid="product-card"]').first()).toBeVisible();
 
     // Set price range 20000 - 50000
-    await page.fill('[data-testid="min-price-input"]', '20000');
-    await page.fill('[data-testid="max-price-input"]', '50000');
-    await page.click('[data-testid="apply-price-btn"]');
+    if (flagOn) {
+      // meilisearch-режим: фильтр цены в FilterPanel
+      await page.fill('[data-testid="filter-price-min"]', '20000');
+      await page.fill('[data-testid="filter-price-max"]', '50000');
+      await page.click('[data-testid="filter-apply"]');
+    } else {
+      await page.fill('[data-testid="min-price-input"]', '20000');
+      await page.fill('[data-testid="max-price-input"]', '50000');
+      await page.click('[data-testid="apply-price-btn"]');
+    }
 
     // Wait for the filter to apply (prices may update asynchronously)
     await expect(async () => {

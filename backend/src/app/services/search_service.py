@@ -43,14 +43,16 @@ BASE_FILTERABLE_ATTRIBUTES = [
     "categories.lvl1",
 ]
 SORTABLE_ATTRIBUTES = ["price", "name", "id"]
-# Default rules + ``stock:desc`` before ``sort``: in-stock products rank higher.
+# ``sort`` must precede custom rules: an explicit sort parameter has to win
+# over the default ranking. With no sort param, ``sort`` is a no-op and
+# ``stock:desc`` still ranks in-stock products higher.
 RANKING_RULES = [
     "words",
     "typo",
     "proximity",
     "attributeRank",
-    "stock:desc",
     "sort",
+    "stock:desc",
     "wordPosition",
     "exactness",
 ]
