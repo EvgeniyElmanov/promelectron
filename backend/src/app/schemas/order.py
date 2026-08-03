@@ -5,7 +5,6 @@ from typing import Any, List, Optional
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from src.app.schemas.cdek_order import CdekLocation, CdekOrderOut
-from src.app.schemas.payment import PaymentOut
 from src.app.schemas.recipient import CountryCode, RecipientOut
 
 
@@ -232,12 +231,29 @@ class AdminOrderBuyerOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class AdminPaymentOut(BaseModel):
+    """Оплата в админской деталке заказа: только то, что нужно админке.
+
+    Усечённый вариант PaymentOut: без confirmation_url (ссылка на оплату —
+    для покупателя, админке не нужна) и provider_payment_id.
+    """
+
+    id: int
+    amount: Decimal
+    status: str
+    yookassa_payment_id: Optional[str] = None
+    yookassa_status: Optional[str] = None
+    paid_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class AdminOrderDetailOut(OrderOut):
     """Расширенная деталка заказа для админки (GET /admin/orders/{order_id}/)."""
 
     items: List[AdminOrderItemOut]
     buyer: Optional[AdminOrderBuyerOut] = None
-    payment: Optional[PaymentOut] = None
+    payment: Optional[AdminPaymentOut] = None
     items_total: Decimal
     delivery_price: Decimal
 

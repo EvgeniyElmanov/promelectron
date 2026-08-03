@@ -594,7 +594,7 @@ class TestAdminOrderDetail:
         test_user.full_name = "Иван Иванов"
         test_user.phone = "+79990001122"
         test_product.sku = "CBL-001"
-        test_product.images = ["https://minio/img1.jpg"]
+        test_product.images = ["/uploads/products/img1.jpg"]
         payment = Payment(
             order_id=test_order.id,
             amount=Decimal("99.99"),
@@ -619,7 +619,7 @@ class TestAdminOrderDetail:
         assert item["product_id"] == test_product.id
         assert item["product_name"] == "Test Product"
         assert item["sku"] == "CBL-001"
-        assert item["image_url"] == "https://minio/img1.jpg"
+        assert item["image_url"] == "/uploads/products/img1.jpg"
         assert item["quantity"] == 1
         assert Decimal(str(item["price_at_time"])) == Decimal("99.99")
         assert Decimal(str(item["line_total"])) == Decimal("99.99")
@@ -629,6 +629,9 @@ class TestAdminOrderDetail:
         assert data["payment"]["status"] == "succeeded"
         assert data["payment"]["yookassa_payment_id"] == "yk-detail-1"
         assert data["payment"]["paid_at"] is not None
+        # F-001: админке не отдаём confirmation_url (только для покупателя).
+        assert "confirmation_url" not in data["payment"]
+        assert "provider_payment_id" not in data["payment"]
 
         assert Decimal(str(data["items_total"])) == Decimal("99.99")
         assert Decimal(str(data["delivery_price"])) == Decimal("0.00")
@@ -770,6 +773,26 @@ class TestAdminOrderDetail:
         assert item.product_name == f"Товар #{item.product_id}"
         assert item.sku is None
         assert item.image_url is None
+
+    def test_safe_image_url_allowlist(self):
+        """F-004: относительные пути и хост MinIO — ок, чужие хосты — None."""
+        from unittest.mock import patch
+
+        from src.app.services.order_service import _safe_image_url
+
+        assert _safe_image_url(None) is None
+        assert _safe_image_url("") is None
+        assert _safe_image_url("/uploads/products/a.jpg") == "/uploads/products/a.jpg"
+
+        with patch("src.app.core.config.settings") as mock_settings:
+            mock_settings.minio_endpoint = "http://minio:9000"
+            assert _safe_image_url("http://minio:9000/bucket/a.jpg") == "http://minio:9000/bucket/a.jpg"
+            assert _safe_image_url("https://evil.example.com/track.png") is None
+
+        # minio_endpoint не сконфигурирован → абсолютные URL не доверяем.
+        with patch("src.app.core.config.settings") as mock_settings:
+            mock_settings.minio_endpoint = None
+            assert _safe_image_url("http://minio:9000/bucket/a.jpg") is None
 
 
 class TestAdminCancelOrder:
