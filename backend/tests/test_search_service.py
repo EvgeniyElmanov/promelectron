@@ -35,7 +35,8 @@ class TestIndexSettings:
         assert "price" in payload["sortableAttributes"]
         assert "name" in payload["sortableAttributes"]
         rules = payload["rankingRules"]
-        assert rules.index("stock:desc") < rules.index("sort")
+        # Явный sort-параметр должен побеждать дефолтный stock:desc рейтинг.
+        assert rules.index("sort") < rules.index("stock:desc")
 
     def test_typo_tolerance_and_pagination(self):
         payload = search_service.index_settings([])
