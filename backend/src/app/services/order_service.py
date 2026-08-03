@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime, timezone
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
 from fastapi import HTTPException
 from sqlalchemy import func, select
@@ -14,7 +14,16 @@ from src.app.models.payment import Payment
 from src.app.models.product import Product
 from src.app.models.recipient import Recipient
 from src.app.models.user import User
-from src.app.schemas.order import AdminOrderUpdate, GuestOrderCreate, OrderCreate, OrderUpdateStatus
+from src.app.schemas.order import (
+    AdminOrderBuyerOut,
+    AdminOrderDetailOut,
+    AdminOrderItemOut,
+    AdminOrderUpdate,
+    GuestOrderCreate,
+    OrderCreate,
+    OrderOut,
+    OrderUpdateStatus,
+)
 from src.app.services.cart_service import CartService
 from src.app.services.cdek_service import CdekService
 from src.app.services.email_service import EmailService
@@ -384,6 +393,81 @@ class OrderService:
         orders = list(result.scalars().all())
         await OrderService._ensure_payment_loaded_for_orders(orders, db)
         return orders
+
+    @staticmethod
+    async def get_admin_order_detail(order_id: int, db: AsyncSession) -> Order:
+        """Деталка заказа для админки: предзагружает items→product, user, payment, recipient, cdek_order."""
+        result = await db.execute(
+            select(Order)
+            .where(Order.id == order_id)
+            .options(
+                selectinload(Order.items).selectinload(OrderItem.product),
+                selectinload(Order.user),
+                selectinload(Order.payment),
+                selectinload(Order.recipient),
+                selectinload(Order.cdek_order).selectinload(CdekOrder.status_history),
+            )
+        )
+        order = result.scalars().first()
+        if not order:
+            raise HTTPException(status_code=404, detail="Order not found")
+
+        await OrderService._ensure_payment_loaded(order, db)
+        return order
+
+    @staticmethod
+    def build_admin_order_detail(order: Order) -> AdminOrderDetailOut:
+        """Собрать AdminOrderDetailOut из заказа с предзагруженными relations.
+
+        Суммы считаются на сервере (Decimal, ROUND_HALF_UP): items_total = Σ line_total,
+        delivery_price = max(total_price − items_total, 0). Null-safe к удалённому товару.
+        """
+        items: list[AdminOrderItemOut] = []
+        for item in order.items:
+            product = item.product
+            images = (product.images or []) if product else []
+            line_total = (item.price_at_time * item.quantity).quantize(
+                Decimal("0.01"), rounding=ROUND_HALF_UP
+            )
+            items.append(
+                AdminOrderItemOut(
+                    id=item.id,
+                    product_id=item.product_id,
+                    product_name=product.name if product else f"Товар #{item.product_id}",
+                    sku=product.sku if product else None,
+                    image_url=images[0] if images else None,
+                    quantity=item.quantity,
+                    price_at_time=item.price_at_time,
+                    line_total=line_total,
+                )
+            )
+
+        items_total = sum((i.line_total for i in items), Decimal("0.00"))
+        delivery_price = max(order.total_price - items_total, Decimal("0.00"))
+
+        buyer = None
+        if order.user is not None:
+            buyer = AdminOrderBuyerOut(
+                name=order.user.full_name,
+                email=order.user.email,
+                phone=order.user.phone,
+            )
+        elif order.guest_name or order.guest_email or order.guest_phone:
+            buyer = AdminOrderBuyerOut(
+                name=order.guest_name,
+                email=order.guest_email,
+                phone=order.guest_phone,
+            )
+
+        base = OrderOut.model_validate(order)
+        return AdminOrderDetailOut(
+            **base.model_dump(exclude={"items"}),
+            items=items,
+            buyer=buyer,
+            payment=order.payment,
+            items_total=items_total,
+            delivery_price=delivery_price,
+        )
 
     @staticmethod
     async def get_supplier_orders(supplier_id: int, db: AsyncSession, skip: int = 0, limit: int = 100) -> list[Order]:

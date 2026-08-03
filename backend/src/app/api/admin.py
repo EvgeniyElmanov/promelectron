@@ -14,7 +14,7 @@ from src.app.schemas.admin import (
     OrdersByDayItem,
     TopProductItem,
 )
-from src.app.schemas.order import AdminOrderUpdate, OrderOut
+from src.app.schemas.order import AdminOrderDetailOut, AdminOrderUpdate, OrderOut
 from src.app.services.admin_service import AdminService
 from src.app.services.feature_flags import (
     KNOWN_FEATURE_FLAGS,
@@ -98,6 +98,17 @@ async def get_admin_orders(
     db: AsyncSession = Depends(get_db),
 ):
     return await OrderService.get_all_orders(db, status=status, user_id=user_id, skip=skip, limit=limit)
+
+
+@router.get("/admin/orders/{order_id}/", response_model=AdminOrderDetailOut)
+async def get_admin_order_detail(
+    order_id: int,
+    current_user: User = Depends(get_current_active_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Деталка заказа для админской модалки: позиции с фото, покупатель, оплата, итоги."""
+    order = await OrderService.get_admin_order_detail(order_id=order_id, db=db)
+    return OrderService.build_admin_order_detail(order)
 
 
 @router.put("/admin/orders/{order_id}", response_model=OrderOut)
