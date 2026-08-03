@@ -252,3 +252,39 @@ Backend-под уходил в CrashLoopBackOff при деплое в `promelec
 **Решение:** оркестратор перед запуском тестов проверяет отсутствие живых фоновых pytest (`ps aux | grep pytest`) и дожидается/останавливает фоновые прогоны субагентов; developer-субагенту запрещено оставлять фоновые тесты после отчёта.
 
 **Профилактика:** в одном Docker-PG одновременно только один `make test-backend`; если видишь `InvalidCatalogNameError ... template ... does not exist` пачкой — это гонка прогонов, а не регрессия кода: проверь параллельные pytest и перезапусти.
+
+---
+
+## 2026-08-03 | admin-order-modal-details-130: make lint-backend падает из-за расхождения версий ruff (docker 0.16.1 vs проект 0.15.13)
+
+**Ошибка:** `make lint-backend` в worktree падает с 455 ошибками на всём `src/`, хотя изменённые файлы чисты по host ruff 0.15.13.
+
+**Причина:** в docker-образе backend установлен ruff 0.16.1 (новее закреплённого проектного 0.15.13) — новые правила/изменённое поведение дают ошибки на нетронутых файлах (`api/products.py`, `services/cart_service.py`).
+
+**Решение:** отличать pre-existing шум от регрессии: прогонять ruff той же версии, что в проекте, по изменённым файлам diff'а. Задача на выравнивание версии ruff в docker-образе вынесена как tech-debt.
+
+**Профилактика:** если `make lint-backend` внезапно даёт сотни ошибок на чужих файлах — сначала сверь версию ruff в образе (`docker compose exec backend ruff --version`) с проектной, прежде чем чинить код.
+
+---
+
+## 2026-08-03 | admin-order-modal-details-130: красный CI после merge — причиной оказался включённый feature flag на test, а не PR
+
+**Ошибка:** deploy-run для merge #142 упал на `test-e2e / e2e` (6 failed: facet filters ×3, search-filter ×3, checkout Mir ×1). Перезапуск без изменений — тот же результат.
+
+**Причина:** между зелёным прогоном (#140) и нашим кто-то включил на test feature flag `catalog_search_meilisearch` (Redis override `feature:catalog_search_meilisearch=1`). Каталог перешёл на Meilisearch, а индекс не был готов: 7 документов, в `filterableAttributes` нет `attrs.*` → фасеты пустые, UI meilisearch-режима ломал legacy-тесты. Падения совпали по времени с нашим merge, но PR их не вызывал.
+
+**Решение:** выключить флаг через `set_enabled('catalog_search_meilisearch', False)` в pod api → rerun failed jobs → зелёный. Эксперимент подтвердил, что причина — флаг.
+
+**Профилактика:** при красном e2e после merge сначала проверять, какие тесты упали и менял ли их PR; проверять feature flags на окружении (`RedisClient.get('feature:<flag>')`) — facet-тесты в `catalog.spec.js` скипаются при выключенном флаге, поэтому включение флага «оживляет» тесты к неготовому окружению. Включать `catalog_search_meilisearch` на test только после full reindex (`POST /admin/search/reindex/`) и проверки facet-тестов.
+
+---
+
+## 2026-08-03 | fix-search-sort-e2e-143: кастомный ranking rule перед `sort` молча отменяет явную сортировку Meilisearch
+
+**Ошибка:** при включённом `catalog_search_meilisearch` e2e-тест «sort by price ascending» стабильно падал: запрос `search/?sort=price_asc` возвращал товары в порядке убывания остатка, а не цены.
+
+**Причина:** в `RANKING_RULES` кастомное правило `stock:desc` стояло перед `sort`. Meilisearch применяет правила по порядку, поэтому `stock:desc` выигрывал у явного sort-параметра. Unit-тест закреплял ошибочный порядок (`stock:desc < sort`).
+
+**Решение:** `sort` перед `stock:desc` (PR #143). Без sort-параметра `sort` — no-op и `stock:desc` по-прежнему поднимает товары в наличии. После правки rankingRules обязателен full reindex (`POST /admin/search/reindex/`) — settings применяются только при provision во время swap.
+
+**Профилактика:** любое кастомное ranking rule ставить ПОСЛЕ `sort`, если явная сортировка должна побеждать; проверять сортировку живым запросом к Meilisearch, а не только первыми N результатами (первые могут совпасть случайно). E2E-спеки, зависящие от режима каталога, должны probe'ить feature flag (паттерн из `catalog.spec.js`) — `search-filter.spec.js` этого не делал и ломался при переключении флага.

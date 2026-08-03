@@ -1,3 +1,14 @@
+### 2026-08-03 | implement (backend-dev) | admin-order-modal-details — EXECUTE DONE, готово к ревью
+  Issue #130. Worktree `.worktrees/admin-order-modal-details`, ветка `feature/admin-order-modal-details`, коммит `ed44c65` (только backend-файлы; frontend-dev работает параллельно в том же worktree).
+  Что сделано (по PLAN.backend-dev.md):
+  - `backend/src/app/schemas/order.py` — `AdminOrderItemOut` (product_name/sku/image_url/line_total), `AdminOrderBuyerOut` (name/email/phone), `AdminOrderDetailOut(OrderOut)` (+buyer, payment: PaymentOut, items_total, delivery_price). `OrderOut` и существующие endpoints не тронуты.
+  - `backend/src/app/services/order_service.py` — `get_admin_order_detail()` (selectinload items→product, user, payment, recipient, cdek_order→status_history; 404) и `build_admin_order_detail()` (сборка ответа: fallback «Товар #id» при удалённом product, buyer из user или guest-полей, Decimal ROUND_HALF_UP, delivery_price = max(total − items_total, 0)).
+  - `backend/src/app/api/admin.py` — `GET /admin/orders/{order_id}/` (trailing slash, `get_current_active_admin`).
+  - `backend/tests/test_admin.py` — класс `TestAdminOrderDetail`: 9 тестов (happy path, 404, 403 user, 403 без токена, guest buyer, без payment, delivery_price > 0, clamp к 0, unit fallback удалённого товара).
+  Тесты: полный `make test-backend` — 548 passed, 1 skipped ✅ (целевые 9/9 ✅). Lint: host ruff 0.15.13 (`ruff check src/ tests/`) по изменённым файлам чисто; `make lint-backend` падает с 455 ошибками на всём `src/` — pre-existing: в docker-образе ruff 0.16.1 (новее проектного), нетронутые файлы (products.py, cart_service.py) дают 20 ошибок. Не моя регрессия.
+  Отклонения от плана: (1) сборку ответа вынес из handler'а в service (`build_admin_order_detail`) — правило «бизнес-логика в service»; (2) тест unauthorized ожидает 403 (проектный стандарт HTTPBearer), не 401; (3) тест удалённого товара — unit на `build_admin_order_detail` (FK не даёт удалить product через ORM).
+  Блокеры: нет. Миграций нет (D-11). Не запушено.
+
 ### 2026-08-01 | fix (frontend-dev) | catalog-filter-panel-122 — LOW findings F001–F003 из ревью PR #135 FIXED
   Ветка `fix/catalog-search-low-findings` (worktree `.worktrees/catalog-filter-panel-122`), один коммит `62b8def`. Не запушено — push/PR делает оркестратор.
   - F001: stale-запрос с не-cancel ошибкой больше не пишет в `error.value`/`items`/`loading` — проверка `currentFetchId !== fetchId` в catch `useCatalogSearch.load`.
@@ -3468,3 +3479,14 @@
 - Операционный шаг после деплоя: full reindex job (images в существующем индексе).
 - 2026-08-01 | search-api-followups-0801: PR #140 влит в main. Issues #137/#138 → Done (CLOSED). Эпик #117 закрыт с итоговым комментарием. Операционный шаг после деплоя: full reindex job (images).
 - 2026-08-01 | search-api-followups-0801 | post-deploy test: полный reindex выполнен (jobs 3342, 3343, 3344 — все completed, indexed: 7). E2E-проверка images: временно выставлен `images=['e2e-verify-image.jpg']` у товара id=1 → поле доехало в индекс Meilisearch → значение откачено, документ снова `[]`. Все тестовые товары в PG имеют пустые images, поэтому в выдаче `images: []` — корректно. Feature flag `catalog_search_meilisearch` на test выключен (source: default) — /api/v1/search/ отдаёт 404 до включения флага. Prod-окружение в кластере не развёрнуто (namespace promelectron пуст) — reindex там делать нечего.
+
+### 2026-08-03 | frontend-dev | admin-order-modal-details — dev-фаза (#130)
+- Новый компонент `frontend/src/components/admin/AdminOrderModal.vue`: полная карточка заказа (позиции с миниатюрами 48px + лайтбокс по клику/Esc, итоги items_total/delivery_price/total, conditional-строка скидки, покупатель buyer, получатель, адрес, оплата ЮKassa/—, таб CDEK перенесён механически). Грузит `GET /admin/orders/{id}/` сам по `orderId`, emit `updated` для refresh списка.
+- `frontend/src/api/admin.js`: `getAdminOrder` (trailing slash) + `updateAdminOrder` (PUT без slash — существующий контракт, не трогаем).
+- `Admin.vue`: inline-модалка и handlers ship/cancel удалены; в строке таблицы только иконка `admin-order-open-btn-{id}`; колонка «Доставка» починена на `cdek_order ? 'CDEK' : '—'` (D-06). Кнопки ship/cancel — в модалке с прежними testid и правилами D-09; confirm при отмене (для paid — про авто-возврат). После save/ship — refetch detail + `updated`, модалка открыта; после cancel — закрытие (D-12).
+- Тесты: новый `AdminOrderModal.spec.js` (21 тест: шапка, состав, placeholder, скидка, лайтбокс клик/Esc, buyer guest/auth, оплата, видимость кнопок по статусам, ship/cancel/save flows, CDEK-таб, ошибка загрузки); `Admin.spec.js` обновлён (сценарии ship/cancel перенесены в модалку, мок `buildOrderDetail` по контракту `AdminOrderDetailOut`).
+- Проверки: `make test-frontend` — **326/326 passed**; `make lint-frontend` — 0 errors. Коммит `9a59fda` в `feature/admin-order-modal-details`.
+- Найдено и исправлено в ходе: рендер CDEK-панели при `cdek_order: null` (v-show → v-if); watcher `visible` без `immediate` не стартовал загрузку при маунте.
+- E2E `e2e/admin.spec.js` селекторы ship/cancel не использовал — изменений не потребовалось; полная интеграционная проверка — на QA-фазе.
+
+- 2026-08-03 | ci-red-after-142 | Диагностика красного CI после merge #142: причина — включённый кем-то feature flag `catalog_search_meilisearch` на test при неготовом индексе (7 docs, нет attrs.* filterable, таблица attributes пустая). Подтверждено экспериментом (flag off → зелёный). Починка под флаг ON: засеян атрибут brand + pav для 7 товаров, full reindex (jobs 3450, 3499), найден и исправлен backend-баг RANKING_RULES (stock:desc перед sort отменял явную сортировку) — PR #143 влит; search-filter.spec.js сделан mode-aware (probe флага, scoped селекторы, FilterPanel price inputs). Deploy-run 30807775604 полностью зелёный с флагом ON. Уроки в LESSONS_LEARNED.md.
