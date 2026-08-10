@@ -8,6 +8,7 @@ from httpx import AsyncClient
 from sqlalchemy import select
 
 from src.app.core.config import settings
+from src.app.models.job import Job
 from src.app.models.onec_sync import OnecIntakeLog
 
 
@@ -311,3 +312,34 @@ async def test_intake_object_key_format(
         r"\d{4}/\d{2}/\d{2}/\d{6}_[0-9a-f-]{36}\.bin", log.object_key
     )
     assert (log.bucket, log.object_key) in fake_storage.objects
+
+
+@pytest.mark.asyncio
+async def test_intake_enqueues_process_job(
+    client: AsyncClient, test_session, fake_storage, onec_api_key
+):
+    """A successful intake enqueues exactly one ONEC_INTAKE_PROCESS job."""
+    response = await client.post(
+        "/api/v1/onec/intake/",
+        content=b"data",
+        headers={"X-1C-Api-Key": onec_api_key},
+    )
+    assert response.status_code == 202
+
+    result = await test_session.execute(select(Job))
+    jobs = result.scalars().all()
+    assert len(jobs) == 1
+    job = jobs[0]
+    assert job.job_type == "ONEC_INTAKE_PROCESS"
+    assert job.status == "pending"
+    assert job.payload["intake_id"] == response.json()["intake_id"]
+
+
+@pytest.mark.asyncio
+async def test_intake_rejected_creates_no_job(client: AsyncClient, test_session):
+    """A rejected intake (missing API key) must not enqueue any job."""
+    response = await client.post("/api/v1/onec/intake/", content=b"data")
+    assert response.status_code == 401
+
+    result = await test_session.execute(select(Job))
+    assert result.scalars().all() == []

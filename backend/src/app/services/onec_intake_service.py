@@ -7,6 +7,7 @@ from fastapi import HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.app.core.config import settings
+from src.app.models.job import Job
 from src.app.models.onec_sync import OnecIntakeLog
 from src.app.services.storage_service import storage
 
@@ -107,3 +108,19 @@ async def store_intake(session: AsyncSession, request: Request) -> OnecIntakeLog
     await session.flush()
     await session.refresh(log)
     return log
+
+
+async def create_onec_intake_process_job(session: AsyncSession, intake_id: str) -> Job:
+    """Enqueue an ONEC_INTAKE_PROCESS job for the given intake id.
+
+    The caller (endpoint) is responsible for commit — the job lands in the
+    same transaction as the intake log row.
+    """
+    job = Job(
+        job_type="ONEC_INTAKE_PROCESS",
+        payload={"intake_id": intake_id},
+    )
+    session.add(job)
+    await session.flush()
+    await session.refresh(job)
+    return job

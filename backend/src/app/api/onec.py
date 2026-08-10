@@ -5,7 +5,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.app.db.database import get_db
 from src.app.schemas.onec import OnecIntakeResponse, OnecWebhookPayload, OnecWebhookResponse
-from src.app.services.onec_intake_service import store_intake
+from src.app.services.onec_intake_service import (
+    create_onec_intake_process_job,
+    store_intake,
+)
 from src.app.services.onec_webhook_service import (
     compute_checksum,
     create_change_log,
@@ -73,6 +76,7 @@ async def onec_intake(
     validate_api_key(x_1c_api_key)
 
     log = await store_intake(db, request)
+    await create_onec_intake_process_job(db, str(log.intake_id))
     await db.commit()
 
     return OnecIntakeResponse(
