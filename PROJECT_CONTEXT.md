@@ -137,8 +137,8 @@ Product.price → Numeric      →  Product variants / Seller payouts
 ### Auth / OAuth
 | Метод | Путь | Статус | Описание |
 |-------|------|--------|----------|
-| POST | `/api/v1/auth/register/` | ✅ | Регистрация |
-| POST | `/api/v1/auth/login/` | ✅ | Логин (JWT) |
+| POST | `/api/v1/register/` | ✅ | Регистрация |
+| POST | `/api/v1/login/` | ✅ | Логин (JWT) |
 | POST | `/api/v1/auth/yandex/` | ✅ | OAuth Yandex callback |
 | POST | `/api/v1/auth/google/` | ✅ | OAuth Google callback |
 | GET | `/api/v1/auth/providers/` | ✅ | Доступность OAuth-провайдеров |
@@ -220,7 +220,7 @@ Product.price → Numeric      →  Product variants / Seller payouts
 | Checkout | `src/views/CheckoutView.vue` | `useCart` | `/orders/`, `/payments/` |
 | PaymentSuccess | `src/views/PaymentSuccessView.vue` | — | `/payments/guest/{order_id}/mock-confirm/`, `/orders/guest/{order_id}/` |
 | PaymentFailed | `src/views/PaymentFailedView.vue` | — | `/payments/{payment_id}/` |
-| Login | `src/views/LoginView.vue` | `useAuth` | `/auth/login/`, `/auth/yandex/` |
+| Login | `src/views/LoginView.vue` | `useAuth` | `/login/`, `/auth/yandex/` |
 | ForgotPassword | `src/views/ForgotPassword.vue` | — | `/auth/password-reset-request/` |
 | ResetPassword | `src/views/ResetPassword.vue` | — | `/auth/password-reset/` |
 | AdminDashboard | `src/views/admin/DashboardView.vue` | — | `/admin/...` |
