@@ -240,6 +240,10 @@ jobs:
       - name: Seed test catalog via 1C mock chain
         env:
           KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
+          # F006/S001: секреты только из GitHub Secrets, хардкода в скриптах нет
+          SEED_SECRET: ${{ secrets.SEED_SECRET }}
+          SEED_ADMIN_PASSWORD: ${{ secrets.SEED_ADMIN_PASSWORD }}
+          SEED_SUPPLIER_PASSWORD: ${{ secrets.SEED_SUPPLIER_PASSWORD }}
         run: |
           bash scripts/ci/seed_test_catalog.sh
 

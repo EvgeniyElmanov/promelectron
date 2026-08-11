@@ -22,6 +22,9 @@ env:
   YOOKASSA_SHOP_ID: ${{ vars.YOOKASSA_SHOP_ID }}
   YOOKASSA_SECRET_KEY: ${{ secrets.YOOKASSA_SECRET_KEY }}
   YOOKASSA_TEST_MODE: ${{ vars.YOOKASSA_TEST_MODE || 'true' }}
+  # F006/S001: x-seed-secret для Playwright global-setup и debug/set-status —
+  # только из GitHub Secret (в репозитории хардкода больше нет)
+  SEED_SECRET: ${{ secrets.SEED_SECRET }}
 
 jobs:
   smoke:

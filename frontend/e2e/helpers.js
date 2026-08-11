@@ -4,7 +4,8 @@ import {
   SUCCESSFUL_CARDS,
 } from './yookassa-test-cards.js';
 
-const SEED_SECRET = process.env.SEED_SECRET || 'promelectron-test-seed-2024';
+// F006/S001: секрет только из env (GitHub Secret SEED_SECRET в CI) — без хардкода.
+const SEED_SECRET = process.env.SEED_SECRET;
 
 export async function goToCart(page) {
   const headerLink = page.locator('[data-testid="cart-link"]');
@@ -45,6 +46,9 @@ export async function expectYooKassaPageOrSkip(page) {
 export async function setYooKassaPaymentStatus(
   { orderId, status, cancellationReason, guestEmail },
 ) {
+  if (!SEED_SECRET) {
+    throw new Error('SEED_SECRET не задан: экспортируйте переменную окружения SEED_SECRET.');
+  }
   const apiContext = await request.newContext({
     baseURL: process.env.API_URL,
   });

@@ -11,9 +11,12 @@ set -euo pipefail
 
 NS="${NS:-promelectron-test}"
 API="${API:-https://api.promelectron-test.aidrivencode.ru}"
-SEED_SECRET="${SEED_SECRET:-promelectron-test-seed-2024}"
+# F006/S001: секреты обязательны из env (GitHub Secrets в deploy.yml), хардкод-дефолтов нет.
+: "${SEED_SECRET:?SEED_SECRET не задан — пробросьте из GitHub Secret SEED_SECRET}"
+: "${SEED_ADMIN_PASSWORD:?SEED_ADMIN_PASSWORD не задан — пробросьте из GitHub Secret SEED_ADMIN_PASSWORD}"
+: "${SEED_SUPPLIER_PASSWORD:?SEED_SUPPLIER_PASSWORD не задан — пробросьте из GitHub Secret SEED_SUPPLIER_PASSWORD}"
 ADMIN_EMAIL="${SEED_ADMIN_EMAIL:-seed-admin@example.com}"
-ADMIN_PASSWORD="${SEED_ADMIN_PASSWORD:-seedpassword123}"
+ADMIN_PASSWORD="$SEED_ADMIN_PASSWORD"
 # F004: значение читаем из кластера (onecMock.seedProductsCount → env деплоя),
 # fallback 30 при недоступности (например, до первого деплоя значения).
 EXPECTED_PRODUCTS="$(kubectl get deploy promelectron-onec-mock -n "$NS" \

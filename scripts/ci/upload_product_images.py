@@ -105,7 +105,12 @@ def main() -> int:
     manifest = json.loads(Path(args.manifest).read_text(encoding="utf-8"))
 
     supplier_email = os.getenv("SEED_SUPPLIER_EMAIL", "seed-supplier@example.com")
-    supplier_password = os.getenv("SEED_SUPPLIER_PASSWORD", "seedpassword123")
+    # F006/S001: пароль обязателен из env (GitHub Secret SEED_SUPPLIER_PASSWORD),
+    # хардкод-дефолта нет — fail-fast с понятным сообщением.
+    supplier_password = os.getenv("SEED_SUPPLIER_PASSWORD")
+    if not supplier_password:
+        log("SEED_SUPPLIER_PASSWORD не задан — пробросьте из GitHub Secret — FAIL")
+        return 1
 
     with httpx.Client() as client:
         # 1. Login seed-supplier
