@@ -9,6 +9,8 @@ RUN python -m pip install --no-cache-dir -r requirements-dev.txt
 COPY src/ ./src/
 COPY main.py alembic.ini seed_data.py docker-entrypoint.sh ./
 COPY alembic/ ./alembic/
+# Ops-скрипты (cleanup_test_env.py и др.) — запускаются через kubectl exec в поде
+COPY scripts/ ./scripts/
 
 RUN mkdir -p uploads/avatars uploads/products && chmod +x docker-entrypoint.sh
 
