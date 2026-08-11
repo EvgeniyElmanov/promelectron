@@ -235,7 +235,7 @@ jobs:
 
       - name: Install httpx for image upload script
         run: |
-          python3 -c "import httpx" 2>/dev/null || pip install --user httpx
+          pip install --user "httpx==0.28.*"
 
       - name: Seed test catalog via 1C mock chain
         env:

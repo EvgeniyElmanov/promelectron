@@ -109,6 +109,22 @@ async def cleanup_postgres() -> dict[str, tuple[int, int]]:
         )
         db_name, db_host, db_port = db_info.one()
         print(f"[CLEANUP] PostgreSQL: db={db_name} host={db_host}:{db_port}")
+        # S004 (defense in depth): позитивная проверка идентичности БД.
+        # Имя БД на test-стенде не содержит 'test' (sops-secrets: POSTGRES_DB),
+        # поэтому: точное имя можно зафиксировать env-override'ом
+        # EXPECTED_TEST_DB_NAME, а без него — отказ, если имя похоже на prod.
+        expected_db = os.getenv("EXPECTED_TEST_DB_NAME", "")
+        if expected_db:
+            if db_name != expected_db:
+                _fail(
+                    f"current_database()={db_name!r} не совпадает с "
+                    f"EXPECTED_TEST_DB_NAME={expected_db!r}. Отказ."
+                )
+        elif "prod" in db_name.lower():
+            _fail(
+                f"current_database()={db_name!r} похоже на prod-БД. Отказ: "
+                "очистка разрешена только против test-БД."
+            )
         print(f"[CLEANUP] users НЕ трогаем: {await _table_count(session, 'users')} строк")
 
         for table in TRUNCATE_TABLES:

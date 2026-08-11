@@ -53,7 +53,7 @@
       }
     },
     {
-      "match": ["выключатель"],
+      "match": ["выключатель", "переключатель"],
       "images": [
         {
           "url": "https://commons.wikimedia.org/wiki/Special:FilePath/White%20light%20switch.jpg?width=1200",

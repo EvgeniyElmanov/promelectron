@@ -45,28 +45,42 @@ def find_group(manifest: dict, product_name: str) -> dict | None:
 
 
 def download_image(client: httpx.Client, url: str) -> tuple[bytes, str] | None:
-    """Скачать фото с retry. Возвращает (content, ext) или None."""
+    """Скачать фото с retry. Возвращает (content, ext) или None.
+
+    Размер ограничен дважды (S003): сначала по заголовку Content-Length,
+    затем по фактически прочитанным байтам (stream с лимитом) — тело целиком
+    в память не грузим.
+    """
     for attempt in range(1, RETRIES + 1):
         try:
-            resp = client.get(url, follow_redirects=True, timeout=60)
-            resp.raise_for_status()
-            content_type = resp.headers.get("content-type", "")
-            if not content_type.startswith("image/"):
-                log(f"  не image content-type={content_type!r}: {url}")
-                return None
-            if len(resp.content) > MAX_FILE_SIZE:
-                log(f"  слишком большой файл ({len(resp.content)} байт): {url}")
-                return None
-            ext = {
-                "image/jpeg": ".jpg",
-                "image/png": ".png",
-                "image/webp": ".webp",
-                "image/gif": ".gif",
-            }.get(content_type.split(";")[0].strip())
-            if ext not in ALLOWED_EXTENSIONS:
-                log(f"  неподдерживаемый тип {content_type!r}: {url}")
-                return None
-            return resp.content, ext
+            with client.stream("GET", url, follow_redirects=True, timeout=60) as resp:
+                resp.raise_for_status()
+                content_type = resp.headers.get("content-type", "")
+                if not content_type.startswith("image/"):
+                    log(f"  не image content-type={content_type!r}: {url}")
+                    return None
+                content_length = resp.headers.get("content-length")
+                if content_length and int(content_length) > MAX_FILE_SIZE:
+                    log(f"  слишком большой файл (Content-Length={content_length}): {url}")
+                    return None
+                ext = {
+                    "image/jpeg": ".jpg",
+                    "image/png": ".png",
+                    "image/webp": ".webp",
+                    "image/gif": ".gif",
+                }.get(content_type.split(";")[0].strip())
+                if ext not in ALLOWED_EXTENSIONS:
+                    log(f"  неподдерживаемый тип {content_type!r}: {url}")
+                    return None
+                chunks: list[bytes] = []
+                downloaded = 0
+                for chunk in resp.iter_bytes(chunk_size=65536):
+                    downloaded += len(chunk)
+                    if downloaded > MAX_FILE_SIZE:
+                        log(f"  слишком большой файл (>{MAX_FILE_SIZE} байт): {url}")
+                        return None
+                    chunks.append(chunk)
+            return b"".join(chunks), ext
         except httpx.HTTPError as exc:
             log(f"  попытка {attempt}/{RETRIES}: {type(exc).__name__}: {exc}")
             time.sleep(2 * attempt)
@@ -96,7 +110,7 @@ def main() -> int:
     with httpx.Client() as client:
         # 1. Login seed-supplier
         resp = client.post(
-            f"{api}/api/v1/auth/login/",
+            f"{api}/api/v1/login/",
             json={"email": supplier_email, "password": supplier_password},
             timeout=30,
         )

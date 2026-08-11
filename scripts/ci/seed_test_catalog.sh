@@ -14,7 +14,12 @@ API="${API:-https://api.promelectron-test.aidrivencode.ru}"
 SEED_SECRET="${SEED_SECRET:-promelectron-test-seed-2024}"
 ADMIN_EMAIL="${SEED_ADMIN_EMAIL:-seed-admin@example.com}"
 ADMIN_PASSWORD="${SEED_ADMIN_PASSWORD:-seedpassword123}"
-EXPECTED_PRODUCTS=30   # onecMock.seedProductsCount в stage/test/values.yaml
+# F004: значение читаем из кластера (onecMock.seedProductsCount → env деплоя),
+# fallback 30 при недоступности (например, до первого деплоя значения).
+EXPECTED_PRODUCTS="$(kubectl get deploy promelectron-onec-mock -n "$NS" \
+  -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name=="SEED_PRODUCTS_COUNT")].value}' \
+  2>/dev/null || true)"
+EXPECTED_PRODUCTS="${EXPECTED_PRODUCTS:-30}"
 MIN_PRODUCTS=25        # нижняя граница Acceptance Criteria
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
@@ -109,7 +114,7 @@ check_meili_docs() {
 }
 
 api_login() { # <email> <password> → печатает access_token
-  curl -sf -X POST "$API/api/v1/auth/login/" \
+  curl -sf -X POST "$API/api/v1/login/" \
     -H 'Content-Type: application/json' \
     -d "{\"email\": \"$1\", \"password\": \"$2\"}" | python3 -c \
     "import json,sys; print(json.load(sys.stdin)['access_token'])"
