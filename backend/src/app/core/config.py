@@ -11,6 +11,10 @@ _DEV_SECRET_PLACEHOLDER = "dev-only-insecure-change-me"
 # Dev-only placeholder for the 1С webhook API key.
 _ONEC_WEBHOOK_API_KEY_PLACEHOLDER = "change-me"
 
+# Dev-only placeholder for the /api/v1/seed secret (F006/S001, issue #147).
+# In production SEED_SECRET is not set → seed endpoint always answers 403.
+_DEV_SEED_SECRET_PLACEHOLDER = "promelectron-test-seed-2024"
+
 
 @dataclass(frozen=True)
 class Settings:
@@ -69,6 +73,7 @@ class Settings:
     job_worker_sleep_seconds: int
     job_max_attempts: int
     search_reindex_timeout_seconds: int
+    seed_secret: str | None
 
 
 def _parse_int_env(name: str, default: int) -> int:
@@ -109,6 +114,21 @@ def _load_onec_webhook_api_key() -> str:
                 "Set the ONEC_WEBHOOK_API_KEY environment variable (never use the dev placeholder)."
             )
     return key
+
+
+def _load_seed_secret() -> str | None:
+    """Return SEED_SECRET from env.
+
+    Dev/test fallback keeps local runs and backend-тесты рабочими без env.
+    In production there is no fallback: если SEED_SECRET не задан, возвращает None —
+    тогда endpoint /api/v1/seed всегда отвечает 403 (prod-guard F006/S001).
+    """
+    secret = os.getenv("SEED_SECRET")
+    if secret:
+        return secret
+    if os.getenv("ENVIRONMENT") == "production":
+        return None
+    return _DEV_SEED_SECRET_PLACEHOLDER
 
 
 def _validate_frontend_url(url: str) -> str:
@@ -212,6 +232,7 @@ settings = Settings(
     job_worker_sleep_seconds=_parse_int_env("JOB_WORKER_SLEEP_SECONDS", 60),
     job_max_attempts=_parse_int_env("JOB_MAX_ATTEMPTS", 5),
     search_reindex_timeout_seconds=_parse_int_env("SEARCH_REINDEX_TIMEOUT_SECONDS", 3600),
+    seed_secret=_load_seed_secret(),
 )
 
 SECRET_KEY = settings.secret_key

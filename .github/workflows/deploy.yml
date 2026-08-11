@@ -8,6 +8,7 @@ on:
       - 'frontend/**'
       - 'mocks/**'
       - 'infra/helm/**'
+      - 'scripts/ci/**'
       - '.github/workflows/deploy.yml'
       - '.github/workflows/e2e.yml'
   workflow_dispatch:
@@ -222,8 +223,46 @@ jobs:
           echo "=== Redis logs ==="
           kubectl logs -n promelectron-test -l app=promelectron-redis --tail=200 || true
 
-  test-e2e:
+  # CI-сидинг каталога электротоваров на test-стенде (issue #147).
+  # Только test-ветка: в prod-пайплайне job отсутствует (часть тройной защиты D-02).
+  seed-test-catalog:
     needs: deploy-test
+    runs-on: self-hosted
+    if: github.event_name == 'push' || inputs.environment == 'test' || inputs.environment == 'all'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install httpx for image upload script
+        run: |
+          pip install --user "httpx==0.28.*"
+
+      - name: Seed test catalog via 1C mock chain
+        env:
+          KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
+          # F006/S001: секреты только из GitHub Secrets, хардкода в скриптах нет
+          SEED_SECRET: ${{ secrets.SEED_SECRET }}
+          SEED_ADMIN_PASSWORD: ${{ secrets.SEED_ADMIN_PASSWORD }}
+          SEED_SUPPLIER_PASSWORD: ${{ secrets.SEED_SUPPLIER_PASSWORD }}
+        run: |
+          bash scripts/ci/seed_test_catalog.sh
+
+      - name: Debug seed failure
+        if: failure()
+        env:
+          KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
+        run: |
+          echo "=== Pods ==="
+          kubectl get pods -n promelectron-test -o wide || true
+          echo "=== API logs ==="
+          kubectl logs -n promelectron-test -l app=promelectron-api --tail=200 || true
+          echo "=== Job worker logs ==="
+          kubectl logs -n promelectron-test -l app=promelectron-job-worker --tail=200 || true
+          echo "=== 1C mock logs ==="
+          kubectl logs -n promelectron-test -l app=promelectron-onec-mock --tail=200 || true
+
+  test-e2e:
+    needs: [deploy-test, seed-test-catalog]
     uses: ./.github/workflows/e2e.yml
     secrets: inherit
     with:

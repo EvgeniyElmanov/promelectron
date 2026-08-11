@@ -29,15 +29,20 @@ test.describe('Search & Filters', () => {
     await expect(page.locator('[data-testid="product-card"]').first()).toBeVisible();
 
     const searchBar = page.locator('[data-testid="search-bar"]');
-    await searchBar.fill('Nova');
+    await searchBar.fill('ВВГнг');
 
     // Wait for debounce (300ms) + network
     await page.waitForTimeout(600);
 
-    // Should show only the Nova X12 smartphone
+    // Should show only ВВГ-cables (электрокаталог, issue #147; на test-стенде
+    // каталог дополнительно содержит товары onec-мока — точное число не фиксируем)
     const cards = page.locator('[data-testid="product-card"]');
-    await expect(cards).toHaveCount(1);
-    await expect(cards.first()).toContainText('Nova X12');
+    await expect(cards.first()).toBeVisible();
+    const count = await cards.count();
+    expect(count).toBeGreaterThan(0);
+    for (let i = 0; i < count; i++) {
+      await expect(cards.nth(i)).toContainText(/ВВГ/);
+    }
   });
 
   test('category filter shows only products from selected category', async ({ page }) => {
@@ -47,26 +52,26 @@ test.describe('Search & Filters', () => {
     // Wait for categories and products to load
     await expect(page.locator('[data-testid="product-card"]').first()).toBeVisible();
     // Scope к chips: в meilisearch-режиме название категории есть и в FilterPanel.
-    const laptopChip = page.locator('[data-testid="category-chips"]').getByText('Ноутбуки');
-    await expect(laptopChip).toBeVisible({ timeout: 10000 });
+    const socketChip = page.locator('[data-testid="category-chips"]').getByText('Розетки');
+    await expect(socketChip).toBeVisible({ timeout: 10000 });
 
     // Count all products before filter
     const allCards = page.locator('[data-testid="product-card"]');
     const allCount = await allCards.count();
     expect(allCount).toBeGreaterThan(2);
 
-    // Click "Ноутбуки" category
-    await laptopChip.click();
+    // Click "Розетки" category
+    await socketChip.click();
     await page.waitForTimeout(400);
 
-    // Should show only laptop products
-    const laptopCards = page.locator('[data-testid="product-card"]');
-    const laptopCount = await laptopCards.count();
-    expect(laptopCount).toBeLessThan(allCount);
+    // Should show only socket products
+    const socketCards = page.locator('[data-testid="product-card"]');
+    const socketCount = await socketCards.count();
+    expect(socketCount).toBeLessThan(allCount);
 
-    // Verify all visible cards contain laptop-related text
-    for (let i = 0; i < laptopCount; i++) {
-      await expect(laptopCards.nth(i)).toContainText(/Ноутбук|Orion|Falcon/);
+    // Verify all visible cards contain socket-related text
+    for (let i = 0; i < socketCount; i++) {
+      await expect(socketCards.nth(i)).toContainText(/Розетка/);
     }
   });
 
@@ -93,15 +98,15 @@ test.describe('Search & Filters', () => {
     await page.goto('/');
     await expect(page.locator('[data-testid="product-card"]').first()).toBeVisible();
 
-    // Set price range 20000 - 50000
+    // Set price range 500 - 5000 (диапазон цен электрокаталога, issue #147)
     if (flagOn) {
       // meilisearch-режим: фильтр цены в FilterPanel
-      await page.fill('[data-testid="filter-price-min"]', '20000');
-      await page.fill('[data-testid="filter-price-max"]', '50000');
+      await page.fill('[data-testid="filter-price-min"]', '500');
+      await page.fill('[data-testid="filter-price-max"]', '5000');
       await page.click('[data-testid="filter-apply"]');
     } else {
-      await page.fill('[data-testid="min-price-input"]', '20000');
-      await page.fill('[data-testid="max-price-input"]', '50000');
+      await page.fill('[data-testid="min-price-input"]', '500');
+      await page.fill('[data-testid="max-price-input"]', '5000');
       await page.click('[data-testid="apply-price-btn"]');
     }
 
@@ -111,8 +116,8 @@ test.describe('Search & Filters', () => {
       expect(prices.length).toBeGreaterThan(0);
       for (const priceText of prices) {
         const price = parsePrice(priceText);
-        expect(price).toBeGreaterThanOrEqual(20000);
-        expect(price).toBeLessThanOrEqual(50000);
+        expect(price).toBeGreaterThanOrEqual(500);
+        expect(price).toBeLessThanOrEqual(5000);
       }
     }).toPass({ timeout: 5000 });
   });

@@ -47,7 +47,7 @@ async def test_status_reflects_catalog_and_scheduler(api_client):
     assert body["interval_minutes"] == settings.sync_interval_minutes
     assert body["catalog"]["products"] == settings.seed_products_count
     assert body["catalog"]["categories"] > 0
-    assert body["pending_changes"] == 0
+    assert body["pending_changes"] == 3 * settings.seed_products_count  # D-03: seed пишет change_log
 
 
 async def test_scenario_unknown_returns_422(api_client):
@@ -78,10 +78,18 @@ async def test_scenario_with_send_now_returns_batch(api_client):
     assert body["send"]["http_status"] == 202
 
 
-async def test_trigger_nothing_to_send(api_client):
+async def test_trigger_after_seed_sends_full_catalog(api_client):
+    # D-03: после seed в change_log 3 записи на товар — trigger отправляет весь каталог
     response = await api_client.post("/trigger/")
     assert response.status_code == 200
-    assert response.json() == {"status": "nothing_to_send"}
+    body = response.json()
+    assert body["status"] == "success"
+    assert body["changes_sent"] == 3 * settings.seed_products_count
+
+    # повторный trigger — pending пуст
+    second = await api_client.post("/trigger/")
+    assert second.status_code == 200
+    assert second.json() == {"status": "nothing_to_send"}
 
 
 async def test_trigger_sends_pending(api_client):

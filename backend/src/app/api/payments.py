@@ -17,7 +17,6 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.app.api.seed import SEED_SECRET
 from src.app.core.config import settings
 from src.app.db.database import get_db
 from src.app.models.order import Order
@@ -219,7 +218,11 @@ async def debug_set_payment_status(
             status_code=403, detail="Debug endpoint only available in test mode"
         )
 
-    if x_seed_secret is None or not hmac.compare_digest(x_seed_secret, SEED_SECRET):
+    if (
+        x_seed_secret is None
+        or settings.seed_secret is None
+        or not hmac.compare_digest(x_seed_secret, settings.seed_secret)
+    ):
         raise HTTPException(status_code=403, detail="Forbidden")
 
     query = (

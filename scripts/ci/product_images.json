@@ -1,0 +1,175 @@
+{
+  "_comment": "Манифест реальных фото для CI-сидинга каталога (issue #147, D-08). Источник: Wikimedia Commons, стабильные URL через Special:FilePath (redirect на upload.wikimedia.org). Лицензии и авторы зафиксированы по extmetadata Commons API на 2026-08-10. Matching: первый групповой match (substring, case-insensitive) по имени товара, порядок групп важен — специфичные ('узо', 'автомат') идут раньше 'выключатель'.",
+  "groups": [
+    {
+      "match": ["узо", "дифавтомат"],
+      "images": [
+        {
+          "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Residual%20current%20device%202pole.jpg?width=1200",
+          "file": "File:Residual current device 2pole.jpg",
+          "license": "Public domain",
+          "author": "Jimbob82"
+        }
+      ],
+      "fallback": {
+        "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Residual%20current%20device%20%28RCD%29.jpg?width=1200",
+        "file": "File:Residual current device (RCD).jpg",
+        "license": "CC0",
+        "author": "Diermaier"
+      }
+    },
+    {
+      "match": ["автомат"],
+      "images": [
+        {
+          "url": "https://commons.wikimedia.org/wiki/Special:FilePath/IEK%20circuit%20breakers%20for%20DIN%20rail.JPG?width=1200",
+          "file": "File:IEK circuit breakers for DIN rail.JPG",
+          "license": "CC BY-SA 3.0",
+          "author": "strenus6"
+        }
+      ],
+      "fallback": {
+        "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Circuit%20breaker%202%20pole%20on%20DIN%20rail.JPG?width=1200",
+        "file": "File:Circuit breaker 2 pole on DIN rail.JPG",
+        "license": "CC BY-SA 3.0",
+        "author": "Kae"
+      }
+    },
+    {
+      "match": ["розетка"],
+      "images": [
+        {
+          "url": "https://commons.wikimedia.org/wiki/Special:FilePath/European%20electric%20socket%20%289649876%29.jpg?width=1200",
+          "file": "File:European electric socket (9649876).jpg",
+          "license": "Public domain",
+          "author": "U.S. Army USAGA"
+        }
+      ],
+      "fallback": {
+        "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Aufputzschalter%20und%20Steckdose%20wei%C3%9F%20innen.jpg?width=1200",
+        "file": "File:Aufputzschalter und Steckdose weiß innen.jpg",
+        "license": "CC BY-SA 4.0",
+        "author": "Muldentaler2"
+      }
+    },
+    {
+      "match": ["выключатель", "переключатель"],
+      "images": [
+        {
+          "url": "https://commons.wikimedia.org/wiki/Special:FilePath/White%20light%20switch.jpg?width=1200",
+          "file": "File:White light switch.jpg",
+          "license": "CC BY-SA 4.0",
+          "author": "Santeri Viinamäki"
+        }
+      ],
+      "fallback": {
+        "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Light%20Switch%201.jpg?width=1200",
+        "file": "File:Light Switch 1.jpg",
+        "license": "CC BY-SA 4.0",
+        "author": "Gaurav Dhwaj Khadka"
+      }
+    },
+    {
+      "match": ["кабель"],
+      "images": [
+        {
+          "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Electric%20guide%203%C3%972.5%20mm.jpg?width=1200",
+          "file": "File:Electric guide 3×2.5 mm.jpg",
+          "license": "CC BY-SA 4.0",
+          "author": "Petar Milošević"
+        }
+      ],
+      "fallback": {
+        "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Power%20cables.jpg?width=1200",
+        "file": "File:Power cables.jpg",
+        "license": "CC BY-SA 4.0",
+        "author": "Pawarbhushan"
+      }
+    },
+    {
+      "match": ["провод"],
+      "images": [
+        {
+          "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Power-cable%20hg.jpg?width=1200",
+          "file": "File:Power-cable hg.jpg",
+          "license": "CC BY-SA 3.0",
+          "author": "Hannes Grobe"
+        }
+      ],
+      "fallback": {
+        "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Power%20cables.jpg?width=1200",
+        "file": "File:Power cables.jpg",
+        "license": "CC BY-SA 4.0",
+        "author": "Pawarbhushan"
+      }
+    },
+    {
+      "match": ["светильник"],
+      "images": [
+        {
+          "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Ceiling%20light%20fixture%20in%20Hofstatt%20Mall%2C%20Munich%2C%20February%202017.jpg?width=1200",
+          "file": "File:Ceiling light fixture in Hofstatt Mall, Munich, February 2017.jpg",
+          "license": "CC BY-SA 4.0",
+          "author": "Martin Falbisoner"
+        }
+      ],
+      "fallback": {
+        "url": "https://commons.wikimedia.org/wiki/Special:FilePath/White%20Ceiling%20Light.jpg?width=1200",
+        "file": "File:White Ceiling Light.jpg",
+        "license": "CC BY 4.0",
+        "author": "Cooldudeseven7"
+      }
+    },
+    {
+      "match": ["лампа"],
+      "images": [
+        {
+          "url": "https://commons.wikimedia.org/wiki/Special:FilePath/9W%20LED%20lamp%20E27.JPG?width=1200",
+          "file": "File:9W LED lamp E27.JPG",
+          "license": "CC BY-SA 3.0",
+          "author": "Sokolshok"
+        }
+      ],
+      "fallback": {
+        "url": "https://commons.wikimedia.org/wiki/Special:FilePath/3W%20LED%20E27.jpg?width=1200",
+        "file": "File:3W LED E27.jpg",
+        "license": "Public domain",
+        "author": "Vabolis"
+      }
+    },
+    {
+      "match": ["бокс", "щит"],
+      "images": [
+        {
+          "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Distribution%20board%20-%20Slovakia%2004.jpg?width=1200",
+          "file": "File:Distribution board - Slovakia 04.jpg",
+          "license": "CC BY 4.0",
+          "author": "Oto Zapletal"
+        }
+      ],
+      "fallback": {
+        "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Distribution%20board%20in%20Slovakia%2003.jpg?width=1200",
+        "file": "File:Distribution board in Slovakia 03.jpg",
+        "license": "CC BY 4.0",
+        "author": "Oto Zapletal"
+      }
+    },
+    {
+      "match": ["din", "клемм", "рейка"],
+      "images": [
+        {
+          "url": "https://commons.wikimedia.org/wiki/Special:FilePath/OUNEVA%20TO21771%20block%20of%20clamp%20terminals%20for%20DIN%20rail.JPG?width=1200",
+          "file": "File:OUNEVA TO21771 block of clamp terminals for DIN rail.JPG",
+          "license": "CC BY-SA 3.0",
+          "author": "Dmitry G"
+        }
+      ],
+      "fallback": {
+        "url": "https://commons.wikimedia.org/wiki/Special:FilePath/%D0%9A%D0%BB%D0%B5%D0%BC%D0%BC%D0%BD%D0%B8%D0%BA%D0%B8-120336.jpg?width=1200",
+        "file": "File:Клеммники-120336.jpg",
+        "license": "CC BY-SA 3.0",
+        "author": "Mixabest"
+      }
+    }
+  ]
+}

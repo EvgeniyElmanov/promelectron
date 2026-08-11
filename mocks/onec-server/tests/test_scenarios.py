@@ -13,6 +13,8 @@ from onec_mock.seed import seed_catalog
 
 async def test_new_products_adds_products_and_changes(seeded_session):
     before = await seeded_session.scalar(select(func.count(Product.id)))
+    # D-03: seed-записи change_log не считаем — только изменения сценария
+    max_change_id = await seeded_session.scalar(select(func.max(ChangeLog.id))) or 0
 
     run = await run_scenario(seeded_session, settings, "new_products", {"count": 5})
 
@@ -22,6 +24,7 @@ async def test_new_products_adds_products_and_changes(seeded_session):
     assert run.changes_created == 15
     creates = await seeded_session.scalar(
         select(func.count(ChangeLog.id)).where(
+            ChangeLog.id > max_change_id,
             ChangeLog.entity_type == "product", ChangeLog.action == "create"
         )
     )
@@ -44,6 +47,8 @@ async def test_mass_price_update_rounds_half_up(seeded_session):
 
 
 async def test_stock_out_never_negative(seeded_session):
+    max_change_id = await seeded_session.scalar(select(func.max(ChangeLog.id))) or 0
+
     run = await run_scenario(seeded_session, settings, "stock_out", {"share": 0.5})
 
     negative = await seeded_session.scalar(
@@ -53,6 +58,7 @@ async def test_stock_out_never_negative(seeded_session):
     assert run.changes_created > 0
     zeroed = await seeded_session.scalar(
         select(func.count(ChangeLog.id)).where(
+            ChangeLog.id > max_change_id,  # seed stock-create с new=0 не считаем (D-03)
             ChangeLog.entity_type == "stock",
             ChangeLog.payload["new"].as_integer() == 0,
         )
@@ -77,10 +83,14 @@ async def test_delete_products_marks_inactive(seeded_session):
 
 
 async def test_normal_scenario_creates_price_and_stock_changes(seeded_session):
+    max_change_id = await seeded_session.scalar(select(func.max(ChangeLog.id))) or 0
+
     run = await run_scenario(seeded_session, settings, "normal", {})
 
     types = (
-        await seeded_session.execute(select(ChangeLog.entity_type).distinct())
+        await seeded_session.execute(
+            select(ChangeLog.entity_type).distinct().where(ChangeLog.id > max_change_id)
+        )
     ).scalars()
     assert set(types) <= {"price", "stock"}
     assert run.changes_created >= 2

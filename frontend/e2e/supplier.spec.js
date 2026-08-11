@@ -27,7 +27,7 @@ test.describe('Supplier Products', () => {
     await page.fill('[data-testid="product-price-input"]', '12345');
     await page.fill('[data-testid="product-stock-input"]', '10');
     // Select by label to avoid hardcoding DB-assigned category ID
-    await page.selectOption('[data-testid="product-category-select"]', { label: 'Смартфоны' });
+    await page.selectOption('[data-testid="product-category-select"]', { label: 'Розетки' });
     await page.click('[data-testid="product-submit-btn"]');
 
     // 5. Wait for modal to close and product to appear

@@ -1,7 +1,7 @@
 """Тесты sender'а: retry/backoff, журнал sent_changes (D-02, D-07)."""
 
 import httpx
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 
 from onec_mock.config import settings
 from onec_mock.models import ChangeLog, SentChanges
@@ -179,6 +179,9 @@ async def test_bad_checksum_sends_corrupt_header(seeded_session):
 
 
 async def test_nothing_pending_returns_none(seeded_session):
+    # D-03: seed пишет change_log — для сценария «нет pending» чистим журнал
+    await seeded_session.execute(delete(ChangeLog))
+    await seeded_session.commit()
     client = _client(_ok)
     sender = Sender(settings, sleep=FakeClock(), client=client)
 
