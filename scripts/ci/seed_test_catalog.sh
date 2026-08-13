@@ -41,7 +41,7 @@ diagnostics() {
   log "--- jobs (последние 10) ---"
   psql_query "SELECT job_type, status, attempts, left(array_to_string(processing_log, ' | '), 800) FROM jobs ORDER BY id DESC LIMIT 10" || true
   log "--- onec_intake_log (последние 5) ---"
-  psql_query "SELECT id, status, left(coalesce(error_message, ''), 300) FROM onec_intake_log ORDER BY id DESC LIMIT 5" || true
+  psql_query "SELECT id, status, left(coalesce(error, ''), 300) FROM onec_intake_log ORDER BY id DESC LIMIT 5" || true
   log "--- logs: api ---"
   kubectl logs -n "$NS" -l app=promelectron-api --tail=100 || true
   log "--- logs: job-worker ---"
