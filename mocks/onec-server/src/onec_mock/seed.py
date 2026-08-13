@@ -372,7 +372,10 @@ async def seed_catalog(session: AsyncSession, settings: Settings) -> int:
 
     attributes: list[Attribute] = []
     for code, name, value_type, unit in ATTRIBUTES:
-        attr = Attribute(code=code, name=name, value_type=value_type, unit=unit)
+        # onec_id = code (не GUID): backend intake-loader ставит атрибуту
+        # code=onec_id (D-05 эпика #117), а CI-сидинг включает is_filterable и
+        # проверяет фасеты по человекочитаемому коду ("brand" и т.д.).
+        attr = Attribute(code=code, onec_id=code, name=name, value_type=value_type, unit=unit)
         session.add(attr)
         attributes.append(attr)
     await session.flush()
