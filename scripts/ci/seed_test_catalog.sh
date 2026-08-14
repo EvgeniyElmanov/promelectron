@@ -226,12 +226,13 @@ print(f\"[seed-catalog] suggestions 'ввг': {len(d['products'])} подска�
 # выборочно: у первого товара есть фото
 FIRST_ID="$(curl -sf "$API/api/v1/products/?limit=1" | python3 -c \
   "import json,sys; print(json.load(sys.stdin)['items'][0]['id'])")"
-curl -sf "$API/api/v1/products/$FIRST_ID/" | python3 -c "
+# ВАЖНО: route /products/{id} БЕЗ trailing slash (иначе 307 → curl -sf даст пустое тело)
+curl -sf "$API/api/v1/products/$FIRST_ID" | python3 -c "
 import json, sys
 d = json.load(sys.stdin)
 assert d.get('images'), f'у товара id={d[\"id\"]} нет images'
 print(f\"[seed-catalog] товар id={d['id']} '{d['name']}': {len(d['images'])} фото\")
-" || fail "у товара id=$FIRST_ID нет фото"
+" || fail "верификация фото товара id=$FIRST_ID не прошла"
 
 PRODUCTS_TOTAL="$(psql_query "SELECT count(*) FROM products")"
 WITH_IMAGES="$(psql_query "SELECT count(*) FROM products WHERE images IS NOT NULL AND images::text != '[]'")"
