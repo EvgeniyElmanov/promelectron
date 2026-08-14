@@ -394,3 +394,67 @@ class TestProductsAPI:
         data = response.json()
         assert len(data["images"]) >= 1
         assert data["images"][-1].endswith(f".{ext}")
+
+    @pytest.mark.asyncio
+    async def test_upload_product_image_enqueues_search_index_job(
+        self, client, test_session, test_product, test_supplier
+    ):
+        """После upload фото ставится Job SEARCH_INDEX_PRODUCTS с product_ids=[id]."""
+        from sqlalchemy import select
+
+        from src.app.models.job import Job
+        from src.app.utils.auth import create_access_token
+
+        token = create_access_token(data={"sub": str(test_supplier.id), "role": test_supplier.role.value})
+        file_data = BytesIO(b"fake-image-data")
+        response = await client.post(
+            f"/api/v1/products/{test_product.id}/images",
+            files={"file": ("test.jpg", file_data, "image/jpeg")},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response.status_code == 200
+
+        result = await test_session.execute(
+            select(Job).where(Job.job_type == "SEARCH_INDEX_PRODUCTS")
+        )
+        jobs = result.scalars().all()
+        assert len(jobs) == 1
+        assert jobs[0].payload["product_ids"] == [test_product.id]
+        assert jobs[0].status == "pending"
+
+    @pytest.mark.asyncio
+    async def test_delete_product_image_enqueues_search_index_job(
+        self, client, test_session, test_product, test_supplier
+    ):
+        """После delete фото ставится Job SEARCH_INDEX_PRODUCTS с product_ids=[id]."""
+        from sqlalchemy import select
+
+        from src.app.models.job import Job
+        from src.app.utils.auth import create_access_token
+
+        token = create_access_token(data={"sub": str(test_supplier.id), "role": test_supplier.role.value})
+        headers = {"Authorization": f"Bearer {token}"}
+
+        file_data = BytesIO(b"fake-image-data")
+        upload_resp = await client.post(
+            f"/api/v1/products/{test_product.id}/images",
+            files={"file": ("test.jpg", file_data, "image/jpeg")},
+            headers=headers,
+        )
+        assert upload_resp.status_code == 200
+        filename = upload_resp.json()["images"][-1].split("/")[-1]
+
+        delete_resp = await client.delete(
+            f"/api/v1/products/{test_product.id}/images/{filename}",
+            headers=headers,
+        )
+        assert delete_resp.status_code == 200
+
+        result = await test_session.execute(
+            select(Job).where(Job.job_type == "SEARCH_INDEX_PRODUCTS")
+        )
+        jobs = result.scalars().all()
+        # один Job от upload, второй от delete
+        assert len(jobs) == 2
+        for job in jobs:
+            assert job.payload["product_ids"] == [test_product.id]
