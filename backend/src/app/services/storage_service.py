@@ -171,7 +171,7 @@ class MinioStorageService:
                 Body=content,
                 ContentType=content_type,
             )
-        return self.get_url(key, bucket=bucket)
+        return self._public_url(key, bucket=bucket)
 
     async def upload(self, key: str, file: UploadFile) -> str:
         content = await file.read()
@@ -200,7 +200,7 @@ class MinioStorageService:
                 Body=data,
                 ContentType=content_type,
             )
-        return self.get_url(key, bucket=bucket)
+        return self._public_url(key, bucket=bucket)
 
     async def download_raw(self, key: str, bucket: str | None = None) -> bytes:
         """Read a raw object back from MinIO.
@@ -267,6 +267,18 @@ class MinioStorageService:
 
         return result
 
+    def _public_url(self, key: str, bucket: str | None = None) -> str:
+        """URL, сохраняемый в БД и отдаваемый клиенту после upload.
+
+        Для дефолтного бакета (изображения) возвращает относительный proxy-путь
+        /uploads/{key}: внутренний MinIO endpoint недоступен браузеру, а
+        serve_upload в main.py стримит объект из MinIO. Для прочих бакетов
+        (например, onec-intake) сохраняется прежний absolute URL.
+        """
+        if bucket is None or bucket == self.bucket:
+            return f"/uploads/{key}"
+        return self.get_url(key, bucket=bucket)
+
     def get_url(self, key: str, bucket: str | None = None) -> str:
         bucket = bucket or self.bucket
         scheme = "https" if self.secure else "http"
@@ -277,6 +289,8 @@ class MinioStorageService:
         prefix = self.get_url("")
         if key.startswith(prefix):
             key = key[len(prefix):]
+        elif key.startswith("/uploads/"):
+            key = key[len("/uploads/"):]
         elif settings.api_base_url and key.startswith(f"{settings.api_base_url.rstrip('/')}/uploads/"):
             key = key[len(f"{settings.api_base_url.rstrip('/')}/uploads/"):]
         async with self.session.create_client(
