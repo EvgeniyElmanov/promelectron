@@ -31,18 +31,18 @@ test.describe('Search & Filters', () => {
     const searchBar = page.locator('[data-testid="search-bar"]');
     await searchBar.fill('ВВГнг');
 
-    // Wait for debounce (300ms) + network
-    await page.waitForTimeout(600);
-
-    // Should show only ВВГ-cables (электрокаталог, issue #147; на test-стенде
-    // каталог дополнительно содержит товары onec-мока — точное число не фиксируем)
+    // Wait for debounce (300ms) + network: ждём применения поиска, а не
+    // фиксированный таймер (во время E2E идёт фоновый reindex, поиск медленный).
+    // На test-стенде каталог дополнительно содержит товары onec-мока — точное
+    // число не фиксируем.
     const cards = page.locator('[data-testid="product-card"]');
-    await expect(cards.first()).toBeVisible();
-    const count = await cards.count();
-    expect(count).toBeGreaterThan(0);
-    for (let i = 0; i < count; i++) {
-      await expect(cards.nth(i)).toContainText(/ВВГ/);
-    }
+    await expect(async () => {
+      const count = await cards.count();
+      expect(count).toBeGreaterThan(0);
+      for (let i = 0; i < count; i++) {
+        await expect(cards.nth(i)).toContainText(/ВВГ/);
+      }
+    }).toPass({ timeout: 15000 });
   });
 
   test('category filter shows only products from selected category', async ({ page }) => {
@@ -62,17 +62,20 @@ test.describe('Search & Filters', () => {
 
     // Click "Розетки" category
     await socketChip.click();
-    await page.waitForTimeout(400);
 
-    // Should show only socket products
+    // Should show only socket products (ждём применения фильтра: во время
+    // E2E идёт фоновый reindex, поиск может отвечать медленно)
     const socketCards = page.locator('[data-testid="product-card"]');
-    const socketCount = await socketCards.count();
-    expect(socketCount).toBeLessThan(allCount);
+    await expect(async () => {
+      const socketCount = await socketCards.count();
+      expect(socketCount).toBeGreaterThan(0);
+      expect(socketCount).toBeLessThan(allCount);
 
-    // Verify all visible cards contain socket-related text
-    for (let i = 0; i < socketCount; i++) {
-      await expect(socketCards.nth(i)).toContainText(/Розетка/);
-    }
+      // Verify all visible cards contain socket-related text
+      for (let i = 0; i < socketCount; i++) {
+        await expect(socketCards.nth(i)).toContainText(/Розетка/);
+      }
+    }).toPass({ timeout: 15000 });
   });
 
   test('sort by price ascending', async ({ page }) => {
