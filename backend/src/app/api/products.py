@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.app.db.database import get_db
+from src.app.models.job import Job
 from src.app.models.supplier import Supplier
 from src.app.models.user import User
 from src.app.schemas.product import ProductCreate, ProductDetailOut, ProductListOut, ProductOut, ProductUpdate
@@ -169,6 +170,11 @@ async def upload_product_image(
         current_user=current_user,
         db=db,
     )
+    db.add(Job(
+        job_type="SEARCH_INDEX_PRODUCTS",
+        payload={"product_ids": [product_id]},
+    ))
+    await db.commit()
     await invalidate_cache("/api/v1/products*")
 
     response_data = ProductOut.model_validate(updated_product).model_dump()
@@ -223,5 +229,10 @@ async def delete_product_image(
         current_user=current_user,
         db=db,
     )
+    db.add(Job(
+        job_type="SEARCH_INDEX_PRODUCTS",
+        payload={"product_ids": [product_id]},
+    ))
+    await db.commit()
     await invalidate_cache("/api/v1/products*")
     return result
