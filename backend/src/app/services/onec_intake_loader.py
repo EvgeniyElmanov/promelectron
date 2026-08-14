@@ -213,6 +213,20 @@ async def _upsert_category(
         result = await session.execute(select(Category).where(Category.onec_id == onec_id))
         category = result.scalar_one_or_none()
     if category is None:
+        # Дедупликация: усваиваем существующую категорию с тем же именем,
+        # созданную вручную/seed'ом (onec_id IS NULL — никогда не из 1С),
+        # вместо создания дубля. Категории с другим onec_id не трогаем —
+        # защита от слияния разных 1С-групп с одинаковыми именами.
+        result = await session.execute(
+            select(Category)
+            .where(Category.name == name, Category.onec_id.is_(None))
+            .order_by(Category.id)
+            .limit(1)
+        )
+        category = result.scalars().first()
+        if category is not None:
+            category.onec_id = onec_id
+    if category is None:
         category = Category(onec_id=onec_id, name=name, is_active=is_active)
         session.add(category)
         stats.categories_created += 1
