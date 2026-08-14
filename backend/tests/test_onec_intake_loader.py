@@ -429,6 +429,91 @@ async def test_loader_categories_with_parent(
     assert parent.parent_id is None  # нулевой GUID = NULL
 
 
+@pytest.mark.asyncio
+async def test_loader_category_adopts_seeded_category_by_name(
+    test_session, fake_storage, patched_settings
+):
+    """Дедупликация: seed-категория (onec_id IS NULL) с тем же именем усваивается
+    — дубль не создаётся, onec_id проставляется, parent резолвится вторым проходом."""
+    parent_guid = "88888888-8888-8888-8888-888888888888"
+    seeded = Category(name="Розетки", onec_id=None, is_active=True)
+    test_session.add(seeded)
+    await test_session.commit()
+
+    payload = _odata(
+        "Catalog_КатегорииНоменклатуры",
+        [
+            # Ребёнок раньше родителя — parent_id выставляется вторым проходом
+            {"Ref_Key": GUID_CATEGORY, "Description": "Розетки", "Parent_Key": parent_guid},
+            {
+                "Ref_Key": parent_guid,
+                "Description": "Электрика",
+                "Parent_Key": "00000000-0000-0000-0000-000000000000",
+            },
+        ],
+    )
+    intake_id = await _make_intake(test_session, fake_storage, payload)
+    stats = await process_intake(test_session, intake_id)
+
+    assert stats.categories_created == 1  # только «Электрика»
+    assert stats.categories_updated == 1  # усвоенная «Розетки»
+
+    namesakes = (
+        await test_session.execute(select(Category).where(Category.name == "Розетки"))
+    ).scalars().all()
+    assert len(namesakes) == 1  # дубль не создан
+    adopted = namesakes[0]
+    assert adopted.id == seeded.id
+    assert adopted.onec_id == GUID_CATEGORY
+    assert adopted.is_active is True
+    assert adopted.onec_sync_at is not None
+
+    parent = (
+        await test_session.execute(select(Category).where(Category.onec_id == parent_guid))
+    ).scalar_one()
+    assert adopted.parent_id == parent.id
+
+    # Идемпотентность: повторный разбор не создаёт новых категорий
+    stats2 = await process_intake(test_session, intake_id)
+    assert stats2.categories_created == 0
+    count = (
+        await test_session.execute(
+            select(func.count()).select_from(Category).where(Category.name == "Розетки")
+        )
+    ).scalar_one()
+    assert count == 1
+
+
+@pytest.mark.asyncio
+async def test_loader_category_with_other_onec_id_not_adopted(
+    test_session, fake_storage, patched_settings
+):
+    """Категория с тем же именем, но другим onec_id (уже из 1С) НЕ усваивается —
+    защита от слияния разных 1С-групп. Characterization-тест: поведение не менялось."""
+    other_guid = "99999999-9999-9999-9999-999999999999"
+    existing = Category(name="Розетки", onec_id=other_guid, is_active=True)
+    test_session.add(existing)
+    await test_session.commit()
+
+    payload = _odata(
+        "Catalog_КатегорииНоменклатуры",
+        [{"Ref_Key": GUID_CATEGORY, "Description": "Розетки"}],
+    )
+    stats = await process_intake(
+        test_session, await _make_intake(test_session, fake_storage, payload)
+    )
+
+    assert stats.categories_created == 1
+    await test_session.refresh(existing)
+    assert existing.onec_id == other_guid  # владелец onec_id не пострадал
+
+    namesakes = (
+        await test_session.execute(select(Category).where(Category.name == "Розетки"))
+    ).scalars().all()
+    assert len(namesakes) == 2
+    assert {c.onec_id for c in namesakes} == {other_guid, GUID_CATEGORY}
+
+
 # ─── CommerceML (диалект мока, FORMAT_MAP.md §6) ─────────────────────────────
 
 
