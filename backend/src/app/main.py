@@ -1,5 +1,6 @@
 import asyncio
 import json
+import mimetypes
 import os
 from contextlib import asynccontextmanager
 from logging import getLogger
@@ -8,7 +9,7 @@ from alembic import command
 from alembic.config import Config
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, Response
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from src.app.api.admin import router as admin_router
@@ -35,7 +36,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from src.app.db.database import DATABASE_URL
-from src.app.services.storage_service import storage
+from src.app.services.storage_service import MinioStorageService, storage
 from src.app.utils.rate_limiter import limiter
 
 logger = getLogger(__name__)
@@ -89,9 +90,17 @@ async def serve_upload(path: str, size: str | None = None):
         base, _ = os.path.splitext(path)
         path = f"{base}_{size}.webp"
 
-    url = storage.get_url(path)
-    if url.startswith("http"):
-        return RedirectResponse(url=url, status_code=307)
+    if isinstance(storage, MinioStorageService):
+        # MinIO-режим: внутренний endpoint недоступен браузеру, поэтому
+        # 307 redirect не работает — стримим объект из MinIO через API.
+        try:
+            data = await storage.download_raw(path)
+        except FileNotFoundError:
+            raise HTTPException(status_code=404, detail="File not found")
+        content_type = mimetypes.guess_type(path)[0]
+        if content_type is None and path.endswith(".webp"):
+            content_type = "image/webp"
+        return Response(content=data, media_type=content_type or "application/octet-stream")
     # Local fallback — serve from filesystem
     filepath = os.path.join("uploads", path)
     if os.path.exists(filepath):
