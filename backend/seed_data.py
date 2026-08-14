@@ -229,7 +229,8 @@ async def get_or_create_categories(session: AsyncSession) -> dict[str, Category]
     categories_map: dict[str, Category] = {}
     for payload in TEST_CATEGORIES:
         result = await session.execute(select(Category).where(Category.name == payload["name"]))
-        category = result.scalar_one_or_none()
+        # name не unique: на test-стенде возможны дубли от 1C-intake — берём первую
+        category = result.scalars().first()
         if category:
             logger.info(f"Категория уже существует: {category.name}")
         else:
@@ -249,7 +250,8 @@ async def create_products(
     logger.info("Создаю товары...")
     for payload in TEST_PRODUCTS:
         result = await session.execute(select(Product).where(Product.name == payload["name"]))
-        existing_product = result.scalar_one_or_none()
+        # name не unique: возможны дубли — берём первый найденный
+        existing_product = result.scalars().first()
         if existing_product:
             logger.info(f"Товар уже существует, пропускаю: {existing_product.name}")
             continue
