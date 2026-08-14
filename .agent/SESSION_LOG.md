@@ -1,3 +1,8 @@
+### 2026-08-14 | fix | e2e-search-filter-wait — PR #157 MERGED
+  Root cause: после #156 (enqueue SEARCH_INDEX_PRODUCTS после upload/delete фото) тест `frontend/e2e/search-filter.spec.js:48` «category filter shows only products from selected category» стал flaky в CI (run 31799254592): фиксированный `waitForTimeout(400)` не успевает за refetch под нагрузкой ~40 фоновых partial-reindex jobs в Meili. Backend-фильтрация исправна (live `?category_id=1` → только розетки) — flaky по таймингу, не продуктовый баг.
+  Фикс: `waitForTimeout(400/600)` в тестах «category filter…» и «search filters products by name» заменены на `expect(async () => {...}).toPass({ timeout: 15000 })` — паттерн соседних sort/price-тестов того же файла; условия внутри toPass — честные индикаторы (`count < allCount`, тексты карточек, +защита `count > 0` от транзиентного пустого списка). Один файл, 22+/19-.
+  Проверка: прогон spec против test-стенда — все 4 теста зелёные (параллельные падения page.goto — локальный сетевой сбой, с --workers=1 проходят). Review: APPROVED без findings. Коммит `35188cb`, PR #157 влит в main (`6eedb82`). CI-прогон 31802278962 ожидается.
+
 ### 2026-08-03 | implement (backend-dev) | admin-order-modal-details — EXECUTE DONE, готово к ревью
   Issue #130. Worktree `.worktrees/admin-order-modal-details`, ветка `feature/admin-order-modal-details`, коммит `ed44c65` (только backend-файлы; frontend-dev работает параллельно в том же worktree).
   Что сделано (по PLAN.backend-dev.md):
@@ -3119,14 +3124,14 @@
   Блокер: Нет.
 
 ### 2026-07-10 04:06 | agent-pipeline-upgrade | Профессиональный апгрейд агентской системы
-  Задача: реализовать профессиональный апгрейд скилов, правил и агентов на основе документации Kimi 2.7 Code и текущего состояния маркетплейса.
+  Задача: реализовать профессиональный апгрейд скилов, правил и агентов на основе документации Kimi 2.7 Code и текущего состояния интернет-магазина.
   Исправлено:
   - Cleanup: удалены устаревшие `.agent/*.log` и `.agent/tasks/*` (MinIO/YooKassa планы уже в main). Worktree `.worktrees/fix-avatar-upload-notification` не удалён физически из-за root-owned `__pycache__` / `.ruff_cache` (требуется ручная очистка с sudo); из git registry worktree отсутствует.
   - Создан `scripts/agent_metrics.py`: сбор estimated tokens, review/QA итераций, lifetime, наличия PR/complete из `.agent/runs/<task-id>/` и `SESSION_LOG.md`.
   - Добавлена команда `record-metrics` в `scripts/implement-pipeline.py`: сохраняет `.agent/runs/<task-id>/metrics.json`.
   - Интегрирован `record-metrics` в финальные отчёты `/skill:implement` и `/skill:fix`.
   - DRY-преамбула субагентов: в `.kimi-code/rules/agent-commons.md` добавлен комбинированный блок (language + Kimi API constraints); workflow skills `implement`, `fix`, `review`, `spec`, `qa-gate` переведены на ссылку к этому блоку вместо дублирования.
-  - Создан `.kimi-code/rules/business.md` с бизнес-инвариантами маркетплейса: цены/stock, заказы, платежи, доставка, возвраты, роли, промо (future).
+  - Создан `.kimi-code/rules/business.md` с бизнес-инвариантами интернет-магазина: цены/stock, заказы, платежи, доставка, возвраты, роли, промо (future).
   - Обновлён `.kimi-code/BUNDLE.md` — добавлена ссылка на `business.md`.
   - Обновлён `.kimi-code/AGENTS.md` — `business.md` добавлен в обязательный контекст и "См. также".
   - Обновлён `.agent/METRICS.md` (v1.3): актуальные coverage (backend 335/335, frontend 245/245, e2e 108/108), таблица pipeline-метрик по 6 задачам в `.agent/runs/`.
@@ -3490,3 +3495,118 @@
 - E2E `e2e/admin.spec.js` селекторы ship/cancel не использовал — изменений не потребовалось; полная интеграционная проверка — на QA-фазе.
 
 - 2026-08-03 | ci-red-after-142 | Диагностика красного CI после merge #142: причина — включённый кем-то feature flag `catalog_search_meilisearch` на test при неготовом индексе (7 docs, нет attrs.* filterable, таблица attributes пустая). Подтверждено экспериментом (flag off → зелёный). Починка под флаг ON: засеян атрибут brand + pav для 7 товаров, full reindex (jobs 3450, 3499), найден и исправлен backend-баг RANKING_RULES (stock:desc перед sort отменял явную сортировку) — PR #143 влит; search-filter.spec.js сделан mode-aware (probe флага, scoped селекторы, FilterPanel price inputs). Deploy-run 30807775604 полностью зелёный с флагом ON. Уроки в LESSONS_LEARNED.md.
+
+### 2026-08-10 | backend-dev | ci-seed-electro-catalog — Поток A (D-05, #147)
+- `POST /api/v1/onec/intake/` теперь в той же транзакции, что и `onec_intake_log`, ставит `Job(job_type="ONEC_INTAKE_PROCESS", payload={"intake_id": ...})` — чинит разрыв цепочки сидинга (job_worker автоматически запускает парсинг).
+- Helper `create_onec_intake_process_job()` добавлен в `backend/src/app/services/onec_intake_service.py` (по паттерну `create_onec_apply_job`; add+flush, commit на endpoint'е); вызов из `backend/src/app/api/onec.py` после `store_intake`.
+- Тесты в `backend/tests/test_onec_intake.py`: `test_intake_enqueues_process_job` (ровно один pending-job с intake_id из ответа), `test_intake_rejected_creates_no_job` (401 → jobs пуст).
+- Проверки: `make test-backend` — **553 passed, 1 skipped** (Docker-PG, одиночный прогон); ruff 0.15.13 (pinned, venv) — чисто. Коммит `eb92b72` в `feature/ci-seed-electro-catalog` (только 3 файла потока A).
+- Замечание по окружению (не регрессия): `make lint-backend` в worktree падает с 458 pre-existing ошибками — локальный docker-образ `promelectron-api` содержит ruff 0.16.1 при pinned 0.15.13 в `requirements-dev.txt`; на HEAD-версии моих файлов набор ошибок идентичен (B008×2 + I001 + SIM115). Лечится пересборкой образа (`docker compose build api`).
+
+### 2026-08-10 | mock-dev | ci-seed-electro-catalog — Поток B (D-03/D-04, #147)
+- `mocks/onec-server/src/onec_mock/seed.py` переписан под электротовары: 5 корневых / 10 листовых категорий (Розетки, Выключатели, Кабели силовые, Провода монтажные, Автоматы, УЗО/дифавтоматы, Светильники, Лампы, Боксы, DIN-рейка и клеммы), бренды Legrand/Schneider Electric/ABB/IEK/EKF/GUSI/Юпитер, шаблоны имён из словарей серий/параметров через rng (детерминизм по `CATALOG_SEED` сохранён), цены 50–15 000 ₽, SKU `EL-NNNNN` (инвариант числового хвоста для `_scenario_new_products`), round-robin по листовым категориям (покрытие всех категорий для фасетов), атрибуты brand/color/warranty_months + типовые (rated_current_a, voltage_v, wire_cross_section_mm2, ip_rating, mounting_type), current/section/ip согласованы с именем товара.
+- D-03: на каждый товар пишутся 3 записи `change_log` (product/price/stock create) в той же транзакции (сознательное отклонение от «второго прохода» из spec — атомарнее); формат payload 1-в-1 как `scenarios._log`. `POST /trigger/` после рестарта мока теперь отправляет полный стартовый каталог.
+- Тесты: новый `tests/test_seed.py` (7 тестов: 3N pending change_log, no-op на непустом каталоге, детерминизм, форма каталога/SKU/цены, структура категорий, brand у всех, формат payload); `test_api.py` (`pending_changes == 3×count`, `test_trigger_after_seed_sends_full_catalog` вместо `test_trigger_nothing_to_send`); `test_sender.py` (`test_nothing_pending_returns_none` чистит change_log); `test_scenarios.py` (scoped-подсчёт по `ChangeLog.id > max` в 3 тестах).
+- Проверки: `make test-onec-mock` — **36/36 passed** (Docker-PG, одиночный прогон); `make lint-onec-mock` — 0 ошибок. Живой прогон seed на 30 SKU: имена/цены реалистичны, все 10 листовых категорий покрыты, pending=90. Коммит `f6f9aa2` в `feature/ci-seed-electro-catalog` (только 5 файлов потока B).
+
+### 2026-08-11 | devops | ci-seed-electro-catalog — Поток C (D-01/D-02, D-06–D-11, #147)
+- Завершил работу прерванного devops-агента: все 8 шагов `PLAN-devops.md` были реализованы, но не закоммичены — провёл полную сверку с spec/PLAN, валидацию и коммит.
+- `backend/scripts/cleanup_test_env.py` (новый): TRUNCATE 19 таблиц RESTART IDENTITY CASCADE (users, user_addresses, social_accounts, *_tokens, delivery_methods не трогаем — сверено с seed_data.py/E2E), пересоздание схемы `onec_mock`, Meili `products.delete_all_documents()` + удаление `products_new`, MinIO purge только при `STORAGE_BACKEND=minio`. Тройная защита D-02: env `ALLOW_DESTRUCTIVE_TEST_CLEANUP=true` (только в test-values), `--confirm=<ns>` vs `POD_NAMESPACE` (+ проверка 'test' в ns), job только в test-ветке deploy.yml.
+- Инфра: `backend/Dockerfile` (+`COPY scripts/`); `api-deployment.yaml` (+`POD_NAMESPACE` через fieldRef); `onec-mock-deployment.yaml` (+`SEED_PRODUCTS_COUNT`); values: дефолт 200 / test 30, test-values `ONEC_DEFAULT_SUPPLIER_ID="1"` + `ALLOW_DESTRUCTIVE_TEST_CLEANUP="true"` с комментариями. Prod-values не тронуты.
+- `scripts/ci/`: `product_images.json` (10 групп, Wikimedia Commons Special:FilePath, url+license+author, fallback на группу — все 20 URL проверены curl: 200 image/jpeg), `upload_product_images.py` (login seed-supplier, match→download→upload, retry ×3, fail при >20% failed), `seed_test_catalog.sh` (10 шагов: cleanup→reseed+guard D-06 (suppliers.id=1)→rollout restart→seed мока→trigger→parsed→SEARCH_INDEX_PRODUCTS+Meili stats→is_filterable ×5 + reindex→фото→верификация поиска/suggestions/фото; polling с таймаутами, trap на port-forwards, диагностика при fail).
+- `deploy.yml`: job `seed-test-catalog` (needs: deploy-test, self-hosted, if только test/all), `test-e2e.needs=[deploy-test, seed-test-catalog]`, prod-цепочка не менялась, trigger paths + `scripts/ci/**`, шаг Debug seed failure.
+- Сверка с кодовой базой: SessionLocal/settings (meilisearch_url, minio_*), `/trigger/`→`status: success`, `/status/`→`catalog.products`, search/suggestions схемы (`total`/`facets[].code/values[].value`, `products`), feature-flags PATCH `/{flag}`, postgres deploy `promelectron-postgresql`, секрет `promelectron-secrets` (POSTGRES_USER/POSTGRES_DB/MEILISEARCH_MASTER_KEY через env.secrets) — всё соответствует.
+- Валидация: py_compile OK, bash -n OK, JSON/YAML parse OK, ruff check чисто, `helm template` test (SEED_PRODUCTS_COUNT="30", ONEC_DEFAULT_SUPPLIER_ID="1", ALLOW_DESTRUCTIVE_TEST_CLEANUP="true", POD_NAMESPACE) и prod (флаг и onec-mock отсутствуют — инвариант D-02) — OK. actionlint/shellcheck на машине нет (yaml.safe_load вместо actionlint).
+- Коммит `16f1ac0` в `feature/ci-seed-electro-catalog` (явный git add 10 файлов потока C; PLAN-*.md и файлы потоков A/B не тронуты).
+- Открытые риски (из PLAN Risks): python3+httpx на self-hosted runner (pip install --user в job), живой E2E-прогон цепочки — только в CI после merge.
+
+### 2026-08-11 | qa | ci-seed-electro-catalog — QA gate (#147)
+- Прогоны (worktree, foreground, одиночные; перед `make test-backend` проверено отсутствие живых pytest): backend `make test-backend` — **553 passed, 1 skipped**; мок `make test-onec-mock` — **36 passed**; frontend `npx vitest run` — **328 passed** (37 файлов).
+- E2E локально (полный стек docker compose): только изменённые спеки `e2e/search-filter.spec.js` + `e2e/supplier.spec.js` — **5/5 passed**; полный suite — в CI после merge.
+- Ruff (venv): `backend/src/`, `backend/scripts/`, `backend/seed_data.py`, `mocks/onec-server/{src,tests}` — 0 ошибок. Найдено [Q001]: 2 pre-existing F401 в `backend/tests/test_email.py` / `test_storage_service.py` — воспроизводятся на main, вне diff ветки, не блокирует (дефер).
+- Статическая валидация: `bash -n` CI-оркестратора, `py_compile` скриптов, YAML/JSON parse, `helm template` test+prod — OK. `ALLOW_DESTRUCTIVE_TEST_CLEANUP` и `seedProductsCount: 30` — только в test-values; prod-values чист (`onecMock.enabled=false`).
+- AC: AC-5 (prod-отказ cleanup без side effects) подтверждён реальным запуском (exit=1 до side effects); AC-7 (лицензии фото) — скрипт-проверка манифеста (10 фото, url+license+author, все Wikimedia); AC-6 — PASS по локальной части; AC-1..AC-4 и полный `test-e2e` — подтверждаются живым прогоном job `seed-test-catalog` в CI после merge (нужен кластер/kubectl/реальные рестарты).
+- Статус: **TESTS_PASSED** (с явно перечисленными CI-only AC). Артефакт: `.agent/runs/ci-seed-electro-catalog/review/test-findings.md`. Production-код не изменялся.
+
+## 2026-08-11 | ci-seed-electro-catalog (#147, PR #148) — итог пайплайна
+
+- **Scope:** CI-сидинг электрокаталога в promelectron-test (очистка кроме users → onec-mock seed ~30 SKU → intake → Meili → реальные фото Wikimedia → верификация поиска) + починка 3 разрывов 1С-цепочки (change_log в seed мока, enqueue ONEC_INTAKE_PROCESS, ONEC_DEFAULT_SUPPLIER_ID=1) + H001=C: демо-каталог seed_data заменён электротоварами, E2E переведены (D-12).
+- **Результат:** PR #148 открыт, issue #147 → In review. Review: итерация 1 FIXES_NEEDED (F001 CRITICAL login endpoint, F002/H001, F003 + LOW) → итерация 2 APPROVED. Security review: APPROVED. QA: TESTS_PASSED (backend 553+1skip, мок 36, vitest 328, E2E изменённые спеки 5/5). AC-1..AC-4 подтверждаются первым живым прогоном job seed-test-catalog в CI после merge.
+- **Метрики:** ~17956 est. tokens, 2 итерации ревью (record-metrics насчитал 3 с учётом security), 1 QA-итерация. Прерывания: 2× quota 403 на субагентах (перезапуск/возобновление потока C через нового агента).
+
+### 2026-08-11 | backend-dev+devops | ci-seed-electro-catalog — закрытие F006/S001 (SEED_SECRET → env, #147, PR #148)
+- Backend: `settings.seed_secret` (`core/config.py::_load_seed_secret`) — env `SEED_SECRET`, dev/test fallback `_DEV_SEED_SECRET_PLACEHOLDER` (паттерн `_load_secret_key`), в production без env → `None`. `api/seed.py`: prod-guard — при `seed_secret is None` всегда 403; сравнение `x-seed-secret` через `hmac.compare_digest`; модульный атрибут `SEED_SECRET` сохранён для импортов в тестах. `api/payments.py` debug `/debug/set-status/` переведён на `settings.seed_secret` с None-guard.
+- CI-скрипты: хардкод-дефолты `SEED_SECRET`/`SEED_ADMIN_PASSWORD` (`seed_test_catalog.sh`) и `SEED_SUPPLIER_PASSWORD` (`upload_product_images.py`) удалены — обязательные env с fail-fast сообщениями.
+- CI: `deploy.yml` job seed-test-catalog получает `SEED_SECRET`/`SEED_ADMIN_PASSWORD`/`SEED_SUPPLIER_PASSWORD` из GitHub Secrets; `e2e.yml` — `SEED_SECRET` (top-level env) для Playwright global-setup и debug/set-status. Frontend e2e: `global-setup.js`/`helpers.js` — `process.env.SEED_SECRET` с fail-fast, хардкод убран.
+- Helm: `SEED_SECRET: "promelectron-test-seed-2024"` добавлен в `env.open` только `infra/helm/stage/test/values.yaml`; prod-values намеренно без SEED_SECRET → seed в prod невозможен. `.env.example` (root + backend) дополнены.
+- Проверки (worktree): `make test-backend` — **553 passed, 1 skipped**; ruff на изменённые py — 0 ошибок; `bash -n` — OK; `helm template` test содержит SEED_SECRET, prod — нет (0 совпадений); prod-guard проверен интерпретатором (prod без env → None, dev → fallback). Коммит `45746ca` в `feature/ci-seed-electro-catalog` (12 файлов, явный git add).
+- GitHub Secrets для создания оркестратором: `SEED_SECRET` (= `promelectron-test-seed-2024`, как в helm test values), `SEED_ADMIN_PASSWORD` (= `seedpassword123`), `SEED_SUPPLIER_PASSWORD` (= `seedpassword123`).
+- findings.md: F006/S001 → FIXED; spec.md: D-13 добавлен, пункт Out of Scope про SEED_SECRET убран. Не закоммичено (не мой scope): F007 doc-fix в `PROJECT_CONTEXT.md`/`golden-path.md` — оставлено в working tree оркестратору.
+
+## 2026-08-11 | ci-seed-electro-catalog (#147, PR #148) — закрытие открытых пунктов
+
+- F006/S001 VERIFIED: SEED_SECRET и seed-пароли из env/GitHub Secrets (3 секрета созданы в репо), prod-guard /api/v1/seed (production без env → 403), fail-fast в CI-скриптах и e2e (коммит 45746ca).
+- F007 VERIFIED: doc-fix /api/v1/login/ + /api/v1/register/ в PROJECT_CONTEXT.md и golden-path.md (коммит 7fa0c51).
+- Review итерация 3: APPROVED. Backend 553 passed. PR #148 обновлён, merge-готов.
+
+## 2026-08-11 | ci-seed-electro-catalog — MERGED
+
+- PR #148 влит в main (merge commit a04e185), issue #147 → Done.
+- Deploy run 31505874494 запущен; seed-test-catalog прогонится после deploy-test — AC-1..AC-4 подтверждаются этим прогоном.
+
+## 2026-08-14 | devops | seed-catalog-ci-fails — фикс шага 10 верификации фото
+
+- Root cause: `seed_test_catalog.sh` вызывал `curl -sf "$API/api/v1/products/$FIRST_ID/"` с trailing slash, route `products.py:82` без slash → 307 → `curl -sf` пустое тело → JSONDecodeError → misleading FAIL «у товара id=40 нет фото» (run 31670580082).
+- Фикс (worktree bugfix/seed-catalog-ci-fails): URL без trailing slash + комментарий, fail-сообщение → «верификация фото товара id=$FIRST_ID не прошла». Backend API contract не тронут.
+- Regression test `backend/tests/test_seed_catalog_script.py` (статический regex): подтверждённо падал на старой версии скрипта, после фикса — зелёный. `bash -n` OK, ruff чист.
+
+## 2026-08-14 | seed-catalog-ci-fails — MERGED (PR #152)
+
+- **Scope:** root cause 4 режимов падений CI job seed-test-catalog подтверждён по логам+коду; 3 из 4 уже закрыты #149-#151. Актуальный баг: шаг 10 верификации фото — curl -sf с trailing slash на `/products/{id}` (route без slash, products.py:82) → 307 → пустое тело → JSONDecodeError → misleading FAIL.
+- **Fix:** `scripts/ci/seed_test_catalog.sh` — URL без slash + комментарий, точное fail-сообщение; regression test `backend/tests/test_seed_catalog_script.py` (FAILED до фикса → passed после). Коммит faf9f92.
+- **Ревью:** APPROVED (1 LOW: regex не покрывает upload_product_images.py). QA: TESTS_PASSED (точечные; CI-only AC — прогон seed-test-catalog после merge, run 31790205986).
+- **Knowledge capture:** урок в LESSONS_LEARNED.md (curl -sf маскирует 307; сверять slash с route в коде).
+- PR #152 влит в main по одобрению пользователя; issue не создавался (решение пользователя). GitHub Project board не трогал (нет issue).
+
+## 2026-08-14 | seed-data-dup-categories — MERGED (PR #153)
+
+- **Контекст:** после merge #152 seed-test-catalog стал SUCCESS, но упал test-e2e/e2e (run 31790205986): global-setup → POST /api/v1/seed → 500 MultipleResultsFound.
+- **Root cause:** seed-test-catalog сеет демо-категории → 1C-intake создаёт те же имена (матч только по onec_id) → дубли (live: 6 имён × 2) → повторный /api/v1/seed падает на scalar_one_or_none() по не-unique Category.name. Аналогичный паттерн в create_products по Product.name.
+- **Fix:** seed_data.py — scalar_one_or_none() → scalars().first() в get_or_create_categories (:233) и create_products (:254); unique-lookup'и (users/suppliers) не тронуты. Коммит 3034f9c.
+- **Regression test:** backend/tests/test_seed_data.py — 2 failed (MultipleResultsFound) до фикса → 2 passed после. ruff clean. Review APPROVED (2 LOW won't-fix).
+- PR #153 влит по одобрению пользователя. Финальная AC: зелёный test-e2e в run 31792397754.
+- Out of scope (deferred): дедупликация категорий intake по имени (косметика витрины).
+
+## 2026-08-14 | onec-intake-dedup-categories — MERGED (PR #154)
+
+- **Контекст:** после #153 E2E дошёл до тестов: 3 failed (admin × 2 — новая категория за пределами PAGE_LIMIT=20 из-за 21 категории; search-filter — strict mode, два чипа «Розетки»), 2 flaky, 112 passed.
+- **Root cause:** дубли категорий — `_upsert_category` матчит только по onec_id (GUID), демо-seed категории (onec_id IS NULL) дублируются intake'ом.
+- **Fix:** fallback-усвоение по `name + onec_id IS NULL` в _upsert_category (коммит a4c0ece); категории с чужим onec_id не трогаются. Оба пути (OData/CML) покрыты общей функцией.
+- **Тесты:** +2 в test_onec_intake_loader.py (усвоение — красный до фикса; не-усвоение чужого onec_id — characterization). 25 passed (intake+seed_data), ruff clean. Review APPROVED (1 LOW осознанный).
+- PR #154 влит по одобрению пользователя. Финальная AC: E2E 3 failed → 0 в run 31795219146.
+
+## 2026-08-14 | onec-intake-dedup-categories — AC подтверждены (run 31795219146)
+
+- Deploy run 31795219146 (после merge #154): **все job SUCCESS** — build, deploy-test, seed-test-catalog, test-e2e/smoke, test-e2e/e2e (3 failed → 0, flaky ушли).
+- Live-верификация: категорий на стенде 15, дублей имён НЕТ (было 21, все 6 имён × 2).
+- Цепочка из трёх фиксов (#152 trailing slash, #153 seed_data tolerant, #154 intake dedup) полностью закрыла красный CI на main.
+
+## 2026-08-14 | minio-image-urls-proxy — MERGED (PR #155)
+
+- **Баг:** фото товаров не отображаются — MinIO-режим сохранял в products.images/avatar_url внутренний URL http://promelectron-minio:9000/... (браузер не резолвит); /uploads/{path} делал 307 на тот же внутренний URL.
+- **Fix:** MinIO upload → относительный /uploads/{key} (только дефолтный бакет, onec-intake не тронут); serve_upload стримит объект из MinIO вместо 307; delete() стрипит /uploads/ префикс. Коммит 8df138b.
+- **Тесты:** +4 storage + 5 serve_upload (красный→зелёный); смежные 171 passed; ruff clean; review APPROVED (2 LOW: Cache-Control follow-up, pre-existing local path traversal — отдельная задача).
+- PR #155 влит по одобрению пользователя. Финальная AC: фото на витрине после прогона seed-test-catalog (run 31797471143).
+
+## 2026-08-14 | minio-image-urls-proxy — AC подтверждены (run 31797471143)
+
+- Deploy run полностью зелёный (seed-test-catalog + E2E success).
+- Live-верификация фото: products.images теперь относительные `/uploads/products/...`; GET через api-ingress → 200 image/jpeg (130KB); через frontend nginx → 200; `?size=small` → 200 image/webp (4.5KB). Фото на витрине отображаются.
+- Итог серии: #152 (trailing slash в CI-скрипте), #153 (seed_data tolerant), #154 (intake dedup категорий), #155 (MinIO proxy URL) — CI main полностью зелёный, витрина с фото.
+
+## 2026-08-14 | product-image-search-reindex — MERGED (PR #156)
+
+- **Баг:** фото на главной (Meilisearch-листинг) отсутствуют — hits с images: []; upload/delete фото не ставили SEARCH_INDEX_PRODUCTS job (только intake и F004-compensation). В CI full reindex (шаг 8) шёл до загрузки фото (шаг 9).
+- **Fix:** products.py — enqueue Job(SEARCH_INDEX_PRODUCTS, product_ids=[id]) после update_product в upload_product_image/delete_product_image (коммит a4aaa74). Задержка появления в поиске ~60-120s (poll воркера).
+- **Тесты:** 2 новых (красный→зелёный), 36+16 passed смежных, ruff clean, review APPROVED (1 LOW: окно между двумя commit'ами → backlog).
+- PR #156 влит по одобрению пользователя. AC: search hits с images после прогона (run 31799254592) + live-проверка.

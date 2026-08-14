@@ -1,6 +1,6 @@
 # Promelectron
 
-Интернет-магазин (маркетплейс) на **FastAPI + Vue 3** с CI/CD через GitHub Actions → Harbor → Kubernetes.
+Интернет-магазин электротоваров на **FastAPI + Vue 3** с CI/CD через GitHub Actions → Harbor → Kubernetes.
 
 ## Стек
 

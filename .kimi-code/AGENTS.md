@@ -164,7 +164,7 @@
 5. Соответствующий ролевой skill в `.kimi-code/skills/<role>/SKILL.md`
 6. [Rule: Agent Commons](./rules/agent-commons.md) — язык, retry policy, размер контекста, ограничения API
 7. [Rule: Pre-edit Checklist](./rules/pre-edit-checklist.md) (перед изменением кода)
-8. [Rule: Business Rules](./rules/business.md) — инварианты маркетплейса (цены, stock, заказы, платежи, доставка, возвраты)
+8. [Rule: Business Rules](./rules/business.md) — инварианты интернет-магазина (цены, stock, заказы, платежи, доставка, возвраты)
 
 ---
 
@@ -212,5 +212,5 @@ CI запускает E2E suite в окружении `promelectron-test` пос
 
 - [Rule: Agent Commons](./rules/agent-commons.md) — языковое правило, retry policy, обработка размера контекста
 - [Rule: Planning & Definition of Done](./rules/planning.md) — формат задачи, приоритизация, Definition of Done
-- [Rule: Business Rules](./rules/business.md) — инварианты маркетплейса
+- [Rule: Business Rules](./rules/business.md) — инварианты интернет-магазина
 - [Rule: Known Pitfalls](./rules/known-pitfalls.md) — реальные проблемы, которые уже случались
