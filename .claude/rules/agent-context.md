@@ -26,7 +26,7 @@ If `.agent/` files are missing or corrupted, report it immediately to the user.
 
 ## Quick context
 
-- **Project:** Promelectron — интернет-магазин электротоваров
+- **Project:** Promelectron — marketplace (Ozon-style)
 - **Stack:** FastAPI + Vue 3 + PostgreSQL + Redis + K8s
 - **Test env:** https://promelectron-test.aidrivencode.ru
 - **Agent system:** Kimi Code CLI skills in `.kimi-code/skills/` and project-level instructions in `.kimi-code/AGENTS.md`

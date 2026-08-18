@@ -16,7 +16,7 @@ Every integration package must have:
 
 | Integration | Purpose | Notes |
 |------------|---------|-------|
-| 1C (onec) | Product catalog, pricing, stock | **Read-only** — never write to 1C. Sync via `job_worker` (table `jobs`); full sync triggered by admin endpoint `/admin/onec/full-sync/` or 1C webhook |
+| 1C (onec) | Product catalog, pricing, stock | **Read-only** — never write to 1C. Sync via Celery beat every 15 min |
 | СДЭК | Shipping calculation and tracking | |
 | YooKassa | Payment processing | Verify webhook signatures before processing |
 

@@ -19,12 +19,9 @@ on:
 
 env:
   # YooKassa test credentials for E2E (test card 5555 5555 5555 4444)
-  YOOKASSA_SHOP_ID: ${{ vars.YOOKASSA_SHOP_ID }}
-  YOOKASSA_SECRET_KEY: ${{ secrets.YOOKASSA_SECRET_KEY }}
+  YOOKASSA_SHOP_ID: ${{ vars.YOOKASSA_SHOP_ID || '54401' }}
+  YOOKASSA_SECRET_KEY: ${{ secrets.YOOKASSA_SECRET_KEY || 'test_Fh8hUAVVBGUGbjmlzba6TB0iyUbos_lueTHE-axOwM0' }}
   YOOKASSA_TEST_MODE: ${{ vars.YOOKASSA_TEST_MODE || 'true' }}
-  # F006/S001: x-seed-secret для Playwright global-setup и debug/set-status —
-  # только из GitHub Secret (в репозитории хардкода больше нет)
-  SEED_SECRET: ${{ secrets.SEED_SECRET }}
 
 jobs:
   smoke:
@@ -83,15 +80,12 @@ jobs:
         run: |
           cd frontend
           BASE_URL="${{ env.BASE_URL }}" API_URL="${{ env.API_URL }}" \
-            npx playwright test --reporter=html
+            npx playwright test --reporter=html --workers=4
 
       - name: Upload report
         uses: actions/upload-artifact@v4
         if: always()
-        # Не ронять прогон, если упёрлись в квоту artifact storage:
-        # отчёт — вспомогательный артефакт, результат тестов важнее.
-        continue-on-error: true
         with:
           name: playwright-report-${{ inputs.environment }}-${{ github.run_id }}
           path: frontend/playwright-report/
-          retention-days: 5
+          retention-days: 14

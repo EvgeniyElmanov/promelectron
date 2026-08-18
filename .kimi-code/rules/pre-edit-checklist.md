@@ -22,8 +22,8 @@ disableModelInvocation: true
 - [ ] `.agent/BLOCKERS.md`
 - [ ] `.agent/SESSION_LOG.md`
 - [ ] Релевантный role skill из `.kimi-code/skills/<role>/SKILL.md`
-- [ ] [Rule: Agent Commons](agent-commons.md) — язык, retry policy, API constraints Kimi K3
-- [ ] [Rule: Security](security.md) — всегда; lightweight pass для любой задачи, extended для auth/payments/PII/uploads/orders/webhooks
+- [ ] [Rule: Agent Commons](agent-commons.md) — язык, retry policy, API constraints Kimi K2.7-Code
+- [ ] [Rule: Security](security.md) — если задача касается auth, payments, uploads, PII
 
 ### Обязательные проверки
 
@@ -63,11 +63,7 @@ disableModelInvocation: true
 - [ ] Нет ли хардкода секретов, URL, ID?
 - [ ] Все конфигурабельные значения вынесены в env/settings?
 
-### Security — обязательно для ВСЕХ задач
-
-Прочитай [Rule: Security](security.md) перед редактированием кода **всегда**, а не только для auth/payments/PII/uploads.
-
-#### Lightweight pass (каждая задача)
+### Security (обязательно для auth/payments/PII/uploads)
 
 - [ ] Auth guard на новых endpoint'ах?
 - [ ] Проверка владения объектом (object-level permissions)?
@@ -76,10 +72,6 @@ disableModelInvocation: true
 - [ ] Нет хардкода секретов в коде/тестах?
 - [ ] Нет PII/tokens в логах?
 - [ ] Цены/скидки считаются на сервере?
-
-#### Extended pass (auth/payments/PII/uploads/orders/webhooks)
-
-Если задача затрагивает чувствительные зоны — пройди полный чеклист из [Rule: Security](security.md) (API endpoints, БД, бизнес-логика, фронтенд, логирование, project-specific риски, DevOps) и запусти `security-reviewer` после code review.
 
 ### Backend-specific
 

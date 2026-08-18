@@ -1,6 +1,6 @@
 ---
 name: backend-dev
-description: Python/FastAPI backend specialist. Implements API endpoints, business logic services, SQLAlchemy models, Alembic migrations, background jobs, and integration adapters. Delegate here for any task touching backend/app/ code, workers/, or integrations/.
+description: Python/FastAPI backend specialist. Implements API endpoints, business logic services, SQLAlchemy models, Alembic migrations, Celery tasks, and integration adapters. Delegate here for any task touching backend/app/ code, workers/, or integrations/.
 model: sonnet
 color: blue
 memory: project

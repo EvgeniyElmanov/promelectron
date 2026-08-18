@@ -6,11 +6,7 @@ on:
     paths:
       - 'backend/**'
       - 'frontend/**'
-      - 'mocks/**'
       - 'infra/helm/**'
-      - 'scripts/ci/**'
-      - '.github/workflows/deploy.yml'
-      - '.github/workflows/e2e.yml'
   workflow_dispatch:
     inputs:
       environment:
@@ -27,7 +23,6 @@ env:
   REGISTRY: harbor.kubeadm.ru
   API_IMAGE: harbor.kubeadm.ru/promelectron/promelectron-api
   FRONTEND_IMAGE: harbor.kubeadm.ru/promelectron/promelectron-frontend
-  ONEC_MOCK_IMAGE: harbor.kubeadm.ru/promelectron/promelectron-onec-mock
   KUBECONFIG_PATH: ${{ vars.KUBECONFIG_PATH }}
   SOPS_VERSION: "3.9.4"
 
@@ -67,14 +62,6 @@ jobs:
             -t ${{ env.FRONTEND_IMAGE }}-test:${{ github.sha }} \
             frontend/
           docker push ${{ env.FRONTEND_IMAGE }}-test:${{ github.sha }}
-
-      - name: Build and push 1C mock (test)
-        if: github.event_name == 'push' || inputs.environment == 'test' || inputs.environment == 'all'
-        run: |
-          docker build -f mocks/onec-server/Dockerfile \
-            -t ${{ env.ONEC_MOCK_IMAGE }}:${{ github.sha }} \
-            mocks/onec-server/
-          docker push ${{ env.ONEC_MOCK_IMAGE }}:${{ github.sha }}
 
       - name: Build and push frontend (prod)
         if: inputs.environment == 'prod' || inputs.environment == 'all'
@@ -140,8 +127,7 @@ jobs:
         env:
           KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
           # Optional GitHub Secrets overrides. Each is applied only when non-empty;
-          # otherwise the committed baselines are used: SOPS (stage/test/secrets.yaml),
-          # then stage/test/secret.yml (plain-text test-only secrets, e.g. ONEC_*).
+          # otherwise the SOPS-encrypted baseline (stage/test/secrets.yaml) is used.
           OVR_POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
           OVR_POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           OVR_POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
@@ -149,9 +135,7 @@ jobs:
           OVR_REDIS_URL: ${{ secrets.REDIS_URL }}
           OVR_SECRET_KEY: ${{ secrets.SECRET_KEY }}
           OVR_ONEC_API_URL: ${{ secrets.ONEC_API_URL }}
-          OVR_ONEC_LOGIN: ${{ secrets.ONEC_LOGIN }}
-          OVR_ONEC_PASSWORD: ${{ secrets.ONEC_PASSWORD }}
-          OVR_ONEC_WEBHOOK_API_KEY: ${{ secrets.ONEC_WEBHOOK_API_KEY }}
+          OVR_ONEC_API_KEY: ${{ secrets.ONEC_API_KEY }}
           OVR_YOOKASSA_SHOP_ID: ${{ secrets.YOOKASSA_SHOP_ID }}
           OVR_YOOKASSA_SECRET_KEY: ${{ secrets.YOOKASSA_SECRET_KEY }}
           OVR_CDEK_ACCOUNT: ${{ secrets.CDEK_ACCOUNT }}
@@ -166,18 +150,17 @@ jobs:
           OVR_MINIO_ROOT_PASSWORD: ${{ secrets.MINIO_ROOT_PASSWORD }}
           OVR_SMTP_USER: ${{ secrets.SMTP_USER }}
           OVR_SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
-          OVR_MEILISEARCH_MASTER_KEY: ${{ secrets.MEILISEARCH_MASTER_KEY }}
         run: |
           set -euo pipefail
           # Build --set-string overrides for every secret whose GitHub Secret is non-empty.
           # SOPS provides the committed baseline; GitHub Secrets take precedence when present.
           OVERRIDES=()
           for key in POSTGRES_USER POSTGRES_PASSWORD POSTGRES_DB DATABASE_URL REDIS_URL \
-                     SECRET_KEY ONEC_API_URL ONEC_LOGIN ONEC_PASSWORD ONEC_WEBHOOK_API_KEY \
+                     SECRET_KEY ONEC_API_URL ONEC_API_KEY \
                      YOOKASSA_SHOP_ID YOOKASSA_SECRET_KEY CDEK_ACCOUNT CDEK_SECURE \
                      YANDEX_CLIENT_ID YANDEX_CLIENT_SECRET GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET \
                      MINIO_ACCESS_KEY MINIO_SECRET_KEY MINIO_ROOT_USER MINIO_ROOT_PASSWORD \
-                     SMTP_USER SMTP_PASSWORD MEILISEARCH_MASTER_KEY; do
+                     SMTP_USER SMTP_PASSWORD; do
             var="OVR_${key}"
             val="${!var:-}"
             [ -n "$val" ] || continue
@@ -188,83 +171,19 @@ jobs:
           helm upgrade --install promelectron-test ./infra/helm \
             -f infra/helm/stage/test/values.yaml \
             -f <(sops -d infra/helm/stage/test/secrets.yaml) \
-            -f infra/helm/stage/test/secret.yml \
             --set api.image=${{ env.API_IMAGE }}:${{ github.sha }} \
             --set frontend.image=${{ env.FRONTEND_IMAGE }}-test:${{ github.sha }} \
-            --set onecMock.image=${{ env.ONEC_MOCK_IMAGE }}:${{ github.sha }} \
             "${OVERRIDES[@]}" \
             --namespace promelectron-test \
             --create-namespace \
             --wait \
-            --wait-for-jobs \
-            --timeout 10m
+            --wait-for-jobs
           kubectl rollout status deployment/promelectron-api -n promelectron-test --timeout=120s
           kubectl rollout status deployment/promelectron-frontend -n promelectron-test --timeout=120s
 
-      - name: Debug deploy failure
-        if: failure()
-        env:
-          KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
-        run: |
-          echo "=== Pods ==="
-          kubectl get pods -n promelectron-test -o wide || true
-          echo "=== Pod descriptions ==="
-          kubectl describe pods -n promelectron-test || true
-          echo "=== Events ==="
-          kubectl get events -n promelectron-test --sort-by='.lastTimestamp' || true
-          echo "=== API logs ==="
-          kubectl logs -n promelectron-test -l app=promelectron-api --tail=200 || true
-          echo "=== Frontend logs ==="
-          kubectl logs -n promelectron-test -l app=promelectron-frontend --tail=200 || true
-          echo "=== MinIO logs ==="
-          kubectl logs -n promelectron-test -l app=promelectron-minio --tail=200 || true
-          echo "=== PostgreSQL logs ==="
-          kubectl logs -n promelectron-test -l app=promelectron-postgres --tail=200 || true
-          echo "=== Redis logs ==="
-          kubectl logs -n promelectron-test -l app=promelectron-redis --tail=200 || true
-
-  # CI-сидинг каталога электротоваров на test-стенде (issue #147).
-  # Только test-ветка: в prod-пайплайне job отсутствует (часть тройной защиты D-02).
-  seed-test-catalog:
-    needs: deploy-test
-    runs-on: self-hosted
-    if: github.event_name == 'push' || inputs.environment == 'test' || inputs.environment == 'all'
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install httpx for image upload script
-        run: |
-          pip install --user "httpx==0.28.*"
-
-      - name: Seed test catalog via 1C mock chain
-        env:
-          KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
-          # F006/S001: секреты только из GitHub Secrets, хардкода в скриптах нет
-          SEED_SECRET: ${{ secrets.SEED_SECRET }}
-          SEED_ADMIN_PASSWORD: ${{ secrets.SEED_ADMIN_PASSWORD }}
-          SEED_SUPPLIER_PASSWORD: ${{ secrets.SEED_SUPPLIER_PASSWORD }}
-        run: |
-          bash scripts/ci/seed_test_catalog.sh
-
-      - name: Debug seed failure
-        if: failure()
-        env:
-          KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
-        run: |
-          echo "=== Pods ==="
-          kubectl get pods -n promelectron-test -o wide || true
-          echo "=== API logs ==="
-          kubectl logs -n promelectron-test -l app=promelectron-api --tail=200 || true
-          echo "=== Job worker logs ==="
-          kubectl logs -n promelectron-test -l app=promelectron-job-worker --tail=200 || true
-          echo "=== 1C mock logs ==="
-          kubectl logs -n promelectron-test -l app=promelectron-onec-mock --tail=200 || true
-
   test-e2e:
-    needs: [deploy-test, seed-test-catalog]
+    needs: deploy-test
     uses: ./.github/workflows/e2e.yml
-    secrets: inherit
     with:
       environment: test
 
@@ -335,9 +254,7 @@ jobs:
           OVR_REDIS_URL: ${{ secrets.REDIS_URL }}
           OVR_SECRET_KEY: ${{ secrets.SECRET_KEY }}
           OVR_ONEC_API_URL: ${{ secrets.ONEC_API_URL }}
-          OVR_ONEC_LOGIN: ${{ secrets.ONEC_LOGIN }}
-          OVR_ONEC_PASSWORD: ${{ secrets.ONEC_PASSWORD }}
-          OVR_ONEC_WEBHOOK_API_KEY: ${{ secrets.ONEC_WEBHOOK_API_KEY }}
+          OVR_ONEC_API_KEY: ${{ secrets.ONEC_API_KEY }}
           OVR_YOOKASSA_SHOP_ID: ${{ secrets.YOOKASSA_SHOP_ID }}
           OVR_YOOKASSA_SECRET_KEY: ${{ secrets.YOOKASSA_SECRET_KEY }}
           OVR_CDEK_ACCOUNT: ${{ secrets.CDEK_ACCOUNT }}
@@ -352,18 +269,17 @@ jobs:
           OVR_MINIO_ROOT_PASSWORD: ${{ secrets.MINIO_ROOT_PASSWORD }}
           OVR_SMTP_USER: ${{ secrets.SMTP_USER }}
           OVR_SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
-          OVR_MEILISEARCH_MASTER_KEY: ${{ secrets.MEILISEARCH_MASTER_KEY }}
         run: |
           set -euo pipefail
           # Build --set-string overrides for every secret whose GitHub Secret is non-empty.
           # SOPS provides the committed baseline; GitHub Secrets take precedence when present.
           OVERRIDES=()
           for key in POSTGRES_USER POSTGRES_PASSWORD POSTGRES_DB DATABASE_URL REDIS_URL \
-                     SECRET_KEY ONEC_API_URL ONEC_LOGIN ONEC_PASSWORD ONEC_WEBHOOK_API_KEY \
+                     SECRET_KEY ONEC_API_URL ONEC_API_KEY \
                      YOOKASSA_SHOP_ID YOOKASSA_SECRET_KEY CDEK_ACCOUNT CDEK_SECURE \
                      YANDEX_CLIENT_ID YANDEX_CLIENT_SECRET GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET \
                      MINIO_ACCESS_KEY MINIO_SECRET_KEY MINIO_ROOT_USER MINIO_ROOT_PASSWORD \
-                     SMTP_USER SMTP_PASSWORD MEILISEARCH_MASTER_KEY; do
+                     SMTP_USER SMTP_PASSWORD; do
             var="OVR_${key}"
             val="${!var:-}"
             [ -n "$val" ] || continue
@@ -374,7 +290,6 @@ jobs:
           helm upgrade --install promelectron ./infra/helm \
             -f infra/helm/stage/prod/values.yaml \
             -f <(sops -d infra/helm/stage/prod/secrets.yaml) \
-            -f infra/helm/stage/prod/secret.yml \
             --set api.image=${{ env.API_IMAGE }}:${{ github.sha }} \
             --set frontend.image=${{ env.FRONTEND_IMAGE }}:${{ github.sha }} \
             "${OVERRIDES[@]}" \

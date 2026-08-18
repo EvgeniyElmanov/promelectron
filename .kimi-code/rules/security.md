@@ -34,7 +34,6 @@ disableModelInvocation: true
 - [ ] **Idempotency**: Платёжные endpoint'ы идемпотентны (idempotency key / уникальность external_id)
 - [ ] **Coupon validation**: Проверка срока, лимитов использования, применимости
 - [ ] **State machine**: Статусы заказа/платежа меняются допустимыми переходами
-- [ ] **Money-movement audit**: Любой admin endpoint, инициирующий движение денег (refund / payout), обязан фиксировать actor (`current_user.id`) в audit-логе — без PII (только id, action, сумма, заказ)
 
 ### Фронтенд
 
@@ -67,7 +66,6 @@ disableModelInvocation: true
 - [ ] **Image scanning**: Образы сканируются на CVE
 - [ ] **Non-root containers**: `securityContext.runAsNonRoot: true`, `readOnlyRootFilesystem`
 - [ ] **HTTPS**: Production endpoint'ы только `https://`, HSTS
-- [ ] **MCP tokens**: Figma / Atlassian API tokens только в env vars / CI secrets, не в `.kimi-code/mcp.json` и не в логах; см. `docs/MCP_INTEGRATION.md`
 
 ### Формат security findings
 
@@ -76,10 +74,8 @@ disableModelInvocation: true
 ```markdown
 ### [S-001] 🔴 CRITICAL | <Category>
 - **File:** path/to/file.py:42
-- **Evidence:** <цитата/фрагмент из diff>
 - **Problem:** ...
-- **Impact:** <security риск и blast radius>
-- **Action:** <конкретное исправление>
+- **Fix:** ...
 - **Status:** OPEN
 ```
 

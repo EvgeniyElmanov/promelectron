@@ -12,18 +12,13 @@ class TestSupplierAnalytics:
     """Тесты аналитики поставщика."""
 
     @pytest.mark.asyncio
-    async def test_supplier_analytics_basic(self, client, test_user, user_token, test_supplier, supplier_token, test_product, test_session, cdek_delivery_payload):
+    async def test_supplier_analytics_basic(self, client, test_user, user_token, test_supplier, supplier_token, test_product, test_session):
         """Поставщик получает аналитику по своим товарам."""
         # Создаём заказ с товаром поставщика
         await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 2}, headers={"Authorization": f"Bearer {user_token}"})
         order_resp = await client.post(
-            "/api/v1/orders/create/",
-            json={
-                "cdek_delivery": cdek_delivery_payload,
-                "recipient_first_name": "Тест",
-                "recipient_last_name": "Пользователь",
-                "recipient_phone": "+79990001122",
-            },
+            "/api/v1/orders/create",
+            json={"shipping_address": {"city": "Москва", "street": "Ленина", "house": "1"}},
             headers={"Authorization": f"Bearer {user_token}"},
         )
         assert order_resp.status_code == 200
@@ -61,8 +56,9 @@ class TestSupplierAnalytics:
         assert data["top_products"][0]["revenue"] == pytest.approx(199.98, 0.01)
 
     @pytest.mark.asyncio
-    async def test_supplier_analytics_isolation(self, client, test_user, user_token, test_supplier, supplier_token, test_session, cdek_delivery_payload):
+    async def test_supplier_analytics_isolation(self, client, test_user, user_token, test_supplier, supplier_token, test_session):
         """Аналитика изолирована по поставщикам."""
+        from src.app.models.supplier import Supplier
 
         # Создаём второго поставщика с товаром и заказом
         other_user = User(
@@ -101,13 +97,8 @@ class TestSupplierAnalytics:
         # Создаём заказ с товаром другого поставщика
         await client.post("/api/v1/cart/add", json={"product_id": other_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
         order_resp = await client.post(
-            "/api/v1/orders/create/",
-            json={
-                "cdek_delivery": cdek_delivery_payload,
-                "recipient_first_name": "Тест",
-                "recipient_last_name": "Пользователь",
-                "recipient_phone": "+79990001122",
-            },
+            "/api/v1/orders/create",
+            json={"shipping_address": {"city": "Москва", "street": "Ленина", "house": "1"}},
             headers={"Authorization": f"Bearer {user_token}"},
         )
         assert order_resp.status_code == 200
@@ -141,19 +132,14 @@ class TestSupplierAnalytics:
         assert response.status_code == 403
 
     @pytest.mark.asyncio
-    async def test_supplier_analytics_multiple_statuses(self, client, test_user, user_token, test_supplier, supplier_token, test_product, test_session, cdek_delivery_payload):
+    async def test_supplier_analytics_multiple_statuses(self, client, test_user, user_token, test_supplier, supplier_token, test_product, test_session):
         """KPI считает заказы по разным статусам."""
         # Создаём 3 заказа с разными статусами
         for i in range(3):
             await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
             order_resp = await client.post(
-                "/api/v1/orders/create/",
-                json={
-                "cdek_delivery": cdek_delivery_payload,
-                "recipient_first_name": "Тест",
-                "recipient_last_name": "Пользователь",
-                "recipient_phone": "+79990001122",
-            },
+                "/api/v1/orders/create",
+                json={"shipping_address": {"city": "Москва", "street": "Ленина", "house": "1"}},
                 headers={"Authorization": f"Bearer {user_token}"},
             )
             assert order_resp.status_code == 200
@@ -182,6 +168,7 @@ class TestSupplierAnalytics:
     @pytest.mark.asyncio
     async def test_supplier_analytics_top_products_limit(self, client, test_user, user_token, test_supplier, supplier_token, test_product, test_category, test_session):
         """Top products ограничен 5 элементами."""
+        from src.app.models.supplier import Supplier
 
         # Создаём 6 товаров для поставщика
         result = await test_session.execute(select(Supplier).where(Supplier.user_id == test_supplier.id))

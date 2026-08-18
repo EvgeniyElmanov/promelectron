@@ -14,9 +14,6 @@ disableModelInvocation: true
 ---
 task-id: <kebab-case-slug>
 github_issue: #N
-jira_issue: PROJ-123          # опционально — для MCP atlassian
-confluence_spec_url: https://...  # опционально — для MCP atlassian
-figma_file_key: AbC123dEfG    # опционально — для MCP figma
 status: todo | in_progress | in_review | done
 branch: feature/<task-id>
 worktree: /abs/path/to/.worktrees/<task-id>
@@ -80,7 +77,7 @@ security_review: yes | no
 - [ ] `.kimi-code/skills/<role>/SKILL.md`
 - [ ] [Rule: Pre-edit Checklist](pre-edit-checklist.md)
 - [ ] [Rule: Agent Commons](agent-commons.md)
-- [ ] [Rule: Security](security.md) — всегда; lightweight pass для любой задачи, extended для auth/payments/PII/uploads/orders/webhooks
+- [ ] [Rule: Security](security.md) — если затрагивает auth/payments/PII/uploads
 
 ## КОНТЕКСТНЫЙ ПАКЕТ (для рабочего агента)
 

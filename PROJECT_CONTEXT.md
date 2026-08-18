@@ -27,7 +27,7 @@ e2e_tests: "108/108"
 
 | Слой | Технологии |
 |------|-----------|
-| Backend | Python 3.12, FastAPI, SQLAlchemy 2.0 **async**, PostgreSQL 16, Redis 7, MinIO |
+| Backend | Python 3.12, FastAPI, SQLAlchemy 2.0 **async**, PostgreSQL 16, Redis 7, MinIO, Celery |
 | Frontend | Vue 3 + Vite + Composition API + Axios, nginx:alpine (runtime) |
 | Infra | Docker Compose (dev), K8s Helm (prod), GitHub Actions self-hosted runner → Harbor, kubectl, k9s, OpenVPN |
 | Tests | pytest (backend), vitest (frontend), Playwright (E2E) |
@@ -51,7 +51,6 @@ e2e_tests: "108/108"
 - [x] **Email-верификация (backend)** — `User.email_verified`, `EmailVerificationToken`, verification email при регистрации, подтверждение по ссылке, повторная отправка, сброс флага при смене email
 - [x] **Yandex SMTP (backend)** — `SMTP_USE_TLS`/`SMTP_STARTTLS`, retry, fallback-логирование
 - [x] **Тесты зелёные** — Backend 320/320 ✅, Frontend 243/243 ✅, E2E 108/108 ✅
-- [x] **1C mock server** — `mocks/onec-server/`: standalone FastAPI + APScheduler симулятор 1С:УНФ; виртуальный каталог в PG-схеме `onec_mock`, инкрементальные CommerceML 2.x пакеты (ZIP `import.xml`+`offers.xml`) POST'ом на intake с retry/backoff, 7 сценариев мутаций, API управления (`/trigger/`, `/scenario/`, `/status/`, `/history/`); helm за `onecMock.enabled` (test: true, prod: false)
 
 ---
 
@@ -63,7 +62,7 @@ e2e_tests: "108/108"
 | **Убрать hardcoded secrets** | ✅ done | — | Все креды вынесены в GitHub Secrets / SOPS. SECRET_KEY восстановлен. |
 | **Sentry (мониторинг)** | ⏳ todo | — | Backend + frontend |
 | **Backup БД** | ⏳ todo | — | pg_dump → S3/MinIO |
-| **Helm worker templates** | ✅ done | — | `job_worker` деплоится в K8s. Celery удалён. |
+| **Helm worker templates** | ✅ done | — | Celery worker работает в K8s. |
 | **Product.price → Numeric(10,2)** | ⏳ todo | — | Ждёт отдельной задачи |
 | **Malformed Alembic revision** | ✅ done | — | Миграции чистые, история корректна |
 | **Yandex SMTP + email verification** | ✅ done | — | Реализовано и влито в main (#40). Backend + frontend + Helm values + SOPS TODOs. |
@@ -92,7 +91,7 @@ e2e_tests: "108/108"
 1. **SQLAlchemy 2.0 async** — все DB операции async. Никаких sync-библиотек в основном потоке.
 2. **Monolith** — все домены в одном FastAPI приложении. Микросервисы не раньше Фазы 3.
 3. **PostgreSQL single master** — нет read replicas.
-4. **Redis single-node** — кэш и rate limit на одном инстансе.
+4. **Redis single-node** — кэш, rate limit, Celery брокер на одном инстансе.
 5. **JWT 30 минут** — нет refresh tokens. Пользователи перелогиниваются.
 6. **Trailing slash обязателен** — `api.get('/categories/')`, не `'/categories'`. Иначе 307 → axios теряет заголовки.
 7. **SQLite ≠ PostgreSQL** — тесты только в Docker (`make test-backend`), никогда на SQLite.
@@ -106,7 +105,7 @@ e2e_tests: "108/108"
 
 ```
 Реальные платежи (ЮKassa)  →  Sub-orders / Комиссия / Возвраты
-Helm worker templates        →  job_worker / Email async / Background tasks
+Helm worker templates        →  Celery Beat / Email async / Background tasks
 Product.price → Numeric      →  Product variants / Seller payouts
 ```
 
@@ -127,9 +126,9 @@ Product.price → Numeric      →  Product variants / Seller payouts
 | POST | `/api/v1/guest-cart/` | ✅ | Создать гостевую корзину |
 | GET | `/api/v1/guest-cart/{id}/` | ✅ | Получить гостевую корзину |
 | POST | `/api/v1/cart/merge/` | ✅ | Merge гостевой корзины при login |
-| POST | `/api/v1/orders/create-guest/` | ⚠️ | Создание новых гостевых заказов отключено (`410 Gone`); исторические заказы доступны |
+| POST | `/api/v1/orders/create-guest/` | ✅ | Создать гостевой заказ |
 | GET | `/api/v1/orders/guest/{order_id}/` | ✅ | Получить гостевой заказ по email |
-| POST | `/api/v1/payments/guest/{order_id}/` | ⚠️ | Создание новых guest-платежей отключено (`410 Gone`); mock-confirm/webhook исторических работают |
+| POST | `/api/v1/payments/guest/{order_id}/` | ✅ | Создать гостевой платёж ЮKassa |
 | POST | `/api/v1/payments/guest/{order_id}/mock-confirm/` | ✅ | Подтвердить mock-оплату гостевого заказа |
 | POST | `/api/v1/auth/password-reset-request/` | ✅ | Запросить сброс пароля |
 | POST | `/api/v1/auth/password-reset/` | ✅ | Подтвердить сброс пароля |
@@ -137,8 +136,8 @@ Product.price → Numeric      →  Product variants / Seller payouts
 ### Auth / OAuth
 | Метод | Путь | Статус | Описание |
 |-------|------|--------|----------|
-| POST | `/api/v1/register/` | ✅ | Регистрация |
-| POST | `/api/v1/login/` | ✅ | Логин (JWT) |
+| POST | `/api/v1/auth/register/` | ✅ | Регистрация |
+| POST | `/api/v1/auth/login/` | ✅ | Логин (JWT) |
 | POST | `/api/v1/auth/yandex/` | ✅ | OAuth Yandex callback |
 | POST | `/api/v1/auth/google/` | ✅ | OAuth Google callback |
 | GET | `/api/v1/auth/providers/` | ✅ | Доступность OAuth-провайдеров |
@@ -171,7 +170,6 @@ Product.price → Numeric      →  Product variants / Seller payouts
 | GET | `/api/v1/admin/products/` | ✅ | Список товаров (admin) |
 | POST | `/api/v1/admin/products/` | ✅ | Создать товар |
 | GET | `/api/v1/admin/orders/` | ✅ | Список заказов (admin) |
-| POST | `/api/v1/admin/orders/{order_id}/cancel/` | ✅ | Отмена заказа админом (refund для paid, возврат stock, best-effort CDEK cancel) |
 | GET | `/api/v1/admin/users/` | ✅ | Список пользователей (admin) |
 | GET | `/api/v1/admin/users/{user_id}/` | ✅ | Детали пользователя + его заказы (admin only) |
 | GET | `/api/v1/admin/feature-flags` | ✅ | Список feature flags (admin) |
@@ -191,18 +189,7 @@ Product.price → Numeric      →  Product variants / Seller payouts
 | GET | `/api/v1/supplier/profile/` | ✅ | Профиль поставщика (CDEK настройки) |
 | PATCH | `/api/v1/supplier/profile/` | ✅ | Обновление CDEK настроек поставщика |
 
-### 1С интеграция
-| Метод | Путь | Статус | Описание |
-|-------|------|--------|----------|
-| POST | `/api/v1/onec/intake/` | ✅ | Универсальный приём сырых выгрузок 1С (raw → MinIO `onec-intake` + `onec_intake_log`, лимит 100 МБ, 202, #118) |
-
 > **Trailing slash обязателен во всех путях.**
-
-### Debug endpoints (test mode only)
-| Метод | Путь | Auth | Описание |
-|-------|------|------|----------|
-| POST | `/api/v1/payments/debug/yookassa/create/` | JWT + `YOOKASSA_TEST_MODE=true` | Создать тестовый платёж напрямую в YooKassa без DB |
-| POST | `/api/v1/payments/debug/set-status/` | `x-seed-secret` + `YOOKASSA_TEST_MODE=true` | Детерминированно перевести платёж в `succeeded`/`canceled` (E2E) |
 
 ---
 
@@ -220,7 +207,7 @@ Product.price → Numeric      →  Product variants / Seller payouts
 | Checkout | `src/views/CheckoutView.vue` | `useCart` | `/orders/`, `/payments/` |
 | PaymentSuccess | `src/views/PaymentSuccessView.vue` | — | `/payments/guest/{order_id}/mock-confirm/`, `/orders/guest/{order_id}/` |
 | PaymentFailed | `src/views/PaymentFailedView.vue` | — | `/payments/{payment_id}/` |
-| Login | `src/views/LoginView.vue` | `useAuth` | `/login/`, `/auth/yandex/` |
+| Login | `src/views/LoginView.vue` | `useAuth` | `/auth/login/`, `/auth/yandex/` |
 | ForgotPassword | `src/views/ForgotPassword.vue` | — | `/auth/password-reset-request/` |
 | ResetPassword | `src/views/ResetPassword.vue` | — | `/auth/password-reset/` |
 | AdminDashboard | `src/views/admin/DashboardView.vue` | — | `/admin/...` |
@@ -273,9 +260,6 @@ make test-e2e      # Playwright
 ## История изменений (кратко)
 
 | Дата | Что изменилось | Кто |
-| 2026-07-30 | **onec-mock-server-0730** (Фаза 7, issue #124): новый standalone-сервис `mocks/onec-server/` — симулятор 1С:УНФ (FastAPI + APScheduler, без Celery/Redis). Виртуальный каталог в PG-схеме `onec_mock` (create_all на старте, без Alembic), журнал изменений `change_log` (план обмена), генератор CommerceML 2.x за интерфейсом `PackageGenerator` (ZIP `import.xml`+`offers.xml`), 7 детерминированных сценариев мутаций, sender с retry/backoff (1/5/15 мин) и журналом `sent_changes`, API управления `/trigger/` `/scenario/` `/status/` `/history/` (trailing slash, без auth). Infra: сервис `onec-mock` в `backend/docker-compose.yml`, helm Deployment/Service за `onecMock.enabled` (test: true, prod: false), CI build образа в `deploy.yml`. pytest 27/27 ✅ (Docker-PG, схема `onec_mock_test`), ruff чисто ✅. Backend/frontend не затронуты. | backend-dev |
-| 2026-07-18 | **remove-guest-checkout** (backend): `POST /api/v1/orders/create-guest/` и `POST /api/v1/payments/guest/{order_id}/` возвращают `410 Gone`; исторические guest-заказы продолжают читаться через `GET /orders/guest/{order_id}/`, mock-confirm и webhook. Backend-тесты обновлены: `test_guest_orders.py`, `test_guest_payments.py`, `test_payments.py::TestPaymentDebugSetStatusAPI`. Модель БД не изменена, миграций нет. Целевые тесты 26/26 ✅, `lint-backend` чисто ✅. | backend-dev |
-| 2026-07-18 | **cleanup/remove-celery**: удалена неиспользуемая Celery из backend (`celery_app.py`, `celery[redis]` из requirements, комментарии), Docker Compose (сервисы `worker` и `beat`), Helm (`worker-deployment.yaml` удалён, секция `worker` переименована в `jobWorker` для `job-worker-deployment.yaml`), документации (`PROJECT_CONTEXT.md`, `.agent/DECISIONS.md`) и Claude skills/commands. Redis оставлен для кэша и rate limit. Backend 414/414 ✅, lint чисто ✅. | backend-dev |
 | 2026-06-30 | **fix: async verification email (#43)**: регрессия в E2E после #40 — `UserService.register_user`/`resend_verification_email` блокировали ответ API синхронной отправкой письма, что на test-окружении с unreachable Yandex SMTP приводило к таймаутам и падению E2E регистрации. Исправлено: отправка запускается в фоновой `asyncio.create_task`, токен создаётся синхронно, ошибки логируются. Backend 320/320 ✅, lint чисто ✅, deploy + E2E на test после merge зелёные. | backend-dev / orchestrator |
 | 2026-06-30 | **yandex-smtp-and-email-verification — merged (#40)**: завершена frontend-часть (баннеры верификации, страницы `/verify-email/*`, обработка 302-редиректа), review fixes (rate limit на verify-email, `hmac.compare_digest`, PII redaction, DB-индексы, placeholder SMTP-данные), обновлены Helm values/`deploy.yml`/SOPS TODOs. QA: backend 320/320 ✅, frontend 243/243 ✅, E2E 108/108 ✅. PR #40 влит в `main` (merge commit `836cc13`). Issue #19 закрыт, статус в GitHub Projects — Done. | backend-dev / frontend-dev / devops / orchestrator |
 | 2026-06-26 | **yandex-smtp-and-email-verification (backend Phase 1+2)**: подключён Yandex SMTP (`SMTP_USE_TLS`/`SMTP_STARTTLS`), retry, fallback-логирование; добавлена верификация email — `User.email_verified`, `EmailVerificationToken`, Alembic-миграция `b3edea26617e`, `EmailService.send_verification_email`, `UserService` helpers, endpoints `GET /api/v1/auth/verify-email/` (302 redirect) и `POST /api/v1/auth/resend-verification/` (rate limit), OAuth callback выставляет `email_verified`. Trailing slash для `/register/`, `/login/`, `/me/`, `/me/password/`. Backend-тесты 315/315 ✅, `ruff check src/ tests/` чисто ✅, downgrade/upgrade head проходит ✅. Issue #43/#19. | backend-dev |

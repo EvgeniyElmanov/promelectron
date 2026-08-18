@@ -4,17 +4,14 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.app.core.config import settings
 from src.app.core.constants import PVZ_TYPE_WHITELIST
 from src.app.db.database import get_db
-from src.app.models.job import Job
-from src.app.models.order import Order
 from src.app.services.cdek_client import CdekAPIError, CdekClient
 from src.app.services.cdek_service import CdekService
-from src.app.utils.auth import get_current_active_admin
+from src.app.utils.auth import get_current_active_user
 from src.app.utils.rate_limiter import conditional_limit
 
 router = APIRouter(prefix="/cdek", tags=["cdek"])
@@ -148,22 +145,6 @@ async def suggest_cities(
     return result
 
 
-async def _ensure_sync_job(cdek_order_id: int, db: AsyncSession) -> None:
-    """Create or update a CDEK_SYNC_ORDER_STATUS job for the given CdekOrder."""
-    existing = await db.execute(
-        select(Job)
-        .where(
-            Job.job_type == "CDEK_SYNC_ORDER_STATUS",
-            Job.payload.contains({"cdek_order_id": cdek_order_id}),
-            Job.status.in_(["pending", "running"]),
-        )
-    )
-    if existing.scalars().first():
-        return
-    db.add(Job(job_type="CDEK_SYNC_ORDER_STATUS", payload={"cdek_order_id": cdek_order_id}))
-    await db.commit()
-
-
 @router.post("/webhooks/cdek/")
 async def cdek_webhook(
     request: Request,
@@ -178,9 +159,7 @@ async def cdek_webhook(
     event_type = payload.get("type")
     if event_type == "ORDER_STATUS":
         try:
-            cdek_order = await CdekService.handle_order_status_webhook(payload, db)
-            if cdek_order:
-                await _ensure_sync_job(cdek_order.id, db)
+            await CdekService.handle_order_status_webhook(payload, db)
         except Exception as exc:
             raise HTTPException(status_code=500, detail=f"Failed to process webhook: {exc}") from exc
 
@@ -191,17 +170,13 @@ async def cdek_webhook(
 async def resync_cdek_order(
     request: Request,
     order_id: int,
-    current_user: Any = Depends(get_current_active_admin),
+    current_user: Any = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Admin/debug endpoint to retry CDEK order creation."""
-    order_result = await db.execute(select(Order).where(Order.id == order_id))
-    order = order_result.scalars().first()
-    if not order:
-        raise HTTPException(status_code=404, detail="Order not found")
+    from src.app.services.cdek_tasks import create_cdek_order_task
 
-    db.add(Job(job_type="CDEK_CREATE_ORDER", payload={"order_id": order_id}))
-    await db.commit()
+    create_cdek_order_task.delay(order_id)
     return {"status": "queued", "order_id": order_id}
 
 

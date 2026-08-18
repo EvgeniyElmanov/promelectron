@@ -233,5 +233,3 @@
 | — | Technical Specification: admin-orders-date-cancel | [#104](https://github.com/AutonomaCo/promelectron/issues/104) | — | P1 | **backlog** | — | — | — |
 | — | Technical Specification: admin-cancel-followups (--quick) | [#107](https://github.com/AutonomaCo/promelectron/issues/107) | — | P1 | **backlog** | — | — | — |
 | — | Bug Spec: fix-e2e-auth-after-guest-checkout | [#112](https://github.com/AutonomaCo/promelectron/issues/112) | — | P1 | **backlog** | — | — | — |
-| — | Technical Specification: catalog-filter-panel-122 | [#134](https://github.com/AutonomaCo/promelectron/issues/134) | — | P1 | **backlog** | — | — | — |
-| — | Спецификация: search-api-followups-0801 (#137, #138) | [#137](https://github.com/AutonomaCo/promelectron/issues/137) | — | P1 | **backlog** | — | — | — |

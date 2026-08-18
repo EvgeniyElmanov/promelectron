@@ -2,7 +2,7 @@
 # Copy relevant sections into ~/.kimi-code/config.toml
 # Project-level config.toml is NOT supported by Kimi Code CLI.
 
-default_model = "kimi-code/k3"
+default_model = "kimi-for-coding"
 default_thinking = true
 default_permission_mode = "manual"
 # default_permission_mode = "auto"   # разрешить read-only автоматически; править/запускать — всё ещё с approval
@@ -14,48 +14,25 @@ telemetry = true
 # NOTE: There is no "default_yolo" field in Kimi Code CLI.
 # Use default_permission_mode = "manual" | "auto" | "yolo" instead.
 
-# Kimi K3 specifics:
-# - Context window: 1M tokens (1,048,576); a 256K variant (k3-256k) is also available.
-# - Thinking mode is always enabled and cannot be disabled; control depth via
-#   reasoning_effort = "low" | "high" | "max" (default "max").
-# - For multi-turn tool calls, return the complete assistant message unchanged
-#   (including reasoning_content).
-# - Automatic prefix caching: keep the stable part of subagent prompts at the front.
-# - Project retry policy: transient errors (502/504/timeout) are retried up to 4
-#   attempts (3 retries) with exponential backoff via scripts/agent_retry.py.
+# Kimi K2.7-Code specifics:
+# - Context window: 256K tokens (262,144).
+# - Thinking mode is mandatory and cannot be disabled.
+# - For multi-turn tool calls, preserve reasoning_content from assistant messages.
+# - Project retry policy: transient errors (502/504/timeout) are retried up to 3
+#   times with exponential backoff via scripts/agent_retry.py.
 
 # ─── Provider & Model ───
-# Kimi Code managed provider (OAuth / official CLI login).
-# Uncomment and fill api_key only if you use API-key login.
+# Alias for Kimi Code managed provider. Uncomment and fill api_key if you use API key login.
 
 [providers."managed:kimi-code"]
 type = "kimi"
 base_url = "https://api.kimi.com/coding/v1"
 api_key = ""
 
-# Direct Kimi API (OpenAI-compatible). Use this for third-party agent frameworks
-# or when you manage the API key manually.
-# [providers."moonshot"]
-# type = "openai"
-# base_url = "https://api.moonshot.ai/v1"
-# api_key = ""
-
-[models."kimi-code/k3"]
+[models."kimi-for-coding"]
 provider = "managed:kimi-code"
-model = "k3"
-max_context_size = 1048576
-
-# Вариант с окном 256K (дешевле/быстрее для простых ролей — ревьюеров и т.п.)
-# [models."kimi-code/k3-256k"]
-# provider = "managed:kimi-code"
-# model = "k3-256k"
-# max_context_size = 262144
-
-# Direct Kimi API (OpenAI-compatible) highspeed variant:
-# [models."kimi-k3-highspeed"]
-# provider = "moonshot"
-# model = "kimi-k3-highspeed"
-# max_context_size = 262144
+model = "kimi-for-coding"
+max_context_size = 262144
 
 # ─── Permission Rules for /skill:implement pipeline ───
 # These rules reduce approval friction for git worktrees, tests, and lint.

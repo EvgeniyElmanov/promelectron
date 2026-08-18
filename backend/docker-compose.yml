@@ -39,22 +39,6 @@ services:
     volumes:
       - minio_data:/data
 
-  meilisearch:
-    image: getmeili/meilisearch:v1.50
-    ports:
-      - "7700:7700"
-    environment:
-      MEILI_MASTER_KEY: ${MEILISEARCH_MASTER_KEY:-dev-meili-master-key-change-in-prod}
-      MEILI_ENV: development
-      MEILI_NO_ANALYTICS: "true"
-    volumes:
-      - meilisearch_data:/meili_data
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:7700/health"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
 
   api:
     build:
@@ -74,7 +58,6 @@ services:
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin
       MINIO_BUCKET: promelectron-uploads
-      MINIO_INTAKE_BUCKET: onec-intake
       MINIO_SECURE: "false"
       ACCESS_TOKEN_EXPIRE_MINUTES: "1440"
       # Email disabled in dev containers: avoid mailer-daemon bounces when
@@ -100,10 +83,6 @@ services:
       CDEK_SECURE: ${CDEK_SECURE:-RmAmgvSgSl1yirlz9QupbzOJVqhCxcP5}
       CDEK_API_URL: ${CDEK_API_URL:-https://api.edu.cdek.ru}
       CDEK_TEST_MODE: ${CDEK_TEST_MODE:-true}
-      # Ключ intake/webhook 1С; в dev совпадает с дефолтом onec-mock (см. сервис onec-mock ниже).
-      ONEC_WEBHOOK_API_KEY: ${ONEC_WEBHOOK_API_KEY:-dev-onec-api-key}
-      MEILISEARCH_URL: http://meilisearch:7700
-      MEILISEARCH_MASTER_KEY: ${MEILISEARCH_MASTER_KEY:-dev-meili-master-key-change-in-prod}
     volumes:
       - .:/app
     depends_on:
@@ -113,11 +92,10 @@ services:
         condition: service_healthy
       minio:
         condition: service_started
-      meilisearch:
-        condition: service_started
     command: uvicorn src.app.main:app --host 0.0.0.0 --port 8000 --reload
 
-  job-worker:
+  # Celery worker/beat are kept for 1C-sync only; CDEK uses the job-worker below.
+  worker:
     build:
       context: .
       dockerfile: Dockerfile
@@ -133,7 +111,6 @@ services:
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin
       MINIO_BUCKET: promelectron-uploads
-      MINIO_INTAKE_BUCKET: onec-intake
       MINIO_SECURE: "false"
       ACCESS_TOKEN_EXPIRE_MINUTES: "1440"
       # Email disabled in dev containers: avoid mailer-daemon bounces when
@@ -161,8 +138,6 @@ services:
       CDEK_TERMINAL_STATUSES: ${CDEK_TERMINAL_STATUSES:-DELIVERED,NOT_DELIVERED,RETURNED,CANCELLED}
       JOB_WORKER_SLEEP_SECONDS: ${JOB_WORKER_SLEEP_SECONDS:-60}
       JOB_MAX_ATTEMPTS: ${JOB_MAX_ATTEMPTS:-5}
-      MEILISEARCH_URL: http://meilisearch:7700
-      MEILISEARCH_MASTER_KEY: ${MEILISEARCH_MASTER_KEY:-dev-meili-master-key-change-in-prod}
     volumes:
       - .:/app
     depends_on:
@@ -170,36 +145,99 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      meilisearch:
-        condition: service_started
-    command: python -m src.app.workers.job_worker
-    restart: unless-stopped
+    command: celery -A src.app.workers.celery_app worker --loglevel=info --concurrency=2
 
-  # 1C:УНФ mock server (Фаза 7, issue #124) — dev/test инструмент
-  onec-mock:
+  job-worker:
     build:
-      context: ../mocks/onec-server
+      context: .
       dockerfile: Dockerfile
-    ports:
-      - "8100:8100"
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/promelectron
-      ONEC_TARGET_URL: http://api:8000/api/v1/onec/intake/
-      ONEC_API_KEY: ${ONEC_WEBHOOK_API_KEY:-dev-onec-api-key}
-      SYNC_INTERVAL_MINUTES: ${ONEC_MOCK_SYNC_INTERVAL_MINUTES:-30}
-      SEED_ON_START: ${ONEC_MOCK_SEED_ON_START:-true}
-      SEED_PRODUCTS_COUNT: ${ONEC_MOCK_SEED_PRODUCTS_COUNT:-200}
-      CATALOG_SEED: ${ONEC_MOCK_CATALOG_SEED:-42}
-      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: dev-secret-key-change-in-production-minimum-32-chars
+      ALGORITHM: HS256
+      ENVIRONMENT: development
+      FRONTEND_URL: http://frontend:5173
+      API_BASE_URL: http://api:8000
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_BUCKET: promelectron-uploads
+      MINIO_SECURE: "false"
+      ACCESS_TOKEN_EXPIRE_MINUTES: "1440"
+      # Email disabled in dev containers: avoid mailer-daemon bounces when
+      # test data contains *@example.com addresses.
+      SMTP_HOST: smtp.yandex.ru
+      SMTP_PORT: "465"
+      SMTP_USER: ""
+      SMTP_PASSWORD: ""
+      SMTP_FROM: noreply@myshop.ru
+      SMTP_FROM_NAME: MyShop
+      SMTP_USE_TLS: "true"
+      SMTP_STARTTLS: "false"
+      YOOKASSA_SHOP_ID: ${YOOKASSA_SHOP_ID:-}
+      YOOKASSA_SECRET_KEY: ${YOOKASSA_SECRET_KEY:-}
+      YOOKASSA_TEST_MODE: ${YOOKASSA_TEST_MODE:-true}
+      YOOKASSA_CAPTURE_AUTO: ${YOOKASSA_CAPTURE_AUTO:-true}
+      YOOKASSA_VAT_CODE: ${YOOKASSA_VAT_CODE:-1}
+      YOOKASSA_TAX_SYSTEM_CODE: ${YOOKASSA_TAX_SYSTEM_CODE:-1}
+      YOOKASSA_RECEIPT_ENABLED: ${YOOKASSA_RECEIPT_ENABLED:-false}
+      CDEK_ACCOUNT: ${CDEK_ACCOUNT:-wqGwiQx0gg8mLtiEKsUinjVSICCjtTEP}
+      CDEK_SECURE: ${CDEK_SECURE:-RmAmgvSgSl1yirlz9QupbzOJVqhCxcP5}
+      CDEK_API_URL: ${CDEK_API_URL:-https://api.edu.cdek.ru}
+      CDEK_TEST_MODE: ${CDEK_TEST_MODE:-true}
+      CDEK_SYNC_CRON_INTERVAL_SECONDS: ${CDEK_SYNC_CRON_INTERVAL_SECONDS:-900}
+      CDEK_TERMINAL_STATUSES: ${CDEK_TERMINAL_STATUSES:-DELIVERED,NOT_DELIVERED,RETURNED,CANCELLED}
+      JOB_WORKER_SLEEP_SECONDS: ${JOB_WORKER_SLEEP_SECONDS:-60}
+      JOB_MAX_ATTEMPTS: ${JOB_MAX_ATTEMPTS:-5}
+    volumes:
+      - .:/app
     depends_on:
       postgres:
         condition: service_healthy
-      api:
-        condition: service_started
+      redis:
+        condition: service_healthy
+    command: python -m src.app.workers.job_worker
     restart: unless-stopped
+
+  beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/promelectron
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: dev-secret-key-change-in-production-minimum-32-chars
+      ALGORITHM: HS256
+      ENVIRONMENT: development
+      FRONTEND_URL: http://frontend:5173
+      API_BASE_URL: http://api:8000
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_BUCKET: promelectron-uploads
+      MINIO_SECURE: "false"
+      ACCESS_TOKEN_EXPIRE_MINUTES: "1440"
+      YOOKASSA_SHOP_ID: ${YOOKASSA_SHOP_ID:-}
+      YOOKASSA_SECRET_KEY: ${YOOKASSA_SECRET_KEY:-}
+      YOOKASSA_TEST_MODE: ${YOOKASSA_TEST_MODE:-true}
+      YOOKASSA_VAT_CODE: ${YOOKASSA_VAT_CODE:-1}
+      YOOKASSA_TAX_SYSTEM_CODE: ${YOOKASSA_TAX_SYSTEM_CODE:-1}
+      YOOKASSA_RECEIPT_ENABLED: ${YOOKASSA_RECEIPT_ENABLED:-false}
+      YANDEX_CLIENT_ID: ${YANDEX_CLIENT_ID:-}
+      YANDEX_CLIENT_SECRET: ${YANDEX_CLIENT_SECRET:-}
+      CDEK_ACCOUNT: ${CDEK_ACCOUNT:-wqGwiQx0gg8mLtiEKsUinjVSICCjtTEP}
+      CDEK_SECURE: ${CDEK_SECURE:-RmAmgvSgSl1yirlz9QupbzOJVqhCxcP5}
+      CDEK_API_URL: ${CDEK_API_URL:-https://api.edu.cdek.ru}
+      CDEK_TEST_MODE: ${CDEK_TEST_MODE:-true}
+    volumes:
+      - .:/app
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: celery -A src.app.workers.celery_app beat --loglevel=info
 
 volumes:
   postgres_data:
   redis_data:
   minio_data:
-  meilisearch_data:
