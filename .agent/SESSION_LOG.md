@@ -6,8 +6,10 @@
   - **infra/helm**: Chart.yaml/values.yaml/api-deployment/migrate-job восстановлены (jobWorker, onecMock, meilisearch секции); `cronjob-sync-onec.yaml` удалён — ссылался на несуществующий `app.workers.sync_onec` (Celery-эпоха). `helm template` — OK.
   - **pipeline** (.kimi-code, Makefile, workflows, .env.example, README, AUDIT, .claude): трёхстороннее восстановление, сессионные правки блоков A/B сохранены; LESSONS_LEARNED (+168 строк), Makefile (test-onec-mock и др.), deploy.yml (seed-test-catalog job и др.).
   - **.agent/** (6 файлов): pre-wip база + пост-wip записи; SESSION_LOG вернул 330 строк истории (записи 31.07–14.08).
-  - Оставлено намеренное: docs/flows/*, resume-hh.md, frontend/vite.dev.config.js. На решение пользователя: tmp_check_pull_result.py, tmp_check_supplier.py (debug-скрипты в корне), frontend/e2e/debug-catalog.spec.js (попадёт в CI, содержит waitForTimeout).
-  Тесты: было 57 failed + 32 errors → после восстановления 4 failed (serve_upload 307 vs 200) → после полного восстановления main.py ожидается зелёный прогон.
+  - Оставлено намеренное: docs/flows/*, resume-hh.md, frontend/vite.dev.config.js. Удалено по решению пользователя: tmp_check_pull_result.py, tmp_check_supplier.py, frontend/e2e/debug-catalog.spec.js.
+  - Дополнительно починен pre-existing фейл `test_seed_catalog_script.py` — pytest.skip при backend-only контейнере (scripts/ не смонтирован).
+  Тесты: 57 failed + 32 errors (wip-состояние) → 4 failed → **568 passed, 2 skipped, 0 failed** после полного восстановления (финальный прогон).
+  **Закоммичено в main** (одобрено пользователем): `1fd9763` fix: восстановление wip-регрессии (36 файлов), `db7afcd` feat(agent-pipeline): аудит + блоки A/B (36 файлов), `5a38662` test(backend): seed-catalog skip.
 
 ### 2026-08-19 | оркестратор | аудит агентского пайплайна — блок B (улучшения под Kimi K3)
   - **Унификация модели K2.7 → K3** во всём `.kimi-code/` (AGENTS.md, agent-commons, 15+ skills, config.example.toml, pre-edit-checklist); факты о контексте: 256K → 1M.
