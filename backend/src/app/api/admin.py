@@ -1,6 +1,8 @@
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+import logging
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.app.db.database import get_db
@@ -14,7 +16,7 @@ from src.app.schemas.admin import (
     OrdersByDayItem,
     TopProductItem,
 )
-from src.app.schemas.order import AdminOrderUpdate, OrderOut
+from src.app.schemas.order import AdminOrderDetailOut, AdminOrderUpdate, OrderOut
 from src.app.services.admin_service import AdminService
 from src.app.services.feature_flags import (
     KNOWN_FEATURE_FLAGS,
@@ -23,7 +25,12 @@ from src.app.services.feature_flags import (
     set_enabled,
 )
 from src.app.services.order_service import OrderService
+from src.app.services.onec_sync_service import create_onec_full_sync_job
+from src.app.core.config import settings
 from src.app.utils.auth import get_current_active_admin
+from src.app.utils.rate_limiter import conditional_limit
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -97,6 +104,19 @@ async def get_admin_orders(
     return await OrderService.get_all_orders(db, status=status, user_id=user_id, skip=skip, limit=limit)
 
 
+@router.get("/admin/orders/{order_id}/", response_model=AdminOrderDetailOut)
+async def get_admin_order_detail(
+    order_id: int,
+    current_user: User = Depends(get_current_active_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Деталка заказа для админской модалки: позиции с фото, покупатель, оплата, итоги."""
+    order = await OrderService.get_admin_order_detail(order_id=order_id, db=db)
+    # Audit просмотра PII: только id, без персональных данных (F-005, security review).
+    logger.info("Admin user id=%s viewed order id=%s", current_user.id, order_id)
+    return OrderService.build_admin_order_detail(order)
+
+
 @router.put("/admin/orders/{order_id}", response_model=OrderOut)
 async def update_admin_order(
     order_id: int,
@@ -115,6 +135,23 @@ async def ship_admin_order(
 ):
     """Подтвердить отправку заказа (только для статуса paid)."""
     return await OrderService.ship_order_by_admin(order_id=order_id, db=db)
+
+
+@router.post("/admin/orders/{order_id}/cancel/", response_model=OrderOut)
+@conditional_limit("30/minute")
+async def cancel_admin_order(
+    order_id: int,
+    request: Request,
+    current_user: User = Depends(get_current_active_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Отменить заказ (только для статусов pending и paid).
+
+    Для оплаченного заказа выполняется строгий refund через ЮKassa
+    (при сбое — 502, заказ не отменяется), stock возвращается,
+    отмена в CDEK — best-effort.
+    """
+    return await OrderService.cancel_order_by_admin(order_id=order_id, current_user=current_user, db=db)
 
 
 @router.get("/admin/feature-flags", response_model=list[FeatureFlagOut])
@@ -136,3 +173,31 @@ async def update_feature_flag(
         raise HTTPException(status_code=400, detail=f"Unknown feature flag: {flag}")
     await set_enabled(flag, data.enabled)
     return await get_flag_status(flag, default=False)
+
+
+@router.post("/admin/onec/full-sync/")
+@conditional_limit("10/minute")
+async def admin_onec_full_sync(
+    request: Request,
+    current_user: User = Depends(get_current_active_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Enqueue a full pull synchronization from 1C:УНФ (admin only)."""
+    if not settings.onec_api_url:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="1C pull fallback is not configured (ONEC_API_URL)",
+        )
+    if not settings.onec_login or not settings.onec_password:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="1C pull fallback requires ONEC_LOGIN and ONEC_PASSWORD",
+        )
+    if not settings.onec_default_supplier_id:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="1C pull fallback requires ONEC_DEFAULT_SUPPLIER_ID",
+        )
+    await create_onec_full_sync_job(db)
+    await db.commit()
+    return {"status": "queued"}

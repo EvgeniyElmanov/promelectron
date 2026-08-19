@@ -2,11 +2,15 @@ SHELL := /bin/bash
 COMPOSE_BACKEND  := docker compose -f backend/docker-compose.yml -p promelectron
 COMPOSE_FRONTEND := docker compose -f frontend/docker-compose.yml -p promelectron
 COMPOSE          := docker compose -f backend/docker-compose.yml -f frontend/docker-compose.yml -p promelectron
+DOCKER_USER      := --user $(shell id -u):$(shell id -g)
+# venv проекта: из корня main-репо — ./venv, из worktree .worktrees/<id>/ — ../../venv.
+# Переопределяется через make VENV=...
+VENV             ?= $(shell [ -d $(CURDIR)/venv ] && echo $(CURDIR)/venv || echo $(CURDIR)/../../venv)
 
 .PHONY: help dev dev-backend dev-frontend stop logs \
-        test test-backend test-frontend test-e2e test-visual test-full \
+        test test-backend test-onec-mock test-frontend test-e2e test-visual test-full \
         migrate migrate-down migrate-generate migrate-history seed \
-        lint lint-backend lint-frontend format format-backend format-frontend \
+        lint lint-backend lint-onec-mock lint-frontend format format-backend format-frontend \
         build clean status \
         agent-context agent-status agent-audit
 
@@ -46,25 +50,33 @@ test: test-backend test-frontend ## Запустить все unit-тесты
 test-backend: ## Запустить pytest (поднимает postgres/redis через docker compose)
 	$(COMPOSE_BACKEND) up -d postgres redis
 	$(COMPOSE_BACKEND) run --rm --entrypoint "" \
+	  $(DOCKER_USER) \
 	  -e DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/promelectron \
 	  -e REDIS_URL=redis://redis:6379/0 \
 	  -e SECRET_KEY=test-secret-key-32-chars-minimum \
-	  api sh -c "pip install -q -r requirements-dev.txt && pytest tests/ -v --tb=short"
+	  api sh -c "pytest tests/ -v --tb=short"
+
+test-onec-mock: ## Запустить pytest мок-сервера 1С (Docker-PG, схема onec_mock_test, pytest на хосте)
+	$(COMPOSE_BACKEND) up -d postgres
+	cd mocks/onec-server && \
+	  ONEC_MOCK_SCHEMA=onec_mock_test \
+	  DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/promelectron \
+	  $(VENV)/bin/pytest
 
 test-frontend: ## Запустить vitest
-	$(COMPOSE_FRONTEND) run --rm frontend sh -c "npm install --silent && npm test"
+	$(COMPOSE_FRONTEND) run --rm $(DOCKER_USER) frontend sh -c "npm install --silent && npm test"
 
 test-e2e: ## Запустить Playwright E2E тесты (требует запущенного стека)
 	$(COMPOSE) up -d
 	@echo "Waiting for frontend dev server to be ready..."
-	@$(COMPOSE_FRONTEND) run --rm frontend sh -c "until curl -s -o /dev/null http://frontend:5173; do sleep 1; done"
-	$(COMPOSE_FRONTEND) run --rm frontend npx playwright test --workers=1
+	@$(COMPOSE_FRONTEND) run --rm $(DOCKER_USER) frontend sh -c "until curl -s -o /dev/null http://frontend:5173; do sleep 1; done"
+	$(COMPOSE_FRONTEND) run --rm $(DOCKER_USER) frontend sh -c "npm install --silent \&\& npx playwright test --workers=1"
 
 test-visual: ## Визуальный smoke (скриншоты)
 	$(COMPOSE) up -d
 	@echo "Waiting for frontend dev server to be ready..."
-	@$(COMPOSE_FRONTEND) run --rm frontend sh -c "until curl -s -o /dev/null http://frontend:5173; do sleep 1; done"
-	$(COMPOSE_FRONTEND) run --rm frontend npx playwright test --project=visual-smoke --workers=1
+	@$(COMPOSE_FRONTEND) run --rm $(DOCKER_USER) frontend sh -c "until curl -s -o /dev/null http://frontend:5173; do sleep 1; done"
+	$(COMPOSE_FRONTEND) run --rm $(DOCKER_USER) frontend npx playwright test --project=visual-smoke --workers=1
 
 test-full: test-backend test-frontend test-e2e ## Полный цикл: unit + e2e
 
@@ -74,40 +86,43 @@ pre-push: lint test-full ## Запустить перед git push: lint + unit 
 
 migrate: ## Применить миграции (alembic upgrade head)
 	$(COMPOSE_BACKEND) up -d postgres
-	$(COMPOSE_BACKEND) run --rm --entrypoint "" api alembic upgrade head
+	$(COMPOSE_BACKEND) run --rm --entrypoint "" $(DOCKER_USER) api alembic upgrade head
 
 migrate-down: ## Откатить последнюю миграцию
 	$(COMPOSE_BACKEND) up -d postgres
-	$(COMPOSE_BACKEND) run --rm --entrypoint "" api alembic downgrade -1
+	$(COMPOSE_BACKEND) run --rm --entrypoint "" $(DOCKER_USER) api alembic downgrade -1
 
 migrate-generate: ## Сгенерировать миграцию: make migrate-generate MSG="add users"
 	$(COMPOSE_BACKEND) up -d postgres
-	$(COMPOSE_BACKEND) run --rm --entrypoint "" api alembic revision --autogenerate -m "$(MSG)"
+	$(COMPOSE_BACKEND) run --rm --entrypoint "" $(DOCKER_USER) api alembic revision --autogenerate -m "$(MSG)"
 
 migrate-history: ## История миграций
-	$(COMPOSE_BACKEND) run --rm --entrypoint "" api alembic history
+	$(COMPOSE_BACKEND) run --rm --entrypoint "" $(DOCKER_USER) api alembic history
 
 seed: ## Залить тестовые данные
 	$(COMPOSE_BACKEND) up -d postgres redis
-	$(COMPOSE_BACKEND) run --rm api python seed_data.py
+	$(COMPOSE_BACKEND) run --rm $(DOCKER_USER) api python seed_data.py
 
 # ─── Линт / Форматирование ──────────────────────────────────────────────────
 
-lint: lint-backend lint-frontend ## Линт всего проекта
+lint: lint-backend lint-onec-mock lint-frontend ## Линт всего проекта
+
+lint-onec-mock: ## Линт мок-сервера 1С (ruff)
+	$(VENV)/bin/ruff check mocks/onec-server/
 
 lint-backend: ## Линт Python (ruff)
-	$(COMPOSE_BACKEND) run --rm api ruff check src/
+	$(COMPOSE_BACKEND) run --rm --entrypoint "" $(DOCKER_USER) api ruff check src/
 
 lint-frontend: ## Линт Vue/JS (oxlint + eslint)
-	$(COMPOSE_FRONTEND) run --rm frontend sh -c "npm install --silent && npm run lint"
+	$(COMPOSE_FRONTEND) run --rm $(DOCKER_USER) frontend-test sh -c "npm ci && npm run lint"
 
 format: format-backend format-frontend ## Форматировать весь проект
 
 format-backend: ## Форматировать Python (ruff)
-	$(COMPOSE_BACKEND) run --rm api ruff format src/
+	$(COMPOSE_BACKEND) run --rm --entrypoint "" $(DOCKER_USER) api ruff format src/
 
 format-frontend: ## Форматировать Vue/JS (prettier)
-	$(COMPOSE_FRONTEND) run --rm frontend sh -c "npm install --silent && npm run format"
+	$(COMPOSE_FRONTEND) run --rm $(DOCKER_USER) frontend sh -c "npm install --silent && npm run format"
 
 # ─── Сборка образов ─────────────────────────────────────────────────────────
 

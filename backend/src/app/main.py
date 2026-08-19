@@ -1,5 +1,6 @@
 import asyncio
 import json
+import mimetypes
 import os
 from contextlib import asynccontextmanager
 from logging import getLogger
@@ -8,7 +9,7 @@ from alembic import command
 from alembic.config import Config
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, Response
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from src.app.api.admin import router as admin_router
@@ -16,13 +17,18 @@ from src.app.api.analytics import router as analytics_router
 from src.app.api.auth import router as auth_router
 from src.app.api.cart import router as cart_router
 from src.app.api.categories import router as categories_router
+from src.app.api.cdek import router as cdek_router
 from src.app.api.delivery_methods import router as delivery_methods_router
 from src.app.api.favorites import router as favorites_router
 from src.app.api.notifications import router as notifications_router
+from src.app.api.onec import router as onec_router
 from src.app.api.orders import router as orders_router
 from src.app.api.payments import router as payments_router
 from src.app.api.products import router as products_router
+from src.app.api.recipients import router as recipients_router
 from src.app.api.reviews import router as reviews_router
+from src.app.api.search import router as search_router
+from src.app.api.admin_search import router as admin_search_router
 from src.app.api.seed import router as seed_router
 from src.app.api.users import router as users_router
 from src.app.api.ws import router as ws_router
@@ -30,7 +36,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from src.app.db.database import DATABASE_URL
-from src.app.services.storage_service import storage
+from src.app.services.storage_service import MinioStorageService, storage
 from src.app.utils.rate_limiter import limiter
 
 logger = getLogger(__name__)
@@ -84,9 +90,17 @@ async def serve_upload(path: str, size: str | None = None):
         base, _ = os.path.splitext(path)
         path = f"{base}_{size}.webp"
 
-    url = storage.get_url(path)
-    if url.startswith("http"):
-        return RedirectResponse(url=url, status_code=307)
+    if isinstance(storage, MinioStorageService):
+        # MinIO-режим: внутренний endpoint недоступен браузеру, поэтому
+        # 307 redirect не работает — стримим объект из MinIO через API.
+        try:
+            data = await storage.download_raw(path)
+        except FileNotFoundError:
+            raise HTTPException(status_code=404, detail="File not found")
+        content_type = mimetypes.guess_type(path)[0]
+        if content_type is None and path.endswith(".webp"):
+            content_type = "image/webp"
+        return Response(content=data, media_type=content_type or "application/octet-stream")
     # Local fallback — serve from filesystem
     filepath = os.path.join("uploads", path)
     if os.path.exists(filepath):
@@ -101,15 +115,20 @@ app.include_router(admin_router, prefix="/api/v1", tags=["admin"])
 app.include_router(analytics_router, prefix="/api/v1", tags=["analytics"])
 app.include_router(categories_router, prefix="/api/v1", tags=["categories"])
 app.include_router(products_router, prefix="/api/v1", tags=["products"])
+app.include_router(recipients_router, prefix="/api/v1", tags=["recipients"])
 app.include_router(cart_router, prefix="/api/v1", tags=["cart"])
 app.include_router(orders_router, prefix="/api/v1", tags=["orders"])
 app.include_router(payments_router, prefix="/api/v1", tags=["payments"])
 app.include_router(notifications_router, prefix="/api/v1", tags=["notifications"])
+app.include_router(onec_router, prefix="/api/v1", tags=["onec"])
 app.include_router(ws_router)
 app.include_router(auth_router, prefix="/api/v1", tags=["auth"])
 app.include_router(reviews_router, prefix="/api/v1", tags=["reviews"])
 app.include_router(favorites_router, prefix="/api/v1", tags=["favorites"])
 app.include_router(seed_router, prefix="/api/v1", tags=["seed"])
+app.include_router(cdek_router, prefix="/api/v1", tags=["cdek"])
+app.include_router(search_router, prefix="/api/v1", tags=["search"])
+app.include_router(admin_search_router, prefix="/api/v1", tags=["admin-search"])
 app.include_router(delivery_methods_router, prefix="/api/v1", tags=["delivery-methods"])
 
 

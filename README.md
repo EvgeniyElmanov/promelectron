@@ -1,6 +1,6 @@
 # Promelectron
 
-Интернет-магазин (маркетплейс) на **FastAPI + Vue 3** с CI/CD через GitHub Actions → Harbor → Kubernetes.
+Интернет-магазин электротоваров на **FastAPI + Vue 3** с CI/CD через GitHub Actions → Harbor → Kubernetes.
 
 ## Стек
 
@@ -137,19 +137,35 @@ flowchart TD
 
     Architect["Architect<br/><font color='#c62828'>⚠ plan mode required</font>"] <-.->|<i>прорабатывают архитектуру</i>| Human([Human])
 
-    Architect --> Dev["Developer"]
+    Architect --> Plan["PLAN.md"]
+    Plan --> Approve{"auto / human<br/><i>approve?</i>"}
+    Approve -.->|<font color='#c62828'>revise</font>| Plan
+    Approve -->|<font color='#2e7d32'>approved</font>| Dev
 
-    Dev --> Reviewer["Reviewer"]
-    Reviewer -->|<i>1-й проход & адаптивно к диффу</i>| Approved{APPROVED?}
+    JiraCon["Jira / Confluence"] -.->|<i>spec context</i>| Architect
+    Figma["Figma"] -.->|<i>design tokens</i>| Dev
+
+    Dev --> SelfRev["Self-review<br/><i>adversarial audit diff</i>"]
+
+    SelfRev --> Contract{"API contract<br/>backend ↔ frontend"}
+    Contract -.->|<font color='#c62828'>расхождение</font>| Dev
+    Contract -->|<font color='#2e7d32'>ok</font>| Reviewer
+
+    Reviewer["Reviewer"] -->|<i>1-й проход & адаптивно к диффу</i>| Approved{APPROVED?}
+    Reviewer -.->|<i>security-sensitive diff</i>| SecRev["security-reviewer"]
+    SecRev --> Approved
     Approved -.->|<font color='#c62828'>нет</font>| Dev
     Approved -.->|<font color='#2e7d32'>да</font>| QA_Gate
 
     QA_Gate["QA Gate"] -->|<i>опционально · --qa</i>| MR
 
-    MR["PR → GitHub"] --> Done([Done])
+    MR["PR → GitHub"] --> KC["Knowledge Capture<br/><i>уроки → rules / skills / docs</i>"]
+    KC --> Done([Done])
 
     noteBottom["re-review — один агент (шард при LARGE) · цикл до 3 итераций"]
     MR ~~~ noteBottom
+    noteTrace["agent_state.py — trace.jsonl на границах фаз · correlation ID"]
+    KC ~~~ noteTrace
 
     classDef entry fill:#f5f5f5,stroke:#9e9e9e,stroke-width:1px,color:#424242
     classDef tracker fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#1565c0
@@ -169,12 +185,21 @@ flowchart TD
     class Architect human
     class Human human
     class Dev dev
+    class Plan dev
+    class Approve review
+    class SelfRev dev
+    class Contract review
     class Reviewer review
+    class SecRev review
     class Approved review
     class QA_Gate qa
     class MR ship
+    class KC ship
     class Done ship
+    class JiraCon research
+    class Figma research
     class noteBottom note
+    class noteTrace note
 ```
 
 Entry-скиллы:
@@ -183,6 +208,7 @@ Entry-скиллы:
 - `/skill:review` → **Reviewer**
 - `/skill:qa-gate` → **QA Gate**
 - `/skill:ship` → **PR → GitHub**
+- `/skill:flow-implement` / `/skill:flow-fix` / `/skill:flow-review` → **read-only статус** задачи (диаграмма с подсветкой текущей фазы)
 
 Кубики пайплайна:
 
@@ -193,11 +219,18 @@ Entry-скиллы:
 | Research | `explore` subagents | Параллельный research: libraries, best-practices, codebase |
 | Backend Dev | `backend-dev` | Модель → схема → сервис → эндпоинт → тесты |
 | Frontend Dev | `frontend-dev` | API client → composable → компонент → страница → тесты |
-| Code Reviewer | `code-reviewer` | Проверяет diff, пишет findings |
+| Plan | dev-роли | Пишет `$WORKTREE/PLAN.md` перед кодированием |
+| Approve | оркестратор | Auto-одобрение простых планов / human-одобрение сложных |
+| Self-review | dev-роли | Adversarial audit своего diff (3–5 проблем) до ревью |
+| API Contract | оркестратор | Сверка backend ↔ frontend контракта до ревью (Step 5.5) |
+| Code Reviewer | `code-reviewer` | Проверяет diff, пишет findings (Evidence / Impact / Action) |
 | Security Reviewer | `security-reviewer` | Добавляется для auth/payments/orders/upload |
 | QA | `qa` | Запускает pytest + vitest, проверяет Acceptance Criteria |
 | E2E Tester | `e2e-tester` | Добавляет/обновляет Playwright-тесты |
 | Ship | `ship` | Открывает PR, публикует H-items |
+| Knowledge Capture | оркестратор | Уроки run → rules / skills / LESSONS_LEARNED (Step 8.5) |
+| Trace | `agent_state.py` | trace.jsonl на границах фаз, correlation ID, детекция фазы |
+| External sources | MCP | Jira/Confluence → spec context; Figma → design tokens |
 
 Подробнее — в [`.kimi-code/AGENTS.md`](.kimi-code/AGENTS.md) и [`ARCHITECTURE.md`](ARCHITECTURE.md).
 

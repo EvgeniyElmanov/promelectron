@@ -14,6 +14,7 @@
 |----|------|--------|----------|-----------|------------|--------|--------|---------|
 | BLK-009 | 2026-06-22 | CDEK widget-service `calculate` возвращает 502 Bad Gateway на test-окружении при `action=calculate` с `to_location.address` без `code`. `action=offices` работает. Блокирует UI-выбор доставки при гостевом чекауте. | P1 | Гостевой чекаут, CDEK доставка | backend-dev / devops | **🔴 в работе** | Создание заказа через API с фиктивными CDEK-данными; починить прокси/геокодирование | 2026-06-23 |
 | BLK-010 | 2026-06-22 | YooKassa webhook `payment.succeeded` не приходит на `/api/v1/payments/yookassa/webhook/` в test-окружении. Заказы остаются в `pending` после успешной оплаты до ручной синхронизации или имитации webhook. | P1 | YooKassa интеграция, статусы заказов | devops / project-manager | **🔴 в работе** | Ручная синхронизация через API; настроить webhook URL в личном кабинете YooKassa | 2026-06-23 |
+| BLK-013 | 2026-07-14 | YooKassa E2E-тесты с тестовыми банковскими картами остаются flaky в CI из-за race condition редиректов и нестабильного прохождения 3DS sandbox. Полная стабилизация возможна только после получения реальных YooKassa-ключей и запуска интеграции в прод / полноценном test-окружении. Production-код (`cancellation_reason`) остаётся и работает. | P1 | Задача #65, PR #95, E2E-suite | e2e-tester / project-manager | **🟡 отложено** | Закрыть PR #95 без мержа; вернуться к E2E-стабилизации, когда будут реальные ключи | 2026-07-21 |
 
 ---
 
@@ -29,6 +30,8 @@
 ## Решённые блокеры
 
 | ID | Дата | Блокер | Severity | Решение | Затраченное время |
+|----|------|--------|----------|---------|------------------|
+| BLK-012 | 2026-07-11 | Harbor registry `harbor.kubeadm.ru` недоступен с self-hosted runner после обновления железа сервера — deploy pipeline падает на job `build`, не запускаются `test-e2e` / `smoke` / `prod-smoke`. | P0 | Миграция deploy pipeline с Harbor на GitHub Container Registry (`ghcr.io/autonomaco/...`), build job перенесён на `ubuntu-latest`, добавлен job `test` для unit-тестов, обновлён `imagePullSecret` в Helm. Проверено: deploy + E2E на test прошли успешно (run 29155360044). | 1.5 часа |
 |----|------|--------|----------|---------|------------------|
 | BLK-001 | 2026-05-30 | `.github/` защищена — CI/CD правки требовали ручного доступа | P1 | Доступ предоставлен/решён вручную | — |
 | BLK-002 | 2026-05-30 | `worker.enabled=false` в Helm + сломанная команда Celery в K8s | P0 | Worker templates исправлены, Celery работает в K8s | — |

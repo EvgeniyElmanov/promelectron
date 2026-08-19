@@ -27,3 +27,30 @@ class OnecChangeLog(Base):
     created_at = Column(DateTime(timezone=True), nullable=False, default=_utc_now)
     processed_at = Column(DateTime(timezone=True), nullable=True)
     applied_at = Column(DateTime(timezone=True), nullable=True)
+
+
+class OnecIntakeLog(Base):
+    """Журнал приёма сырых выгрузок 1С (Фаза 1, #118).
+
+    Диагностические поля headers/query_params/error заполняются на приёме
+    и используются при разборе неизвестных форматов 1С (Фаза 3, #119).
+    """
+
+    __tablename__ = "onec_intake_log"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    intake_id = Column(UUID(as_uuid=True), nullable=False, unique=True, index=True, default=uuid4)
+    bucket = Column(String(128), nullable=False)
+    object_key = Column(String(512), nullable=False)
+    content_type = Column(String(255), nullable=True)
+    received_bytes = Column(BigInteger, nullable=False)
+    sha256 = Column(String(64), nullable=False, index=True)
+    headers = Column(JSONB, nullable=True)
+    query_params = Column(JSONB, nullable=True)
+    error = Column(Text, nullable=True)
+    remote_addr = Column(String(64), nullable=True)
+    user_agent = Column(String(512), nullable=True)
+    # Значения "parsed"/"failed" добавляются в Фазе 4 (#120) —
+    # поле строковое, миграция схемы НЕ требуется, только новые литералы.
+    status = Column(String(20), nullable=False, default="received", index=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utc_now)
