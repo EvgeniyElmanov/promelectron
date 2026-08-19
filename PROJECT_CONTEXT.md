@@ -98,7 +98,7 @@ e2e_tests: "108/108"
 7. **SQLite ≠ PostgreSQL** — тесты только в Docker (`make test-backend`), никогда на SQLite.
 8. **SELECT FOR UPDATE** — для консистентности stock при параллельных запросах.
 9. **Alembic миграции** — при старте приложения (планируется перенос в Helm hook).
-10. **MinIO + Local fallback** — для хранения файлов.
+10. **MinIO + Local fallback** — для хранения файлов. `GET /uploads/{path}` отдаёт файлы с `Cache-Control: public, max-age` (настройка `UPLOADS_CACHE_MAX_AGE`, default 86400) — endpoint рассчитан только на публичные файлы (фото товаров, аватары). Если когда-либо понадобится отдавать приватные документы — нужен отдельный endpoint с `private`/`no-store`, иначе утечка через shared cache (security F-002, #158).
 
 ---
 

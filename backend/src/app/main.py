@@ -36,6 +36,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from src.app.db.database import DATABASE_URL
+from src.app.core.config import settings
 from src.app.services.storage_service import MinioStorageService, storage
 from src.app.utils.rate_limiter import limiter
 
@@ -90,6 +91,10 @@ async def serve_upload(path: str, size: str | None = None):
         base, _ = os.path.splitext(path)
         path = f"{base}_{size}.webp"
 
+    # Защита от path traversal: «..» как сегмент пути запрещён в обоих режимах.
+    if ".." in path.split("/"):
+        raise HTTPException(status_code=404, detail="File not found")
+
     if isinstance(storage, MinioStorageService):
         # MinIO-режим: внутренний endpoint недоступен браузеру, поэтому
         # 307 redirect не работает — стримим объект из MinIO через API.
@@ -100,11 +105,22 @@ async def serve_upload(path: str, size: str | None = None):
         content_type = mimetypes.guess_type(path)[0]
         if content_type is None and path.endswith(".webp"):
             content_type = "image/webp"
-        return Response(content=data, media_type=content_type or "application/octet-stream")
-    # Local fallback — serve from filesystem
-    filepath = os.path.join("uploads", path)
+        return Response(
+            content=data,
+            media_type=content_type or "application/octet-stream",
+            headers={"Cache-Control": f"public, max-age={settings.uploads_cache_max_age}"},
+        )
+    # Local fallback — serve from filesystem. realpath-проверка, что итоговый
+    # путь остаётся внутри каталога uploads (защита от traversal и symlink).
+    uploads_root = os.path.realpath("uploads")
+    filepath = os.path.realpath(os.path.join(uploads_root, path))
+    if not filepath.startswith(uploads_root + os.sep):
+        raise HTTPException(status_code=404, detail="File not found")
     if os.path.exists(filepath):
-        return FileResponse(filepath)
+        return FileResponse(
+            filepath,
+            headers={"Cache-Control": f"public, max-age={settings.uploads_cache_max_age}"},
+        )
     raise HTTPException(status_code=404, detail="File not found")
 
 
