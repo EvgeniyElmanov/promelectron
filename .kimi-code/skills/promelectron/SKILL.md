@@ -112,10 +112,10 @@ Shared rules (reference markdown, не skills):
 python scripts/implement-pipeline.py check-context <task-id>
 ```
 
-- Если `ESTIMATED_TOKENS` >= 150000, читай `.agent/runs/<task-id>/CONTEXT_SUMMARY.md` вместо полной истории.
+- Если `ESTIMATED_TOKENS` >= 600000, читай `.agent/runs/<task-id>/CONTEXT_SUMMARY.md` вместо полной истории.
 - Логируй оценочное количество токенов в `.agent/SESSION_LOG.md`.
 
-Kimi K3 имеет контекстное окно 1M токенов с обязательным thinking mode. Порог 150K — консервативный дефолт, безопасный и для варианта `k3-256k` (256K); он оставляет место для `reasoning_content`, выводов инструментов и системных инструкций.
+Kimi K3 имеет контекстное окно 1M токенов с обязательным thinking mode. Порог 600K (~60% окна) оставляет место для `reasoning_content`, выводов инструментов и системных инструкций.
 
 ---
 

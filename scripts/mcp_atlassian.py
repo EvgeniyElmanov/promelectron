@@ -121,7 +121,7 @@ def handle_tools_list(_params: dict[str, Any]) -> dict[str, Any]:
             },
             {
                 "name": "confluence_search_pages",
-                "description": "Search Confluence pages by CQL. Max 20 results.",
+                "description": "Search Confluence pages by CQL. Max 50 results.",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
@@ -141,9 +141,9 @@ def _truncate(text: str, limit: int = 100_000) -> str:
     return text
 
 
-def handle_tool_call(params: dict[str, Any]) -> dict[str, Any]:
+def handle_tool_call(params: dict[str, Any]) -> dict[str, Any] | None:
     name = params.get("name")
-    arguments = params.get("arguments", {})
+    arguments = params.get("arguments") or {}
 
     if name == "jira_get_issue":
         key = arguments.get("issue_key", "")
@@ -162,10 +162,15 @@ def handle_tool_call(params: dict[str, Any]) -> dict[str, Any]:
         query = urllib.parse.urlencode({"cql": cql, "limit": limit})
         result = _request(f"/wiki/rest/api/content/search?{query}")
     else:
-        return {"content": [{"type": "text", "text": f"Unknown tool: {name}"}]}
+        return None  # unknown tool
 
     text = json.dumps(result, ensure_ascii=False, indent=2)
     return {"content": [{"type": "text", "text": _truncate(text)}]}
+
+
+def _method_not_found(msg_id: Any, message: str) -> None:
+    response = {"jsonrpc": "2.0", "id": msg_id, "error": {"code": -32601, "message": message}}
+    print(json.dumps(response, ensure_ascii=False), flush=True)
 
 
 def main() -> None:
@@ -179,16 +184,26 @@ def main() -> None:
             continue
         method = message.get("method")
         msg_id = message.get("id")
-        params = message.get("params", {})
+        params = message.get("params") or {}
 
-        if method == "initialize":
-            result = handle_initialize(params)
-        elif method == "tools/list":
-            result = handle_tools_list(params)
-        elif method == "tools/call":
-            result = handle_tool_call(params)
-        else:
-            result = {"error": f"Method not supported: {method}"}
+        if msg_id is None:
+            continue  # JSON-RPC notification — no response
+
+        try:
+            if method == "initialize":
+                result = handle_initialize(params)
+            elif method == "tools/list":
+                result = handle_tools_list(params)
+            elif method == "tools/call":
+                result = handle_tool_call(params)
+                if result is None:
+                    _method_not_found(msg_id, f"Unknown tool: {params.get('name')}")
+                    continue
+            else:
+                _method_not_found(msg_id, f"Method not supported: {method}")
+                continue
+        except Exception as exc:  # noqa: BLE001
+            result = {"content": [{"type": "text", "text": f"Error: {exc}"}], "isError": True}
 
         response = {"jsonrpc": "2.0", "id": msg_id, "result": result}
         print(json.dumps(response, ensure_ascii=False), flush=True)

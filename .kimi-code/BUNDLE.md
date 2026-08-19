@@ -36,6 +36,9 @@
 | `/spec` | `.kimi-code/skills/spec/SKILL.md` |
 | `/qa-gate` | `.kimi-code/skills/qa-gate/SKILL.md` |
 | `/ship` | `.kimi-code/skills/ship/SKILL.md` |
+| `/flow-fix` | `.kimi-code/skills/flow-fix/SKILL.md` |
+| `/flow-implement` | `.kimi-code/skills/flow-implement/SKILL.md` |
+| `/flow-review` | `.kimi-code/skills/flow-review/SKILL.md` |
 
 ## Общие правила
 
@@ -50,3 +53,4 @@
 | Task template | `.kimi-code/rules/task-template.md` |
 | Planning & Definition of Done | `.kimi-code/rules/planning.md` |
 | Known pitfalls | `.kimi-code/rules/known-pitfalls.md` |
+| Business rules | `.kimi-code/rules/business.md` |

@@ -17,6 +17,7 @@ Usage:
 """
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -36,11 +37,11 @@ WORKTREES_ROOT = PROJECT_ROOT / ".worktrees"
 AGENT_RUNS_DIR = PROJECT_ROOT / ".agent" / "runs"
 BACKLOG_FILE = PROJECT_ROOT / ".agent" / "BACKLOG.md"
 
-# Context management thresholds for Kimi K3 (1M context window; 256K for k3-256k).
-# We use a conservative threshold that is safe for both window sizes and leaves
-# room for system prompt, reasoning_content, and tool outputs.
+# Context management thresholds for Kimi K3 (1M context window).
+# The 600K warning threshold (~60% of the window) leaves room for system
+# prompt, reasoning_content, and tool outputs.
 # Aligned with .kimi-code/rules/agent-commons.md.
-CONTEXT_THRESHOLD = 150_000
+CONTEXT_THRESHOLD = 600_000
 CHARS_PER_TOKEN = 4
 
 # GitHub Project configuration for Promelectron.
@@ -67,6 +68,11 @@ def slugify(text: str) -> str:
     # Take first 6 words, lower, remove non-alpha-num, join by dash
     words = re.findall(r"[a-zA-Z0-9]+", text.lower())[:6]
     base = "-".join(words) or "task"
+    # Cyrillic-only descriptions yield an empty word list, so every task of
+    # the day would collide on the default "task" id. Add a short
+    # deterministic hash of the description instead.
+    if base == "task":
+        base = f"task-{hashlib.sha1(text.encode()).hexdigest()[:6]}"
     # Append date suffix to reduce collision chance
     suffix = datetime.now().strftime("%m%d")
     return f"{base}-{suffix}"
@@ -221,14 +227,27 @@ def cmd_create_worktree(args: argparse.Namespace) -> int:
 
     WORKTREES_ROOT.mkdir(parents=True, exist_ok=True)
 
-    # Check if worktree/branch already exists
-    result = run(["git", "worktree", "list"], check=False)
-    if str(worktree) in result.stdout:
+    # Check if worktree/branch already exists. Parse porcelain output
+    # line by line: a substring match would treat ".worktrees/fix-a-0101-extra"
+    # as an existing "fix-a-0101" worktree.
+    result = run(["git", "worktree", "list", "--porcelain"], check=False)
+    existing_paths = {
+        line.split(" ", 1)[1]
+        for line in result.stdout.splitlines()
+        if line.startswith("worktree ")
+    }
+    if str(worktree) in existing_paths:
         print(f"Worktree already exists: {worktree}")
         print(worktree)
         return 0
 
-    run(["git", "worktree", "add", str(worktree), "-b", branch, base_ref])
+    # If the feature branch survived an interrupted run, attach the worktree
+    # to it instead of failing on `-b` with "branch already exists".
+    branch_exists = run(["git", "branch", "--list", branch], check=False).stdout.strip()
+    if branch_exists:
+        run(["git", "worktree", "add", str(worktree), branch])
+    else:
+        run(["git", "worktree", "add", str(worktree), "-b", branch, base_ref])
     print(worktree)
     return 0
 

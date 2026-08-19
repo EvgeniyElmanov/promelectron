@@ -24,6 +24,15 @@ disableModelInvocation: false
 
 ---
 
+## Ограничения API (Kimi K3)
+
+- Thinking mode всегда включён, отключить нельзя; глубина задаётся `reasoning_effort` (`low`/`high`/`max`, default `max`). В multi-turn tool calls возвращай полное assistant message unchanged, включая `reasoning_content`.
+- Не считай переключение языка внутреннего рассуждения ошибкой. Главное — финальные ответы и артефакты на языке пользователя.
+- Sampling-параметры фиксированы: `temperature=1.0`, `top_p=0.95`, `n=1`, `presence_penalty=0.0`, `frequency_penalty=0.0`.
+- Контекстное окно 1M; если вывод инструментов большой — суммируй и захватывай только релевантный tail.
+
+---
+
 ## Поведение флагов
 
 - `--full` — запустить все проверки, включая E2E и валидацию Helm.
@@ -46,7 +55,7 @@ disableModelInvocation: false
 
 ---
 
-## Step 2: Проверка размера контекста активных задач (Kimi K2.7-Code)
+## Step 2: Проверка размера контекста активных задач (Kimi K3)
 
 Для каждой активной директории задачи в `.agent/runs/<task-id>/` следуй [Rule: Agent Commons](../../rules/agent-commons.md) > Context Size Check.
 

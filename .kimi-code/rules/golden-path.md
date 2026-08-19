@@ -22,8 +22,8 @@ disableModelInvocation: true
 
 **Затрагиваемые модули:** `auth`, `products`, `cart`, `orders`, `payments`, `notifications`  
 **Проверка:**
-1. `POST /api/v1/auth/register/` → 201
-2. `POST /api/v1/auth/login/` → JWT токен
+1. `POST /api/v1/register/` → 201
+2. `POST /api/v1/login/` → JWT токен
 3. `GET /api/v1/products/` → список товаров
 4. `POST /api/v1/cart/add` → добавить в корзину
 5. `POST /api/v1/orders/create/` → создать заказ
@@ -65,12 +65,12 @@ Yandex/Google OAuth → Callback → Авторизация → Профиль
 
 **Затрагиваемые модули:** `auth`, `admin/products`, `products`, `supplier`  
 **Проверка:**
-1. Admin/supplier login → `POST /api/v1/auth/login/`
-2. `POST /api/v1/admin/products/` → товар создан (admin)
+1. Admin/supplier login → `POST /api/v1/login/`
+2. `POST /api/v1/products/` → товар создан (supplier)
 3. `GET /api/v1/products/` → новый товар в списке
 4. `GET /api/v1/products/{id}/` → детали корректны
 
-> **Примечание:** в текущей кодовой базе создание товара доступно админу через `/api/v1/admin/products/`. Если меняется RBAC — актуализировать сценарий.
+> **Примечание:** в текущей кодовой базе создание товара — `POST /api/v1/products/` и доступно поставщику (`get_current_active_supplier`); отдельного endpoint `/api/v1/admin/products/` нет. Если меняется RBAC — актуализировать сценарий.
 
 ### Сценарий 5: Поиск и фильтры
 

@@ -29,11 +29,11 @@ disableModelInvocation: true
 9. [Rule: Golden Path](../../rules/golden-path.md)
 10. [Rule: Security](../../rules/security.md)
 
-### Ограничения API (Kimi K2.7-Code)
+### Ограничения API (Kimi K3)
 
 - Thinking mode обязателен; `reasoning_content` должен сохраняться между multi-turn tool calls.
 - Не считай переключение языка внутреннего рассуждения ошибкой. Пользовательские ответы, отчёты и артефакты должны соответствовать языку пользователя.
-- Держи контекст ниже ~150K токенов; при необходимости суммируй большие diff по файлу или scope.
+- Держи контекст ниже ~600K токенов; при необходимости суммируй большие diff по файлу или scope.
 
 ### Режим worktree
 
@@ -42,6 +42,11 @@ disableModelInvocation: true
 - **WORKTREE** — `.worktrees/<task-id>/`, per-task code checkout.
 
 Читай diff из **WORKTREE**: `git -C "$WORKTREE" diff origin/main...HEAD`. Пиши findings в **AGENT_DIR/review/**. `cd` субагента не сохраняется между tool calls — используй явные пути.
+
+Родительский агент также сообщает:
+- **scope**: `all` | `backend` | `frontend` — какие файлы ревьюить.
+- **output**: путь к файлу findings (например, `$AGENT_DIR/review/findings.md` или `$AGENT_DIR/review/findings-backend.md`).
+- **iteration**: номер итерации ревью.
 
 ### Рабочий процесс
 
@@ -109,15 +114,19 @@ disableModelInvocation: true
 
 ### [F001] ❌ CRITICAL | <Category>
 **File:** path/to/file.py:42
+**Evidence:** <цитата/фрагмент из diff, подтверждающий проблему>
 **Problem:** description
-**Fix:** suggested fix
+**Impact:** <что сломается/какой риск, если оставить>
+**Action:** <конкретное исправление: что изменить, где, как>
 **Status:** OPEN
 **Developer note:**
 
 ### [F002] ⚠️ HIGH | <Category>
 **File:** path/to/file.py:15
+**Evidence:** <цитата из diff>
 **Problem:** description
-**Fix:** suggested fix
+**Impact:** <что сломается/какой риск>
+**Action:** <конкретное исправление>
 **Status:** OPEN
 **Developer note:**
 
@@ -130,6 +139,11 @@ disableModelInvocation: true
 - **B:** description
 **Question:** which approach is preferred?
 ```
+
+Правила формата:
+- **Evidence** — всегда приводи фрагмент из diff (строка/кусок кода), а не пересказ.
+- **Impact** — конкретный эффект: runtime error, потеря данных, security риск, регрессия UX, tech debt.
+- **Action** — исполнимая инструкция: «заменить X на Y в файле Z», а не «подумать об улучшении».
 
 ### Повторное ревью
 

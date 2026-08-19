@@ -37,7 +37,9 @@ LESSONS_FILE = PROJECT_ROOT / ".kimi-code" / "LESSONS_LEARNED.md"
 
 SEVERITY_RE = re.compile(r"\b(CRITICAL|HIGH|MEDIUM|LOW)\b")
 STATUS_RE = re.compile(r"\b(OPEN|VERIFIED|FIXED|RESOLVED|CLOSED)\b")
-FINDING_HEADER_RE = re.compile(r"^### \[([A-Z]+-\d+)\]\s*(.*)$")
+# Skills пишут заголовки findings без дефиса (### [F001]), но поддерживаем
+# и старый формат с дефисом (### [F-001]).
+FINDING_HEADER_RE = re.compile(r"^### \[([A-Z]+-?\d+)\]\s*(.*)$")
 
 # Маппинг категорий findings на файлы, где живут соответствующие правила.
 CATEGORY_TO_RULE_FILE = {

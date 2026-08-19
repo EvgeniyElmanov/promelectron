@@ -112,6 +112,30 @@ function uniqueEmail() {
 
 ---
 
+## 7. Fail-fast валидация секретов + placeholder в GitHub Secrets = падение деплоя
+
+**Ошибка:**
+```
+RuntimeError: ONEC_WEBHOOK_API_KEY must be set to a strong random value in production.
+```
+Backend-под уходил в CrashLoopBackOff при деплое в `promelectron-test` после merge PR #68 (run 29476928631, 2026-07-16), job `deploy-test` падал, E2E и prod-деплой пропускались.
+
+**Причина:**
+1. PR добавил fail-fast валидацию `ONEC_WEBHOOK_API_KEY` при `ENVIRONMENT=production` (`config.py::_load_onec_webhook_api_key`).
+2. В GitHub Secrets ключ был задан placeholder-значением `change-me` — по совету `stage/test/secrets.TODO.md`, который утверждал «Backend will not crash in dev/test».
+3. Утверждение было неверным: test environment работает с `ENVIRONMENT=production` (см. урок №5), поэтому fail-fast сработал и в test.
+
+**Решение:** Установить сильное значение (`openssl rand -hex 32`) в GitHub Secret `ONEC_WEBHOOK_API_KEY` и передеплоить. TODO-документ исправлен: placeholder для webhook-ключа запрещён в обоих окружениях.
+
+**Сопутствующий эффект:** после падения контейнера рестарты уходили в `ImagePullBackOff` — `registrycred` в кластере создаётся из ephemeral `GITHUB_TOKEN` workflow run'а и умирает вместе с ним. Долгий CrashLoopBackOff, переживший run, превращается в вечный ImagePullBackOff до следующего деплоя.
+
+**Профилактика:**
+- Любой новый обязательный секрет: сразу задавать валидное значение в GitHub Secrets **до** merge, в обоих окружениях (один репозиторный секрет используется и для test, и для prod в `deploy.yml`).
+- При добавлении fail-fast валидации помнить: test = `ENVIRONMENT=production`, «это проверяется только в prod» — ложное допущение.
+- Проверять деплой в test сразу после merge PR, добавляющего новые обязательные env-переменные.
+
+---
+
 ## Summary checklist для будущих E2E фич
 
 - [ ] Docker image для E2E — `mcr.microsoft.com/playwright`
@@ -120,3 +144,147 @@ function uniqueEmail() {
 - [ ] `serial` mode — только для зависимых тестов
 - [ ] Rate limits — проверить на CI с `workers=4`
 - [ ] `ENVIRONMENT` в test — не `production`, если есть production-only ограничения
+
+---
+
+## 2026-07-30 | onec-universal-intake-0720: новое поле Settings роняет тесты с явными kwargs
+
+**Ошибка:** добавление поля `minio_intake_bucket` в `Settings` (config.py) уронило ~30 тестов (`test_email.py`, `test_auth.py`), которые конструируют `Settings(**kwargs)` с явным списком полей.
+
+**Причина:** тестовые хелперы перечисляют поля Settings вручную; новое обязательное поле dataclass ломает их конструктор.
+
+**Решение:** добавить новое поле в kwargs-хелперы этих тестов (коммит `test(onec): add minio_intake_bucket to Settings kwargs in test helpers`).
+
+**Профилактика:** при добавлении любого поля в `Settings` сразу grep'ать тесты на `Settings(` и обновлять явные kwargs; в перспективе — единая фабрика тестовых Settings.
+
+---
+
+## 2026-07-30 | onec-mock-server-0730: Makefile VENV-путь ломается вне worktree
+
+**Ошибка:** таргеты `test-onec-mock`/`lint-onec-mock` использовали `VENV ?= $(CURDIR)/../../venv` — корректно только из worktree; из корня main-репо venv не находился (finding F002 HIGH на ревью).
+
+**Причина:** Makefile писался и проверялся только из worktree, где venv лежит на два уровня выше; сценарий «после мержа, из корня репо» не проверялся.
+
+**Решение:** `VENV ?= $(shell [ -d $(CURDIR)/venv ] && echo $(CURDIR)/venv || echo $(CURDIR)/../../venv)`.
+
+**Профилактика:** любые пути в Makefile, зависящие от расположения репо, проверять из обоих контекстов (worktree и корень main-репо) — worktree-пайплайн делает это расхождение системным.
+
+---
+
+## 2026-07-30 | onec-mock-server-0730: триггер вне планировщика гоняется с тиком scheduler'а
+
+**Ошибка:** `POST /trigger/` (форс-отправка) мог выполниться параллельно с интервальным тиком APScheduler → двойная отправка одних и тех же pending changes с разными `batch_id` (finding F004 MEDIUM).
+
+**Причина:** два входа в один цикл отправки (scheduler job и HTTP endpoint) без синхронизации.
+
+**Решение:** модульный `asyncio.Lock` в `sender.py`, оба пути (`send_pending`, `resend_last`) целиком под lock.
+
+**Профилактика:** у любого периодического job с ручным триггером сразу закладывать единый lock на критическую секцию; при ревью проверять «сколько входов у этого цикла».
+
+---
+
+## 2026-07-30 | onec-mock: CrashLoopBackOff на test из-за LOG_LEVEL=info (lowercase)
+
+**Ошибка:** после мержа PR #126 деплой в test упал (`UPGRADE FAILED: context deadline exceeded`) — под onec-mock в CrashLoopBackOff: `logging.basicConfig(level='info')` → `ValueError: Unknown level`.
+
+**Причина:** configmap кластера передаёт `LOG_LEVEL: info` (lowercase); в docker-compose дефолт `INFO`, поэтому локальный smoke проблему не поймал. Backend переживает lowercase (обрабатывает уровень иначе), мок — нет: разная обработка одной и той же переменной в разных сервисах.
+
+**Решение:** `log_level.upper()` в `Settings.from_env` + регрессионный тест (PR #128).
+
+**Профилактика:** любой новый сервис, читающий LOG_LEVEL, должен нормализовать регистр; при добавлении сервиса в helm — прогонять `helm template` с реальными stage values и сверять env с ожиданиями кода (не только дефолты compose).
+
+---
+
+## 2026-07-31 | onec-attribute-loader-0731: фиксы ревью сами вносят новые HIGH (итерация 2)
+
+**Ошибка:** фикс F002 (защита от sku-конфликта) реализован линейным сканом `cache.products` на каждый товар → O(N²) на полном импорте 100K (новый HIGH F008); фикс F003 (активация товара первой ценой) реанимировал soft-deleted товар из прошлого прогона, т.к. `cache.deleted` живёт в одном запуске (новый MEDIUM F009).
+
+**Причина:** исправления писались в контексте «закрыть конкретный finding», без повторной оценки производительности и межпрогонных инвариантов (то, что верно внутри одного run, неверно между run'ами).
+
+**Решение:** индекс `cache.skus: dict[str, str]` (O(1) проверка) + активация ценой только «ещё неоценённого» товара (`was_unpriced` до присвоения).
+
+**Профилактика:** каждый фикс ревью проверять двумя вопросами: «как это масштабируется на 100K?» и «что произойдёт на границе прогонов (in-run кэш vs состояние в БД)?»; reviewer на итерациях >1 обязан делать инкрементальное ревью именно фиксов, а не только верификацию.
+
+---
+
+## 2026-07-31 | meilisearch-search-121: healthcheck `localhost` в compose блокирует тесты
+
+**Ошибка:** healthcheck сервиса `meilisearch` в `backend/docker-compose.yml` использовал `localhost:7700/health` — внутри контейнера `localhost` резолвится в `::1`, Meilisearch слушает только IPv4 → `connection refused`, контейнер `unhealthy`, `make test-backend` и `depends_on: service_healthy` блокировались.
+
+**Причина:** wget в alpine-образе Meilisearch по умолчанию идёт на IPv6-loopback.
+
+**Решение:** `127.0.0.1` вместо `localhost` в healthcheck.
+
+**Профилактика:** в healthcheck'ах compose всегда использовать `127.0.0.1`, не `localhost`; после добавления нового сервиса с `depends_on: service_healthy` — прогон `docker compose up` с холодного старта (первый запуск образа может не уложиться в окно healthcheck).
+
+---
+
+## 2026-07-31 | meilisearch-search-121: swap-reindex «вживую» + блокировка event loop job_worker
+
+**Ошибка:** первая реализация `reindex_full` (а) применяла `update_settings` к живому обслуживающему индексу (нарушение D-06 «никогда вживую» — лишняя полная переиндексация прямо перед swap) и (б) вызывала sync Meilisearch SDK прямо в async-функции — event loop job_worker вставал на весь reindex, стопоря CDEK/платежи/intake.
+
+**Причина:** sync SDK выбран осознанно (D-04), но граница sync/async не была проведена явно: async-обёртка написана «снаружи», а длинная цепочка вызовов внутри осталась блокирующей; ensure-index и provision-settings слиплись в одну функцию.
+
+**Решение:** `ensure_index_exists` (get/create, без settings) для serving-индекса отдельно от `provision_index` (settings — только на `products_new`); все sync-вызовы в `reindex_full` через `asyncio.to_thread` + регрессионный тест со spy на `to_thread`.
+
+**Профилактика:** правило «sync SDK в async-коде = каждый вызов через `to_thread`, включая poll-циклы со sleep»; любой код, меняющий index settings, по умолчанию подозрителен на «вживую» — settings только на новом индексе перед swap; partial updates, пришедшие во время reindex, требуют компенсации (watermark + повторный enqueue после swap) — закладывать сразу в дизайн swap-flow.
+
+---
+
+## 2026-08-01 | catalog-filter-panel-122: create-issue создал дубль issue из-за формата task.md
+
+**Ошибка:** `implement-pipeline.py create-issue` не увидел существующий `github_issue: #122` в `task.md` и создал дубль #134, который пришлось закрывать как duplicate.
+
+**Причина:** скрипт парсит строку формата `- github_issue: #N`, а оркестратор записал issue отдельным заголовком `## github_issue` — парсер это не распознал.
+
+**Решение:** в `task.md` связанный issue всегда писать в секции `## GitHub` строкой `- github_issue: #N` (inline-формат, который читает скрипт).
+
+**Профилактика:** перед запуском `create-issue` проверять `grep -n "github_issue:" .agent/runs/<task-id>/task.md`; скрипту полезна валидация «header-style записи» (skill-worthy правка, вынесена в отчёт).
+
+---
+
+## 2026-08-01 | search-api-followups-0801: гонка двух прогонов `make test-backend` → 417 ложных errors
+
+**Ошибка:** developer-субагент оставил свой прогон `make test-backend` в фоне, оркестратор запустил свой поверх — второй прогон упал с 417 errors `template database "promelectron_test_template" does not exist` (122 passed / 417 errors).
+
+**Причина:** тестовый хелпер создаёт per-worker БД из общего template и **дропает template при teardown**; параллельный прогон в том же Docker-PG ловит окно, когда template уже удалён. Повторный одиночный прогон — 539 passed зелёные.
+
+**Решение:** оркестратор перед запуском тестов проверяет отсутствие живых фоновых pytest (`ps aux | grep pytest`) и дожидается/останавливает фоновые прогоны субагентов; developer-субагенту запрещено оставлять фоновые тесты после отчёта.
+
+**Профилактика:** в одном Docker-PG одновременно только один `make test-backend`; если видишь `InvalidCatalogNameError ... template ... does not exist` пачкой — это гонка прогонов, а не регрессия кода: проверь параллельные pytest и перезапусти.
+
+---
+
+## 2026-08-03 | admin-order-modal-details-130: make lint-backend падает из-за расхождения версий ruff (docker 0.16.1 vs проект 0.15.13)
+
+**Ошибка:** `make lint-backend` в worktree падает с 455 ошибками на всём `src/`, хотя изменённые файлы чисты по host ruff 0.15.13.
+
+**Причина:** в docker-образе backend установлен ruff 0.16.1 (новее закреплённого проектного 0.15.13) — новые правила/изменённое поведение дают ошибки на нетронутых файлах (`api/products.py`, `services/cart_service.py`).
+
+**Решение:** отличать pre-existing шум от регрессии: прогонять ruff той же версии, что в проекте, по изменённым файлам diff'а. Задача на выравнивание версии ruff в docker-образе вынесена как tech-debt.
+
+**Профилактика:** если `make lint-backend` внезапно даёт сотни ошибок на чужих файлах — сначала сверь версию ruff в образе (`docker compose exec backend ruff --version`) с проектной, прежде чем чинить код.
+
+---
+
+## 2026-08-03 | admin-order-modal-details-130: красный CI после merge — причиной оказался включённый feature flag на test, а не PR
+
+**Ошибка:** deploy-run для merge #142 упал на `test-e2e / e2e` (6 failed: facet filters ×3, search-filter ×3, checkout Mir ×1). Перезапуск без изменений — тот же результат.
+
+**Причина:** между зелёным прогоном (#140) и нашим кто-то включил на test feature flag `catalog_search_meilisearch` (Redis override `feature:catalog_search_meilisearch=1`). Каталог перешёл на Meilisearch, а индекс не был готов: 7 документов, в `filterableAttributes` нет `attrs.*` → фасеты пустые, UI meilisearch-режима ломал legacy-тесты. Падения совпали по времени с нашим merge, но PR их не вызывал.
+
+**Решение:** выключить флаг через `set_enabled('catalog_search_meilisearch', False)` в pod api → rerun failed jobs → зелёный. Эксперимент подтвердил, что причина — флаг.
+
+**Профилактика:** при красном e2e после merge сначала проверять, какие тесты упали и менял ли их PR; проверять feature flags на окружении (`RedisClient.get('feature:<flag>')`) — facet-тесты в `catalog.spec.js` скипаются при выключенном флаге, поэтому включение флага «оживляет» тесты к неготовому окружению. Включать `catalog_search_meilisearch` на test только после full reindex (`POST /admin/search/reindex/`) и проверки facet-тестов.
+
+---
+
+## 2026-08-03 | fix-search-sort-e2e-143: кастомный ranking rule перед `sort` молча отменяет явную сортировку Meilisearch
+
+**Ошибка:** при включённом `catalog_search_meilisearch` e2e-тест «sort by price ascending» стабильно падал: запрос `search/?sort=price_asc` возвращал товары в порядке убывания остатка, а не цены.
+
+**Причина:** в `RANKING_RULES` кастомное правило `stock:desc` стояло перед `sort`. Meilisearch применяет правила по порядку, поэтому `stock:desc` выигрывал у явного sort-параметра. Unit-тест закреплял ошибочный порядок (`stock:desc < sort`).
+
+**Решение:** `sort` перед `stock:desc` (PR #143). Без sort-параметра `sort` — no-op и `stock:desc` по-прежнему поднимает товары в наличии. После правки rankingRules обязателен full reindex (`POST /admin/search/reindex/`) — settings применяются только при provision во время swap.
+
+**Профилактика:** любое кастомное ranking rule ставить ПОСЛЕ `sort`, если явная сортировка должна побеждать; проверять сортировку живым запросом к Meilisearch, а не только первыми N результатами (первые могут совпасть случайно). E2E-спеки, зависящие от режима каталога, должны probe'ить feature flag (паттерн из `catalog.spec.js`) — `search-filter.spec.js` этого не делал и ломался при переключении флага.

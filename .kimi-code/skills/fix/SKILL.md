@@ -6,7 +6,7 @@ description: >
   reproduces with a minimal test, fixes the root cause (not symptoms), runs code review, tests, and reports results.
 type: prompt
 whenToUse: When the user reports a bug, crash, failing test, regression, or anything that "does not work". Also triggers on words like fix, bug, broken, error, exception, fail, failing, regression.
-arguments: "<bug description> [--backend] [--frontend] [--infra] [--e2e]"
+arguments: "<bug description> [--backend] [--frontend] [--infra] [--e2e] [--qa]"
 disableModelInvocation: false
 ---
 
@@ -87,7 +87,7 @@ BRANCH    = bugfix/<task-id>
 python scripts/implement-pipeline.py check-context <task-id>
 ```
 
-Если `ESTIMATED_TOKENS` >= 150000, читай `$AGENT_DIR/CONTEXT_SUMMARY.md` вместо полной истории.
+Если `ESTIMATED_TOKENS` >= 600000, читай `$AGENT_DIR/CONTEXT_SUMMARY.md` вместо полной истории.
 
 ---
 

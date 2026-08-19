@@ -97,14 +97,14 @@ Smoke-сценарии:
 ### E2E failed
 
 ```bash
-python3 scripts/agent_state.py trace deploy <task-id-or-deploy-event> deploy_smoke_failed --actor orchestrator --data '{"environment": "test|prod", "run_url": "..."}'
+python3 scripts/agent_state.py trace <task-id-or-deploy-event> deploy_smoke_failed --actor orchestrator --data '{"environment": "test|prod", "run_url": "..."}'
 ```
 
 - **Test / Staging:** выполняй **автоматический rollback** на зафиксированную ревизию. Подтверждение пользователя не требуется, но уведоми его:
   ```bash
   helm rollback promelectron $PREVIOUS_REVISION -n promelectron
   kubectl rollout status deployment/promelectron -n promelectron
-  python3 scripts/agent_state.py trace deploy <...> deploy_rollback --actor orchestrator --data '{"environment": "test", "reason": "E2E smoke failed", "revision": $PREVIOUS_REVISION}'
+  python3 scripts/agent_state.py trace <task-id-or-deploy-event> deploy_rollback --actor orchestrator --data '{"environment": "test", "reason": "E2E smoke failed", "revision": $PREVIOUS_REVISION}'
   ```
 - **Продакшн:** **не откатывай автоматически**. Сообщи пользователю результаты smoke, причины падения и спроси явного одобрения на rollback. После одобрения — выполни rollback с фиксацией ревизии и trace `deploy_rollback`.
 
@@ -126,7 +126,7 @@ kubectl rollout status deployment/promelectron -n promelectron
 - В **test** — откат без подтверждения, но с уведомлением пользователя.
 - В **prod** — откат только после явного одобрения пользователя.
 
-Всегда логируй trace: `python3 scripts/agent_state.py trace deploy <event-id> deploy_rollback --actor orchestrator --data '{"environment": "...", "reason": "...", "revision": ...}'`.
+Всегда логируй trace: `python3 scripts/agent_state.py trace <task-id-or-deploy-event> deploy_rollback --actor orchestrator --data '{"environment": "...", "reason": "...", "revision": ...}'`.
 
 ---
 

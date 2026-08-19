@@ -62,7 +62,7 @@ mkdir -p "$AGENT_DIR/review"
 python scripts/implement-pipeline.py check-context <task-id>
 ```
 
-Если `ESTIMATED_TOKENS` >= 150000, читай `$AGENT_DIR/CONTEXT_SUMMARY.md` вместо полной истории.
+Если `ESTIMATED_TOKENS` >= 600000, читай `$AGENT_DIR/CONTEXT_SUMMARY.md` вместо полной истории.
 
 ---
 

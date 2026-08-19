@@ -44,6 +44,11 @@ def main() -> int:
         # Direct main push should still go through explicit approval,
         # even if a permission rule allows it in some modes.
         r"git\s+push\s+origin\s+main\b",
+        r"git\s+push\s+origin\s+master\b",
+        # Push of the current HEAD to main/master (git push origin HEAD:main)
+        r"git\s+push\b[^;&|]*\bHEAD\s*:\s*(main|master)\b",
+        # Bare "git push" with no remote/refspec: upstream may be main.
+        r"git\s+push\s*(?:$|[;&|])",
     ]
 
     for pattern in forbidden_patterns:
@@ -54,7 +59,48 @@ def main() -> int:
             )
             return 2
 
+    if _is_dangerous_rm(command):
+        print(
+            f"Blocked by safety hook (dangerous rm): {command}",
+            file=sys.stderr,
+        )
+        return 2
+
     return 0
+
+
+def _is_dangerous_rm(command: str) -> bool:
+    """Detect rm with recursive+force flags (any order/long forms) on
+    dangerous targets (/, ~, $HOME, /*).
+
+    Catches bypasses of the plain `rm -rf /` regex: `rm -fr /`,
+    `rm -r -f ~`, `rm --recursive --force $HOME`, etc.
+    """
+    dangerous_roots = {"", "~", "$HOME"}
+    for segment in re.split(r"[;&|]", command):
+        tokens = segment.split()
+        if "rm" not in tokens:
+            continue
+        args = tokens[tokens.index("rm") + 1:]
+        flags = [t for t in args if t.startswith("-")]
+        targets = [t for t in args if not t.startswith("-")]
+
+        def _has(short: str, long_: str) -> bool:
+            return any(
+                t == long_
+                or (t.startswith("-") and not t.startswith("--") and short in t[1:])
+                for t in flags
+            )
+
+        has_recursive = _has("r", "--recursive") or _has("R", "--recursive")
+        has_force = _has("f", "--force")
+        if not (has_recursive and has_force):
+            continue
+        for target in targets:
+            stripped = target.strip("'\"")
+            if stripped == "/*" or stripped.rstrip("/") in dangerous_roots:
+                return True
+    return False
 
 
 if __name__ == "__main__":

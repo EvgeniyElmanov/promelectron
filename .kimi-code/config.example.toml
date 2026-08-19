@@ -14,12 +14,15 @@ telemetry = true
 # NOTE: There is no "default_yolo" field in Kimi Code CLI.
 # Use default_permission_mode = "manual" | "auto" | "yolo" instead.
 
-# Kimi K2.7-Code specifics:
-# - Context window: 256K tokens (262,144).
-# - Thinking mode is mandatory and cannot be disabled.
-# - For multi-turn tool calls, preserve reasoning_content from assistant messages.
-# - Project retry policy: transient errors (502/504/timeout) are retried up to 3
-#   times with exponential backoff via scripts/agent_retry.py.
+# Kimi K3 specifics:
+# - Context window: 1M tokens (1,048,576).
+# - Thinking mode is always enabled and cannot be disabled; control depth via
+#   reasoning_effort = "low" | "high" | "max" (default "max").
+# - For multi-turn tool calls, return the complete assistant message unchanged
+#   (including reasoning_content).
+# - Automatic prefix caching: keep the stable part of subagent prompts at the front.
+# - Project retry policy: transient errors (502/504/timeout) are retried up to 4
+#   attempts (3 retries) with exponential backoff via scripts/agent_retry.py.
 
 # ─── Provider & Model ───
 # Alias for Kimi Code managed provider. Uncomment and fill api_key if you use API key login.
@@ -32,7 +35,20 @@ api_key = ""
 [models."kimi-for-coding"]
 provider = "managed:kimi-code"
 model = "kimi-for-coding"
-max_context_size = 262144
+max_context_size = 1048576
+
+# Direct Kimi API (OpenAI-compatible). Use this for third-party agent frameworks
+# or when you manage the API key manually.
+# [providers."moonshot"]
+# type = "openai"
+# base_url = "https://api.moonshot.ai/v1"
+# api_key = ""
+
+# Direct Kimi API (OpenAI-compatible) highspeed variant:
+# [models."kimi-k3-highspeed"]
+# provider = "moonshot"
+# model = "kimi-k3-highspeed"
+# max_context_size = 262144
 
 # ─── Permission Rules for /skill:implement pipeline ───
 # These rules reduce approval friction for git worktrees, tests, and lint.
@@ -44,14 +60,14 @@ pattern = "Bash(git worktree *)"
 reason = "Allow /skill:implement to create isolated worktrees"
 
 [[permission.rules]]
-decision = "allow"
+decision = "ask"
 pattern = "Bash(git commit *)"
-reason = "Allow developer subagent to commit to feature branches"
+reason = "Commit only after explicit user approval and only on feature branches (AGENTS.md hard rule)"
 
 [[permission.rules]]
-decision = "allow"
+decision = "ask"
 pattern = "Bash(git merge *)"
-reason = "Allow merging feature branches after user approval"
+reason = "Merge only after explicit user approval (AGENTS.md hard rule)"
 
 [[permission.rules]]
 decision = "allow"

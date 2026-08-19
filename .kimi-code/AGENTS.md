@@ -20,8 +20,9 @@
 Когда пользователь общается на русском:
 
 - **Финальные ответы пользователю, отчёты и артефакты пиши на русском.**
-- **Стремись рассуждать на русском.** Но учти: модель Kimi K2.7-Code работает с
-  принудительным thinking mode, и язык внутреннего рассуждения промптом надёжно не
+- **Стремись рассуждать на русском.** Но учти: модель Kimi K3 работает с
+  принудительным thinking mode (отключить нельзя, глубина задаётся `reasoning_effort`),
+  и язык внутреннего рассуждения промптом надёжно не
   управляется — не считай сбой языка *thinking* ошибкой выполнения, критичен язык
   ответов и артефактов.
 - **Делегируя субагентам**, добавляй языковую преамбулу из единого источника (см. ниже)
@@ -68,6 +69,14 @@
 
 # Поддержка планов
 /skill:plan-maintainer analyze
+
+# Анализ повторяющихся failure patterns пайплайна (continuous improvement)
+/skill:plan-maintainer improve
+
+# Визуальный статус пайплайна задачи (Mermaid, read-only)
+/skill:flow-implement add-promo-codes-to-cart-0624
+/skill:flow-fix fix-yookassa-cancel-reason-84
+/skill:flow-review add-promo-codes-to-cart-0624
 ```
 
 ---
@@ -82,6 +91,10 @@
 | `.kimi-code/mcp.json` | Конфигурация MCP-серверов |
 | `.kimi-code/config.example.toml` | Пример пользовательской конфигурации |
 | `scripts/implement-pipeline.py` | Хелпер для task ID, git worktrees, review loops |
+| `scripts/agent_state.py` | Typed state + детекция фазы пайплайна + trace.jsonl с correlation ID (observability) |
+| `scripts/mcp_figma.py` | MCP-сервер: Figma design tokens / styles / components |
+| `scripts/mcp_atlassian.py` | MCP-сервер: Jira issues + Confluence pages |
+| `docs/MCP_INTEGRATION.md` | Настройка токенов и использование MCP-серверов figma/atlassian |
 | `.agent/runs/<task-id>/` | Gitignored coordination plane для задачи (`task.md`, `spec.md`, `review/findings.md`, `review/test-findings.md`) |
 | `.worktrees/<task-id>/` | Изолированный git worktree для feature-ветки |
 
@@ -134,7 +147,8 @@
 - **NEVER** создавать DB model без миграции.
 - **NEVER** писать endpoint без тестов.
 - **NEVER** коммитить без явного одобрения пользователя.
-- **ALWAYS** использовать trailing slash в FastAPI endpoints (`/items/`, not `/items`).
+- **ALWAYS** использовать trailing slash в НОВЫХ FastAPI endpoints (`/items/`, not `/items`).
+- **NEVER** менять существующие endpoints без trailing slash без отдельной задачи — redirect-риски, фронтенд зависит от текущих путей (например, `/cart/merge`, `/admin/orders`, `/supplier/profile`).
 - **ALWAYS** запускать тесты перед отчётом о завершении.
 - **ALWAYS** привязывать GitHub Issue перед началом разработки в `/skill:implement`.
 - **ALWAYS** обновлять статус GitHub Project board на границах фаз: spec approved → In progress, PR open → In review, merged → Done.
@@ -151,6 +165,7 @@
 5. Соответствующий ролевой skill в `.kimi-code/skills/<role>/SKILL.md`
 6. [Rule: Agent Commons](./rules/agent-commons.md) — язык, retry policy, размер контекста, ограничения API
 7. [Rule: Pre-edit Checklist](./rules/pre-edit-checklist.md) (перед изменением кода)
+8. [Rule: Business Rules](./rules/business.md) — инварианты интернет-магазина (цены, stock, заказы, платежи, доставка, возвраты)
 
 ---
 
@@ -198,4 +213,5 @@ CI запускает E2E suite в окружении `promelectron-test` пос
 
 - [Rule: Agent Commons](./rules/agent-commons.md) — языковое правило, retry policy, обработка размера контекста
 - [Rule: Planning & Definition of Done](./rules/planning.md) — формат задачи, приоритизация, Definition of Done
+- [Rule: Business Rules](./rules/business.md) — инварианты интернет-магазина
 - [Rule: Known Pitfalls](./rules/known-pitfalls.md) — реальные проблемы, которые уже случались
