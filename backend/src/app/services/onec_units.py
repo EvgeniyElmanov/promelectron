@@ -3,7 +3,10 @@
 Строки вида «10,0мм2» парсятся в число + нормализованную единицу
 («мм²»), чтобы заполнить typed-колонки ProductAttributeValue
 (value_number + Attribute.unit). Диапазоны («1,5-2,5») и нечисловые
-значения остаются текстом (фасет-строка, не range) и логируются.
+значения остаются текстом (фасет-строка, не range). Диапазоны не
+логируются; нечисловые значения логируются на DEBUG, а WARNING
+оставлен для «почти числовых» промахов (начинаются с цифры, но не
+распарсились) как сигнал о новом формате из 1С.
 
 Таблица KNOWN_UNITS продублирована из scripts/onec_format_analyzer.py
 (источник истины по сэмплам Фазы 3): скрипт загружается через importlib
@@ -58,7 +61,8 @@ def parse_value_with_unit(raw: str | None) -> ParsedValue:
     - «10,0мм2» → ParsedValue(number=Decimal("10.0"), unit="мм²")
     - «2,5» → ParsedValue(number=Decimal("2.5"), unit=None)
     - «1,5-2,5» → диапазон, весь текст в text (не range-фасет)
-    - нечисловое → text + warning-лог
+    - нечисловое → text; DEBUG-лог, если значение заведомо текстовое,
+      WARNING — если «почти числовое» (начинается с цифры)
     - None/пустое → text as-is
     """
     if raw is None:
@@ -87,5 +91,12 @@ def parse_value_with_unit(raw: str | None) -> ParsedValue:
                 unit = KNOWN_UNITS.get(raw_unit, raw_unit) or None
                 return ParsedValue(number=number, unit=unit, text=None)
 
-    logger.warning("Could not parse attribute value as number+unit: %r", raw)
+    # Заведомо текстовые значения («чёрный», «IP20») — штатный кейс каталога,
+    # логируем на DEBUG, чтобы не шуметь в логах. WARNING оставляем для
+    # «почти числовых» промахов (строка начинается с цифры, но не матчится ни
+    # числом, ни диапазоном) — это сигнал о новом формате из 1С.
+    if re.match(r"^[+-]?\d", value):
+        logger.warning("Could not parse attribute value as number+unit: %r", raw)
+    else:
+        logger.debug("Attribute value stored as text (not numeric): %r", raw)
     return ParsedValue(number=None, unit=None, text=value)

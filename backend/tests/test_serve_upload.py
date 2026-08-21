@@ -40,6 +40,7 @@ async def test_serve_upload_minio_streams_content(monkeypatch):
     assert response.status_code == 200
     assert response.content == b"image-bytes"
     assert response.headers["content-type"].startswith("image/jpeg")
+    assert response.headers["cache-control"] == "public, max-age=86400"
     svc.download_raw.assert_awaited_once_with("products/x.jpg")
 
 
@@ -91,6 +92,45 @@ async def test_serve_upload_local_mode_unchanged(monkeypatch, tmp_path):
 
     assert response.status_code == 200
     assert response.content == b"local-file-content"
+    assert response.headers["cache-control"] == "public, max-age=86400"
 
     response = await _get("/uploads/products/absent.txt")
     assert response.status_code == 404
+
+
+async def test_serve_upload_local_path_traversal_blocked(monkeypatch, tmp_path):
+    """Local mode: encoded «..» не вытаскивает файлы вне каталога uploads (404)."""
+    from src.app.services.storage_service import LocalStorageService
+
+    monkeypatch.setattr("src.app.main.storage", LocalStorageService())
+    monkeypatch.chdir(tmp_path)
+
+    # Файл ВНЕ uploads, но доступный при traversal
+    secret = tmp_path / "secret.txt"
+    secret.write_bytes(b"top-secret")
+    uploads_dir = tmp_path / "uploads"
+    uploads_dir.mkdir()
+
+    # %2e%2e — encoded «..»: raw «..» httpx нормализует на клиенте,
+    # encoded-форма доходит до handler'а и декодируется Starlette.
+    response = await _get("/uploads/%2e%2e/secret.txt")
+    assert response.status_code == 404
+    assert b"top-secret" not in response.content
+
+    response = await _get("/uploads/%2E%2E/%2E%2E/etc/passwd")
+    assert response.status_code == 404
+
+    # Двойное кодирование сегмента в середине пути
+    response = await _get("/uploads/products/%2e%2e/%2e%2e/secret.txt")
+    assert response.status_code == 404
+
+
+async def test_serve_upload_minio_path_traversal_blocked(monkeypatch):
+    """MinIO-режим: «..» отклоняется до обращения к storage."""
+    svc = _make_minio_storage()
+    monkeypatch.setattr("src.app.main.storage", svc)
+
+    response = await _get("/uploads/%2e%2e/%2e%2e/etc/passwd")
+
+    assert response.status_code == 404
+    svc.download_raw.assert_not_awaited()

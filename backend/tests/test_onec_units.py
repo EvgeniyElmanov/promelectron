@@ -4,6 +4,7 @@
 и карты маппинга docs/onec/FORMAT_MAP.md §3.
 """
 
+import logging
 from decimal import Decimal
 
 import pytest
@@ -70,9 +71,21 @@ def test_parse_none_and_empty():
 
 
 def test_parse_unparsable_logs_warning(caplog):
+    """«Почти числовой» промах (начинается с цифры) — WARNING: сигнал о новом формате 1С."""
     with caplog.at_level("WARNING", logger="src.app.services.onec_units"):
-        parse_value_with_unit("совсем не число")
+        # «5/6» — «единица» без букв, числом не считается; строка начинается с цифры.
+        parse_value_with_unit("5/6")
     assert "Could not parse attribute value" in caplog.text
+
+
+def test_parse_text_value_no_warning(caplog):
+    """Заведомо текстовые значения («чёрный», «IP20») не шумят WARNING'ом (DEBUG)."""
+    with caplog.at_level(logging.DEBUG, logger="src.app.services.onec_units"):
+        for raw in ("чёрный", "Без канифоли", "IP20", "да"):
+            parse_value_with_unit(raw)
+    warning_records = [r for r in caplog.records if r.levelno >= logging.WARNING]
+    assert warning_records == []
+    assert any(r.levelno == logging.DEBUG for r in caplog.records)
 
 
 def test_parse_range_does_not_log_warning(caplog):

@@ -46,6 +46,7 @@ class Settings:
     minio_bucket: str
     minio_intake_bucket: str
     minio_secure: bool
+    uploads_cache_max_age: int
     meilisearch_url: str | None
     meilisearch_master_key: str | None
     onec_api_url: str | None
@@ -200,6 +201,8 @@ settings = Settings(
     minio_bucket=os.getenv("MINIO_BUCKET", "promelectron-uploads"),
     minio_intake_bucket=os.getenv("MINIO_INTAKE_BUCKET", "onec-intake"),
     minio_secure=os.getenv("MINIO_SECURE", "true").lower() == "true",
+    # max-age для Cache-Control при отдаче файлов из /uploads/ (секунды)
+    uploads_cache_max_age=int(os.getenv("UPLOADS_CACHE_MAX_AGE", "86400")),
     # Meilisearch включается feature flag `catalog_search_meilisearch`; до внедрения
     # клиента поля опциональны (None = поиск недоступен, backend стартует).
     meilisearch_url=os.getenv("MEILISEARCH_URL"),
