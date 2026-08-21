@@ -2,7 +2,6 @@
   <div class="home">
     <SearchBar v-model="searchQuery" class="home__search-bar" @submit="onSearchSubmit" />
     <CategoryChips @select="handleCategorySelect" />
-    <PromoBanner />
 
     <div class="home__section">
       <div class="home__filters">
@@ -136,7 +135,6 @@ import { useRoute, useRouter } from 'vue-router';
 import ProductCard from '@/components/ProductCard.vue';
 import SearchBar from '@/components/SearchBar.vue';
 import CategoryChips from '@/components/CategoryChips.vue';
-import PromoBanner from '@/components/PromoBanner.vue';
 import SkeletonProductCard from '@/components/SkeletonProductCard.vue';
 import FilterPanel from '@/components/FilterPanel.vue';
 import { useCatalogSearch } from '@/composables/useCatalogSearch';
