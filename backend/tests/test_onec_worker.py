@@ -10,9 +10,11 @@ from src.app.models.category import Category
 from src.app.models.job import Job
 from src.app.models.onec_sync import OnecChangeLog
 from src.app.models.product import Product
+from src.app.models.product_price import ProductPrice
 from src.app.models.supplier import Supplier
 from src.app.services.onec_sync_service import handle_onec_apply_changes, run_onec_full_sync
 from src.app.core.config import settings
+from tests.conftest import make_product
 
 
 def _build_payload(entity_type: str, changes: list[dict]) -> dict:
@@ -76,7 +78,9 @@ async def test_onec_apply_product_change(test_session, supplier_id):
     assert product.name == "Applied Product"
     assert product.description == "From 1C"
     assert product.sku == "APP-001"
-    assert product.price == Decimal("299.99")
+    # Товарный change больше не несёт цену (D-06): ключ price в data игнорируется,
+    # строка product_prices не создаётся — сайтовая цена None
+    assert product.price is None
     assert product.stock == 12
     assert product.is_active is True
     assert product.onec_sync_at == version
@@ -265,7 +269,7 @@ async def test_onec_apply_version_conflict_skips_stale_change(test_session, supp
     assert product.name == "Newer Name"
     assert product.description == "Newer description"
     assert product.sku == "NEWER-001"
-    assert product.price == Decimal("399.99")
+    assert product.price is None  # товарный change цену не пишет (D-06)
     assert product.stock == 20
     assert product.is_active is True
     assert product.onec_sync_at == newer_version
@@ -458,9 +462,10 @@ async def test_onec_apply_changes_rolls_back_batch_on_error(test_session, suppli
 
 @pytest.mark.asyncio
 async def test_onec_apply_price_change(test_session, supplier_id):
-    """Price change updates existing product price."""
+    """Price change обновляет сайтовую строку product_prices (per-row staleness)."""
     version = datetime.now(timezone.utc)
-    product = Product(
+    product = await make_product(
+        test_session,
         onec_id="1c-prod-price",
         name="Price Product",
         sku="PRICE-001",
@@ -469,7 +474,6 @@ async def test_onec_apply_price_change(test_session, supplier_id):
         supplier_id=supplier_id,
         is_active=True,
     )
-    test_session.add(product)
     await test_session.flush()
 
     payload = _build_payload(
@@ -498,14 +502,23 @@ async def test_onec_apply_price_change(test_session, supplier_id):
 
     await test_session.refresh(product)
     assert product.price == Decimal("199.99")
-    assert product.onec_sync_at == version
+    # Ценовой change больше не трогает product.onec_sync_at (per-row staleness, D-06)
+    assert product.onec_sync_at is None
+    row = (
+        await test_session.execute(
+            select(ProductPrice).where(ProductPrice.product_id == product.id)
+        )
+    ).scalar_one()
+    assert row.price == Decimal("199.99")
+    assert row.onec_sync_at == version
 
 
 @pytest.mark.asyncio
 async def test_onec_apply_stock_change(test_session, supplier_id):
     """Stock change updates existing product stock."""
     version = datetime.now(timezone.utc)
-    product = Product(
+    product = await make_product(
+        test_session,
         onec_id="1c-prod-stock",
         name="Stock Product",
         sku="STOCK-001",
@@ -514,7 +527,6 @@ async def test_onec_apply_stock_change(test_session, supplier_id):
         supplier_id=supplier_id,
         is_active=True,
     )
-    test_session.add(product)
     await test_session.flush()
 
     payload = _build_payload(
@@ -589,7 +601,6 @@ async def test_run_onec_full_sync_creates_batches(
         onec_api_url=onec_mock_server,
         onec_login="test-user",
         onec_password="test-pass",
-        onec_price_type_key="77777777-7777-7777-7777-777777777777",
         onec_default_supplier_id=supplier_id,
     )
     monkeypatch.setattr("src.app.services.onec_sync_service.settings", patched)

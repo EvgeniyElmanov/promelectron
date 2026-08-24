@@ -1,11 +1,13 @@
 import asyncio
 import logging
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.app.core.config import settings
 from src.app.db.database import SessionLocal
 from src.app.models.cart import Cart, CartItem
 from src.app.models.category import Category
@@ -17,6 +19,7 @@ from src.app.models.product import Product
 from src.app.models.review import Review
 from src.app.models.supplier import Supplier
 from src.app.models.user import RoleEnum, User
+from src.app.services.price_service import upsert_product_price
 from src.app.utils.auth import hash_password
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -261,7 +264,6 @@ async def create_products(
         product = Product(
             name=payload["name"],
             description=payload["description"],
-            price=payload["price"],
             stock=payload["stock"],
             category_id=category.id,
             supplier_id=supplier.id,
@@ -270,6 +272,11 @@ async def create_products(
             updated_at=now,
         )
         session.add(product)
+        await session.flush()
+        # Цены живут в product_prices (сайтовый вид), products.price больше нет
+        await upsert_product_price(
+            session, product.id, settings.onec_site_price_type, Decimal(str(payload["price"]))
+        )
         logger.info(f"Добавлен товар: {product.name}")
 
 

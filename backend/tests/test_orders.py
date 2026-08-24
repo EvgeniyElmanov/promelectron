@@ -183,10 +183,10 @@ class TestOrdersAPI:
     @pytest.mark.asyncio
     async def test_supplier_cannot_see_orders_without_their_products(self, client, test_user, user_token, test_supplier, supplier_token, test_session, cdek_delivery_payload):
         """Поставщик не видит заказы без своих товаров."""
-        from src.app.models.product import Product
         from src.app.models.supplier import Supplier
         from src.app.models.user import RoleEnum, User
         from src.app.utils.auth import hash_password
+        from tests.conftest import make_product
 
         other_user = User(
             email="other_supplier@example.com",
@@ -209,7 +209,8 @@ class TestOrdersAPI:
         await test_session.commit()
         await test_session.refresh(other_supplier)
 
-        other_product = Product(
+        other_product = await make_product(
+            test_session,
             name="Other Product",
             description="Other product",
             price=50.0,
@@ -217,7 +218,6 @@ class TestOrdersAPI:
             supplier_id=other_supplier.id,
             is_active=True,
         )
-        test_session.add(other_product)
         await test_session.commit()
         await test_session.refresh(other_product)
 
@@ -263,10 +263,10 @@ class TestOrdersAPI:
     @pytest.mark.asyncio
     async def test_supplier_cannot_ship_order_without_their_products(self, client, test_user, user_token, test_supplier, supplier_token, test_session, cdek_delivery_payload):
         """Поставщик не может отправить заказ без своих товаров."""
-        from src.app.models.product import Product
         from src.app.models.supplier import Supplier
         from src.app.models.user import RoleEnum, User
         from src.app.utils.auth import hash_password
+        from tests.conftest import make_product
 
         other_user = User(
             email="other_supplier2@example.com",
@@ -289,7 +289,8 @@ class TestOrdersAPI:
         await test_session.commit()
         await test_session.refresh(other_supplier)
 
-        other_product = Product(
+        other_product = await make_product(
+            test_session,
             name="Other Product 2",
             description="Other product",
             price=50.0,
@@ -297,7 +298,6 @@ class TestOrdersAPI:
             supplier_id=other_supplier.id,
             is_active=True,
         )
-        test_session.add(other_product)
         await test_session.commit()
         await test_session.refresh(other_product)
 
@@ -388,15 +388,16 @@ class TestOrdersAPI:
         self, client, test_user, user_token, test_product, test_category, test_session, test_supplier, cdek_delivery_payload
     ):
         """После создания заказа оформленные товары удаляются из корзины."""
-        from src.app.models.product import Product
         from src.app.models.supplier import Supplier
+        from tests.conftest import make_product
 
         result = await test_session.execute(
             select(Supplier).where(Supplier.user_id == test_supplier.id)
         )
         supplier = result.scalars().first()
 
-        product2 = Product(
+        product2 = await make_product(
+            test_session,
             name="Second Product",
             price=199.99,
             stock=5,
@@ -404,7 +405,6 @@ class TestOrdersAPI:
             supplier_id=supplier.id,
             is_active=True,
         )
-        test_session.add(product2)
         await test_session.commit()
         await test_session.refresh(product2)
 

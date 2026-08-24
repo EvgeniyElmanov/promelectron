@@ -140,22 +140,22 @@ class TestCartAPI:
     async def test_merge_cart_multiple_products(
         self, client, user_token, test_user, test_product, test_category, test_session, test_supplier
     ):
-        from src.app.models.product import Product
         from src.app.models.supplier import Supplier
+        from tests.conftest import make_product
 
         result = await test_session.execute(
             select(Supplier).where(Supplier.user_id == test_supplier.id)
         )
         supplier = result.scalars().first()
 
-        product2 = Product(
+        product2 = await make_product(
+            test_session,
             name="Second Product",
             price=199.99,
             stock=5,
             category_id=test_category.id,
             supplier_id=supplier.id,
         )
-        test_session.add(product2)
         await test_session.commit()
         await test_session.refresh(product2)
 

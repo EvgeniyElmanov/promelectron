@@ -35,6 +35,7 @@ from src.app.models.job import Job
 from src.app.models.onec_sync import OnecIntakeLog
 from src.app.models.product import Product
 from src.app.services.onec_units import parse_value_with_unit
+from src.app.services.price_service import get_site_price, upsert_product_price
 from src.app.services.storage_service import storage
 
 logger = logging.getLogger(__name__)
@@ -257,9 +258,9 @@ async def _upsert_product(
 ) -> Product | None:
     """Upsert товара по onec_id; None — запись пропущена (правило «активные»).
 
-    F003: новый товар создаётся с is_active=False и ценой-заглушкой 0 — в
-    каталоге он появится только после применения первой валидной цены > 0
-    (правило «цена > 0», B-01). F002: sku, занятый другим товаром (1С не
+    F003: новый товар создаётся с is_active=False и без цены — в
+    каталоге он появится только после применения первой валидной сайтовой
+    цены > 0 (правило «цена > 0», B-01). F002: sku, занятый другим товаром (1С не
     гарантирует уникальность Артикул), не присваивается — warning + errors,
     импорт не падает (poison-файл недопустим). F007: в cache.touched
     попадают только реально изменённые товары.
@@ -282,10 +283,9 @@ async def _upsert_product(
         product = Product(
             onec_id=onec_id,
             name=name,
-            price=0,
             stock=0,
             supplier_id=settings.onec_default_supplier_id,
-            # F003: до первой валидной цены товар не показывается в каталоге
+            # F003: до первой валидной сайтовой цены товар не показывается в каталоге
             is_active=False,
         )
         session.add(product)
@@ -334,10 +334,12 @@ async def _upsert_product(
     if not created:
         if not is_active:
             _set("is_active", False)
-        elif product.is_active or (product.price or 0) > 0:
+        elif product.is_active or await get_site_price(session, product.id) is not None:
             # «Восстановление» из DeletionMark — только у товара с валидной
-            # ценой; товар без цены остаётся неактивным (F003), иначе reparse
-            # того же файла активировал бы его без offers.
+            # сайтовой ценой; товар без цены остаётся неактивным (F003), иначе
+            # reparse того же файла активировал бы его без offers.
+            # get_site_price вызывается лениво (short-circuit): только для
+            # неактивного товара, без лишнего запроса на каждый активный.
             _set("is_active", True)
     product.onec_sync_at = datetime.now(timezone.utc)
 
@@ -610,17 +612,19 @@ async def _load_odata_product_attributes(
 async def _load_odata_prices(
     session: AsyncSession, cache: _CatalogCache, stats: LoadStats, records: list[dict]
 ) -> None:
-    price_type_key = settings.onec_price_type_key
-    if not price_type_key:
-        logger.warning("ONEC_PRICE_TYPE_KEY not configured — prices from intake skipped")
-        stats.skipped += len(records)
-        return
+    """Пишет ВСЕ актуальные виды цен в product_prices (D-08).
+
+    Фильтрации по одному виду цены больше нет: каждая запись с
+    Актуальность=true upsert'ится по (product_id, ВидЦен_Key). Активация
+    товара — только при upsert'е сайтового вида (settings.onec_site_price_type).
+    """
     for batch in batched(records, BATCH_SIZE):
         for rec in batch:
             if not rec.get("Актуальность", False):
                 stats.skipped += 1
                 continue
-            if rec.get("ВидЦен_Key") != price_type_key:
+            price_type = rec.get("ВидЦен_Key")
+            if _is_null_guid(price_type):
                 stats.skipped += 1
                 continue
             product_onec_id = rec.get("Номенклатура_Key")
@@ -647,21 +651,31 @@ async def _load_odata_prices(
                 )
                 stats.errors.append(f"non-positive price for {product_onec_id}")
                 continue
-            # Фиксируем ДО присвоения: товар ещё ни разу не был оценён
-            was_unpriced = (product.price or 0) == 0
-            if product.price != new_price:
-                product.price = new_price
+            # Фиксируем ДО upsert'а: сайтовой строки ещё ни разу не было.
+            # Лениво: select только для неактивного товара и сайтового вида.
+            was_unpriced = (
+                not product.is_active
+                and price_type == settings.onec_site_price_type
+                and await get_site_price(session, product.id) is None
+            )
+            _row, changed = await upsert_product_price(
+                session,
+                product.id,
+                price_type,
+                new_price,
+                sync_at=datetime.now(timezone.utc),
+            )
+            if changed:
                 cache.touched.add(product)  # F007
-            # F003/F009: цена активирует только товар, который ещё ни разу
-            # не был оценён (price == 0 — «неактивен, потому что не было
-            # цены»). Soft-deleted товар с ненулевой ценой ценой НЕ
-            # реанимируется: cache.deleted живёт одним прогоном, а файл цен
-            # может прийти позже файла с DeletionMark. «Восстановление»
-            # такого товара — только товарным документом без DeletionMark
-            # (_upsert_product активирует при price > 0). Известный edge:
-            # товар, удалённый до первой цены (price всё ещё 0), первой
-            # ценой активируется — следующий товарный файл с DeletionMark
-            # вернёт is_active=False.
+            # F003/F009: сайтовая цена активирует только товар, который ещё ни
+            # разу не был оценён сайтовым видом. Soft-deleted товар с сайтовой
+            # ценой ценой НЕ реанимируется: cache.deleted живёт одним
+            # прогоном, а файл цен может прийти позже файла с DeletionMark.
+            # «Восстановление» такого товара — только товарным документом без
+            # DeletionMark (_upsert_product активирует при наличии сайтовой
+            # цены). Известный edge: товар, удалённый до первой цены (сайтовой
+            # строки всё ещё нет), первой ценой активируется — следующий
+            # товарный файл с DeletionMark вернёт is_active=False.
             if (
                 not product.is_active
                 and product_onec_id not in cache.deleted
@@ -669,7 +683,6 @@ async def _load_odata_prices(
             ):
                 product.is_active = True
                 cache.touched.add(product)
-            product.onec_sync_at = datetime.now(timezone.utc)
             _register_product(cache, product_onec_id, product)
             stats.prices_applied += 1
         await session.commit()
@@ -889,39 +902,54 @@ async def _load_cml_offers(
                 continue
             _register_product(cache, onec_id, product)
 
-            price_el = offer.find("Цены/Цена/ЦенаЗаЕдиницу")
-            if price_el is not None and price_el.text:
+            # D-08: итерируем ВСЕ Цены/Цена (все виды цен), а не первую.
+            for price_node in offer.findall("Цены/Цена"):
+                price_el = price_node.find("ЦенаЗаЕдиницу")
+                if price_el is None or not price_el.text:
+                    continue
+                price_type = _text(price_node, "ИдТипаЦены") or settings.onec_site_price_type
                 try:
                     new_price = Decimal(price_el.text.strip())
                 except ArithmeticError:
                     logger.warning("Bad price %r for product %r", price_el.text, onec_id)
                     stats.errors.append(f"bad price for {onec_id}")
-                else:
-                    # F003: цена ≤ 0 не перезаписывает валидную (B-01)
-                    if new_price <= 0:
-                        logger.warning(
-                            "Ignoring non-positive price %r for product %r",
-                            price_el.text,
-                            onec_id,
-                        )
-                        stats.errors.append(f"non-positive price for {onec_id}")
-                    else:
-                        was_unpriced = (product.price or 0) == 0
-                        if product.price != new_price:
-                            product.price = new_price
-                            cache.touched.add(product)  # F007
-                        # F003/F009: цена активирует только никогда не
-                        # оценённый товар (price == 0); soft-deleted с
-                        # ненулевой ценой ценой не реанимируется — см.
-                        # развёрнутый комментарий в _load_odata_prices.
-                        if (
-                            not product.is_active
-                            and onec_id not in cache.deleted
-                            and was_unpriced
-                        ):
-                            product.is_active = True
-                            cache.touched.add(product)
-                        stats.prices_applied += 1
+                    continue
+                # F003: цена ≤ 0 не перезаписывает валидную (B-01)
+                if new_price <= 0:
+                    logger.warning(
+                        "Ignoring non-positive price %r for product %r",
+                        price_el.text,
+                        onec_id,
+                    )
+                    stats.errors.append(f"non-positive price for {onec_id}")
+                    continue
+                # Лениво: select только для неактивного товара и сайтового вида
+                was_unpriced = (
+                    not product.is_active
+                    and price_type == settings.onec_site_price_type
+                    and await get_site_price(session, product.id) is None
+                )
+                _row, changed = await upsert_product_price(
+                    session,
+                    product.id,
+                    price_type,
+                    new_price,
+                    sync_at=datetime.now(timezone.utc),
+                )
+                if changed:
+                    cache.touched.add(product)  # F007
+                # F003/F009: сайтовая цена активирует только никогда не
+                # оценённый сайтовым видом товар; soft-deleted с сайтовой
+                # ценой ценой не реанимируется — см. развёрнутый комментарий
+                # в _load_odata_prices.
+                if (
+                    not product.is_active
+                    and onec_id not in cache.deleted
+                    and was_unpriced
+                ):
+                    product.is_active = True
+                    cache.touched.add(product)
+                stats.prices_applied += 1
             qty_el = offer.find("Количество")
             if qty_el is not None and qty_el.text:
                 try:

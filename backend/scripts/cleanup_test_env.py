@@ -56,6 +56,7 @@ TRUNCATE_TABLES = [
     "onec_change_log",
     "onec_intake_log",
     "product_attribute_values",
+    "product_prices",
     "products",
     "attributes",
     "categories",

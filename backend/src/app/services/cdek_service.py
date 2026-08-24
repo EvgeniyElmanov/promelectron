@@ -81,7 +81,7 @@ class CdekService:
                 "name": product.name[:255],
                 "ware_key": (product.sku or str(product.id))[:20],
                 "payment": {"value": 0},
-                "cost": float(product.price),
+                "cost": float(oi.price_at_time),
                 "weight": weight,
                 "amount": oi.quantity,
             })

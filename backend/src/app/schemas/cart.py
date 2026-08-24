@@ -19,7 +19,7 @@ class CartItemUpdate(BaseModel):
 class CartItemProductOut(BaseModel):
     id: int
     name: str
-    price: float
+    price: Optional[float] = None
     stock: int
     supplier_id: int
     weight_grams: int

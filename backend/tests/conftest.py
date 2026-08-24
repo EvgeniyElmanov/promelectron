@@ -41,6 +41,35 @@ def make_settings(**overrides):
     return dataclasses.replace(settings, **overrides)
 
 
+async def make_product(session, *, price=None, price_type=None, **product_kwargs):
+    """Создать Product + строку product_prices (site-вид по умолчанию).
+
+    Цены больше не колонка products.price — тесты, которым нужен «товар с
+    ценой», создают её через этот helper (price=Decimal(...) или None —
+    бесценный товар без строки). Только flush, без commit — вызывающий код
+    коммитит сам, как раньше.
+    """
+    from decimal import Decimal
+
+    from src.app.core.config import settings
+    from src.app.models.product import Product
+    from src.app.models.product_price import ProductPrice
+
+    product = Product(**product_kwargs)
+    session.add(product)
+    await session.flush()
+    if price is not None:
+        session.add(
+            ProductPrice(
+                product_id=product.id,
+                price_type=price_type or settings.onec_site_price_type,
+                price=Decimal(str(price)),
+            )
+        )
+        await session.flush()
+    return product
+
+
 def _admin_url():
     return TEST_DATABASE_URL.rsplit("/", 1)[0] + "/postgres"
 
@@ -357,7 +386,6 @@ async def test_category(test_session):
 
 @pytest.fixture
 async def test_product(test_session, test_supplier, test_category):
-    from src.app.models.product import Product
     from src.app.models.supplier import Supplier
 
     # test_supplier уже создал Supplier, находим его
@@ -377,10 +405,11 @@ async def test_product(test_session, test_supplier, test_category):
         await test_session.commit()
         await test_session.refresh(supplier)
 
-    product = Product(
+    product = await make_product(
+        test_session,
         name="Test Product",
         description="Test product description",
-        price=99.99,
+        price="99.99",
         stock=10,
         category_id=test_category.id,
         supplier_id=supplier.id,
@@ -390,7 +419,6 @@ async def test_product(test_session, test_supplier, test_category):
         width_cm=15,
         height_cm=10,
     )
-    test_session.add(product)
     await test_session.commit()
     await test_session.refresh(product)
     return product
