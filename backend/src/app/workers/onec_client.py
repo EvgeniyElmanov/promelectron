@@ -238,28 +238,23 @@ class OnecClient:
         top: int = 100,
         skip: int = 0,
     ) -> list[OnecPriceOdata]:
-        """Fetch prices from InformationRegister_ЦеныНоменклатуры."""
-        price_type = price_type_key or settings.onec_price_type_key
-        if not price_type:
-            logger.warning("ONEC_PRICE_TYPE_KEY not configured — returning empty price list")
-            return []
+        """Fetch prices from InformationRegister_ЦеныНоменклатуры.
 
-        price_type = price_type.strip()
-        if not _is_valid_guid(price_type):
-            raise OnecClientConfigurationError(
-                f"ONEC_PRICE_TYPE_KEY must be a valid GUID. Got: {price_type!r}"
-            )
-
-        filter_expr = f"ВидЦен_Key eq '{_escape_odata_string(price_type)}'"
+        Без ``price_type_key`` запрос идёт без ``$filter`` — тянем все виды
+        цен (D-04). GUID-валидация — только для явно переданного параметра.
+        """
+        params: dict[str, Any] = {"$top": top, "$skip": skip, "$format": "json"}
+        if price_type_key:
+            price_type = price_type_key.strip()
+            if not _is_valid_guid(price_type):
+                raise OnecClientConfigurationError(
+                    f"price_type_key must be a valid GUID. Got: {price_type!r}"
+                )
+            params["$filter"] = f"ВидЦен_Key eq '{_escape_odata_string(price_type)}'"
         data = await self._request(
             "GET",
             "/InformationRegister_ЦеныНоменклатуры",
-            params={
-                "$top": top,
-                "$skip": skip,
-                "$filter": filter_expr,
-                "$format": "json",
-            },
+            params=params,
         )
         result: list[OnecPriceOdata] = []
         for item in data.get("value", []) if isinstance(data, dict) else []:

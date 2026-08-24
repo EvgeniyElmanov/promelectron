@@ -12,6 +12,7 @@ import hashlib
 import io
 import json
 import zipfile
+from decimal import Decimal
 from uuid import uuid4
 
 import pytest
@@ -24,6 +25,7 @@ from src.app.models.onec_sync import OnecIntakeLog
 from src.app.models.product import Product
 from src.app.models.supplier import Supplier
 from src.app.services.onec_intake_loader import process_intake
+from tests.conftest import make_product
 
 GUID_PRODUCT_1 = "11111111-1111-1111-1111-111111111111"
 GUID_PRODUCT_2 = "22222222-2222-2222-2222-222222222222"
@@ -66,15 +68,34 @@ async def supplier_id(test_session, test_supplier):
 
 @pytest.fixture
 def patched_settings(monkeypatch, supplier_id):
-    """settings с ONEC_DEFAULT_SUPPLIER_ID и ONEC_PRICE_TYPE_KEY для загрузчика."""
+    """settings с ONEC_DEFAULT_SUPPLIER_ID и сайтовым видом цены GUID_PRICE_TYPE."""
     from tests.conftest import make_settings
 
     patched = make_settings(
         onec_default_supplier_id=supplier_id,
-        onec_price_type_key=GUID_PRICE_TYPE,
+        onec_site_price_type=GUID_PRICE_TYPE,
     )
     monkeypatch.setattr("src.app.services.onec_intake_loader.settings", patched)
+    # helpers цены читают settings в своём модуле
+    monkeypatch.setattr("src.app.services.price_service.settings", patched)
     return patched
+
+
+async def _price_of(session, product_id: int, price_type: str = GUID_PRICE_TYPE):
+    """Цена товара из product_prices по виду (site-выражение в тестах не читаем —
+    column_property привязан к глобальному settings.onec_site_price_type)."""
+    from decimal import Decimal
+
+    from src.app.models.product_price import ProductPrice
+
+    result = await session.execute(
+        select(ProductPrice.price).where(
+            ProductPrice.product_id == product_id,
+            ProductPrice.price_type == price_type,
+        )
+    )
+    value = result.scalar_one_or_none()
+    return Decimal(value) if value is not None else None
 
 
 async def _make_intake(test_session, fake_storage, payload: bytes, key: str | None = None) -> str:
@@ -352,7 +373,7 @@ async def test_loader_prices_and_stock(
                 "Цена": 350.50,
                 "Актуальность": True,
             },
-            {  # другой вид цен — игнорируется
+            {  # другой вид цен — тоже пишется (отдельной строкой, D-08)
                 "Номенклатура_Key": GUID_PRODUCT_1,
                 "ВидЦен_Key": "99999999-9999-9999-9999-999999999999",
                 "Цена": 100.0,
@@ -369,7 +390,7 @@ async def test_loader_prices_and_stock(
     stats = await process_intake(
         test_session, await _make_intake(test_session, fake_storage, prices_payload)
     )
-    assert stats.prices_applied == 1
+    assert stats.prices_applied == 2
 
     stock_payload = _odata(
         "AccumulationRegister_ЗапасыНаСкладах_Balance",
@@ -390,7 +411,11 @@ async def test_loader_prices_and_stock(
     product2 = (
         await test_session.execute(select(Product).where(Product.onec_id == GUID_PRODUCT_2))
     ).scalar_one()
-    assert float(product1.price) == 350.50
+    # Два вида цен — две строки product_prices, не перезатираются (D-08)
+    assert await _price_of(test_session, product1.id) == Decimal("350.50")
+    assert await _price_of(
+        test_session, product1.id, "99999999-9999-9999-9999-999999999999"
+    ) == Decimal("100.00")
     assert product1.stock == 15  # сумма по складам
     assert product2.stock == 0  # отрицательный остаток клампится (B-02)
 
@@ -573,7 +598,8 @@ OFFERS_XML = f"""<?xml version="1.0" encoding="UTF-8"?>
 @pytest.mark.asyncio
 async def test_loader_commerceml_zip(test_session, fake_storage, patched_settings):
     # Предсоздаём товар, который придёт с ПометкаУдаления
-    existing = Product(
+    await make_product(
+        test_session,
         onec_id=GUID_PRODUCT_DEL,
         name="Удалённый товар",
         price=10,
@@ -581,7 +607,6 @@ async def test_loader_commerceml_zip(test_session, fake_storage, patched_setting
         supplier_id=patched_settings.onec_default_supplier_id,
         is_active=True,
     )
-    test_session.add(existing)
     await test_session.commit()
 
     payload = _cml_zip(IMPORT_XML, OFFERS_XML)
@@ -599,7 +624,8 @@ async def test_loader_commerceml_zip(test_session, fake_storage, patched_setting
         await test_session.execute(select(Product).where(Product.onec_id == GUID_PRODUCT_1))
     ).scalar_one()
     assert product.sku == "KB-001"
-    assert float(product.price) == 350.0
+    # Цена из CML без ИдТипаЦены пишется сайтовым видом (fallback, D-08)
+    assert await _price_of(test_session, product.id) == Decimal("350.00")
     assert product.stock == 42
     assert product.is_active is True
 
@@ -780,7 +806,7 @@ async def test_loader_price_activates_product(
     )
     await test_session.refresh(product)
     assert product.is_active is True
-    assert float(product.price) == 350.0
+    assert await _price_of(test_session, product.id) == Decimal("350.00")
 
 
 @pytest.mark.asyncio
@@ -788,15 +814,16 @@ async def test_loader_non_positive_price_ignored(
     test_session, fake_storage, patched_settings
 ):
     """F003: цена 0/отрицательная не перезаписывает валидную (B-01)."""
-    existing = Product(
+    existing = await make_product(
+        test_session,
         onec_id=GUID_PRODUCT_1,
         name="Товар с ценой",
         price=500,
+        price_type=GUID_PRICE_TYPE,
         stock=1,
         supplier_id=patched_settings.onec_default_supplier_id,
         is_active=True,
     )
-    test_session.add(existing)
     await test_session.commit()
 
     prices_payload = _odata(
@@ -823,7 +850,7 @@ async def test_loader_non_positive_price_ignored(
     assert stats.prices_applied == 0
     assert len([e for e in stats.errors if "non-positive price" in e]) == 2
     await test_session.refresh(existing)
-    assert float(existing.price) == 500.0
+    assert await _price_of(test_session, existing.id) == Decimal("500.00")
     assert existing.is_active is True
 
 
@@ -884,6 +911,46 @@ async def test_loader_reparse_without_changes_skips_index_job(
     assert jobs_after_second == 1  # изменений не было — новый job не поставлен
 
 
+@pytest.mark.asyncio
+async def test_loader_prices_reparse_without_changes_skips_index_job(
+    test_session, fake_storage, patched_settings
+):
+    """F001/F007: повторный разбор того же prices-файла без изменений —
+    новый job SEARCH_INDEX_PRODUCTS не ставится (обновление onec_sync_at
+    само по себе изменением не считается)."""
+    await process_intake(
+        test_session, await _make_intake(test_session, fake_storage, _products_payload())
+    )
+    prices_payload = _odata(
+        "InformationRegister_ЦеныНоменклатуры",
+        [
+            {
+                "Номенклатура_Key": GUID_PRODUCT_1,
+                "ВидЦен_Key": GUID_PRICE_TYPE,
+                "Цена": 350.0,
+                "Актуальность": True,
+            }
+        ],
+    )
+    prices_intake_id = await _make_intake(test_session, fake_storage, prices_payload)
+    # Первый разбор: цена создана + товар активирован → touched, job поставлен
+    await process_intake(test_session, prices_intake_id)
+    jobs_after_first = (
+        await test_session.execute(
+            select(func.count()).select_from(Job).where(Job.job_type == "SEARCH_INDEX_PRODUCTS")
+        )
+    ).scalar_one()
+
+    # Reparse того же файла: цена не изменилась — товар не попадает в touched
+    await process_intake(test_session, prices_intake_id)
+    jobs_after_second = (
+        await test_session.execute(
+            select(func.count()).select_from(Job).where(Job.job_type == "SEARCH_INDEX_PRODUCTS")
+        )
+    ).scalar_one()
+    assert jobs_after_second == jobs_after_first
+
+
 # ─── F008: O(1) sku-индекс (конфликт по данным БД, не только in-run) ──────────
 
 
@@ -893,7 +960,8 @@ async def test_loader_sku_conflict_with_db_product(
 ):
     """F008: sku занят товаром из БД (другой onec_id, не из текущего файла) —
     новому товару sku не присваивается, файл parsed."""
-    existing = Product(
+    existing = await make_product(
+        test_session,
         onec_id=GUID_PRODUCT_DEL,
         name="Существующий",
         sku="TAKEN-001",
@@ -902,7 +970,6 @@ async def test_loader_sku_conflict_with_db_product(
         supplier_id=patched_settings.onec_default_supplier_id,
         is_active=True,
     )
-    test_session.add(existing)
     await test_session.commit()
 
     payload = _odata(
@@ -992,16 +1059,17 @@ async def test_loader_price_does_not_revive_soft_deleted_product(
 ):
     """F009: DeletionMark-файл → prices-файл → is_active остаётся False,
     цена при этом обновляется."""
-    existing = Product(
+    existing = await make_product(
+        test_session,
         onec_id=GUID_PRODUCT_1,
         name="Товар",
         sku="KB-001",
         price=300,
+        price_type=GUID_PRICE_TYPE,
         stock=5,
         supplier_id=patched_settings.onec_default_supplier_id,
         is_active=True,
     )
-    test_session.add(existing)
     await test_session.commit()
 
     # 1. Файл с DeletionMark=true → soft-delete
@@ -1041,7 +1109,7 @@ async def test_loader_price_does_not_revive_soft_deleted_product(
 
     assert stats.prices_applied == 1
     await test_session.refresh(existing)
-    assert float(existing.price) == 350.0  # цена обновилась
+    assert await _price_of(test_session, existing.id) == Decimal("350.00")  # цена обновилась
     assert existing.is_active is False  # но товар не воскрес
 
 
@@ -1078,3 +1146,123 @@ async def test_worker_handler_appends_stats_to_processing_log(
 
     assert job.processing_log
     assert "products +2" in job.processing_log[-1]
+
+
+# ─── D-08: все виды цен пишутся, активация — только сайтовой ──────────────────
+
+GUID_PRICE_TYPE_COST = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+
+
+@pytest.mark.asyncio
+async def test_loader_odata_multiple_price_types_stored(
+    test_session, fake_storage, patched_settings
+):
+    """AC: OData с двумя ВидЦен_Key → две строки product_prices, не перезатираются."""
+    await process_intake(
+        test_session, await _make_intake(test_session, fake_storage, _products_payload())
+    )
+    prices_payload = _odata(
+        "InformationRegister_ЦеныНоменклатуры",
+        [
+            {
+                "Номенклатура_Key": GUID_PRODUCT_1,
+                "ВидЦен_Key": GUID_PRICE_TYPE,
+                "Цена": 350.0,
+                "Актуальность": True,
+            },
+            {
+                "Номенклатура_Key": GUID_PRODUCT_1,
+                "ВидЦен_Key": GUID_PRICE_TYPE_COST,
+                "Цена": 120.0,
+                "Актуальность": True,
+            },
+        ],
+    )
+    stats = await process_intake(
+        test_session, await _make_intake(test_session, fake_storage, prices_payload)
+    )
+
+    assert stats.prices_applied == 2
+    product = (
+        await test_session.execute(select(Product).where(Product.onec_id == GUID_PRODUCT_1))
+    ).scalar_one()
+    assert await _price_of(test_session, product.id) == Decimal("350.00")
+    assert await _price_of(test_session, product.id, GUID_PRICE_TYPE_COST) == Decimal("120.00")
+
+
+@pytest.mark.asyncio
+async def test_loader_non_site_price_does_not_activate(
+    test_session, fake_storage, patched_settings
+):
+    """AC: несайтовый вид цены (себестоимость) товар НЕ активирует (F003)."""
+    await process_intake(
+        test_session, await _make_intake(test_session, fake_storage, _products_payload())
+    )
+    prices_payload = _odata(
+        "InformationRegister_ЦеныНоменклатуры",
+        [
+            {
+                "Номенклатура_Key": GUID_PRODUCT_1,
+                "ВидЦен_Key": GUID_PRICE_TYPE_COST,
+                "Цена": 120.0,
+                "Актуальность": True,
+            }
+        ],
+    )
+    stats = await process_intake(
+        test_session, await _make_intake(test_session, fake_storage, prices_payload)
+    )
+
+    assert stats.prices_applied == 1
+    product = (
+        await test_session.execute(select(Product).where(Product.onec_id == GUID_PRODUCT_1))
+    ).scalar_one()
+    assert product.is_active is False  # сайтовой цены не было — товар скрыт
+    assert await _price_of(test_session, product.id) is None
+    assert await _price_of(test_session, product.id, GUID_PRICE_TYPE_COST) == Decimal("120.00")
+
+
+OFFERS_XML_TWO_PRICE_TYPES = f"""<?xml version="1.0" encoding="UTF-8"?>
+<КоммерческаяИнформация ВерсияСхемы="2.10">
+  <ПакетПредложений СодержитТолькоИзменения="true">
+    <Ид>offers-2</Ид>
+    <Предложения>
+      <Предложение>
+        <Ид>{GUID_PRODUCT_1}</Ид>
+        <Наименование>Кабель ВВГнг 3х2,5</Наименование>
+        <Цены>
+          <Цена>
+            <ИдТипаЦены>{GUID_PRICE_TYPE}</ИдТипаЦены>
+            <ЦенаЗаЕдиницу>350.00</ЦенаЗаЕдиницу>
+          </Цена>
+          <Цена>
+            <ИдТипаЦены>{GUID_PRICE_TYPE_COST}</ИдТипаЦены>
+            <ЦенаЗаЕдиницу>120.00</ЦенаЗаЕдиницу>
+          </Цена>
+        </Цены>
+        <Количество>42</Количество>
+      </Предложение>
+    </Предложения>
+  </ПакетПредложений>
+</КоммерческаяИнформация>
+"""
+
+
+@pytest.mark.asyncio
+async def test_loader_cml_offers_multiple_price_types_stored(
+    test_session, fake_storage, patched_settings
+):
+    """AC: CML offers с двумя Цена (разные ИдТипаЦены) → две строки product_prices."""
+    payload = _cml_zip(IMPORT_XML, OFFERS_XML_TWO_PRICE_TYPES)
+    stats = await process_intake(
+        test_session, await _make_intake(test_session, fake_storage, payload)
+    )
+
+    assert stats.prices_applied == 2
+    product = (
+        await test_session.execute(select(Product).where(Product.onec_id == GUID_PRODUCT_1))
+    ).scalar_one()
+    assert await _price_of(test_session, product.id) == Decimal("350.00")
+    assert await _price_of(test_session, product.id, GUID_PRICE_TYPE_COST) == Decimal("120.00")
+    # Активация — сайтовой ценой из того же offers-файла
+    assert product.is_active is True

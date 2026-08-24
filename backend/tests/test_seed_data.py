@@ -17,6 +17,7 @@ from src.app.models.category import Category
 from src.app.models.product import Product
 from src.app.models.supplier import Supplier
 from src.app.models.user import RoleEnum, User
+from tests.conftest import make_product
 
 
 async def _make_supplier(session) -> Supplier:
@@ -65,16 +66,15 @@ async def test_create_products_tolerates_duplicate_names(test_session):
     payload = TEST_PRODUCTS[0]
     category = categories_map[payload["category_name"]]
     for _ in range(2):
-        test_session.add(
-            Product(
-                name=payload["name"],
-                description="duplicate",
-                price=1.0,
-                stock=1,
-                category_id=category.id,
-                supplier_id=supplier.id,
-                is_active=True,
-            )
+        await make_product(
+            test_session,
+            name=payload["name"],
+            description="duplicate",
+            price=1.0,
+            stock=1,
+            category_id=category.id,
+            supplier_id=supplier.id,
+            is_active=True,
         )
     await test_session.commit()
 

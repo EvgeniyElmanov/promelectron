@@ -21,6 +21,7 @@ from src.app.schemas.onec import (
     OnecStockOdata,
     OnecWebhookPayload,
 )
+from src.app.services.price_service import upsert_product_price
 
 logger = logging.getLogger(__name__)
 
@@ -100,11 +101,6 @@ async def apply_product_change(session: AsyncSession, change: OnecChange) -> Pro
         product.description = data["description"]
     if "sku" in data:
         product.sku = data["sku"]
-    if "price" in data:
-        price_value = data["price"]
-        if price_value is not None and price_value < 0:
-            raise ValueError("price cannot be negative")
-        product.price = price_value
     if "stock" in data:
         product.stock = data["stock"]
     if "supplier_id" in data:
@@ -163,6 +159,11 @@ async def apply_price_change(session: AsyncSession, change: OnecChange) -> Produ
 
     If the product does not exist yet (e.g. product batch has not been applied)
     the change is silently skipped so the queue stays idempotent.
+
+    Пишет в product_prices (upsert по product_id + price_type, D-06):
+    price_type берётся из change.data["price_type_key"], fallback — сайтовый вид.
+    Staleness — per-row (product_prices.onec_sync_at), product.onec_sync_at
+    ценовые изменения больше не трогают.
     """
     result = await session.execute(
         select(Product).where(Product.onec_id == change.external_id)
@@ -171,14 +172,28 @@ async def apply_price_change(session: AsyncSession, change: OnecChange) -> Produ
     if product is None:
         return None
 
-    if _is_stale_change(change.version, product.onec_sync_at):
-        return product
-
     if "price" in change.data:
         price_value = change.data["price"]
-        product.price = Decimal(str(price_value)) if not isinstance(price_value, Decimal) else price_value
+        # F002: "price": null из внешнего JSON — warning + skip, не роняем батч
+        if price_value is None:
+            logger.warning(
+                "Skipping null price for product onec_id=%s",
+                change.external_id,
+            )
+            return product
+        price = Decimal(str(price_value)) if not isinstance(price_value, Decimal) else price_value
+        if price <= 0:
+            logger.warning(
+                "Skipping non-positive price %s for product onec_id=%s (B-01)",
+                price,
+                change.external_id,
+            )
+            return product
+        price_type = change.data.get("price_type_key") or settings.onec_site_price_type
+        await upsert_product_price(
+            session, product.id, price_type, price, sync_at=change.version
+        )
 
-    product.onec_sync_at = change.version
     return product
 
 
@@ -287,7 +302,6 @@ def build_product_change(product: OnecProductOdata, version: datetime, supplier_
             "category_id": product.parent_key,
             "supplier_id": supplier_id,
             "is_active": True,
-            "price": 0.0,
         },
     )
 
@@ -297,7 +311,7 @@ def build_price_change(price: OnecPriceOdata, version: datetime) -> OnecChange:
         external_id=price.product_key,
         action="update",
         version=version,
-        data={"price": float(price.price)},
+        data={"price": float(price.price), "price_type_key": price.price_type_key},
     )
 
 

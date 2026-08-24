@@ -13,6 +13,7 @@ from .onec_sync import OnecIntakeLog as OnecIntakeLog
 from .order import Order as Order, OrderItem as OrderItem
 from .payment import Payment as Payment
 from .product import Product as Product
+from .product_price import ProductPrice as ProductPrice
 from .recipient import Recipient as Recipient
 from .review import Review as Review
 from .social_account import SocialAccount as SocialAccount
@@ -43,6 +44,7 @@ __all__ = [
     "PasswordResetToken",
     "Product",
     "ProductAttributeValue",
+    "ProductPrice",
     "Recipient",
     "Review",
     "SocialAccount",

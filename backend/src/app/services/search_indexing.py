@@ -116,7 +116,7 @@ def _product_document(
         "sku": product.sku,
         "name": product.name,
         "description": product.description,
-        "price": float(product.price),
+        "price": float(product.price) if product.price is not None else None,
         "stock": product.stock or 0,
         "category_id": product.category_id,
         "categories": categories,

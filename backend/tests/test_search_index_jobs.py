@@ -23,10 +23,10 @@ from src.app.models.attribute import (
 )
 from src.app.models.category import Category
 from src.app.models.job import Job
-from src.app.models.product import Product
 from src.app.services import search_indexing
 from src.app.services.search_service import SearchTaskError
 from src.app.workers import job_worker
+from tests.conftest import make_product
 
 
 def _task(uid=1, status="succeeded", error=None):
@@ -63,7 +63,8 @@ async def catalog(test_session, test_supplier):
     await test_session.flush()
     child.parent_id = root.id
 
-    product = Product(
+    product = await make_product(
+        test_session,
         name="Кабель USB-C 1м",
         description="Кабель для зарядки",
         sku="USB-C-1M",
@@ -73,7 +74,8 @@ async def catalog(test_session, test_supplier):
         supplier_id=supplier.id,
         is_active=True,
     )
-    deleted = Product(
+    deleted = await make_product(
+        test_session,
         name="Старый кабель",
         price=100.00,
         stock=0,
@@ -81,8 +83,6 @@ async def catalog(test_session, test_supplier):
         supplier_id=supplier.id,
         is_active=False,
     )
-    test_session.add_all([product, deleted])
-    await test_session.flush()
 
     attr_number = Attribute(
         code="cross_section_mm2",
@@ -363,7 +363,8 @@ class TestSearchReindexFullHandler:
 
         async def reindex_and_touch(db, client_arg, **kwargs):
             # Simulate a 1C partial update landing mid-reindex
-            catalog.product.price = 999.0
+            # (stock вместо price: price — read-only column_property)
+            catalog.product.stock = 999
             await db.flush()
             return await real_reindex_full(db, client_arg, **kwargs)
 
@@ -387,7 +388,8 @@ class TestSearchReindexFullHandler:
 class TestFindProductsUpdatedSince:
     async def test_watermark_filters_old_rows(self, test_session, catalog):
         watermark = datetime.now(timezone.utc)
-        catalog.product.price = 500.0
+        # stock вместо price: price — read-only column_property
+        catalog.product.stock = 500
         await test_session.flush()
 
         ids = await search_indexing.find_products_updated_since(

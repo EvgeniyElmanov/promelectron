@@ -2,10 +2,10 @@ import pytest
 from sqlalchemy import select
 
 from src.app.models.order import Order, OrderItem
-from src.app.models.product import Product
 from src.app.models.supplier import Supplier
 from src.app.models.user import RoleEnum, User
 from src.app.utils.auth import hash_password
+from tests.conftest import make_product
 
 
 class TestSupplierAnalytics:
@@ -86,7 +86,8 @@ class TestSupplierAnalytics:
         await test_session.commit()
         await test_session.refresh(other_supplier)
 
-        other_product = Product(
+        other_product = await make_product(
+            test_session,
             name="Other Product Analytics",
             description="Other product",
             price=50.0,
@@ -94,7 +95,6 @@ class TestSupplierAnalytics:
             supplier_id=other_supplier.id,
             is_active=True,
         )
-        test_session.add(other_product)
         await test_session.commit()
         await test_session.refresh(other_product)
 
@@ -189,7 +189,8 @@ class TestSupplierAnalytics:
 
         products = []
         for i in range(6):
-            product = Product(
+            product = await make_product(
+                test_session,
                 name=f"Product {i}",
                 description="Test",
                 price=10.0 * (i + 1),
@@ -198,7 +199,6 @@ class TestSupplierAnalytics:
                 category_id=test_category.id,
                 is_active=True,
             )
-            test_session.add(product)
             products.append(product)
         await test_session.commit()
         for p in products:

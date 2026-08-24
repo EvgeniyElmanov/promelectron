@@ -52,7 +52,7 @@ class Settings:
     onec_api_url: str | None
     onec_login: str | None
     onec_password: str | None
-    onec_price_type_key: str | None
+    onec_site_price_type: str
     onec_warehouse_key: str | None
     onec_webhook_api_key: str
     onec_default_supplier_id: int | None
@@ -210,7 +210,7 @@ settings = Settings(
     onec_api_url=os.getenv("ONEC_API_URL"),
     onec_login=os.getenv("ONEC_LOGIN"),
     onec_password=os.getenv("ONEC_PASSWORD"),
-    onec_price_type_key=os.getenv("ONEC_PRICE_TYPE_KEY"),
+    onec_site_price_type=os.getenv("ONEC_SITE_PRICE_TYPE", "site"),
     onec_warehouse_key=os.getenv("ONEC_WAREHOUSE_KEY"),
     onec_webhook_api_key=_load_onec_webhook_api_key(),
     onec_default_supplier_id=_parse_optional_int_env("ONEC_DEFAULT_SUPPLIER_ID"),

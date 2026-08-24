@@ -28,6 +28,7 @@ from src.app.services.cart_service import CartService
 from src.app.services.cdek_service import CdekService
 from src.app.services.email_service import EmailService
 from src.app.services.notification_service import NotificationService
+from src.app.services.price_service import get_site_price
 from src.app.services.recipient_service import RecipientService
 from src.app.services.yookassa_service import YooKassaService
 
@@ -140,13 +141,24 @@ class OrderService:
             if product.stock < cart_item.quantity:
                 raise HTTPException(status_code=400, detail=f"Not enough stock for product {product.name}")
 
+            # D-09: снапшот сайтовой цены из product_prices; товар без
+            # сайтовой цены не продаётся (раньше «price=0 продавался за 0»).
+            # F004/F008: чтение цены под блокировкой строки product_prices —
+            # конкурентный синк не сменит цену до commit заказа.
+            site_price = await get_site_price(db, product.id, for_update=True)
+            if site_price is None:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Product {product.name} is temporarily unavailable for ordering",
+                )
+
             product.stock -= cart_item.quantity
             order_item = OrderItem(
                 product_id=cart_item.product_id,
                 quantity=cart_item.quantity,
-                price_at_time=product.price,
+                price_at_time=site_price,
             )
-            total_price += Decimal(product.price) * cart_item.quantity
+            total_price += Decimal(site_price) * cart_item.quantity
             order_items.append(order_item)
             ordered_cart_item_ids.append(cart_item.id)
 
@@ -280,13 +292,22 @@ class OrderService:
             if product.stock < item.quantity:
                 raise HTTPException(status_code=400, detail=f"Not enough stock for product {product.name}")
 
+            # D-09: снапшот сайтовой цены из product_prices; товар без
+            # сайтовой цены не продаётся. F004/F008: чтение под блокировкой.
+            site_price = await get_site_price(db, product.id, for_update=True)
+            if site_price is None:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Product {product.name} is temporarily unavailable for ordering",
+                )
+
             product.stock -= item.quantity
             order_item = OrderItem(
                 product_id=item.product_id,
                 quantity=item.quantity,
-                price_at_time=product.price,
+                price_at_time=site_price,
             )
-            total_price += Decimal(product.price) * item.quantity
+            total_price += Decimal(site_price) * item.quantity
             order_items.append(order_item)
 
         delivery = order_data.cdek_delivery

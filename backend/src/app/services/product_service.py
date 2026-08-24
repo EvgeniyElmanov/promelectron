@@ -2,14 +2,16 @@ from fastapi import HTTPException
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.app.core.config import settings
 from src.app.models.attribute import Attribute, ProductAttributeValue
 from src.app.models.category import Category
-from src.app.models.product import Product
+from src.app.models.product import Product, site_price_expression
 from src.app.models.review import Review
 from src.app.models.supplier import Supplier
 from src.app.models.user import User
 from src.app.schemas.product import ProductCreate, ProductUpdate
 from src.app.services.favorite_service import FavoriteService
+from src.app.services.price_service import upsert_product_price
 from src.app.services.review_service import ReviewService
 
 
@@ -41,10 +43,12 @@ class ProductService:
             filters.append(Product.category_id == category_id)
 
         if min_price is not None:
-            filters.append(Product.price >= min_price)
+            # Подзапрос сайтовой цены: товары без строки product_prices
+            # (NULL) в ценовой фильтр не попадают
+            filters.append(site_price_expression() >= min_price)
 
         if max_price is not None:
-            filters.append(Product.price <= max_price)
+            filters.append(site_price_expression() <= max_price)
 
         # Build count query with same filters
         count_query = select(func.count(Product.id)).where(and_(*filters))
@@ -73,9 +77,9 @@ class ProductService:
 
         match sort_by:
             case "price_asc":
-                query = query.order_by(Product.price.asc())
+                query = query.order_by(site_price_expression().asc().nulls_last())
             case "price_desc":
-                query = query.order_by(Product.price.desc())
+                query = query.order_by(site_price_expression().desc().nulls_last())
             case "newest":
                 query = query.order_by(Product.created_at.desc())
             case "name_asc":
@@ -128,10 +132,15 @@ class ProductService:
             raise HTTPException(status_code=403, detail="You are not registered as a supplier")
 
         data = product_data.model_dump()
+        # price — column_property (read-only): в конструктор не передаём,
+        # пишем сайтовой строкой product_prices после flush (D-13)
+        price = data.pop("price")
         if data.get("images") is None:
             data["images"] = []
         new_product = Product(**data, supplier_id=supplier.id)
         db.add(new_product)
+        await db.flush()
+        await upsert_product_price(db, new_product.id, settings.onec_site_price_type, price)
         await db.commit()
         await db.refresh(new_product)
         return new_product
@@ -160,8 +169,14 @@ class ProductService:
         if not supplier or product.supplier_id != supplier.id:
             raise HTTPException(status_code=403, detail="Not authorized to modify this product")
 
-        for field, value in product_data.model_dump(exclude_unset=True).items():
+        update_data = product_data.model_dump(exclude_unset=True)
+        # price — column_property (read-only): из setattr-цикла исключаем,
+        # обновляем сайтовую строку product_prices (D-13)
+        price = update_data.pop("price", None)
+        for field, value in update_data.items():
             setattr(product, field, value)
+        if price is not None:
+            await upsert_product_price(db, product.id, settings.onec_site_price_type, price)
 
         await db.commit()
         await db.refresh(product)

@@ -115,16 +115,28 @@ async def test_unconfigured_client_raises_error(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_get_prices_without_price_type_key_fetches_all(client):
+    """D-04: без price_type_key запрос идёт без $filter — тянем все виды цен."""
+    prices = await client.get_prices()
+    assert len(prices) == 3
+    price_types = {p.price_type_key for p in prices}
+    assert price_types == {
+        "77777777-7777-7777-7777-777777777777",
+        "88888888-8888-8888-8888-888888888888",
+    }
+
+
+@pytest.mark.asyncio
 async def test_invalid_price_type_key_raises(onec_mock_server, monkeypatch):
+    """GUID-валидация — только для явно переданного price_type_key (D-04)."""
     patched = replace(
         settings,
         onec_api_url=onec_mock_server,
-        onec_price_type_key="not-a-guid",
     )
     monkeypatch.setattr("src.app.workers.onec_client.settings", patched)
     async with OnecClient() as c:
         with pytest.raises(OnecClientError):
-            await c.get_prices()
+            await c.get_prices("not-a-guid")
 
 
 @pytest.mark.asyncio

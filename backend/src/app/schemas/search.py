@@ -16,7 +16,7 @@ class SearchItemOut(BaseModel):
     id: int
     sku: str | None = None
     name: str
-    price: float
+    price: float | None = None
     stock: int = 0
     category_id: int | None = None
     categories: dict[str, str] = {}

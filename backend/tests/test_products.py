@@ -20,11 +20,12 @@ class TestProductsAPI:
     @pytest.mark.asyncio
     async def test_list_products_pagination(self, client, test_session, test_category, test_supplier):
         """Пагинация: limit и skip работают корректно."""
-        from src.app.models.product import Product
+        from tests.conftest import make_product
 
         # Создаём 5 товаров
         for i in range(5):
-            p = Product(
+            await make_product(
+                test_session,
                 name=f"Pagination Product {i}",
                 price=10.0 + i,
                 stock=10,
@@ -32,7 +33,6 @@ class TestProductsAPI:
                 category_id=test_category.id,
                 is_active=True,
             )
-            test_session.add(p)
         await test_session.commit()
 
         response = await client.get("/api/v1/products/?skip=0&limit=2")
@@ -49,10 +49,11 @@ class TestProductsAPI:
     @pytest.mark.asyncio
     async def test_list_products_sort_by_price(self, client, test_session, test_category, test_supplier):
         """Сортировка по цене."""
-        from src.app.models.product import Product
+        from tests.conftest import make_product
 
         for i, price in enumerate([100.0, 50.0, 150.0]):
-            p = Product(
+            await make_product(
+                test_session,
                 name=f"Sort Product {i}",
                 price=price,
                 stock=10,
@@ -60,7 +61,6 @@ class TestProductsAPI:
                 category_id=test_category.id,
                 is_active=True,
             )
-            test_session.add(p)
         await test_session.commit()
 
         response = await client.get("/api/v1/products/?sort_by=price_asc")
@@ -79,10 +79,11 @@ class TestProductsAPI:
     @pytest.mark.asyncio
     async def test_list_products_filter_by_price(self, client, test_session, test_category, test_supplier):
         """Фильтрация по ценовому диапазону."""
-        from src.app.models.product import Product
+        from tests.conftest import make_product
 
         for i, price in enumerate([30.0, 60.0, 90.0]):
-            p = Product(
+            await make_product(
+                test_session,
                 name=f"Filter Product {i}",
                 price=price,
                 stock=10,
@@ -90,7 +91,6 @@ class TestProductsAPI:
                 category_id=test_category.id,
                 is_active=True,
             )
-            test_session.add(p)
         await test_session.commit()
 
         response = await client.get("/api/v1/products/?min_price=40&max_price=80")
@@ -102,9 +102,10 @@ class TestProductsAPI:
     @pytest.mark.asyncio
     async def test_list_products_search(self, client, test_session, test_category, test_supplier):
         """Поиск по названию и описанию."""
-        from src.app.models.product import Product
+        from tests.conftest import make_product
 
-        p1 = Product(
+        await make_product(
+            test_session,
             name="Unique Searchable Name",
             description="Some description",
             price=10.0,
@@ -113,7 +114,8 @@ class TestProductsAPI:
             category_id=test_category.id,
             is_active=True,
         )
-        p2 = Product(
+        await make_product(
+            test_session,
             name="Other Product",
             description="Unique Searchable Description",
             price=20.0,
@@ -122,7 +124,6 @@ class TestProductsAPI:
             category_id=test_category.id,
             is_active=True,
         )
-        test_session.add_all([p1, p2])
         await test_session.commit()
 
         response = await client.get("/api/v1/products/?q=Searchable")
@@ -133,10 +134,11 @@ class TestProductsAPI:
     @pytest.mark.asyncio
     async def test_list_products_filter_by_min_rating(self, client, test_session, test_category, test_supplier, test_user):
         """Фильтрация по минимальному рейтингу."""
-        from src.app.models.product import Product
         from src.app.models.review import Review
+        from tests.conftest import make_product
 
-        p1 = Product(
+        p1 = await make_product(
+            test_session,
             name="High Rated Product",
             price=100.0,
             stock=10,
@@ -144,7 +146,8 @@ class TestProductsAPI:
             category_id=test_category.id,
             is_active=True,
         )
-        p2 = Product(
+        p2 = await make_product(
+            test_session,
             name="Low Rated Product",
             price=50.0,
             stock=10,
@@ -152,7 +155,6 @@ class TestProductsAPI:
             category_id=test_category.id,
             is_active=True,
         )
-        test_session.add_all([p1, p2])
         await test_session.commit()
         await test_session.refresh(p1)
         await test_session.refresh(p2)
@@ -178,10 +180,11 @@ class TestProductsAPI:
     @pytest.mark.asyncio
     async def test_list_products_sort_by_rating(self, client, test_session, test_category, test_supplier, test_user):
         """Сортировка по рейтингу (убывание)."""
-        from src.app.models.product import Product
         from src.app.models.review import Review
+        from tests.conftest import make_product
 
-        p1 = Product(
+        p1 = await make_product(
+            test_session,
             name="Medium Rated",
             price=100.0,
             stock=10,
@@ -189,7 +192,8 @@ class TestProductsAPI:
             category_id=test_category.id,
             is_active=True,
         )
-        p2 = Product(
+        p2 = await make_product(
+            test_session,
             name="Top Rated",
             price=50.0,
             stock=10,
@@ -197,7 +201,8 @@ class TestProductsAPI:
             category_id=test_category.id,
             is_active=True,
         )
-        p3 = Product(
+        await make_product(
+            test_session,
             name="No Reviews",
             price=30.0,
             stock=10,
@@ -205,7 +210,6 @@ class TestProductsAPI:
             category_id=test_category.id,
             is_active=True,
         )
-        test_session.add_all([p1, p2, p3])
         await test_session.commit()
         await test_session.refresh(p1)
         await test_session.refresh(p2)
@@ -227,14 +231,15 @@ class TestProductsAPI:
     async def test_list_products_filter_by_category(self, client, test_session, test_category, test_supplier):
         """Фильтрация по категории."""
         from src.app.models.category import Category
-        from src.app.models.product import Product
+        from tests.conftest import make_product
 
         cat2 = Category(name="Other Category")
         test_session.add(cat2)
         await test_session.commit()
         await test_session.refresh(cat2)
 
-        p1 = Product(
+        await make_product(
+            test_session,
             name="Cat1 Product",
             price=10.0,
             stock=10,
@@ -242,7 +247,8 @@ class TestProductsAPI:
             category_id=test_category.id,
             is_active=True,
         )
-        p2 = Product(
+        await make_product(
+            test_session,
             name="Cat2 Product",
             price=20.0,
             stock=10,
@@ -250,7 +256,6 @@ class TestProductsAPI:
             category_id=cat2.id,
             is_active=True,
         )
-        test_session.add_all([p1, p2])
         await test_session.commit()
 
         response = await client.get(f"/api/v1/products/?category_id={test_category.id}")
