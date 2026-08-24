@@ -464,7 +464,7 @@ onMounted(fetchProduct);
 }
 
 .product-detail__stock--out-of-stock {
-  color: #ff4242;
+  color: var(--color-danger, #ff4242);
 }
 
 .product-detail__attrs {

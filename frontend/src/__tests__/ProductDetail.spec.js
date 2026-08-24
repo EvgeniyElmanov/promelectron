@@ -14,6 +14,8 @@ const mockProduct = {
   attributes: [
     { code: 'rated_current_a', name: 'Номинальный ток', value_type: 'number', value: 16, unit: 'А' },
     { code: 'is_din_rail', name: 'Монтаж на DIN-рейку', value_type: 'bool', value: true, unit: null },
+    { code: 'is_smart', name: 'Умный дом', value_type: 'bool', value: false, unit: null },
+    { code: 'poles_count', name: 'Количество полюсов', value_type: 'number', value: 16, unit: null },
     { code: 'brand', name: 'Бренд', value_type: 'string', value: 'Legrand', unit: null },
   ],
   reviews: [
@@ -200,6 +202,8 @@ describe('ProductDetail.vue', () => {
     expect(wrapper.find('[data-testid="pdp-attributes"]').text()).toContain('Характеристики')
     expect(wrapper.find('[data-testid="pdp-attr-rated_current_a"]').text()).toContain('16 А')
     expect(wrapper.find('[data-testid="pdp-attr-is_din_rail"]').text()).toContain('Да')
+    expect(wrapper.find('[data-testid="pdp-attr-is_smart"] dd').text()).toBe('Нет')
+    expect(wrapper.find('[data-testid="pdp-attr-poles_count"] dd').text()).toBe('16')
     expect(wrapper.find('[data-testid="pdp-attr-brand"]').text()).toContain('Legrand')
   })
 
