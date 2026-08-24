@@ -573,6 +573,24 @@ class TestProductDetailAttributes:
         assert response.json()["attributes"] == []
 
     @pytest.mark.asyncio
+    async def test_detail_returns_real_weight_and_dimensions(self, client, test_session, test_product):
+        """Detail отдаёт реальные weight_grams/габариты из БД, а не дефолты схемы (1000/None)."""
+        test_product.weight_grams = 250
+        test_product.length_cm = 12
+        test_product.width_cm = 8
+        test_product.height_cm = 3
+        test_session.add(test_product)
+        await test_session.commit()
+
+        response = await client.get(f"/api/v1/products/{test_product.id}/detail")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["weight_grams"] == 250
+        assert data["length_cm"] == 12
+        assert data["width_cm"] == 8
+        assert data["height_cm"] == 3
+
+    @pytest.mark.asyncio
     async def test_sku_in_detail_and_list(self, client, test_session, test_product):
         """sku из БД присутствует в detail; в list поле sku есть (может быть null)."""
         test_product.sku = "EL-00123"
