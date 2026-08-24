@@ -55,6 +55,8 @@
       <div class="product-detail__info">
         <div class="product-detail__price" data-testid="pdp-price">{{ formattedPrice }} ₽</div>
 
+        <div v-if="product.sku" class="product-detail__sku" data-testid="pdp-sku">Артикул: {{ product.sku }}</div>
+
         <div class="product-detail__rating" v-if="product.reviews_count > 0" data-testid="pdp-rating">
           <span class="product-detail__stars">
             <svg v-for="n in 5" :key="n" width="16" height="16" viewBox="0 0 24 24" :fill="n <= Math.round(product.average_rating) ? '#FFB800' : 'none'" :stroke="n <= Math.round(product.average_rating) ? '#FFB800' : '#ccc'" stroke-width="2">
@@ -64,20 +66,43 @@
           <span class="product-detail__rating-text">{{ product.average_rating }} · {{ product.reviews_count }} отзывов</span>
         </div>
 
+        <div
+          class="product-detail__stock"
+          :class="isOutOfStock ? 'product-detail__stock--out-of-stock' : 'product-detail__stock--in-stock'"
+          data-testid="pdp-stock"
+        >
+          {{ isOutOfStock ? 'Нет в наличии' : `В наличии: ${product.stock} шт` }}
+        </div>
+
         <div class="product-detail__actions">
           <button
             class="product-detail__cart-btn"
             data-testid="pdp-add-to-cart"
-            :disabled="cartLoading"
+            :disabled="cartLoading || isOutOfStock"
             @click="addToCart"
           >
-            {{ cartLoading ? '...' : 'В корзину' }}
+            {{ cartLoading ? '...' : (isOutOfStock ? 'Нет в наличии' : 'В корзину') }}
           </button>
         </div>
 
         <div class="product-detail__section" v-if="product.description" data-testid="pdp-description">
           <h2 class="product-detail__section-title">Описание</h2>
           <p class="product-detail__description">{{ product.description }}</p>
+        </div>
+
+        <div v-if="product.attributes?.length" class="product-detail__section" data-testid="pdp-attributes">
+          <h2 class="product-detail__section-title">Характеристики</h2>
+          <dl class="product-detail__attrs">
+            <div
+              v-for="attr in product.attributes"
+              :key="attr.code"
+              class="product-detail__attr"
+              :data-testid="`pdp-attr-${attr.code}`"
+            >
+              <dt class="product-detail__attr-name">{{ attr.name }}</dt>
+              <dd class="product-detail__attr-value">{{ formatAttributeValue(attr) }}</dd>
+            </div>
+          </dl>
         </div>
       </div>
     </div>
@@ -187,6 +212,18 @@ const formattedPrice = computed(() => {
   return Number(product.value.price).toLocaleString('ru-RU');
 });
 
+const isOutOfStock = computed(() => !product.value.stock || product.value.stock <= 0);
+
+const formatAttributeValue = (attr) => {
+  if (attr.value_type === 'number') {
+    return `${attr.value}${attr.unit ? ' ' + attr.unit : ''}`;
+  }
+  if (attr.value_type === 'bool') {
+    return attr.value ? 'Да' : 'Нет';
+  }
+  return attr.value;
+};
+
 const fetchProduct = async () => {
   loading.value = true;
   try {
@@ -224,6 +261,7 @@ const toggleFavorite = async () => {
 };
 
 const addToCart = async () => {
+  if (isOutOfStock.value) return;
   if (cartLoading.value) return;
   cartLoading.value = true;
   try {
@@ -409,6 +447,48 @@ onMounted(fetchProduct);
 .product-detail__rating-text {
   font-size: 14px;
   color: var(--color-text-secondary);
+}
+
+.product-detail__sku {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.product-detail__stock {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.product-detail__stock--in-stock {
+  color: var(--color-text);
+}
+
+.product-detail__stock--out-of-stock {
+  color: #ff4242;
+}
+
+.product-detail__attrs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+}
+
+.product-detail__attr {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+}
+
+.product-detail__attr-name {
+  color: var(--color-text-secondary);
+}
+
+.product-detail__attr-value {
+  margin: 0;
+  color: var(--color-text);
+  text-align: right;
 }
 
 .product-detail__actions {
