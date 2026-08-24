@@ -174,6 +174,13 @@ async def apply_price_change(session: AsyncSession, change: OnecChange) -> Produ
 
     if "price" in change.data:
         price_value = change.data["price"]
+        # F002: "price": null из внешнего JSON — warning + skip, не роняем батч
+        if price_value is None:
+            logger.warning(
+                "Skipping null price for product onec_id=%s",
+                change.external_id,
+            )
+            return product
         price = Decimal(str(price_value)) if not isinstance(price_value, Decimal) else price_value
         if price <= 0:
             logger.warning(

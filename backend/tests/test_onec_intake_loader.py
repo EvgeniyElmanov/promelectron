@@ -911,6 +911,46 @@ async def test_loader_reparse_without_changes_skips_index_job(
     assert jobs_after_second == 1  # изменений не было — новый job не поставлен
 
 
+@pytest.mark.asyncio
+async def test_loader_prices_reparse_without_changes_skips_index_job(
+    test_session, fake_storage, patched_settings
+):
+    """F001/F007: повторный разбор того же prices-файла без изменений —
+    новый job SEARCH_INDEX_PRODUCTS не ставится (обновление onec_sync_at
+    само по себе изменением не считается)."""
+    await process_intake(
+        test_session, await _make_intake(test_session, fake_storage, _products_payload())
+    )
+    prices_payload = _odata(
+        "InformationRegister_ЦеныНоменклатуры",
+        [
+            {
+                "Номенклатура_Key": GUID_PRODUCT_1,
+                "ВидЦен_Key": GUID_PRICE_TYPE,
+                "Цена": 350.0,
+                "Актуальность": True,
+            }
+        ],
+    )
+    prices_intake_id = await _make_intake(test_session, fake_storage, prices_payload)
+    # Первый разбор: цена создана + товар активирован → touched, job поставлен
+    await process_intake(test_session, prices_intake_id)
+    jobs_after_first = (
+        await test_session.execute(
+            select(func.count()).select_from(Job).where(Job.job_type == "SEARCH_INDEX_PRODUCTS")
+        )
+    ).scalar_one()
+
+    # Reparse того же файла: цена не изменилась — товар не попадает в touched
+    await process_intake(test_session, prices_intake_id)
+    jobs_after_second = (
+        await test_session.execute(
+            select(func.count()).select_from(Job).where(Job.job_type == "SEARCH_INDEX_PRODUCTS")
+        )
+    ).scalar_one()
+    assert jobs_after_second == jobs_after_first
+
+
 # ─── F008: O(1) sku-индекс (конфликт по данным БД, не только in-run) ──────────
 
 

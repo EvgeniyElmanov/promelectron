@@ -33,7 +33,6 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint('id'),
         sa.UniqueConstraint('product_id', 'price_type', name='uq_product_prices_product_type'),
     )
-    op.create_index(op.f('ix_product_prices_id'), 'product_prices', ['id'], unique=False)
     # Backfill: текущая products.price становится сайтовым видом цены.
     # Товары с price = 0 — «бесценные», строк в product_prices не получают.
     op.execute(
@@ -51,5 +50,4 @@ def downgrade() -> None:
         "(SELECT pp.price FROM product_prices pp WHERE pp.product_id = products.id AND pp.price_type = 'site'), 0)"
     )
     op.alter_column('products', 'price', nullable=False)
-    op.drop_index(op.f('ix_product_prices_id'), table_name='product_prices')
     op.drop_table('product_prices')

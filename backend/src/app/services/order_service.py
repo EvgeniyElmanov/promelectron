@@ -142,11 +142,14 @@ class OrderService:
                 raise HTTPException(status_code=400, detail=f"Not enough stock for product {product.name}")
 
             # D-09: снапшот сайтовой цены из product_prices; товар без
-            # сайтовой цены не продаётся (раньше «price=0 продавался за 0»)
-            site_price = await get_site_price(db, product.id)
+            # сайтовой цены не продаётся (раньше «price=0 продавался за 0»).
+            # F004/F008: чтение цены под блокировкой строки product_prices —
+            # конкурентный синк не сменит цену до commit заказа.
+            site_price = await get_site_price(db, product.id, for_update=True)
             if site_price is None:
                 raise HTTPException(
-                    status_code=400, detail=f"Product {product.id} has no site price"
+                    status_code=400,
+                    detail=f"Product {product.name} is temporarily unavailable for ordering",
                 )
 
             product.stock -= cart_item.quantity
@@ -290,11 +293,12 @@ class OrderService:
                 raise HTTPException(status_code=400, detail=f"Not enough stock for product {product.name}")
 
             # D-09: снапшот сайтовой цены из product_prices; товар без
-            # сайтовой цены не продаётся
-            site_price = await get_site_price(db, product.id)
+            # сайтовой цены не продаётся. F004/F008: чтение под блокировкой.
+            site_price = await get_site_price(db, product.id, for_update=True)
             if site_price is None:
                 raise HTTPException(
-                    status_code=400, detail=f"Product {product.id} has no site price"
+                    status_code=400,
+                    detail=f"Product {product.name} is temporarily unavailable for ordering",
                 )
 
             product.stock -= item.quantity

@@ -177,6 +177,36 @@ async def test_webhook_non_positive_price_skipped(test_session, test_supplier):
     assert rows[SITE].price == Decimal("100.00")
 
 
+@pytest.mark.asyncio
+async def test_webhook_null_price_skipped(test_session, test_supplier):
+    """F002: "price": null из внешнего JSON — warning + skip, батч не падает."""
+    supplier_id = await _supplier_id(test_session, test_supplier)
+    product = await make_product(
+        test_session,
+        onec_id="1c-pp-null",
+        name="Null Price Product",
+        price=100.0,
+        stock=10,
+        supplier_id=supplier_id,
+        is_active=True,
+    )
+    await test_session.commit()
+    version = datetime.now(timezone.utc)
+
+    null_change = {
+        "external_id": "1c-pp-null",
+        "action": "update",
+        "version": version.isoformat(),
+        "data": {"price": None, "price_type_key": SITE},
+    }
+    valid_change = _price_change("1c-pp-null", 250.0, COST, version)
+    await _apply_changes(test_session, "price", [null_change, valid_change])
+
+    rows = await _price_rows(test_session, product.id)
+    assert rows[SITE].price == Decimal("100.00")  # сайтовая цена не изменилась
+    assert rows[COST].price == Decimal("250.00")  # остаток батча применился
+
+
 # ─── Каталог: фильтры, сортировка, null для бесценных ─────────────────────────
 
 
@@ -330,7 +360,7 @@ async def test_order_unpriced_product_rejected(
         headers={"Authorization": f"Bearer {user_token}"},
     )
     assert order_resp.status_code == 400
-    assert "no site price" in order_resp.json()["detail"]
+    assert "temporarily unavailable" in order_resp.json()["detail"]
 
 
 @pytest.mark.asyncio
@@ -364,7 +394,7 @@ async def test_guest_order_unpriced_product_rejected(
     with pytest.raises(HTTPException) as exc_info:
         await OrderService.create_guest_order(order_data=order_data, db=test_session)
     assert exc_info.value.status_code == 400
-    assert "no site price" in exc_info.value.detail
+    assert "temporarily unavailable" in exc_info.value.detail
 
 
 # ─── Приватность несайтовых видов цен ─────────────────────────────────────────
