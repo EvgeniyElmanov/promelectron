@@ -121,7 +121,8 @@ Product.price → Numeric      →  Product variants / Seller payouts
 ### Публичные (без auth)
 | Метод | Путь | Статус | Описание |
 |-------|------|--------|----------|
-| GET | `/api/v1/products/` | ✅ | Каталог товаров |
+| GET | `/api/v1/products/` | ✅ | Каталог товаров (ответ `ProductOut` включает `sku`) |
+| GET | `/api/v1/products/{id}/detail` | ✅ | Карточка товара: отзывы, рейтинг, is_favorite, `sku`, `attributes[]` (code/name/value_type/value/unit) |
 | GET | `/api/v1/categories/` | ✅ | Категории (пагинация, фильтр по parent_id, поиск по name) |
 | GET | `/api/v1/search/` | ✅ | Поиск (Meilisearch); подсказки: `GET /api/v1/search/suggestions/` |
 | POST | `/api/v1/cart/merge` | ✅ | Merge гостевой корзины (localStorage) при login |

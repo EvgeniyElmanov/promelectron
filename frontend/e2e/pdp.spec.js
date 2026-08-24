@@ -13,6 +13,7 @@ test.describe('Product Detail Page', () => {
     await firstCard.click();
     await expect(page.locator('[data-testid="pdp-title"]')).toBeVisible();
     await expect(page.locator('[data-testid="pdp-price"]')).toBeVisible();
+    await expect(page.locator('[data-testid="pdp-stock"]')).toBeVisible();
     await expect(page.locator('[data-testid="pdp-add-to-cart"]')).toBeVisible();
   });
 

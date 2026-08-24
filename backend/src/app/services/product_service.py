@@ -2,6 +2,7 @@ from fastapi import HTTPException
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.app.models.attribute import Attribute, ProductAttributeValue
 from src.app.models.category import Category
 from src.app.models.product import Product
 from src.app.models.review import Review
@@ -172,6 +173,41 @@ class ProductService:
     ) -> dict:
         product = await ProductService.read_product(product_id, db)
 
+        # Атрибуты товара одним запросом (без N+1, паттерн search_indexing._load_attribute_values)
+        attr_result = await db.execute(
+            select(
+                ProductAttributeValue.value_number,
+                ProductAttributeValue.value_text,
+                ProductAttributeValue.value_bool,
+                Attribute.code,
+                Attribute.name,
+                Attribute.value_type,
+                Attribute.unit,
+            )
+            .join(Attribute, ProductAttributeValue.attribute_id == Attribute.id)
+            .where(ProductAttributeValue.product_id == product_id)
+            .order_by(Attribute.sort, Attribute.name)
+        )
+        attributes: list[dict] = []
+        for value_number, value_text, value_bool, code, name, value_type, unit in attr_result.all():
+            if value_number is not None:
+                value: float | bool | str = float(value_number)
+            elif value_bool is not None:
+                value = bool(value_bool)
+            elif value_text is not None:
+                value = value_text
+            else:
+                continue
+            attributes.append(
+                {
+                    "code": code,
+                    "name": name,
+                    "value_type": value_type,
+                    "value": value,
+                    "unit": unit,
+                }
+            )
+
         reviews = await ReviewService.get_reviews(product_id, db)
         avg_rating = await ReviewService.get_average_rating(product_id, db)
 
@@ -182,15 +218,21 @@ class ProductService:
         return {
             "id": product.id,
             "name": product.name,
+            "sku": product.sku,
             "description": product.description,
             "price": product.price,
             "stock": product.stock,
+            "weight_grams": product.weight_grams,
+            "length_cm": product.length_cm,
+            "width_cm": product.width_cm,
+            "height_cm": product.height_cm,
             "is_active": product.is_active,
             "category_id": product.category_id,
             "supplier_id": product.supplier_id,
             "images": product.images or [],
             "created_at": product.created_at,
             "updated_at": product.updated_at,
+            "attributes": attributes,
             "reviews": reviews,
             "average_rating": avg_rating,
             "reviews_count": len(reviews),
