@@ -463,3 +463,183 @@ class TestProductsAPI:
         assert len(jobs) == 2
         for job in jobs:
             assert job.payload["product_ids"] == [test_product.id]
+
+
+class TestProductDetailAttributes:
+    """Тесты attributes и sku в GET /api/v1/products/{id}/detail (D-01, D-02, D-03)."""
+
+    @staticmethod
+    async def _add_attribute(test_session, product, *, code, name, value_type, sort=0, unit=None, **value_kwargs):
+        from src.app.models.attribute import Attribute, ProductAttributeValue
+
+        attribute = Attribute(
+            code=code,
+            name=name,
+            value_type=value_type,
+            unit=unit,
+            sort=sort,
+        )
+        test_session.add(attribute)
+        await test_session.flush()
+        test_session.add(
+            ProductAttributeValue(
+                product_id=product.id,
+                attribute_id=attribute.id,
+                **value_kwargs,
+            )
+        )
+        await test_session.commit()
+        return attribute
+
+    @pytest.mark.asyncio
+    async def test_detail_returns_typed_attributes_with_unit(self, client, test_session, test_product):
+        """Detail отдаёт attributes с типизированным value и unit (number, bool, string)."""
+        from src.app.models.attribute import AttributeValueType
+
+        await self._add_attribute(
+            test_session, test_product,
+            code="rated_current_a", name="Номинальный ток",
+            value_type=AttributeValueType.number, unit="А", sort=1,
+            value_number=16.0,
+        )
+        await self._add_attribute(
+            test_session, test_product,
+            code="is_din_rail", name="Монтаж на DIN-рейку",
+            value_type=AttributeValueType.bool, sort=2,
+            value_bool=True,
+        )
+        await self._add_attribute(
+            test_session, test_product,
+            code="brand", name="Бренд",
+            value_type=AttributeValueType.string, sort=3,
+            value_text="Legrand",
+        )
+
+        response = await client.get(f"/api/v1/products/{test_product.id}/detail")
+        assert response.status_code == 200
+        data = response.json()
+
+        assert len(data["attributes"]) == 3
+        by_code = {a["code"]: a for a in data["attributes"]}
+
+        number_attr = by_code["rated_current_a"]
+        assert number_attr["name"] == "Номинальный ток"
+        assert number_attr["value_type"] == "number"
+        assert number_attr["value"] == 16.0
+        assert number_attr["unit"] == "А"
+
+        bool_attr = by_code["is_din_rail"]
+        assert bool_attr["value_type"] == "bool"
+        assert bool_attr["value"] is True
+        assert bool_attr["unit"] is None
+
+        string_attr = by_code["brand"]
+        assert string_attr["value_type"] == "string"
+        assert string_attr["value"] == "Legrand"
+        assert string_attr["unit"] is None
+
+        for attr in data["attributes"]:
+            assert set(attr.keys()) == {"code", "name", "value_type", "value", "unit"}
+
+    @pytest.mark.asyncio
+    async def test_detail_attributes_sorted_by_sort_then_name(self, client, test_session, test_product):
+        """Атрибуты сортируются по Attribute.sort, затем по name."""
+        from src.app.models.attribute import AttributeValueType
+
+        await self._add_attribute(
+            test_session, test_product,
+            code="zzz_last", name="Яблоко",
+            value_type=AttributeValueType.string, sort=2,
+            value_text="last",
+        )
+        await self._add_attribute(
+            test_session, test_product,
+            code="first_b", name="Бета",
+            value_type=AttributeValueType.string, sort=1,
+            value_text="b",
+        )
+        await self._add_attribute(
+            test_session, test_product,
+            code="first_a", name="Альфа",
+            value_type=AttributeValueType.string, sort=1,
+            value_text="a",
+        )
+
+        response = await client.get(f"/api/v1/products/{test_product.id}/detail")
+        assert response.status_code == 200
+        codes = [a["code"] for a in response.json()["attributes"]]
+        assert codes == ["first_a", "first_b", "zzz_last"]
+
+    @pytest.mark.asyncio
+    async def test_detail_without_attributes_returns_empty_list(self, client, test_product):
+        """Товар без атрибутов → attributes: [], 200."""
+        response = await client.get(f"/api/v1/products/{test_product.id}/detail")
+        assert response.status_code == 200
+        assert response.json()["attributes"] == []
+
+    @pytest.mark.asyncio
+    async def test_detail_returns_real_weight_and_dimensions(self, client, test_session, test_product):
+        """Detail отдаёт реальные weight_grams/габариты из БД, а не дефолты схемы (1000/None)."""
+        test_product.weight_grams = 250
+        test_product.length_cm = 12
+        test_product.width_cm = 8
+        test_product.height_cm = 3
+        test_session.add(test_product)
+        await test_session.commit()
+
+        response = await client.get(f"/api/v1/products/{test_product.id}/detail")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["weight_grams"] == 250
+        assert data["length_cm"] == 12
+        assert data["width_cm"] == 8
+        assert data["height_cm"] == 3
+
+    @pytest.mark.asyncio
+    async def test_sku_in_detail_and_list(self, client, test_session, test_product):
+        """sku из БД присутствует в detail; в list поле sku есть (может быть null)."""
+        test_product.sku = "EL-00123"
+        test_session.add(test_product)
+        await test_session.commit()
+
+        response = await client.get(f"/api/v1/products/{test_product.id}/detail")
+        assert response.status_code == 200
+        assert response.json()["sku"] == "EL-00123"
+
+        list_response = await client.get("/api/v1/products/")
+        assert list_response.status_code == 200
+        items = list_response.json()["items"]
+        assert len(items) >= 1
+        assert all("sku" in item for item in items)
+        item = next(i for i in items if i["id"] == test_product.id)
+        assert item["sku"] == "EL-00123"
+
+    @pytest.mark.asyncio
+    async def test_sku_nullable_in_list(self, client, test_product):
+        """У товара без sku поле присутствует и равно null."""
+        response = await client.get("/api/v1/products/")
+        assert response.status_code == 200
+        item = next(i for i in response.json()["items"] if i["id"] == test_product.id)
+        assert item["sku"] is None
+
+    @pytest.mark.asyncio
+    async def test_attribute_with_all_null_values_skipped(self, client, test_session, test_product):
+        """Запись ProductAttributeValue со всеми NULL value-колонками не попадает в ответ."""
+        from src.app.models.attribute import AttributeValueType
+
+        await self._add_attribute(
+            test_session, test_product,
+            code="empty_attr", name="Пустой атрибут",
+            value_type=AttributeValueType.string, sort=1,
+        )
+        await self._add_attribute(
+            test_session, test_product,
+            code="filled_attr", name="Заполненный атрибут",
+            value_type=AttributeValueType.string, sort=2,
+            value_text="значение",
+        )
+
+        response = await client.get(f"/api/v1/products/{test_product.id}/detail")
+        assert response.status_code == 200
+        codes = [a["code"] for a in response.json()["attributes"]]
+        assert codes == ["filled_attr"]
