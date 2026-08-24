@@ -4,6 +4,7 @@ from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, field_serializer
 
+from src.app.models.attribute import AttributeValueType
 from src.app.schemas.review import ReviewOut
 
 
@@ -43,8 +44,19 @@ class ProductUpdate(BaseModel):
     images: Optional[List[str]] = None
 
 
+class ProductAttributeValueOut(BaseModel):
+    """Типизированное значение характеристики товара в detail-ответе (D-02)."""
+
+    code: str
+    name: str
+    value_type: AttributeValueType
+    value: float | bool | str
+    unit: Optional[str] = None
+
+
 class ProductOut(ProductBase):
     id: int
+    sku: Optional[str] = None
     supplier_id: int
     created_at: datetime
     updated_at: datetime
@@ -53,6 +65,7 @@ class ProductOut(ProductBase):
 
 
 class ProductDetailOut(ProductOut):
+    attributes: List[ProductAttributeValueOut] = []
     reviews: List[ReviewOut] = []
     average_rating: float = 0.0
     reviews_count: int = 0
