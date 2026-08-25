@@ -67,6 +67,30 @@ export interface Suggestions {
 const HISTORY_KEY = 'search_history';
 const MAX_HISTORY = 8;
 
+/**
+ * Probe-флаг (issue #171): feature flag `catalog_search_meilisearch` выключен →
+ * `/search/suggestions/` отвечает 404 (by design, D-09). После первого 404
+ * помечаем search API недоступным в sessionStorage и дальше сразу идём
+ * в fallback на `/products/`, не спамя 404 в консоль.
+ */
+const SEARCH_API_DOWN_KEY = 'search_api_unavailable';
+
+function isSearchApiDown(): boolean {
+  try {
+    return sessionStorage.getItem(SEARCH_API_DOWN_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function markSearchApiDown(): void {
+  try {
+    sessionStorage.setItem(SEARCH_API_DOWN_KEY, '1');
+  } catch {
+    // ignore sessionStorage errors
+  }
+}
+
 export function getSearchHistory(): string[] {
   try {
     const raw = localStorage.getItem(HISTORY_KEY);
@@ -141,33 +165,47 @@ export function useSearchSuggestions() {
     try {
       isLoading.value = true;
       error.value = null;
-      const { data } = await api.get<Recommendations>('/search/recommendations/');
-      recommendations.value = data;
-      setCached(key, data);
+      // Backend `/search/recommendations/` не существует (issue #171) —
+      // сразу используем `/products/`, сохраняя формат Recommendations.
+      const { data } = await api.get<{ items: any[]; total: number }>('/products/', {
+        params: { limit: 6 },
+      });
+      recommendations.value = {
+        trending: [],
+        popular_categories: [],
+        recommendations: data.items.map(mapProductItem),
+      };
+      setCached(key, recommendations.value);
     } catch (err: any) {
-      // Fallback to existing /products/ API when search endpoints are not ready
-      try {
-        const { data } = await api.get<{ items: any[]; total: number }>('/products/', {
-          params: { limit: 6 },
-        });
+      if (!recommendations.value) {
         recommendations.value = {
           trending: [],
           popular_categories: [],
-          recommendations: data.items.map(mapProductItem),
+          recommendations: [],
         };
-        setCached(key, recommendations.value);
-      } catch {
-        if (!recommendations.value) {
-          recommendations.value = {
-            trending: [],
-            popular_categories: [],
-            recommendations: [],
-          };
-        }
-        error.value = err?.message || 'Failed to load recommendations';
       }
+      error.value = err?.message || 'Failed to load recommendations';
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  async function fetchSuggestionsFallback(q: string, key: string, originalErr?: any) {
+    // Fallback to existing /products/ API when search endpoints are not ready
+    try {
+      const { data } = await api.get<{ items: any[]; total: number }>('/products/', {
+        params: { q, limit: 5 },
+      });
+      suggestions.value = {
+        queries: [],
+        categories: [],
+        brands: [],
+        products: data.items.map(mapProductItem),
+      };
+      setCached(key, suggestions.value);
+    } catch {
+      suggestions.value = null;
+      error.value = originalErr?.message || 'Failed to load suggestions';
     }
   }
 
@@ -185,27 +223,22 @@ export function useSearchSuggestions() {
     try {
       isLoading.value = true;
       error.value = null;
-      const { data } = await api.get<Suggestions>('/search/suggestions/', {
-        params: { q: q.trim() },
-      });
-      suggestions.value = normalizeSuggestions(data);
-      setCached(key, suggestions.value);
-    } catch (err: any) {
-      // Fallback to existing /products/ API when search endpoints are not ready
+      if (isSearchApiDown()) {
+        // search API помечен недоступным (probe 404) — сразу fallback без запроса
+        await fetchSuggestionsFallback(q.trim(), key);
+        return;
+      }
       try {
-        const { data } = await api.get<{ items: any[]; total: number }>('/products/', {
-          params: { q: q.trim(), limit: 5 },
+        const { data } = await api.get<Suggestions>('/search/suggestions/', {
+          params: { q: q.trim() },
         });
-        suggestions.value = {
-          queries: [],
-          categories: [],
-          brands: [],
-          products: data.items.map(mapProductItem),
-        };
+        suggestions.value = normalizeSuggestions(data);
         setCached(key, suggestions.value);
-      } catch {
-        suggestions.value = null;
-        error.value = err?.message || 'Failed to load suggestions';
+      } catch (err: any) {
+        if (err?.response?.status === 404) {
+          markSearchApiDown();
+        }
+        await fetchSuggestionsFallback(q.trim(), key, err);
       }
     } finally {
       isLoading.value = false;

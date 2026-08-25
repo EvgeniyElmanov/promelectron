@@ -53,6 +53,17 @@ body {
   font-size: 16px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  padding-bottom: var(--bottom-nav-height);
+  padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
   overflow-x: hidden;
+}
+
+/* iOS Safari зумит страницу при фокусе на input с font-size < 16px (issue #171).
+   !important нужен, т.к. многие формы задают font-size: 15px через scoped-классы,
+   которые иначе перебивают элементарный селектор. */
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
 }

@@ -138,6 +138,22 @@
             </svg>
           </router-link>
 
+          <router-link to="/notifications" class="action-btn" data-testid="profile-notifications-link">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+              <path d="M13.73 21a2 2 0 01-3.46 0"/>
+            </svg>
+            <span>Уведомления</span>
+            <span
+              v-if="unreadCount > 0"
+              class="action-badge"
+              data-testid="profile-notifications-badge"
+            >{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
+            <svg class="action-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 18l6-6-6-6"/>
+            </svg>
+          </router-link>
+
           <router-link to="/favorites" class="action-btn">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
@@ -197,10 +213,12 @@ import { useRouter } from 'vue-router';
 import SkeletonProfile from '@/components/SkeletonProfile.vue';
 import api from '@/services/api';
 import { useAuth } from '@/composables/useAuth';
+import { useNotifications } from '@/composables/useNotifications';
 import { formatDate } from '@/utils/date';
 
 const router = useRouter();
 const { user: authUser, logout, isAdmin, isSupplier, resendVerification } = useAuth();
+const { unreadCount } = useNotifications();
 
 const localUser = ref(null);
 const loading = ref(true);
@@ -559,6 +577,20 @@ onMounted(fetchUserProfile);
 .action-chevron {
   margin-left: auto;
   color: var(--color-text-secondary);
+}
+
+.action-badge {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: var(--color-danger);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .profile-empty {

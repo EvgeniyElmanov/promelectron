@@ -45,7 +45,7 @@ const email = computed(() => route.query.email || '');
 .guest-success {
   max-width: 480px;
   margin: 0 auto;
-  padding: 40px 20px calc(24px + var(--bottom-nav-height, 56px));
+  padding: 40px 20px calc(24px + var(--bottom-nav-height, 56px) + env(safe-area-inset-bottom, 0px));
   text-align: center;
   min-height: 100vh;
   background: var(--color-bg);
