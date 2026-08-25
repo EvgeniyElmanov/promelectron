@@ -1,3 +1,32 @@
+### 2026-08-25 | оркестратор | перевод документации docs/ на drawio+SVG в едином тёмном стиле (заказ IT Александр)
+  Все диаграммы документации перегенерированы в стиле референсов (C4, ортогональные стрелки, пунктирные boundary-фреймы, роли [Person], тёмная тема, подписи на русском):
+  - **Тулчейн:** drawio desktop 31.3.2 распакован локально в `~/tools/drawio-dist` (без sudo), обёртка `~/tools/drawio`; headless-рендер `~/tools/drawio -x -f svg`. Генератор `scripts/docs/gen_diagrams.py` (~800 строк) эмитит `.drawio` XML для всех 8 диаграмм из декларативных описаний, флаги `--render`, `--only`.
+  - **Созданы:** `docs/architecture/01-c4-system-context`, `docs/architecture/02-c4-containers` (+README), 5 sequence-флоу в `docs/flows/` (03-order-checkout, 04-cdek-delivery, 05-order-cancel-refund, 06-guest-cart-merge, 07-catalog-1c-sync), `docs/08-ai-agent-pipeline` — каждая `.drawio`+`.svg`, все просмотрены глазами через проверочные PNG. Сквозная нумерация 01–08 задаёт порядок чтения (от общего к частному) в именах файлов, заголовках диаграмм и README.
+  - **Удалены:** все `docs/flows/*.mmd`, `*.png` (включая устаревший `catalog-1c-sync-detailed.*`), `docs/ai-agent-pipeline.mmd`.
+  - **Обновлены:** `docs/flows/README.md` (новая инструкция регенерации, абзацы «Критичное свойство», замечание про Meilisearch приведено к факту — реализован за feature flag), корневой `README.md` (mermaid-блок → SVG), `.kimi-code/skills/flow-implement/SKILL.md` (mermaid-шаблон встроен, т.к. читал удалённый .mmd).
+  - **Уточнения по коду в ходе работы:** Meilisearch реализован (`search_service.py`, feature flag `catalog_search_meilisearch`); `/onec/intake/` существует (#118) — MinIO-вариант в catalog-1c-sync показан пунктирным opt-фреймом.
+  - Компромисс: подписи sequence — отдельные text-ноды, стрелки на абсолютных точках (детерминированный рендер; в GUI не магнитятся — задокументировано в docstring генератора).
+
+### 2026-08-24 | implement (backend-dev, оркестратор) | product-prices-table — цены в product_prices (issue #166, PR #168)
+  Полный цикл /skill:implement в worktree `.worktrees/product-prices-table` (ветка `feature/product-prices-table`):
+  - **Спека/план:** таблица `product_prices` (все виды цен 1С без потерь), `products.price` удалена; сайтовая цена — `column_property` с коррелированным подзапросом по `settings.onec_site_price_type` (env `ONEC_SITE_PRICE_TYPE`, default `"site"`); `onec_price_type_key` удалён из конфига/env/helm.
+  - **Реализация (коммиты 26ea8d8, a7215a8):** модель `ProductPrice` + миграция `a1b2c3d4e5f6` (backfill `price>0 → 'site'`, обратимый downgrade); `services/price_service.py` (get_site_price/upsert_product_price, per-row staleness); webhook + intake (OData/CML) пишут все виды цен, активация товара только сайтовой ценой; заказ снапшотит сайтовую цену под FOR UPDATE (400 для бесценного); CDEK — `price_at_time`; схемы — `price` nullable, `ProductCreate.price gt=0`.
+  - **Review (2 итерации, APPROVED):** ит.1 — 10 findings (HIGH: `changed` всегда True на reparse цен → ломал F007; MEDIUM: `price: null` ронял батч, staleness по разным часам → логирование skip); security-review отдельно — денежное ядро чистое. Все FIXED/VERIFIED.
+  - **H-001 → вариант C:** backfill `'site'` ↔ `ONEC_SITE_PRICE_TYPE`; при подключении реальной 1С — data-миграция `price_type` отдельной задачей (зафиксировано в PROJECT_CONTEXT.md, ограничение №11).
+  - **QA:** 589→**596 passed** (после merge main), lint чисто, миграция upgrade/downgrade/upgrade на чистой БД в Docker — OK. E2E 114 passed/4 skipped.
+  - **Merge с main перед ship:** конфликт в `product_service.py` (импорты) разрешён вручную; PR #167 (PDP attributes) смержен, семантика detail (price + attributes) проверена.
+  - **Инфра-приколы прогона:** свежий worktree — `npm ci` на хосте не ставит optional peer `picomatch` → vite падает; чинится прогоном `npm install` в playwright-контейнере (он ставит), но тот создаёт root-owned файлы → последующие `--user 1000:1000` run'ы падают молча; решается `chown -R 1000:1000` через `docker run node:20-slim`. `make test-e2e` локально по-прежнему сломан (`\&\&` + SEED_SECRET) — ручной обход из LESSONS_LEARNED (2026-08-24).
+  - Review iterations: 2. Estimated tokens: ~9k (оркестратор, без субагентов).
+
+### 2026-08-19 | implement (frontend-dev) | feat-out-of-stock-ui — индикация «Нет в наличии» (issue #163)
+  Реализовано по PLAN.md в worktree `.worktrees/feat-out-of-stock-ui` (ветка `feature/feat-out-of-stock-ui`), коммит `687fabb`:
+  - **`frontend/src/components/ProductCard.vue`**: бейдж «Нет в наличии» (`data-testid="out-of-stock-badge"`, поверх фото, `var(--color-danger)`) при `product.stock === 0`; кнопка `add-to-cart-button` — `:disabled="isLoading || isOutOfStock"` с текстом «Нет в наличии».
+  - **`frontend/src/views/ProductDetail.vue`**: тот же бейдж (`data-testid="pdp-out-of-stock-badge"`, добавлен `position: relative` на `.product-detail__image`); кнопка `pdp-add-to-cart` — `:disabled="cartLoading || isOutOfStock"`.
+  - Backend не тронут: `stock` подтверждён в обоих API (`ProductDetailOut` → `ProductBase.stock`, `SearchItemOut.stock`).
+  - Тесты: +2 кейса в `ProductCard.spec.js`, +2 кейса в `ProductDetail.spec.js` (stock=0/stock>0). Нюанс: в ProductDetail waitFor на позитивный сигнал загрузки (`pdp-title`), т.к. `loading` стартует с `false` и кнопка рендерится до fetch.
+  Проверки: `make test-frontend` — **332 passed (37 файлов)** ✅, `make lint-frontend` — 0 errors ✅. Отклонений от PLAN.md нет.
+  Следующий шаг: code review, затем PR.
+
 ### 2026-08-19 | оркестратор | устранение wip-регрессии коммита 7a89c8d (PyCharm Local History)
   Коммит `7a89c8d` восстановил СТАРЫЕ версии файлов из Local History поверх новых закоммиченных — полный разбор всех 65 затронутых файлов:
   - **backend/src** (6 файлов): восстановлены из `7a89c8d^` — main.py (5 роутеров: cdek/onec/recipients/search/admin_search + serve_upload стриминг из MinIO вместо 307), api/admin.py (order detail, cancel с refund, onec full-sync), api/cdek.py (admin-guard resync, _ensure_sync_job), models/onec_sync.py (OnecIntakeLog — миграция 937fc6751168 существует), models/__init__.py, schemas/__init__.py.
@@ -3679,3 +3708,18 @@
   - Issue #158 переведён в **Done**.
   - Worktree `.worktrees/fix-uploads-cache-onec` оставлен; удаление — по запросу пользователя.
   - Follow-up задачи: #160 (MinIO download_raw error handling), #161 (test_seed_catalog_script.py в Docker).
+
+### 2026-08-19 | orchestrator | feat-out-of-stock-ui — review и PR
+  - Review (iteration 1): code-reviewer APPROVED, 2 OPTIONAL findings (тест на stock: undefined; проверка isOutOfStock внутри addToCart) — не блокируют.
+  - PR #164 открыт: https://github.com/AutonomaCo/promelectron/pull/164, issue #163 → **In review**.
+  - Витрина-проверка на promelectron-test после merge — через сценарий stock_out мока 1С (бейдж должен появиться у товаров с stock=0).
+### 2026-08-24 | implement (оркестратор) | pdp-attributes-sku-stock-0824 — карточка товара: характеристики, артикул, наличие (issue #165, PR #167)
+  Полный пайплайн /skill:implement: spec (architect) → одобрение → параллельные backend-dev/frontend-dev в `.worktrees/pdp-attributes-sku-stock-0824` → contract check → review (APPROVED, 2 LOW в доработку) → QA → E2E → PR.
+  - **Backend**: `ProductDetailOut` + `attributes` (`ProductAttributeValueOut`: code/name/value_type/value/unit; один SQL-запрос join `product_attribute_values → attributes`, `order_by(sort, name)`, skip NULL-записей) и `sku` (только в `ProductOut`, D-01 — мастер 1С, input-схемы не тронуты). Заодно закрыт pre-existing дефект F001: detail-dict не отдавал `weight_grams`/габариты (подставлял дефолты 1000/None).
+  - **Frontend** `ProductDetail.vue`: секция «Характеристики» (`formatAttributeValue`: number+unit, bool → «Да/Нет», string; testid `pdp-attributes`, `pdp-attr-{code}`), артикул `pdp-sku` (v-if), наличие `pdp-stock` + disabled «В корзину» и guard в `addToCart` при stock=0; цвет через `var(--color-danger, #ff4242)` (F003); vitest +ветки bool:false и number без unit (F004).
+  - **Review**: 2 параллельных reviewer'а — оба APPROVED; LOW F001/F003/F004 закрыты dev'ами и верифицированы оркестратором по diff; F002 (API Inventory в PROJECT_CONTEXT.md) закрыт в ветке коммитом cf960c6.
+  - **Тесты**: backend 578 passed/2 skipped; frontend 334/334; e2e 114 passed/4 skipped (pdp.spec.js 3/3 с новым assertion `pdp-stock`); lint весь зелёный.
+  - **Инфра-приколы прогона pre-push** (подробно в LESSONS_LEARNED ×3): root-owned node_modules в worktree (~16k файлов от root-контейнеров, EACCES rmdir — чистка через `--user root` контейнер); `make test-e2e` локально сломан (`\&\&` в Makefile:73 + SEED_SECRET не пробрасывается — ручной обход с `-e SEED_SECRET`); флаки Admin.spec.js по testTimeout 5s под холодным vite-кэшем (изолированно 32/32 за 2.7s, тёплый кэш 334/334 за 10.8s — не регрессия).
+  - **Board**: #165 → In review. PR: https://github.com/AutonomaCo/promelectron/pull/167
+  - Метрики: ~8.3K estimated tokens (оркестратор), review iterations 3, QA 1; `.agent/runs/pdp-attributes-sku-stock-0824/metrics.json`.
+  Следующий шаг: review/merge PR #167 пользователем; после merge — set-status done. Отдельный эпик: изображения из 1С (`Catalog_НоменклатураПрисоединенныеФайлы`).
