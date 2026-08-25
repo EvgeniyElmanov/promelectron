@@ -72,6 +72,23 @@
             @keydown.enter.prevent="onEnter"
             @keydown.esc.prevent="closeDropdown"
           />
+          <button
+            v-if="modelValue"
+            type="button"
+            class="search-bar__clear-btn"
+            data-testid="search-bar-mobile-clear"
+            @click="clearQuery"
+          >
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none">
+              <circle cx="12" cy="12" r="10" stroke="#999" stroke-width="1.5" />
+              <path
+                d="M9 9l6 6M15 9l-6 6"
+                stroke="#999"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+            </svg>
+          </button>
         </div>
         <button
           class="search-bar__mobile-close"
@@ -523,7 +540,8 @@ function selectProduct(product) {
 function clearQuery() {
   emit('update:modelValue', '');
   searchQuery.value = '';
-  inputRef.value?.focus();
+  const targetRef = isMobileOpen.value ? mobileInputRef : inputRef;
+  targetRef.value?.focus();
 }
 
 function openDropdown() {

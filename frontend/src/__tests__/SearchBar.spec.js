@@ -330,6 +330,30 @@ describe('SearchBar.vue — мобильный оверлей (issue #171)', () 
     expect(mockRemoveSearchHistory).toHaveBeenCalledWith('смартфон');
   });
 
+  it('показывает clear-кнопку в мобильном input и очищает запрос', async () => {
+    const wrapper = mount(SearchBar, {
+      props: { modelValue: 'тест' },
+    });
+    await wrapper.find('input[type="text"]').trigger('focus');
+    await nextTick();
+
+    const clearBtn = wrapper.find('[data-testid="search-bar-mobile-clear"]');
+    expect(clearBtn.exists()).toBe(true);
+
+    await clearBtn.trigger('click');
+    expect(wrapper.emitted('update:modelValue')).toBeTruthy();
+    expect(wrapper.emitted('update:modelValue').at(-1)).toEqual(['']);
+  });
+
+  it('не показывает clear-кнопку в мобильном input при пустом запросе', async () => {
+    const wrapper = mount(SearchBar);
+    await wrapper.find('input[type="text"]').trigger('focus');
+    await nextTick();
+
+    expect(wrapper.find('[data-testid="search-bar-mobile-input"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="search-bar-mobile-clear"]').exists()).toBe(false);
+  });
+
   it('кнопка удаления истории видна на touch: opacity: 1 в media (max-width: 767px)', () => {
     const src = readFileSync(
       resolve(__dirname, '../components/SearchBar.vue'),
