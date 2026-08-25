@@ -390,7 +390,7 @@ describe('Cart.vue', () => {
     expect(item.classes()).not.toContain('cart-item--swiped');
   });
 
-  it('помечает swipe-delete кнопку tabindex="-1" и aria-hidden', async () => {
+  it('помечает swipe-delete кнопку tabindex="-1" и aria-hidden до свайпа', async () => {
     const wrapper = mount(Cart, { global: { plugins: [router] } });
     await flushPromises();
 
@@ -398,6 +398,20 @@ describe('Cart.vue', () => {
     expect(deleteBg.exists()).toBe(true);
     expect(deleteBg.attributes('tabindex')).toBe('-1');
     expect(deleteBg.attributes('aria-hidden')).toBe('true');
+  });
+
+  it('делает swipe-delete кнопку доступной после свайпа', async () => {
+    const wrapper = mount(Cart, { global: { plugins: [router] } });
+    await flushPromises();
+
+    const item = wrapper.find('[data-testid="cart-item"]');
+    await item.trigger('touchstart', { touches: [{ clientX: 200 }] });
+    await item.trigger('touchmove', { touches: [{ clientX: 100 }] });
+    expect(item.classes()).toContain('cart-item--swiped');
+
+    const deleteBg = wrapper.find('.cart-item__delete-bg');
+    expect(deleteBg.attributes('tabindex')).toBe('0');
+    expect(deleteBg.attributes('aria-hidden')).toBeUndefined();
   });
 });
 

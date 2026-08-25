@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createRouter, createWebHistory, createMemoryHistory } from 'vue-router'
 import Products from '@/views/Products.vue'
@@ -148,8 +148,14 @@ describe('Products.vue (legacy /products/ при выключенном флаг
 })
 
 describe('Products.vue (search-режим при включённом флаге)', () => {
+  const originalMatchMedia = window.matchMedia
+
   beforeEach(() => {
     mocks.searchEnabled = true
+  })
+
+  afterEach(() => {
+    window.matchMedia = originalMatchMedia
   })
 
   function stubMatchMedia(matches) {
@@ -232,5 +238,25 @@ describe('Products.vue (search-режим при включённом флаге
     const details = wrapper.find('details.home__filter-panel-wrap')
     expect(details.exists()).toBe(true)
     expect(details.attributes('open')).toBeDefined()
+  })
+
+  it('не закрывает панель при toggle вложенного <details> внутри FilterPanel', async () => {
+    stubMatchMedia(true)
+    const wrapper = await mountSearchMode()
+
+    await vi.waitFor(() => {
+      expect(wrapper.find('[data-testid="filter-panel"]').exists()).toBe(true)
+    })
+    const outer = wrapper.find('details.home__filter-panel-wrap')
+    expect(outer.attributes('open')).toBeDefined()
+
+    // toggle у <details> всплывает — имитируем сворачивание внутренней группы фильтров
+    const nested = wrapper.find('details.home__filter-panel-wrap details')
+    expect(nested.exists()).toBe(true)
+    nested.element.open = false
+    nested.element.dispatchEvent(new Event('toggle', { bubbles: true }))
+    await wrapper.vm.$nextTick()
+
+    expect(outer.attributes('open')).toBeDefined()
   })
 })

@@ -170,7 +170,9 @@ const filtersOpen = ref(
     : true
 );
 const onFiltersToggle = (event) => {
-  filtersOpen.value = event.target.open;
+  // toggle всплывает от вложенных <details> внутри FilterPanel — реагируем только на внешний
+  if (event.target !== event.currentTarget) return;
+  filtersOpen.value = event.currentTarget.open;
 };
 
 // Search-режим (feature flag `catalog_search_meilisearch`, D-01/D-05):
