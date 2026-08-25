@@ -515,6 +515,13 @@ onMounted(() => {
   cursor: pointer;
 }
 
+@media (max-width: 767px) {
+  .modal__close {
+    min-width: 40px;
+    min-height: 40px;
+  }
+}
+
 .modal__form {
   display: flex;
   flex-direction: column;

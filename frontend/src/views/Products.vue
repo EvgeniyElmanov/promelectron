@@ -65,7 +65,12 @@
       </div>
 
       <div class="home__catalog" :class="{ 'home__catalog--search': searchAvailable }">
-        <details v-if="searchAvailable" class="home__filter-panel-wrap" open>
+        <details
+          v-if="searchAvailable"
+          class="home__filter-panel-wrap"
+          :open="filtersOpen"
+          @toggle="onFiltersToggle"
+        >
           <summary class="home__filter-panel-summary">Фильтры</summary>
           <FilterPanel
             :facets="facets"
@@ -155,6 +160,18 @@ const skip = ref(0);
 const limit = 20;
 const total = ref(null);
 const loadMoreTrigger = ref(null);
+
+// Фильтры каталога: на мобилке (<768px) свёрнуты по умолчанию, на десктопе развёрнуты.
+// Только initial-состояние; дальше пользователь управляет <details> сам (@toggle синкает ref,
+// чтобы re-render не сбрасывал ручное переключение).
+const filtersOpen = ref(
+  typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+    ? window.matchMedia('(min-width: 768px)').matches
+    : true
+);
+const onFiltersToggle = (event) => {
+  filtersOpen.value = event.target.open;
+};
 
 // Search-режим (feature flag `catalog_search_meilisearch`, D-01/D-05):
 // probe решает, работаем ли через /api/v1/search/ или legacy /products/.
@@ -598,6 +615,15 @@ onMounted(async () => {
   background: var(--color-bg-white);
   font-size: 13px;
   color: var(--color-text-secondary);
+}
+
+@media (max-width: 767px) {
+  .home__rating-btn,
+  .home__rating-clear {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+  }
 }
 
 .home__header-row {

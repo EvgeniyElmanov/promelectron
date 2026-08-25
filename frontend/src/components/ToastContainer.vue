@@ -81,6 +81,19 @@ const { toasts, remove } = useToast();
   flex-shrink: 0;
 }
 
+/* Touch target ≥40px без изменения визуального размера (прозрачный хит-бокс) */
+@media (max-width: 767px) {
+  .toast__close {
+    position: relative;
+  }
+
+  .toast__close::after {
+    content: '';
+    position: absolute;
+    inset: -11px;
+  }
+}
+
 @keyframes slideIn {
   from {
     opacity: 0;

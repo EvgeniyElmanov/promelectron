@@ -152,6 +152,17 @@ describe('Products.vue (search-режим при включённом флаге
     mocks.searchEnabled = true
   })
 
+  function stubMatchMedia(matches) {
+    window.matchMedia = vi.fn().mockImplementation((query) => ({
+      matches,
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+    }))
+  }
+
   async function mountSearchMode(url = '/') {
     const router = createRouter({
       history: createMemoryHistory(),
@@ -197,5 +208,29 @@ describe('Products.vue (search-режим при включённом флаге
     })
     const checkbox = wrapper.find('[data-testid="filter-value-brand-0"]')
     expect(checkbox.element.checked).toBe(true)
+  })
+
+  it('сворачивает панель фильтров по умолчанию на мобилке (<768px)', async () => {
+    stubMatchMedia(false)
+    const wrapper = await mountSearchMode()
+
+    await vi.waitFor(() => {
+      expect(wrapper.find('[data-testid="filter-panel"]').exists()).toBe(true)
+    })
+    const details = wrapper.find('details.home__filter-panel-wrap')
+    expect(details.exists()).toBe(true)
+    expect(details.attributes('open')).toBeUndefined()
+  })
+
+  it('оставляет панель фильтров развёрнутой по умолчанию на десктопе (>=768px)', async () => {
+    stubMatchMedia(true)
+    const wrapper = await mountSearchMode()
+
+    await vi.waitFor(() => {
+      expect(wrapper.find('[data-testid="filter-panel"]').exists()).toBe(true)
+    })
+    const details = wrapper.find('details.home__filter-panel-wrap')
+    expect(details.exists()).toBe(true)
+    expect(details.attributes('open')).toBeDefined()
   })
 })
