@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { goToCart, getInStockProductCard } from './helpers.js';
+import { goToCart, getInStockProductCard, openFiltersPanel } from './helpers.js';
 
 function uniqueEmail() {
   return `test_${Date.now()}_w${test.info().workerIndex}@example.com`;
@@ -57,6 +57,7 @@ test.describe('Facet filters (feature flag catalog_search_meilisearch)', () => {
 
   test('выбор значения фасета фильтрует выдачу, URL отражает фильтр, counts не обнуляются', async ({ page }) => {
     await page.goto('/');
+    await openFiltersPanel(page);
     await expect(page.locator('[data-testid="filter-panel"]')).toBeVisible();
 
     const firstValue = page.locator('[data-testid^="filter-value-"]').first();
@@ -76,6 +77,7 @@ test.describe('Facet filters (feature flag catalog_search_meilisearch)', () => {
 
   test('перезагрузка по URL восстанавливает состояние фильтров', async ({ page }) => {
     await page.goto('/');
+    await openFiltersPanel(page);
     await expect(page.locator('[data-testid="filter-panel"]')).toBeVisible();
 
     const firstValue = page.locator('[data-testid^="filter-value-"]').first();
@@ -84,12 +86,14 @@ test.describe('Facet filters (feature flag catalog_search_meilisearch)', () => {
 
     const url = page.url();
     await page.goto(url);
+    await openFiltersPanel(page);
     await expect(page.locator('[data-testid="filter-panel"]')).toBeVisible();
     await expect(page.locator('[data-testid^="filter-value-"]').first()).toBeChecked();
   });
 
   test('фильтр цены шлёт price_min/price_max в URL', async ({ page }) => {
     await page.goto('/');
+    await openFiltersPanel(page);
     await expect(page.locator('[data-testid="filter-price-min"]')).toBeVisible();
 
     await page.fill('[data-testid="filter-price-min"]', '1000');
@@ -102,6 +106,7 @@ test.describe('Facet filters (feature flag catalog_search_meilisearch)', () => {
 
   test('filter-reset сбрасывает фильтры и URL', async ({ page }) => {
     await page.goto('/');
+    await openFiltersPanel(page);
     await expect(page.locator('[data-testid="filter-panel"]')).toBeVisible();
 
     await page.locator('[data-testid^="filter-value-"]').first().click();
