@@ -6,6 +6,19 @@
         Корзина
         <span v-if="itemCount > 0" class="cart__count">{{ itemCount }}</span>
       </h1>
+      <label
+        v-if="cart.items && cart.items.length > 0"
+        class="cart__select-all"
+        data-testid="cart-select-all"
+      >
+        <input
+          type="checkbox"
+          :checked="areAllSelected"
+          :indeterminate.prop="isPartiallySelected"
+          @change="toggleSelectAll"
+        />
+        <span>Выбрать все</span>
+      </label>
     </div>
 
     <!-- Loading -->
@@ -56,6 +69,15 @@
 
           <!-- Swipeable Content -->
           <div class="cart-item__content">
+            <!-- Item selection checkbox -->
+            <label class="cart-item__select" data-testid="cart-item-select">
+              <input
+                type="checkbox"
+                :checked="item.selected !== false"
+                @change="toggleItemSelection(item)"
+              />
+            </label>
+
             <!-- Product Image -->
             <div class="cart-item__image" @click="goToProduct(item.product?.id)">
               <img
@@ -138,7 +160,7 @@
         <div v-if="isAuthenticated" class="cart__summary-section">
           <CdekDeliveryWidget
             v-model="selectedDelivery"
-            :items="cart.items"
+            :items="selectedItems"
             :supplier-city-code="supplierCityCode"
             :is-fallback="isFallback"
           />
@@ -255,7 +277,7 @@
       <button
         class="cart__checkout-btn"
         data-testid="checkout-button"
-        :disabled="creatingOrder || (isAuthenticated && (!isDeliveryValid || !isRecipientValid))"
+        :disabled="creatingOrder || selectedItems.length === 0 || (isAuthenticated && (!isDeliveryValid || !isRecipientValid))"
         @click="createOrder"
       >
         {{ creatingOrder ? 'Оформление...' : 'Оформить заказ' }}
@@ -273,6 +295,7 @@ import { useCart } from '@/composables/useCart';
 import { useToast } from '@/composables/useToast';
 import { useRecipients } from '@/composables/useRecipients';
 import { getSupplierCityCode } from '@/api/cdek';
+import { selectCartItem, selectAllCartItems, deselectAllCartItems } from '@/api/cart';
 import { normalizePhone } from '@/composables/useGuestCheckout';
 import { formatPrice } from '@/utils/price';
 import CdekDeliveryWidget from '@/components/CdekDeliveryWidget.vue';
@@ -299,13 +322,85 @@ const isFallback = ref(false);
 const router = useRouter();
 const { add: toast } = useToast();
 const { isAuthenticated } = useAuth();
-const { getGuestCartItems, updateQuantity: updateGuestQuantity, removeFromCart: removeGuestItem, syncCartCount } = useCart();
+const {
+  getGuestCartItems,
+  selectItem: selectGuestItem,
+  selectAll: selectAllGuestItems,
+  deselectAll: deselectAllGuestItems,
+  updateQuantity: updateGuestQuantity,
+  removeFromCart: removeGuestItem,
+  syncCartCount,
+} = useCart();
 const { recipients, loading: recipientsLoading, loadRecipients, defaultRecipient } = useRecipients();
 
 // Swipe state
 const touchStartX = ref(0);
 const touchStartY = ref(0);
 const swipedItemId = ref(null);
+
+const selectedItems = computed(() => {
+  return (cart.value.items || []).filter((item) => item.selected !== false);
+});
+
+const areAllSelected = computed(() => {
+  const items = cart.value.items || [];
+  return items.length > 0 && items.every((item) => item.selected !== false);
+});
+
+const isPartiallySelected = computed(() => {
+  return selectedItems.value.length > 0 && !areAllSelected.value;
+});
+
+const toggleItemSelection = async (item) => {
+  const newValue = item.selected === false;
+  if (isAuthenticated.value) {
+    // Оптимистичное обновление; при ошибке — откат через fetchCart()
+    item.selected = newValue;
+    try {
+      await selectCartItem(item.id, newValue);
+    } catch {
+      toast('Не удалось изменить выбор товара', 'error');
+      await fetchCart();
+    }
+    return;
+  }
+  try {
+    await selectGuestItem(item.product_id, newValue);
+    await fetchCart();
+  } catch {
+    toast('Не удалось изменить выбор товара', 'error');
+  }
+};
+
+const toggleSelectAll = async () => {
+  const target = !areAllSelected.value;
+  if (isAuthenticated.value) {
+    cart.value.items.forEach((item) => {
+      item.selected = target;
+    });
+    try {
+      if (target) {
+        await selectAllCartItems();
+      } else {
+        await deselectAllCartItems();
+      }
+    } catch {
+      toast('Не удалось изменить выбор товаров', 'error');
+      await fetchCart();
+    }
+    return;
+  }
+  try {
+    if (target) {
+      await selectAllGuestItems();
+    } else {
+      await deselectAllGuestItems();
+    }
+    await fetchCart();
+  } catch {
+    toast('Не удалось изменить выбор товаров', 'error');
+  }
+};
 
 const isDeliveryValid = computed(() => {
   return selectedDelivery.value && selectedDelivery.value.tariff_code;
@@ -328,7 +423,7 @@ const isRecipientValid = computed(() => {
 });
 
 const supplierId = computed(() => {
-  const firstItem = cart.value.items?.[0];
+  const firstItem = selectedItems.value?.[0] ?? cart.value.items?.[0];
   return firstItem?.product?.supplier_id ?? null;
 });
 
@@ -354,11 +449,11 @@ const loadSupplierCityCode = async () => {
 };
 
 const itemCount = computed(() => {
-  return cart.value.items.reduce((sum, item) => sum + (item.quantity || 0), 0);
+  return selectedItems.value.reduce((sum, item) => sum + (item.quantity || 0), 0);
 });
 
 const itemsTotal = computed(() => {
-  return cart.value.items.reduce((total, item) => {
+  return selectedItems.value.reduce((total, item) => {
     return total + (item.product?.price || 0) * (item.quantity || 0);
   }, 0);
 });
@@ -428,6 +523,7 @@ const fetchCart = async () => {
           id: `guest-${item.product_id}`,
           product_id: item.product_id,
           quantity: item.quantity,
+          selected: item.selected !== false,
           product: {
             id: item.product_id,
             name: item.name,
@@ -508,6 +604,10 @@ const createOrder = async () => {
   if (creatingOrder.value) return;
   if (!isAuthenticated.value) {
     router.push('/login?redirect=/cart');
+    return;
+  }
+  if (selectedItems.value.length === 0) {
+    toast('Выберите товары для оформления', 'error');
     return;
   }
   if (!isDeliveryValid.value) {
@@ -610,6 +710,35 @@ watch(supplierId, () => {
   border-radius: 12px;
 }
 
+.cart__select-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 14px;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.cart__select-all input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+@media (min-width: 768px) {
+  .cart__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .cart__select-all {
+    margin-top: 0;
+  }
+}
+
 /* Loading */
 .cart__loading {
   text-align: center;
@@ -686,6 +815,21 @@ watch(supplierId, () => {
 
 .cart-item--swiped .cart-item__content {
   transform: translateX(-80px);
+}
+
+.cart-item__select {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding-top: 24px;
+}
+
+.cart-item__select input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--color-primary);
+  cursor: pointer;
 }
 
 /* Image */

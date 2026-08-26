@@ -34,6 +34,18 @@ vi.mock('@/composables/useAuth', () => ({
 const mockGuestItems = ref([]);
 const mockCartCount = ref(0);
 const mockSyncCartCount = vi.hoisted(() => vi.fn());
+const mockSelectItem = vi.hoisted(() => vi.fn(() => Promise.resolve()));
+const mockSelectAll = vi.hoisted(() => vi.fn(() => Promise.resolve()));
+const mockDeselectAll = vi.hoisted(() => vi.fn(() => Promise.resolve()));
+const mockApiSelectCartItem = vi.hoisted(() => vi.fn(() => Promise.resolve({ data: {} })));
+const mockApiSelectAll = vi.hoisted(() => vi.fn(() => Promise.resolve({ data: {} })));
+const mockApiDeselectAll = vi.hoisted(() => vi.fn(() => Promise.resolve({ data: {} })));
+
+vi.mock('@/api/cart', () => ({
+  selectCartItem: mockApiSelectCartItem,
+  selectAllCartItems: mockApiSelectAll,
+  deselectAllCartItems: mockApiDeselectAll,
+}));
 
 vi.mock('@/api/cdek', () => ({
   getSupplierCityCode: vi.fn(() => Promise.resolve(44)),
@@ -58,7 +70,11 @@ vi.mock('@/composables/useCart', () => ({
     addToCart: vi.fn(),
     removeFromCart: vi.fn(),
     updateQuantity: vi.fn(),
+    selectItem: mockSelectItem,
+    selectAll: mockSelectAll,
+    deselectAll: mockDeselectAll,
     getGuestCartItems: () => mockGuestItems.value,
+    getSelectedGuestCartItems: () => mockGuestItems.value.filter((i) => i.selected !== false),
     clearGuestCart: vi.fn(),
     mergeCartOnLogin: vi.fn(),
     syncCartCount: mockSyncCartCount,
@@ -102,6 +118,7 @@ const mockCartWithItems = {
       id: 101,
       product_id: 1,
       quantity: 2,
+      selected: true,
       product: {
         id: 1,
         name: 'Смартфон Pro',
@@ -115,6 +132,7 @@ const mockCartWithItems = {
       id: 102,
       product_id: 2,
       quantity: 1,
+      selected: true,
       product: {
         id: 2,
         name: 'Наушники Wireless',
@@ -157,7 +175,7 @@ describe('Cart.vue', () => {
     mockRecipientsLoading.value = false;
     getSupplierCityCode.mockResolvedValue(44);
     mockGet.mockImplementation((url) => {
-      if (url === '/cart/') return Promise.resolve({ data: mockCartWithItems });
+      if (url === '/cart/') return Promise.resolve({ data: structuredClone(mockCartWithItems) });
       if (url === '/auth/profile') return Promise.resolve({ data: {} });
       if (url === '/delivery-methods/') return Promise.resolve({ data: [] });
       if (url === '/me/recipients/') return Promise.resolve({ data: mockSavedRecipients });
@@ -367,6 +385,188 @@ describe('Cart.vue', () => {
     expect(wrapper.find('[data-testid="cdek-fallback-hint"]').exists()).toBe(true);
   });
 
+  it('отображает чекбокс выбора для каждого товара', async () => {
+    const wrapper = mount(Cart, { global: { plugins: [router] } });
+    await flushPromises();
+
+    const checkboxes = wrapper.findAll('[data-testid="cart-item-select"] input');
+    expect(checkboxes.length).toBe(2);
+    expect(checkboxes[0].element.checked).toBe(true);
+    expect(checkboxes[1].element.checked).toBe(true);
+  });
+
+  it('отображает чекбокс "Выбрать все"', async () => {
+    const wrapper = mount(Cart, { global: { plugins: [router] } });
+    await flushPromises();
+
+    const selectAll = wrapper.find('[data-testid="cart-select-all"]');
+    expect(selectAll.exists()).toBe(true);
+    expect(selectAll.find('input').element.checked).toBe(true);
+    expect(selectAll.find('input').element.indeterminate).toBe(false);
+  });
+
+  it('помечает "Выбрать все" indeterminate при частичном выборе', async () => {
+    const mixedCart = {
+      ...mockCartWithItems,
+      items: [
+        { ...mockCartWithItems.items[0], selected: true },
+        { ...mockCartWithItems.items[1], selected: false },
+      ],
+    };
+    mockGet.mockImplementation((url) => {
+      if (url === '/cart/') return Promise.resolve({ data: mixedCart });
+      if (url === '/auth/profile') return Promise.resolve({ data: {} });
+      if (url === '/delivery-methods/') return Promise.resolve({ data: [] });
+      if (url === '/me/recipients/') return Promise.resolve({ data: mockSavedRecipients });
+      return Promise.resolve({ data: {} });
+    });
+
+    const wrapper = mount(Cart, { global: { plugins: [router] } });
+    await flushPromises();
+
+    const input = wrapper.find('[data-testid="cart-select-all"] input');
+    expect(input.element.checked).toBe(false);
+    expect(input.element.indeterminate).toBe(true);
+  });
+
+  it('считает итоги только по выбранным товарам', async () => {
+    const unselectedCart = {
+      ...mockCartWithItems,
+      items: mockCartWithItems.items.map((item, index) => ({
+        ...item,
+        selected: index === 0,
+      })),
+    };
+    mockGet.mockImplementation((url) => {
+      if (url === '/cart/') return Promise.resolve({ data: unselectedCart });
+      if (url === '/auth/profile') return Promise.resolve({ data: {} });
+      if (url === '/delivery-methods/') return Promise.resolve({ data: [] });
+      if (url === '/me/recipients/') return Promise.resolve({ data: mockSavedRecipients });
+      return Promise.resolve({ data: {} });
+    });
+
+    const wrapper = mount(Cart, { global: { plugins: [router] } });
+    await flushPromises();
+
+    // Выбран только первый товар: 29990 * 2 = 59980; полный итог 64970 не показывается
+    expect(wrapper.text()).toContain('59\u00A0980');
+    expect(wrapper.text()).not.toContain('64\u00A0970');
+  });
+
+  it('блокирует кнопку оформления, когда нет выбранных товаров', async () => {
+    const emptySelectionCart = {
+      ...mockCartWithItems,
+      items: mockCartWithItems.items.map((item) => ({ ...item, selected: false })),
+    };
+    mockGet.mockImplementation((url) => {
+      if (url === '/cart/') return Promise.resolve({ data: emptySelectionCart });
+      if (url === '/auth/profile') return Promise.resolve({ data: {} });
+      if (url === '/delivery-methods/') return Promise.resolve({ data: [] });
+      if (url === '/me/recipients/') return Promise.resolve({ data: mockSavedRecipients });
+      return Promise.resolve({ data: {} });
+    });
+
+    const wrapper = mount(Cart, { global: { plugins: [router] } });
+    await flushPromises();
+
+    const btn = wrapper.find('[data-testid="checkout-button"]');
+    expect(btn.attributes('disabled')).toBeDefined();
+  });
+
+  it('передаёт в CDEK-виджет только выбранные товары', async () => {
+    const unselectedCart = {
+      ...mockCartWithItems,
+      items: [
+        { ...mockCartWithItems.items[0], selected: true },
+        { ...mockCartWithItems.items[1], selected: false },
+      ],
+    };
+    mockGet.mockImplementation((url) => {
+      if (url === '/cart/') return Promise.resolve({ data: unselectedCart });
+      if (url === '/auth/profile') return Promise.resolve({ data: {} });
+      if (url === '/delivery-methods/') return Promise.resolve({ data: [] });
+      if (url === '/me/recipients/') return Promise.resolve({ data: mockSavedRecipients });
+      return Promise.resolve({ data: {} });
+    });
+
+    const wrapper = mount(Cart, { global: { plugins: [router] } });
+    await flushPromises();
+
+    const widget = wrapper.findComponent({ name: 'CdekDeliveryWidget' });
+    expect(widget.props('items').length).toBe(1);
+    expect(widget.props('items')[0].product.name).toBe('Смартфон Pro');
+  });
+
+  it('переключает выбор товара через API (auth)', async () => {
+    const wrapper = mount(Cart, { global: { plugins: [router] } });
+    await flushPromises();
+
+    const checkboxes = wrapper.findAll('[data-testid="cart-item-select"] input');
+    await checkboxes[0].setValue(false);
+    await flushPromises();
+
+    expect(mockApiSelectCartItem).toHaveBeenCalledWith(101, false);
+    // Оптимистичное обновление: чекбокс снят без перезагрузки корзины
+    expect(checkboxes[0].element.checked).toBe(false);
+  });
+
+  it('откатывает выбор через fetchCart при ошибке API', async () => {
+    mockApiSelectCartItem.mockRejectedValueOnce(new Error('Network error'));
+
+    const wrapper = mount(Cart, { global: { plugins: [router] } });
+    await flushPromises();
+
+    const initialCalls = mockGet.mock.calls.length;
+    const checkboxes = wrapper.findAll('[data-testid="cart-item-select"] input');
+    await checkboxes[0].setValue(false);
+    await flushPromises();
+
+    expect(mockApiSelectCartItem).toHaveBeenCalledWith(101, false);
+    expect(mockGet.mock.calls.length).toBeGreaterThan(initialCalls);
+    // После отката мок возвращает selected: true
+    expect(wrapper.findAll('[data-testid="cart-item-select"] input')[0].element.checked).toBe(true);
+  });
+
+  it('снимает выбор со всех товаров через API при клике на "Выбрать все"', async () => {
+    const wrapper = mount(Cart, { global: { plugins: [router] } });
+    await flushPromises();
+
+    const selectAll = wrapper.find('[data-testid="cart-select-all"] input');
+    await selectAll.setValue(false);
+    await flushPromises();
+
+    expect(mockApiDeselectAll).toHaveBeenCalled();
+    const checkboxes = wrapper.findAll('[data-testid="cart-item-select"] input');
+    expect(checkboxes[0].element.checked).toBe(false);
+    expect(checkboxes[1].element.checked).toBe(false);
+  });
+
+  it('выбирает все товары через API при частичном выборе', async () => {
+    const mixedCart = {
+      ...mockCartWithItems,
+      items: [
+        { ...mockCartWithItems.items[0], selected: true },
+        { ...mockCartWithItems.items[1], selected: false },
+      ],
+    };
+    mockGet.mockImplementation((url) => {
+      if (url === '/cart/') return Promise.resolve({ data: mixedCart });
+      if (url === '/auth/profile') return Promise.resolve({ data: {} });
+      if (url === '/delivery-methods/') return Promise.resolve({ data: [] });
+      if (url === '/me/recipients/') return Promise.resolve({ data: mockSavedRecipients });
+      return Promise.resolve({ data: {} });
+    });
+
+    const wrapper = mount(Cart, { global: { plugins: [router] } });
+    await flushPromises();
+
+    const selectAll = wrapper.find('[data-testid="cart-select-all"] input');
+    await selectAll.setValue(true);
+    await flushPromises();
+
+    expect(mockApiSelectAll).toHaveBeenCalled();
+  });
+
   it('показывает swipe-delete по свайпу влево', async () => {
     const wrapper = mount(Cart, { global: { plugins: [router] } });
     await flushPromises();
@@ -424,6 +624,7 @@ describe('Cart.vue — гостевая корзина', () => {
       {
         product_id: 10,
         quantity: 3,
+        selected: true,
         name: 'Гостевой товар',
         price: 1500,
         stock: 8,
@@ -474,6 +675,52 @@ describe('Cart.vue — гостевая корзина', () => {
     expect(wrapper.text()).not.toContain('Способ доставки');
     expect(wrapper.find('[data-testid="address-form"]').exists()).toBe(false);
   });
+
+  it('переключает выбор товара через localStorage-хелпер (guest)', async () => {
+    const wrapper = mount(Cart, { global: { plugins: [router] } });
+    await flushPromises();
+
+    const checkbox = wrapper.find('[data-testid="cart-item-select"] input');
+    expect(checkbox.exists()).toBe(true);
+    await checkbox.setValue(false);
+    await flushPromises();
+
+    expect(mockSelectItem).toHaveBeenCalledWith(10, false);
+    expect(mockApiSelectCartItem).not.toHaveBeenCalled();
+  });
+
+  it('выбирает все товары через localStorage-хелпер (guest)', async () => {
+    mockGuestItems.value = [
+      { product_id: 10, quantity: 3, selected: false, name: 'Гостевой товар', price: 1500, stock: 8, images: [] },
+    ];
+
+    const wrapper = mount(Cart, { global: { plugins: [router] } });
+    await flushPromises();
+
+    const selectAll = wrapper.find('[data-testid="cart-select-all"] input');
+    await selectAll.setValue(true);
+    await flushPromises();
+
+    expect(mockSelectAll).toHaveBeenCalled();
+    expect(mockApiSelectAll).not.toHaveBeenCalled();
+  });
+
+  it('считает итоги только по выбранным товарам для гостя', async () => {
+    mockGuestItems.value = [
+      { product_id: 11, quantity: 2, selected: true, name: 'Выбранный товар', price: 1000, stock: 5, images: [] },
+      { product_id: 12, quantity: 1, selected: false, name: 'Невыбранный товар', price: 2000, stock: 3, images: [] },
+    ];
+    mockCartCount.value = 2;
+
+    const wrapper = mount(Cart, { global: { plugins: [router] } });
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Выбранный товар');
+    expect(wrapper.text()).toContain('Невыбранный товар');
+    // Итог по выбранным: 2 * 1000 = 2000; полный итог 4000 не показывается
+    expect(wrapper.text()).toContain('2 000');
+    expect(wrapper.text()).not.toContain('4 000');
+  });
 });
 
 describe('Cart.vue — свайп-удаление (mobile)', () => {
@@ -486,7 +733,7 @@ describe('Cart.vue — свайп-удаление (mobile)', () => {
     mockRecipientsLoading.value = false;
     getSupplierCityCode.mockResolvedValue(44);
     mockGet.mockImplementation((url) => {
-      if (url === '/cart/') return Promise.resolve({ data: mockCartWithItems });
+      if (url === '/cart/') return Promise.resolve({ data: structuredClone(mockCartWithItems) });
       if (url === '/auth/profile') return Promise.resolve({ data: {} });
       if (url === '/delivery-methods/') return Promise.resolve({ data: [] });
       if (url === '/me/recipients/') return Promise.resolve({ data: mockSavedRecipients });
