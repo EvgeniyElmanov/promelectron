@@ -288,3 +288,87 @@ Backend-под уходил в CrashLoopBackOff при деплое в `promelec
 **Решение:** `sort` перед `stock:desc` (PR #143). Без sort-параметра `sort` — no-op и `stock:desc` по-прежнему поднимает товары в наличии. После правки rankingRules обязателен full reindex (`POST /admin/search/reindex/`) — settings применяются только при provision во время swap.
 
 **Профилактика:** любое кастомное ranking rule ставить ПОСЛЕ `sort`, если явная сортировка должна побеждать; проверять сортировку живым запросом к Meilisearch, а не только первыми N результатами (первые могут совпасть случайно). E2E-спеки, зависящие от режима каталога, должны probe'ить feature flag (паттерн из `catalog.spec.js`) — `search-filter.spec.js` этого не делал и ломался при переключении флага.
+
+---
+
+## 2026-08-24 | pdp-attributes-sku-stock-0824: root-owned node_modules в worktree ломает `make pre-push` (EACCES rmdir)
+
+**Ошибка:** `make pre-push` в worktree падал на `lint-frontend`: `npm ci` в контейнере (`--user 1000:1000`) — `EACCES: permission denied, rmdir '/app/node_modules/.vite/deps'`, после чистки `.vite` — то же на `@bramus/specificity`.
+
+**Причина:** стадии dev/e2e-окружения, работающие от root, пишут в смонтированный `frontend/` worktree — `node_modules` оказался почти целиком root-овым (~16k файлов). Контейнер с `DOCKER_USER=1000:1000` не может удалить root-файлы.
+
+**Решение:** удалить poisoned-дерево через root-контейнер: `docker compose -f frontend/docker-compose.yml -p promelectron run --rm --user root --entrypoint "" frontend-test rm -rf /app/node_modules /app/.npm`. Диагностика: `find frontend -uid 0 | wc -l`.
+
+**Профилактика:** после прогонов e2e/dev-окружения в worktree проверять `find frontend -uid 0` перед host/container-стадиями с `--user 1000:1000`; по возможности не давать контейнерам root при монтировании исходников.
+
+---
+
+## 2026-08-24 | pdp-attributes-sku-stock-0824: `make test-e2e` локально падает мгновенно и молча (Makefile `\&\&` + SEED_SECRET)
+
+**Ошибка:** `make test-e2e` в worktree падал с `Ошибка 1` через секунду после старта контейнера, без какого-либо вывода тестов.
+
+**Причина:** двойная: (1) в recipe `Makefile:73` внутри `sh -c "..."` стоит `\&\&` — контейнерный sh трактует `\&` как литерал, npm получает `&& npx playwright test` как аргументы и падает; (2) `SEED_SECRET` не пробрасывается в контейнер, а `e2e/global-setup.js` делает fail-fast без него (F006/S001).
+
+**Решение:** запускать эквивалент вручную: `SEED_SECRET=promelectron-test-seed-2024 docker compose -f frontend/docker-compose.yml -p promelectron run --rm --user 1000:1000 -e SEED_SECRET frontend sh -c 'npm install --silent && npx playwright test --workers=1'` (dev-placeholder из `.env.example`, backend в non-production принимает его по умолчанию). Прогон: 114 passed, 4 skipped.
+
+**Профилактика:** Makefile target `test-e2e` требует починки (убрать `\&\&`, добавить `-e SEED_SECRET`) — вынесено как pipeline improvement; до починки использовать ручную команду выше.
+
+---
+
+## 2026-08-24 | pdp-attributes-sku-stock-0824: флаки Admin.spec.js по testTimeout 5s под холодным vite-кэшем
+
+**Ошибка:** два полных контейнерных прогона vitest подряд падали ровно на одном тесте `Admin.spec.js` (каждый раз разном: «не отменяет заказ при отказе в confirm», «в модалке редактирования заказа нет опции „Отменён"») — `Test timed out in 5000ms`.
+
+**Причина:** оба прогона шли сразу после `npm ci` (lint-frontend стадия вайпит node_modules → холодный transform-кэш, 126s transform на весь suite); тяжёлый mount `Admin.vue` под нагрузкой параллельных файлов не укладывался в 5s. К diff задачи отношения нет (Admin.vue не трогали).
+
+**Решение:** диагностика флаки: изолированный прогон `npx vitest run src/__tests__/Admin.spec.js` в том же контейнере — 32/32 за 2.7s; повторный полный прогон с тёплым кэшем — 334/334 за 10.8s. Код не меняли.
+
+**Профилактика:** прежде чем чинить «падающий» тест — прогнать файл изолированно и повторить полный suite с тёплым кэшем; разным падениям разных тестов одного файла под нагрузкой почти всегда соответствует тайминг-флаки, а не регрессия.
+
+---
+
+## 2026-08-24 | product-prices-table: свежий worktree + pre-push = битый node_modules (optional peer + root-owned файлы)
+
+**Ошибка:** `make pre-push` в свежем worktree зависал на E2E: vite падал с `ERR_MODULE_NOT_FOUND: picomatch`, а после ручной починки `docker compose run --user 1000:1000 ... npm install` падал мгновенно и молча.
+
+**Причина:** цепочка из трёх: (1) host `npm ci` (npm на хосте) НЕ ставит optional peer `picomatch`, хотя он есть в lock — vite без него не стартует; (2) контейнерный `npm install` (playwright-образ, root) picomatch доставляет, но создаёт root-owned файлы в примонтированном `node_modules`; (3) последующие `run --user 1000:1000` не могут писать в root-owned директории и падают без вывода (`--silent`).
+
+**Решение:** порядок действий для свежего worktree: host `npm ci` → один прогон `docker run --rm -v $PWD:/app -w /app mcr.microsoft.com/playwright:v1.61.0-jammy npm install --silent` (доставляет optional peers) → `docker run --rm -v $PWD:/app node:20-slim chown -R 1000:1000 /app/node_modules` → дальше E2E ручной командой из урока выше (Makefile `test-e2e` всё ещё сломан: `\&\&` + SEED_SECRET).
+
+**Профилактика:** в `implement-pipeline.py create-worktree` добавить шаг подготовки frontend-зависимостей (npm ci + контейнерный npm install + chown), либо монтировать named volume для node_modules в `frontend/docker-compose.yml`, чтобы контейнерный npm не трогал хостовое дерево. Pipeline improvement.
+
+---
+
+## 2026-08-25 | cart-swipe-delete-mobile: transform на родителе увозит absolute-кнопку действия (swipe-to-delete)
+
+**Ошибка:** на мобильной корзине (<640px) свайп-удаление не работало: после свайпа текст налезал на кнопку «Удалить», а тап по ней вёл в карточку товара.
+
+**Причина:** классическая пара ошибок swipe-to-delete: (1) `transform: translateX(-80px)` вешался на всю карточку `.cart-item`, а кнопка `.cart-item__delete-bg` была её потомком — трансформ смещал и кнопку; (2) у кнопки `z-index: -1` — она оказывалась под съехавшим контентом, и `elementFromPoint` по красной зоне возвращал `.cart-item__name` (с `@click` навигацией). Плюс жест без вертикального порога и без `touch-action: pan-y` конфликтовал со скроллом.
+
+**Решение:** паттерн «подложка — сиблинг, трансформ — на обёртке контента»: `.cart-item__delete-bg` статичный слой `z-index: 0`, контент в `.cart-item__content` (`z-index: 1`, непрозрачный background), трансформ только на обёртку; `touch-action: pan-y` на карточке + игнор жеста при `|dy| > |dx|`. Регрессионные тесты: свайп→тап по подложке → DELETE; вертикальный жест не открывает свайп.
+
+**Профилактика:** swipe-to-delete всегда делать двухслойным (статичная подложка действия + движущийся контент с непрозрачным фоном), никогда не трансформить общего родителя кнопки действия; жесты — с `touch-action` и разделением осей. Проверять вживую через `elementFromPoint`, а не только jsdom (CSS там не применяется).
+
+---
+
+## 2026-08-26 | e2e-mobile-filters: mobile-only коллапс ломает десктопные допущения E2E-спек
+
+**Ошибка:** после мержа mobile-low-fixes (#174, фильтры каталога свёрнуты на <768px) deploy-прогоны main падали на 5 E2E-спеках (catalog facet ×4, search-filter price range) — таймаут ожидания `[data-testid="filter-panel"]`.
+
+**Причина:** Playwright E2E бегает на viewport **390×844** (`frontend/playwright.config.js`), т.е. мобильные стили/поведение применяются во всех E2E. Спеки писались в десктопном допущении «панель фильтров видима сразу». Два вторичных грабли хелпера: `<details>` с панелью рендерится async (после ответа /search/ с фасетами) — без waitFor attached хелпер выходил до появления элемента; `details.locator('summary')` матчит и вложенные summary FilterPanel — нужен `:scope > summary`.
+
+**Решение:** хелпер `openFiltersPanel(page)` в `e2e/helpers.js`: waitFor attached → если не open, клик по `:scope > summary` → waitForFunction open; вызывать после goto перед работой с фасетами.
+
+**Профилактика:** любая фича «на мобилке иначе» (коллапсы, бургер-меню, bottom-nav) должна сразу ревьюиться на предмет влияния на E2E — спеки бегают на мобильном viewport. Хелперы для mobile-состояний класть в `e2e/helpers.js` в момент фичи, а не post-mortem.
+
+---
+
+## 2026-08-26 | серия мержей mobile-*: параллельные deploy-прогоны гоняются на общем test-окружении
+
+**Ошибка:** три deploy-прогона main подряд (после мержей #170, #173, #174) показали разные наборы падающих E2E (auth guest-cart merge, cdek-widget, checkout-failed-cards и др.), не воспроизводимые при локальном прогоне против того же test-окружения.
+
+**Причина:** каждый мерж редеплоит общее тестовое окружение; E2E-стадия более раннего прогона фактически бежала уже против кода более позднего мержа + seed одного прогона менял данные под другим. Падения — гонки окружения, а не регрессии.
+
+**Решение:** перед разбором падений deploy-прогона проверить, не было ли параллельного/следующего редеплоя; детерминированные падения (одни и те же спеки во всех прогонах) отделять от гонок (разный набор, не воспроизводится локально).
+
+**Профилактика:** при серии мержей в main мержить по одному и дожидаться зелёного deploy-прогона перед следующим; настроить concurrency-группу на deploy-workflow (cancel-in-progress) — pipeline improvement.

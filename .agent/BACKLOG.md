@@ -236,3 +236,5 @@
 | — | Technical Specification: catalog-filter-panel-122 | [#134](https://github.com/AutonomaCo/promelectron/issues/134) | — | P1 | **backlog** | — | — | — |
 | — | Спецификация: search-api-followups-0801 (#137, #138) | [#137](https://github.com/AutonomaCo/promelectron/issues/137) | — | P1 | **backlog** | — | — | — |
 | — | Spec: fix-uploads-cache-onec | [#158](https://github.com/AutonomaCo/promelectron/issues/158) | — | P1 | **backlog** | — | — | — |
+| — | Spec: feat-out-of-stock-ui | [#163](https://github.com/AutonomaCo/promelectron/issues/163) | — | P1 | **backlog** | — | — | — |
+| — | Spec: mobile-medium-fixes — пачка medium-фиксов мобильной версии | [#171](https://github.com/AutonomaCo/promelectron/issues/171) | — | P1 | **backlog** | — | — | — |

@@ -1,3 +1,12 @@
+### 2026-08-25 | frontend-dev | mobile-medium-fixes — пачка medium-фиксов мобильной версии (issue #171)
+  Реализовано по spec.md в worktree `.worktrees/mobile-medium-fixes` (ветка `bugfix/mobile-medium-fixes`), коммит `22fdd94`:
+  - **F1 SearchBar:** видимый input в шапке мобильного оверлея (`data-testid="search-bar-mobile-input"`, тот же query-state, autofocus при открытии); `.search-bar__history-delete` — `opacity: 1` в media <768px (видна на touch).
+  - **F2 useSearchSuggestions:** probe-флаг `search_api_unavailable` в sessionStorage после первого 404 на `/search/suggestions/` → дальше сразу fallback на `/products/` без 404-спама; несуществующий `/search/recommendations/` убран — прямой запрос `/products/` с сохранением формата Recommendations.
+  - **F3 safe-area:** `viewport-fit=cover` в index.html; body `padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px))`; та же формула (+env) в Cart, Checkout, OrderDetail, ProfileRecipients (+модалка), PaymentSuccess/Failed, GuestOrderSuccess.
+  - **F4 Profile:** пункт «Уведомления» (router-link `/notifications`, `data-testid="profile-notifications-link"`) с бейджем unreadCount; guard `if (ws) return` в `useNotifications.connect()` против двойного WebSocket (Header + Profile).
+  - **F5 iOS zoom:** глобально в base.css `@media (max-width: 767px) { input, select, textarea { font-size: 16px !important; } }` — `!important` нужен, т.к. формы задают 15px scoped-классами (отклонение от литеральной формулировки spec, зафиксировано в отчёте).
+  - Тесты: +5 кейсов SearchBar.spec.js (18 всего), +3 кейса useSearchSuggestions.spec.ts (+sessionStorage.clear в beforeEach). `npx vitest run` — **342 passed (37 файлов)** ✅, `npx oxlint src/` — 0 errors ✅.
+
 ### 2026-08-25 | оркестратор | перевод документации docs/ на drawio+SVG в едином тёмном стиле (заказ IT Александр)
   Все диаграммы документации перегенерированы в стиле референсов (C4, ортогональные стрелки, пунктирные boundary-фреймы, роли [Person], тёмная тема, подписи на русском):
   - **Тулчейн:** drawio desktop 31.3.2 распакован локально в `~/tools/drawio-dist` (без sudo), обёртка `~/tools/drawio`; headless-рендер `~/tools/drawio -x -f svg`. Генератор `scripts/docs/gen_diagrams.py` (~800 строк) эмитит `.drawio` XML для всех 8 диаграмм из декларативных описаний, флаги `--render`, `--only`.
@@ -3723,3 +3732,59 @@
   - **Board**: #165 → In review. PR: https://github.com/AutonomaCo/promelectron/pull/167
   - Метрики: ~8.3K estimated tokens (оркестратор), review iterations 3, QA 1; `.agent/runs/pdp-attributes-sku-stock-0824/metrics.json`.
   Следующий шаг: review/merge PR #167 пользователем; после merge — set-status done. Отдельный эпик: изображения из 1С (`Catalog_НоменклатураПрисоединенныеФайлы`).
+
+### 2026-08-25 | fix (оркестратор) | cart-swipe-delete-mobile — мобильная корзина: свайп-удаление (issue #169)
+  - Root cause: `.cart-item__delete-bg` — потомок трансформируемой карточки + `z-index: -1` → кнопка уезжала под контент, тап попадал в `.cart-item__name` (переход в карточку). Подтверждено вживую Playwright 390×844 (elementFromPoint, реальный клик → /product/15).
+  - Fix (frontend-dev, коммит a01c03e в `bugfix/cart-swipe-delete-mobile`): обёртка `.cart-item__content` (трансформ на неё), подложка статичная `z-index: 0`, `touch-action: pan-y`, вертикальный порог `|dy|>|dx|`; +2 регрессионных теста в Cart.spec.js.
+  - Review: APPROVE, 2 low findings (нет @touchcancel; delete-bg в tab-order) — унаследованные, вне scope.
+  - Тесты: vitest 336/336 в worktree; oxlint 0/0. Живая верификация на 5174: тап по «Удалить» удаляет товар (2→1), вертикальный жест свайп не открывает.
+  - Попутно: полный мобильный аудит (отчёт пользователю) — баги SearchBar-оверлея, 404 search-эндпоинтов, мёртвый GuestCheckout, safe-area, iOS-zoom инпутов и др. — кандидаты в бэклог.
+  - Урок в LESSONS_LEARNED: двухслойный паттерн swipe-to-delete.
+  Следующий шаг: PR + merge по одобрению пользователя.
+
+### 2026-08-25 | fix (оркестратор) | cart-swipe-delete-mobile — PR открыт
+  - PR #170: https://github.com/AutonomaCo/promelectron/pull/170, issue #169 → **In review**. Merge — за пользователем.
+
+### 2026-08-25 | fix (оркестратор) | mobile-medium-fixes — пачка medium-фиксов мобилки (issue #171)
+  - 5 фиксов по spec: F1 input в мобильном оверлее поиска (+clear-кнопка, видимость delete истории на touch); F2 probe-флаг sessionStorage против 404-спама /search/* + убран вызов несуществующего /search/recommendations/; F3 viewport-fit=cover + safe-area формулы (base.css, Cart, Checkout, OrderDetail, ProfileRecipients, Payment*, GuestOrderSuccess); F4 ссылка «Уведомления» в Profile с бейджем unreadCount (+guard `if (ws) return` в useNotifications); F5 input/select/textarea 16px !important на <768px (scoped-стили перебивали обычное правило).
+  - Коммиты 22fdd94 + 6ee7067 в `bugfix/mobile-medium-fixes`. Review итерация 1: REQUEST_CHANGES (F001 HIGH — BottomNav safe-area height при box-sizing: border-box) → доработка → F001/F002 VERIFIED, F003–F005 WONTFIX (follow-up).
+  - Тесты: vitest 345/345, oxlint 0/0. Живая верификация 390px (порт 5175): ввод в оверлее виден, clear работает, после probe 404-спам прекращён (search-fix-mobile.png).
+  - GuestCheckout redirect — НЕ баг: осознанный soft shutdown (c6a45ca, #3/#111). Включение гостевого checkout — отдельное продуктовое решение (backend /orders/create-guest/ готов).
+  Следующий шаг: PR для bugfix/mobile-medium-fixes по одобрению пользователя.
+
+### 2026-08-25 | frontend-dev | mobile-low-fixes — пачка low-фиксов мобилки (issue #172)
+  - L1 touch-таргеты ≥40px только в `@media (max-width: 767px)`: min-size для чипов/кнопок «назад»/«В корзину»/qty (ProductCard, CategoryChips, Products, Cart, ProductDetail, OrderDetail, Checkout, GuestCheckout, Notifications, ProfileEdit, Admin, ProductFormModal, ProfileRecipients); прозрачный хит-бокс (::after inset или padding+negative margin) для иконочных (heart, delete уведомления, удаление фото, закрытие тоста, звёзды рейтинга). Десктопная вёрстка не тронута.
+  - L2 Products.vue: `<details>` фильтров управляется из JS — `filtersOpen = matchMedia('(min-width: 768px)')` initial + `@toggle`-синк (re-render не сбрасывает ручное переключение).
+  - L3 одна колонка на ≤480px: `.cart__recipient-fields` (Cart.vue), `.address-form__grid` + сброс `.address-field--wide` span (AddressForm.vue).
+  - L4 Cart.vue: `@touchcancel` → сброс touchStartX (симметрия touchend); `.cart-item__delete-bg` tabindex="-1" + aria-hidden. Структуру свайпа не трогали (пересечение с bugfix/cart-swipe-delete-mobile).
+  - L5 ProductDetail: `.product-detail__attr-value` — `overflow-wrap: anywhere` + `min-width: 0`.
+  - L6 safe-area-inset-bottom в нижний padding bottom-sheet: ProductFormModal, admin/UserDetailsModal, admin/AdminOrderModal, Admin.
+  - Тесты: Products.spec.js +2 (details свёрнут/развёрнут по matchMedia-моку), Cart.spec.js +3 (swipe показывает delete, touchcancel сбрасывает, атрибуты delete-bg). vitest 339/339, oxlint 0/0.
+  - Коммит 60c4725 в `bugfix/mobile-low-fixes`. Закрытие модалок в admin/UserDetailsModal/AdminOrderModal (32px) вне списка L1 — не трогали (там только L6).
+  Следующий шаг: review → PR по одобрению пользователя.
+
+### 2026-08-25 | frontend-dev | mobile-low-fixes — доработка по review (iteration 1)
+  - F001 (HIGH) FIXED: `onFiltersToggle` в Products.vue — guard `event.target !== event.currentTarget` против всплывающих toggle от вложенных `<details>` FilterPanel; +тест (nested toggle не закрывает панель).
+  - F002 (MEDIUM) FIXED: `.cart-item__delete-bg` — условные `:tabindex`/`:aria-hidden` по `swipedItemId` (до свайпа скрыта от AT/keyboard, после — доступна); тесты скорректированы +1 новый.
+  - F005 (LOW) FIXED: restore `window.matchMedia` в afterEach (Products.spec.js).
+  - F003/F004 (LOW) — WONTFIX (follow-up), обоснование в findings.md.
+  - vitest 341/341, oxlint 0/0. Коммит 56a555d в `bugfix/mobile-low-fixes`.
+
+### 2026-08-26 | fix (оркестратор) | mobile-low-fixes — пачка low-фиксов мобилки (issue #172)
+  - 6 фиксов: L1 touch-таргеты ≥40px на <768px (min-height или ::after хит-бокс, десктоп не тронут); L2 фильтры каталога свёрнуты initial на мобилке (matchMedia + @toggle-синк); L3 одна колонка полей ≤480px (Cart recipient-fields, AddressForm); L4 Cart.vue @touchcancel + условные tabindex/aria-hidden на delete-bg; L5 overflow-wrap для attr-value; L6 safe-area padding в 4 модалках.
+  - Коммиты 60c4725 + 56a555d в `bugfix/mobile-low-fixes` (19+4 файла). Review итерация 1: REQUEST_CHANGES — F001 HIGH (toggle всплывает от вложенных details FilterPanel → guard event.target !== currentTarget), F002 MEDIUM (условная a11y для delete-bg), F005 (matchMedia restore) → FIXED → VERIFIED; F003/F004 WONTFIX (follow-up).
+  - Тесты: vitest 341/341, oxlint 0/0. Живой прогон 390px (порт 5176): чипы 40px, overflow нет. L2 с включённым флагом вживую не проверен: meilisearch index пуст, reindex-job не отработал в dev — env-ограничение, покрыто unit-тестами. Флаг возвращён в исходное состояние (DEL ключа Redis).
+  Следующий шаг: PR для bugfix/mobile-low-fixes по одобрению пользователя.
+
+### 2026-08-26 | orchestrator | мержи mobile-серии
+  - PR #170 (cart-swipe-delete-mobile, issue #169) → влит в main (merge commit), issue → Done.
+  - PR #173 (mobile-medium-fixes, issue #171) → влит без конфликтов, issue → Done.
+  - PR #174 (mobile-low-fixes, issue #172) → конфликт в Cart.vue с main (структура свайпа из #170): разрешён в пользу новой структуры (.cart-item__content) + сохранены условные tabindex/aria-hidden; handleTouchCancel дополнен сбросом touchStartY; 2 теста low-ветки дополнены clientY (вертикальный порог из #170). vitest 354/354, oxlint 0/0 → влит, issue → Done.
+  - Deploy-прогоны main: a8cdcbb (in progress), 2f631ea и b2ef079 (queued); фоновые watchers: bash-ufx9sfcd (#170), bash-mbww55j9 (финальный).
+
+### 2026-08-26 | orchestrator | e2e-mobile-filters — фикс E2E-спек после мобильных мержей (follow-up #174)
+  - Причина красного CI: все 3 deploy-прогона main (a8cdcbb, 2f631ea, b2ef079) упали на test-e2e. Детерминированные падения — 4 × catalog.spec.js facet + search-filter.spec.js price range: L2 из #174 сворачивает панель фильтров на <768px, а Playwright бегает на 390×844 — спеки ждали filter-panel видимым сразу. Остальные падения тех прогонов — гонки общего test-окружения (три мержа редеплоили его подряд); локальный прогон против test их не воспроизвёл (20 passed). checkout.spec.js Mir no 3DS — таймаут на стороне внешней YooKassa-песочницы, внешняя флакость, не наш код.
+  - Фикс: helpers.js +openFiltersPanel(page) — waitFor attached на details.home__filter-panel-wrap (рендерится async после /search/), клик по `:scope > summary` (избегая strict-mode violation с вложенными summary FilterPanel), waitForFunction open; вызовы в catalog.spec (4 теста, в т.ч. после повторного goto) и search-filter.spec (price range, ветка flagOn).
+  - Проверка: прогон против test-окружения catalog+search-filter --workers=1 — 10 passed, 1 skipped, 0 failed (две промежуточные итерации хелпера: +waitFor attached, +`:scope >`).
+  - PR #175 (bugfix/e2e-mobile-filters, коммит 39c2dc3) → влит в main (625ef70). Deploy-прогон main 32928739871 — SUCCESS: build 2m7s, deploy-test 51s, seed 5m12s, smoke 12s, test-e2e/e2e 4m40s (все E2E зелёные, включая Mir no 3DS — флакость YooKassa в этот раз не проявилась). CI main полностью восстановлен.
+  Следующий шаг: мобильная серия закрыта; остаток — фича чекбоксов выбора товаров, продуктовое решение по guest checkout, backend /search/recommendations/, инфра-долг Makefile test-e2e + concurrency-группа deploy-workflow.

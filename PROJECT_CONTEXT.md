@@ -64,7 +64,7 @@ e2e_tests: "108/108"
 | **Sentry (мониторинг)** | ⏳ todo | — | Backend + frontend |
 | **Backup БД** | ⏳ todo | — | pg_dump → S3/MinIO |
 | **Helm worker templates** | ✅ done | — | `job_worker` деплоится в K8s. Celery удалён. |
-| **Product.price → Numeric(10,2)** | ⏳ todo | — | Ждёт отдельной задачи |
+| **Product.price → product_prices** | ✅ done (PR #168) | — | Цены в `product_prices` (виды цен 1С), сайтовая — через `ONEC_SITE_PRICE_TYPE` |
 | **Malformed Alembic revision** | ✅ done | — | Миграции чистые, история корректна |
 | **Yandex SMTP + email verification** | ✅ done | — | Реализовано и влито в main (#40). Backend + frontend + Helm values + SOPS TODOs. |
 
@@ -99,6 +99,7 @@ e2e_tests: "108/108"
 8. **SELECT FOR UPDATE** — для консистентности stock при параллельных запросах.
 9. **Alembic миграции** — при старте приложения (планируется перенос в Helm hook).
 10. **MinIO + Local fallback** — для хранения файлов. `GET /uploads/{path}` отдаёт файлы с `Cache-Control: public, max-age` (настройка `UPLOADS_CACHE_MAX_AGE`, default 86400) — endpoint рассчитан только на публичные файлы (фото товаров, аватары). Если когда-либо понадобится отдавать приватные документы — нужен отдельный endpoint с `private`/`no-store`, иначе утечка через shared cache (security F-002, #158).
+11. **Цены в `product_prices`** (PR #168) — колонки `products.price` нет; все виды цен 1С (каналы, себестоимость) хранятся строками `(product_id, price_type)`, чтение сайтовой цены — только через сайтовый вид (`settings.onec_site_price_type`, env `ONEC_SITE_PRICE_TYPE`, default `"site"`). Несайтовые виды никогда не отдаются в публичных схемах. Товар без сайтовой цены = `price: null`, заказ → 400. **H-001 (вариант C):** при подключении реальной 1С её `price_type_key` (GUID) не совпадёт с backfill `'site'` — требуется осознанная Alembic data-миграция `price_type` отдельной задачей, просто поменять env нельзя (товары потеряют цену).
 
 ---
 
