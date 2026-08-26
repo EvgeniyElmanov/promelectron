@@ -567,6 +567,66 @@ describe('Cart.vue', () => {
     expect(mockApiSelectAll).toHaveBeenCalled();
   });
 
+  it('сбрасывает выбранную доставку при снятии чекбокса с товара', async () => {
+    const wrapper = mount(Cart, { global: { plugins: [router] } });
+    await flushPromises();
+
+    wrapper.vm.selectedDelivery = { tariff_code: 136, price: 350, delivery_mode: 'PVZ' };
+    await flushPromises();
+
+    const checkboxes = wrapper.findAll('[data-testid="cart-item-select"] input');
+    await checkboxes[0].setValue(false);
+    await flushPromises();
+
+    expect(mockApiSelectCartItem).toHaveBeenCalledWith(101, false);
+    expect(wrapper.vm.selectedDelivery).toBeNull();
+  });
+
+  it('не сбрасывает выбранную доставку при повторной загрузке корзины с тем же составом', async () => {
+    mockPut.mockResolvedValue({ data: {} });
+
+    const wrapper = mount(Cart, { global: { plugins: [router] } });
+    await flushPromises();
+
+    wrapper.vm.selectedDelivery = { tariff_code: 136, price: 350, delivery_mode: 'PVZ' };
+    await flushPromises();
+
+    // updateQuantity → fetchCart, но мок возвращает тот же состав (сигнатура не меняется)
+    const plusButtons = wrapper.findAll('.cart-item__qty-btn');
+    await plusButtons[1].trigger('click');
+    await flushPromises();
+
+    expect(mockPut).toHaveBeenCalledWith('/cart/update/101', { quantity: 3 });
+    expect(wrapper.vm.selectedDelivery).not.toBeNull();
+  });
+
+  it('сбрасывает выбранную доставку при изменении количества товара', async () => {
+    mockPut.mockResolvedValue({ data: {} });
+
+    const wrapper = mount(Cart, { global: { plugins: [router] } });
+    await flushPromises();
+
+    wrapper.vm.selectedDelivery = { tariff_code: 136, price: 350, delivery_mode: 'PVZ' };
+    await flushPromises();
+
+    // После обновления количества мок отдаёт корзину с quantity=3 у первого товара
+    const updatedCart = structuredClone(mockCartWithItems);
+    updatedCart.items[0].quantity = 3;
+    mockGet.mockImplementation((url) => {
+      if (url === '/cart/') return Promise.resolve({ data: structuredClone(updatedCart) });
+      if (url === '/auth/profile') return Promise.resolve({ data: {} });
+      if (url === '/delivery-methods/') return Promise.resolve({ data: [] });
+      if (url === '/me/recipients/') return Promise.resolve({ data: mockSavedRecipients });
+      return Promise.resolve({ data: {} });
+    });
+
+    const plusButtons = wrapper.findAll('.cart-item__qty-btn');
+    await plusButtons[1].trigger('click');
+    await flushPromises();
+
+    expect(wrapper.vm.selectedDelivery).toBeNull();
+  });
+
   it('показывает swipe-delete по свайпу влево', async () => {
     const wrapper = mount(Cart, { global: { plugins: [router] } });
     await flushPromises();

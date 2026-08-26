@@ -74,6 +74,7 @@
               <input
                 type="checkbox"
                 :checked="item.selected !== false"
+                aria-label="Выбрать товар"
                 @change="toggleItemSelection(item)"
               />
             </label>
@@ -464,6 +465,19 @@ const deliveryPrice = computed(() => {
 
 const orderTotal = computed(() => itemsTotal.value + deliveryPrice.value);
 
+// Сигнатура выбранного состава: тариф CDEK зависит от набора товаров и количества (вес).
+const selectionSignature = computed(() =>
+  selectedItems.value.map((item) => `${item.id}:${item.quantity}`).join(',')
+);
+
+// F002: инвалидация выбранной доставки при смене состава выбранных или поставщика.
+// Сброс только если доставка уже выбрана — первичная загрузка корзины её не трогает.
+watch([selectionSignature, supplierId], () => {
+  if (selectedDelivery.value) {
+    selectedDelivery.value = null;
+  }
+});
+
 const applyRecipient = (recipient) => {
   if (!recipient) {
     recipientFirstName.value = '';
@@ -822,7 +836,8 @@ watch(supplierId, () => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  padding-top: 24px;
+  /* touch-target ~44x36px: 20px чекбокс + padding */
+  padding: 24px 8px 0;
 }
 
 .cart-item__select input {
