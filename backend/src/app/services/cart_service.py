@@ -1,5 +1,5 @@
 from fastapi import HTTPException
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -60,7 +60,10 @@ class CartService:
             final_item = existing_item
         else:
             final_item = CartItem(
-                cart_id=cart.id, product_id=item_data.product_id, quantity=item_data.quantity
+                cart_id=cart.id,
+                product_id=item_data.product_id,
+                quantity=item_data.quantity,
+                selected=item_data.selected,
             )
             db.add(final_item)
 
@@ -98,6 +101,45 @@ class CartService:
             .options(selectinload(CartItem.product))
         )
         return result.scalars().first()
+
+    @staticmethod
+    async def select_cart_item(
+        item_id: int, selected: bool, current_user: User, db: AsyncSession
+    ) -> CartItem:
+        result = await db.execute(
+            select(CartItem).join(Cart).where(CartItem.id == item_id, Cart.user_id == current_user.id)
+        )
+        item = result.scalars().first()
+
+        if not item:
+            raise HTTPException(status_code=404, detail="Cart item not found")
+
+        item.selected = selected
+        await db.commit()
+
+        result = await db.execute(
+            select(CartItem)
+            .where(CartItem.id == item.id)
+            .options(selectinload(CartItem.product))
+        )
+        return result.scalars().first()
+
+    @staticmethod
+    async def set_all_selected(
+        current_user: User, db: AsyncSession, selected: bool
+    ) -> dict[str, object]:
+        cart_result = await db.execute(select(Cart).where(Cart.user_id == current_user.id))
+        cart = cart_result.scalars().first()
+
+        if cart:
+            await db.execute(
+                update(CartItem)
+                .where(CartItem.cart_id == cart.id)
+                .values(selected=selected)
+            )
+            await db.commit()
+
+        return await CartService.get_cart(current_user=current_user, db=db)
 
     @staticmethod
     async def remove_from_cart(item_id: int, current_user: User, db: AsyncSession) -> dict[str, str]:
@@ -170,6 +212,7 @@ class CartService:
                     cart_id=cart.id,
                     product_id=item_data.product_id,
                     quantity=item_data.quantity,
+                    selected=item_data.selected,
                 )
                 db.add(new_item)
 
