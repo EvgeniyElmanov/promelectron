@@ -126,7 +126,7 @@ Product.price → Numeric      →  Product variants / Seller payouts
 | GET | `/api/v1/products/{id}/detail` | ✅ | Карточка товара: отзывы, рейтинг, is_favorite, `sku`, `attributes[]` (code/name/value_type/value/unit) |
 | GET | `/api/v1/categories/` | ✅ | Категории (пагинация, фильтр по parent_id, поиск по name) |
 | GET | `/api/v1/search/` | ✅ | Поиск (Meilisearch); подсказки: `GET /api/v1/search/suggestions/` |
-| POST | `/api/v1/cart/merge` | ✅ | Merge гостевой корзины (localStorage) при login |
+| POST | `/api/v1/cart/merge` | ✅ | Merge гостевой корзины (localStorage) при login; переносит флаг `selected` для новых позиций |
 | POST | `/api/v1/orders/create-guest/` | ⚠️ | Создание новых гостевых заказов отключено (`410 Gone`); исторические заказы доступны |
 | GET | `/api/v1/orders/guest/{order_id}/` | ✅ | Получить гостевой заказ по email |
 | POST | `/api/v1/payments/guest/{order_id}/` | ⚠️ | Создание новых guest-платежей отключено (`410 Gone`); mock-confirm/webhook исторических работают |
@@ -148,8 +148,11 @@ Product.price → Numeric      →  Product variants / Seller payouts
 ### Авторизованные
 | Метод | Путь | Статус | Описание |
 |-------|------|--------|----------|
-| GET | `/api/v1/cart/` | ✅ | Корзина авторизованного |
-| POST | `/api/v1/orders/create/` | ✅ | Создать заказ (с `recipient_id` или inline-полями получателя) |
+| GET | `/api/v1/cart/` | ✅ | Корзина авторизованного (`CartItemOut.selected` — выбор к оформлению) |
+| PATCH | `/api/v1/cart/select/{item_id}/` | ✅ | Выбор/снятие товара к оформлению (body `{selected: bool}` → `CartItemOut`) |
+| POST | `/api/v1/cart/select-all/` | ✅ | Выбрать все товары корзины (→ `CartOut`) |
+| POST | `/api/v1/cart/deselect-all/` | ✅ | Снять выбор со всех товаров (→ `CartOut`) |
+| POST | `/api/v1/orders/create/` | ✅ | Создать заказ только из выбранных (`selected=true`) товаров; пустой выбор → 400 (с `recipient_id` или inline-полями получателя) |
 | GET | `/api/v1/orders/` | ✅ | История заказов |
 | GET | `/api/v1/me/recipients/` | ✅ | Список сохранённых получателей |
 | POST | `/api/v1/me/recipients/` | ✅ | Создать получателя |

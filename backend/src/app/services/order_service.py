@@ -129,7 +129,14 @@ class OrderService:
         total_price = Decimal(0)
         order_items: list[OrderItem] = []
         ordered_cart_item_ids: list[int] = []
-        for cart_item in cart.items:
+        # D-04: заказ оформляется только из выбранных товаров корзины;
+        # невыбранные остаются в корзине. Пустой выбор — 400.
+        selected_cart_items = [cart_item for cart_item in cart.items if cart_item.selected]
+
+        if not selected_cart_items:
+            raise HTTPException(status_code=400, detail="No items selected in cart")
+
+        for cart_item in selected_cart_items:
             product_result = await db.execute(
                 select(Product).where(Product.id == cart_item.product_id).with_for_update()
             )

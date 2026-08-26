@@ -120,7 +120,11 @@ export const useCart = () => {
   const mergeCartOnLogin = async () => {
     const items = loadGuestCart();
     if (items.length === 0) return;
-    const payload = items.map((i) => ({ product_id: i.product_id, quantity: i.quantity }));
+    const payload = items.map((i) => ({
+      product_id: i.product_id,
+      quantity: i.quantity,
+      selected: i.selected,
+    }));
     await api.post('/cart/merge', { items: payload });
     clearGuestCart();
     await syncCartCount();

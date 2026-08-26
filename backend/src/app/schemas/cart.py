@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict
 class CartItemCreate(BaseModel):
     product_id: int
     quantity: int = 1
+    selected: bool = True
 
 
 class CartMergeRequest(BaseModel):
@@ -14,6 +15,10 @@ class CartMergeRequest(BaseModel):
 
 class CartItemUpdate(BaseModel):
     quantity: int
+
+
+class CartItemSelectIn(BaseModel):
+    selected: bool
 
 
 class CartItemProductOut(BaseModel):
@@ -35,6 +40,7 @@ class CartItemOut(BaseModel):
     id: int
     product_id: int
     quantity: int
+    selected: bool
     product: Optional[CartItemProductOut] = None
 
     model_config = ConfigDict(from_attributes=True)

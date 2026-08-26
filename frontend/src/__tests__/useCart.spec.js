@@ -98,11 +98,26 @@ describe('useCart — merge при входе', () => {
 
     expect(mockPost).toHaveBeenCalledWith('/cart/merge', {
       items: [
-        { product_id: 1, quantity: 2 },
-        { product_id: 2, quantity: 1 },
+        { product_id: 1, quantity: 2, selected: true },
+        { product_id: 2, quantity: 1, selected: true },
       ],
     });
     expect(getGuestCartItems()).toHaveLength(0);
+  });
+
+  it('mergeCartOnLogin переносит selected=false из гостевой корзины', async () => {
+    localStorage.setItem(GUEST_CART_KEY, JSON.stringify([
+      { product_id: 1, quantity: 2, name: 'A', price: 1000, stock: 5, supplier_id: 1, selected: false },
+    ]));
+
+    const { mergeCartOnLogin } = useCart();
+    await mergeCartOnLogin();
+
+    expect(mockPost).toHaveBeenCalledWith('/cart/merge', {
+      items: [
+        { product_id: 1, quantity: 2, selected: false },
+      ],
+    });
   });
 
   it('mergeCartOnLogin не вызывает запрос при пустой гостевой корзине', async () => {

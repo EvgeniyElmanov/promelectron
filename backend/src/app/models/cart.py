@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, ForeignKey, Integer
+import sqlalchemy as sa
+from sqlalchemy import Boolean, Column, ForeignKey, Integer
 from sqlalchemy.orm import relationship
 from sqlalchemy.types import DateTime
 
@@ -25,6 +26,9 @@ class CartItem(Base):
     cart_id = Column(Integer, ForeignKey("carts.id"), nullable=False)
     product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
     quantity = Column(Integer, default=1)
+    # D-01: колонка уже создана миграцией 9614c59dd5a3 (середина цепочки) —
+    # модель догоняет миграцию, новая миграция не нужна.
+    selected = Column(Boolean, nullable=False, default=True, server_default=sa.true())
 
     cart = relationship("Cart", back_populates="items")
     product = relationship("Product")
