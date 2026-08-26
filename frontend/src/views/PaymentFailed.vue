@@ -163,7 +163,7 @@ onMounted(() => {
 .payment-result {
   max-width: 480px;
   margin: 0 auto;
-  padding: 40px 16px calc(24px + var(--bottom-nav-height, 56px));
+  padding: 40px 16px calc(24px + var(--bottom-nav-height, 56px) + env(safe-area-inset-bottom, 0px));
   min-height: 100vh;
   background: var(--color-bg);
   text-align: center;

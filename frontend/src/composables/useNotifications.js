@@ -15,6 +15,7 @@ const WS_URL = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${wind
 function connect() {
   const token = localStorage.getItem('access_token');
   if (!token) return;
+  if (ws) return; // уже подключены (composable используется в нескольких компонентах)
 
   try {
     ws = new WebSocket(`${WS_URL}?token=${token}`);

@@ -60,7 +60,36 @@
         class="search-bar__mobile-header"
         data-testid="search-bar-mobile-header"
       >
-        <span class="search-bar__mobile-title">Поиск</span>
+        <div class="search-bar__mobile-input-wrapper">
+          <input
+            ref="mobileInputRef"
+            type="text"
+            class="search-bar__mobile-input"
+            data-testid="search-bar-mobile-input"
+            placeholder="Поиск товаров..."
+            :value="modelValue"
+            @input="onInput"
+            @keydown.enter.prevent="onEnter"
+            @keydown.esc.prevent="closeDropdown"
+          />
+          <button
+            v-if="modelValue"
+            type="button"
+            class="search-bar__clear-btn"
+            data-testid="search-bar-mobile-clear"
+            @click="clearQuery"
+          >
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none">
+              <circle cx="12" cy="12" r="10" stroke="#999" stroke-width="1.5" />
+              <path
+                d="M9 9l6 6M15 9l-6 6"
+                stroke="#999"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+            </svg>
+          </button>
+        </div>
         <button
           class="search-bar__mobile-close"
           data-testid="search-bar-mobile-close"
@@ -349,6 +378,7 @@ import {
   ref,
   computed,
   watch,
+  nextTick,
   onMounted,
   onUnmounted,
 } from 'vue';
@@ -392,8 +422,17 @@ const emit = defineEmits(['update:modelValue', 'submit']);
 
 const searchBarRef = ref(null);
 const inputRef = ref(null);
+const mobileInputRef = ref(null);
 const isOpen = ref(false);
 const isMobileOpen = ref(false);
+
+// Autofocus видимого input при открытии мобильного оверлея (issue #171)
+watch(isMobileOpen, async (val) => {
+  if (val) {
+    await nextTick();
+    mobileInputRef.value?.focus();
+  }
+});
 
 const {
   query: searchQuery,
@@ -501,7 +540,8 @@ function selectProduct(product) {
 function clearQuery() {
   emit('update:modelValue', '');
   searchQuery.value = '';
-  inputRef.value?.focus();
+  const targetRef = isMobileOpen.value ? mobileInputRef : inputRef;
+  targetRef.value?.focus();
 }
 
 function openDropdown() {
@@ -873,16 +913,34 @@ onUnmounted(() => {
   .search-bar__mobile-header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    gap: 12px;
     padding: 12px 16px;
     border-bottom: 1px solid var(--color-border);
     flex-shrink: 0;
     background: var(--color-bg-white);
   }
 
-  .search-bar__mobile-title {
-    font-size: 17px;
-    font-weight: 600;
+  .search-bar__mobile-input-wrapper {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    background: var(--color-bg);
+    border-radius: 12px;
+    padding: 0 12px;
+    height: 40px;
+  }
+
+  .search-bar__mobile-input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-size: 16px;
+    color: var(--color-text);
+    outline: none;
+  }
+
+  .search-bar__mobile-input::placeholder {
+    color: #aaa;
   }
 
   .search-bar__mobile-close {
@@ -892,6 +950,12 @@ onUnmounted(() => {
     border: none;
     font-weight: 500;
     cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  /* Кнопка удаления из истории видна на touch без hover (issue #171) */
+  .search-bar__history-delete {
+    opacity: 1;
   }
 }
 

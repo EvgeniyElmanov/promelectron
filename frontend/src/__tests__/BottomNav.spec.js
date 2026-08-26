@@ -80,4 +80,12 @@ describe('BottomNav.vue', () => {
     expect(bottomNavSource).toContain('right: -4px;');
     wrapper.unmount();
   });
+
+  it('высота навбара включает safe-area (issue #171): 56px контент + env padding', () => {
+    // JSDOM не применяет scoped-CSS, проверяем исходные стили компонента
+    expect(bottomNavSource).toContain(
+      'height: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));'
+    );
+    expect(bottomNavSource).toContain('padding-bottom: env(safe-area-inset-bottom);');
+  });
 });
