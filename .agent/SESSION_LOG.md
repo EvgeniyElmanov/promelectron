@@ -3788,3 +3788,8 @@
   - Проверка: прогон против test-окружения catalog+search-filter --workers=1 — 10 passed, 1 skipped, 0 failed (две промежуточные итерации хелпера: +waitFor attached, +`:scope >`).
   - PR #175 (bugfix/e2e-mobile-filters, коммит 39c2dc3) → влит в main (625ef70). Deploy-прогон main 32928739871 — SUCCESS: build 2m7s, deploy-test 51s, seed 5m12s, smoke 12s, test-e2e/e2e 4m40s (все E2E зелёные, включая Mir no 3DS — флакость YooKassa в этот раз не проявилась). CI main полностью восстановлен.
   Следующий шаг: мобильная серия закрыта; остаток — фича чекбоксов выбора товаров, продуктовое решение по guest checkout, backend /search/recommendations/, инфра-долг Makefile test-e2e + concurrency-группа deploy-workflow.
+
+### 2026-08-26 | orchestrator | закрытие хвоста feat-out-of-stock-ui (#163/#164)
+  - Аудит: PR #164 (бейдж «Нет в наличии» + блокировка кнопки при stock=0) создан 2026-08-19, не замержен. PDP-часть (ProductDetail.vue) уже доставлена в main через #165/#167 (pdp-attributes-sku-stock-0824) — isOutOfStock, «Нет в наличии», блокировка кнопки. Невлитой осталась только карточка в выдаче (ProductCard.vue).
+  - Действия: создана узкая issue #176 (только ProductCard badge, добавлена на project board); PR #164 закрыт с комментарием superseded (ссылки на #165/#167/#176); issue #163 закрыта с разбором scope, статус board → Done; ветка feature/feat-out-of-stock-ui и worktree удалены (local + origin). BACKLOG.md: #158 → done (PR #159), #163 → closed→#176, #176 → backlog, #171 → done (PR #173).
+  - Итог уборки дня: из 7 worktree не осталось ни одного; невлитых веток нет.
