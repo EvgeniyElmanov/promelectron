@@ -398,3 +398,19 @@ export async function completeYooKassaPaymentIfNeeded(
 }
 
 
+
+// После mobile-low-fixes (L2) панель фильтров на мобильном viewport (<768px) свёрнута
+// по умолчанию, а E2E бегает на 390×844 — перед работой с фасетами панель нужно раскрыть.
+export async function openFiltersPanel(page) {
+  const details = page.locator('details.home__filter-panel-wrap');
+  // Панель рендерится только после ответа /search/ (фасеты) — ждём появления.
+  await details.waitFor({ state: 'attached', timeout: 10000 }).catch(() => {});
+  if ((await details.count()) === 0) return;
+  if (!(await details.evaluate((el) => el.open))) {
+    await details.locator(':scope > summary').click();
+    await page.waitForFunction(
+      () => document.querySelector('details.home__filter-panel-wrap')?.open,
+      { timeout: 5000 },
+    );
+  }
+}

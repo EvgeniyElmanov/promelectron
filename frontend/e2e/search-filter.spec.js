@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { openFiltersPanel } from './helpers.js';
 
 function uniqueEmail() {
   return `test_${Date.now()}_w${test.info().workerIndex}@example.com`;
@@ -103,7 +104,8 @@ test.describe('Search & Filters', () => {
 
     // Set price range 500 - 5000 (диапазон цен электрокаталога, issue #147)
     if (flagOn) {
-      // meilisearch-режим: фильтр цены в FilterPanel
+      // meilisearch-режим: фильтр цены в FilterPanel (на мобильном viewport панель свёрнута — раскрываем)
+      await openFiltersPanel(page);
       await page.fill('[data-testid="filter-price-min"]', '500');
       await page.fill('[data-testid="filter-price-max"]', '5000');
       await page.click('[data-testid="filter-apply"]');
