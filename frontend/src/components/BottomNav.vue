@@ -78,7 +78,7 @@ const isActive = (to) => {
   transform: translateX(-50%);
   width: 100%;
   max-width: 480px;
-  height: var(--bottom-nav-height);
+  height: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
   background: var(--color-bg-white);
   border-top: 1px solid var(--color-border);
   display: flex;

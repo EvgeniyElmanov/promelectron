@@ -40,63 +40,7 @@
           @touchend="handleTouchEnd(item.id)"
           @touchcancel="handleTouchCancel(item.id)"
         >
-          <!-- Product Image -->
-          <div class="cart-item__image" @click="goToProduct(item.product?.id)">
-            <img
-              v-if="item.product?.images?.length"
-              :src="item.product.images[0]"
-              :alt="item.product.name"
-              class="cart-item__img"
-            />
-            <span v-else class="cart-item__placeholder">{{ item.product?.name?.charAt(0) || '?' }}</span>
-          </div>
-
-          <!-- Product Info -->
-          <div class="cart-item__info">
-            <p class="cart-item__name" @click="goToProduct(item.product?.id)">
-              {{ item.product?.name || 'Товар' }}
-            </p>
-            <p class="cart-item__price-per-unit">{{ formatPrice(item.product?.price || 0) }} ₽ / шт</p>
-
-            <div class="cart-item__bottom">
-              <!-- Quantity Controls -->
-              <div class="cart-item__qty">
-                <button
-                  class="cart-item__qty-btn"
-                  :disabled="item.quantity <= 1 || updatingId === item.id"
-                  @click="updateQuantity(item.id, item.quantity - 1)"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                </button>
-                <span class="cart-item__qty-value">{{ item.quantity }}</span>
-                <button
-                  class="cart-item__qty-btn"
-                  :disabled="item.quantity >= (item.product?.stock || 0) || updatingId === item.id"
-                  @click="updateQuantity(item.id, item.quantity + 1)"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                </button>
-              </div>
-
-              <!-- Line Total -->
-              <span class="cart-item__total">{{ formatPrice((item.product?.price || 0) * item.quantity) }} ₽</span>
-            </div>
-
-            <!-- Stock Warning -->
-            <p v-if="item.product?.stock !== undefined && item.quantity >= item.product.stock" class="cart-item__stock-warning">
-              Максимум в наличии
-            </p>
-          </div>
-
-          <!-- Desktop Remove -->
-          <button class="cart-item__remove-desktop" @click="removeItem(item.id)" title="Удалить">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="3 6 5 6 21 6"/>
-              <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
-            </svg>
-          </button>
-
-          <!-- Mobile Swipe Delete Background -->
+          <!-- Mobile Swipe Delete Background (static layer under content) -->
           <button
             class="cart-item__delete-bg"
             :tabindex="swipedItemId === item.id ? 0 : -1"
@@ -109,6 +53,65 @@
             </svg>
             <span>Удалить</span>
           </button>
+
+          <!-- Swipeable Content -->
+          <div class="cart-item__content">
+            <!-- Product Image -->
+            <div class="cart-item__image" @click="goToProduct(item.product?.id)">
+              <img
+                v-if="item.product?.images?.length"
+                :src="item.product.images[0]"
+                :alt="item.product.name"
+                class="cart-item__img"
+              />
+              <span v-else class="cart-item__placeholder">{{ item.product?.name?.charAt(0) || '?' }}</span>
+            </div>
+
+            <!-- Product Info -->
+            <div class="cart-item__info">
+              <p class="cart-item__name" @click="goToProduct(item.product?.id)">
+                {{ item.product?.name || 'Товар' }}
+              </p>
+              <p class="cart-item__price-per-unit">{{ formatPrice(item.product?.price || 0) }} ₽ / шт</p>
+
+              <div class="cart-item__bottom">
+                <!-- Quantity Controls -->
+                <div class="cart-item__qty">
+                  <button
+                    class="cart-item__qty-btn"
+                    :disabled="item.quantity <= 1 || updatingId === item.id"
+                    @click="updateQuantity(item.id, item.quantity - 1)"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  </button>
+                  <span class="cart-item__qty-value">{{ item.quantity }}</span>
+                  <button
+                    class="cart-item__qty-btn"
+                    :disabled="item.quantity >= (item.product?.stock || 0) || updatingId === item.id"
+                    @click="updateQuantity(item.id, item.quantity + 1)"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  </button>
+                </div>
+
+                <!-- Line Total -->
+                <span class="cart-item__total">{{ formatPrice((item.product?.price || 0) * item.quantity) }} ₽</span>
+              </div>
+
+              <!-- Stock Warning -->
+              <p v-if="item.product?.stock !== undefined && item.quantity >= item.product.stock" class="cart-item__stock-warning">
+                Максимум в наличии
+              </p>
+            </div>
+
+            <!-- Desktop Remove -->
+            <button class="cart-item__remove-desktop" @click="removeItem(item.id)" title="Удалить">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -301,6 +304,7 @@ const { recipients, loading: recipientsLoading, loadRecipients, defaultRecipient
 
 // Swipe state
 const touchStartX = ref(0);
+const touchStartY = ref(0);
 const swipedItemId = ref(null);
 
 const isDeliveryValid = computed(() => {
@@ -534,25 +538,31 @@ const createOrder = async () => {
 // Swipe handlers
 const handleTouchStart = (event, itemId) => {
   touchStartX.value = event.touches[0].clientX;
+  touchStartY.value = event.touches[0].clientY;
   if (swipedItemId.value !== itemId) swipedItemId.value = null;
 };
 
 const handleTouchMove = (event, itemId) => {
-  if (!touchStartX.value) return;
-  const diff = touchStartX.value - event.touches[0].clientX;
-  if (diff > 60) {
+  if (!touchStartX.value || !touchStartY.value) return;
+  const diffX = touchStartX.value - event.touches[0].clientX;
+  const diffY = touchStartY.value - event.touches[0].clientY;
+  // Vertical scroll wins: ignore the gesture when |dy| > |dx|
+  if (Math.abs(diffY) > Math.abs(diffX)) return;
+  if (diffX > 60) {
     swipedItemId.value = itemId;
-  } else if (diff < -40) {
+  } else if (diffX < -40) {
     swipedItemId.value = null;
   }
 };
 
 const handleTouchEnd = () => {
   touchStartX.value = 0;
+  touchStartY.value = 0;
 };
 
 const handleTouchCancel = () => {
   touchStartX.value = 0;
+  touchStartY.value = 0;
 };
 
 onMounted(() => {
@@ -568,7 +578,7 @@ watch(supplierId, () => {
 .cart {
   max-width: 800px;
   margin: 0 auto;
-  padding: 12px 12px calc(100px + var(--bottom-nav-height, 56px));
+  padding: 12px 12px calc(100px + var(--bottom-nav-height, 56px) + env(safe-area-inset-bottom, 0px));
 }
 
 @media (min-width: 768px) {
@@ -657,17 +667,24 @@ watch(supplierId, () => {
 
 .cart-item {
   position: relative;
+  border-radius: 14px;
+  overflow: hidden;
+  touch-action: pan-y;
+}
+
+.cart-item__content {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: flex-start;
   gap: 12px;
   padding: 12px;
   background: var(--color-bg-white);
   border-radius: 14px;
-  overflow: hidden;
   transition: transform 0.2s ease;
 }
 
-.cart-item--swiped {
+.cart-item--swiped .cart-item__content {
   transform: translateX(-80px);
 }
 
@@ -828,7 +845,7 @@ watch(supplierId, () => {
   font-weight: 500;
   border: none;
   border-radius: 0 14px 14px 0;
-  z-index: -1;
+  z-index: 0;
 }
 
 @media (min-width: 640px) {
@@ -1067,7 +1084,7 @@ watch(supplierId, () => {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 12px 16px calc(12px + var(--bottom-nav-height, 56px));
+  padding: 12px 16px calc(12px + var(--bottom-nav-height, 56px) + env(safe-area-inset-bottom, 0px));
   background: var(--color-bg-white);
   border-top: 1px solid var(--color-border);
   z-index: 50;

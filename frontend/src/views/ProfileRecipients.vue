@@ -313,7 +313,7 @@ onMounted(() => {
 .profile-recipients {
   max-width: 600px;
   margin: 0 auto;
-  padding: 16px 16px calc(24px + var(--bottom-nav-height, 56px));
+  padding: 16px 16px calc(24px + var(--bottom-nav-height, 56px) + env(safe-area-inset-bottom, 0px));
   min-height: 100vh;
   background: var(--color-bg);
 }
@@ -481,7 +481,7 @@ onMounted(() => {
   max-height: 90vh;
   overflow-y: auto;
   border-radius: 20px 20px 0 0;
-  padding: 20px 16px calc(24px + var(--bottom-nav-height, 60px));
+  padding: 20px 16px calc(24px + var(--bottom-nav-height, 60px) + env(safe-area-inset-bottom, 0px));
 }
 
 @media (min-width: 640px) {

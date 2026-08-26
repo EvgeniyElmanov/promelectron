@@ -284,7 +284,7 @@ onMounted(fetchOrder);
 .order-detail {
   max-width: 800px;
   margin: 0 auto;
-  padding: 12px 12px calc(20px + var(--bottom-nav-height, 56px));
+  padding: 12px 12px calc(20px + var(--bottom-nav-height, 56px) + env(safe-area-inset-bottom, 0px));
 }
 
 @media (min-width: 768px) {

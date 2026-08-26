@@ -1,7 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { nextTick, reactive } from 'vue'
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import { dirname, resolve } from 'node:path'
 import SearchBar from '@/components/SearchBar.vue'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
 
 // Mutable mock state so each test can configure data
 const mockState = reactive({
@@ -46,6 +51,8 @@ describe('SearchBar.vue', () => {
     mockState.error = null;
     mockFetchRecommendations.mockClear();
     mockFetchSuggestions.mockClear();
+    mockGetSearchHistory.mockClear();
+    mockGetSearchHistory.mockReturnValue([]);
   });
 
   afterEach(() => {
@@ -251,3 +258,109 @@ describe('SearchBar.vue', () => {
     expect(wrapper.text()).not.toContain('Ничего не найдено');
   });
 })
+
+describe('SearchBar.vue — мобильный оверлей (issue #171)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    mockState.query = '';
+    mockState.isLoading = false;
+    mockState.recommendations = null;
+    mockState.suggestions = null;
+    mockState.error = null;
+    mockFetchRecommendations.mockClear();
+    mockFetchSuggestions.mockClear();
+    mockGetSearchHistory.mockClear();
+    mockGetSearchHistory.mockReturnValue([]);
+    window.innerWidth = 500;
+  });
+
+  afterEach(() => {
+    window.innerWidth = 1024;
+    vi.useRealTimers();
+  });
+
+  it('показывает видимый input в шапке мобильного оверлея, связанный с query', async () => {
+    const wrapper = mount(SearchBar);
+    await wrapper.find('input[type="text"]').trigger('focus');
+    await nextTick();
+
+    const mobileInput = wrapper.find('[data-testid="search-bar-mobile-input"]');
+    expect(mobileInput.exists()).toBe(true);
+    expect(mobileInput.attributes('placeholder')).toBe('Поиск товаров...');
+
+    await mobileInput.setValue('смартфон');
+    expect(wrapper.emitted('update:modelValue')).toBeTruthy();
+    expect(wrapper.emitted('update:modelValue').at(-1)).toEqual(['смартфон']);
+  });
+
+  it('эмитит submit по Enter из мобильного input', async () => {
+    const wrapper = mount(SearchBar, {
+      props: { modelValue: 'телефон' },
+    });
+    await wrapper.find('input[type="text"]').trigger('focus');
+    await nextTick();
+
+    const mobileInput = wrapper.find('[data-testid="search-bar-mobile-input"]');
+    await mobileInput.trigger('keydown.enter');
+
+    expect(wrapper.emitted('submit')).toBeTruthy();
+    expect(wrapper.emitted('submit')[0]).toEqual(['телефон']);
+  });
+
+  it('не показывает мобильный input на десктопе', async () => {
+    window.innerWidth = 1024;
+    const wrapper = mount(SearchBar);
+    await wrapper.find('input[type="text"]').trigger('focus');
+    await nextTick();
+
+    expect(wrapper.find('[data-testid="search-bar-dropdown"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="search-bar-mobile-input"]').exists()).toBe(false);
+  });
+
+  it('кнопка удаления истории рендерится и удаляет элемент', async () => {
+    mockGetSearchHistory.mockReturnValue(['смартфон']);
+    const wrapper = mount(SearchBar);
+    await wrapper.find('input[type="text"]').trigger('focus');
+    await nextTick();
+
+    const del = wrapper.find('.search-bar__history-delete');
+    expect(del.exists()).toBe(true);
+
+    await del.trigger('click');
+    expect(mockRemoveSearchHistory).toHaveBeenCalledWith('смартфон');
+  });
+
+  it('показывает clear-кнопку в мобильном input и очищает запрос', async () => {
+    const wrapper = mount(SearchBar, {
+      props: { modelValue: 'тест' },
+    });
+    await wrapper.find('input[type="text"]').trigger('focus');
+    await nextTick();
+
+    const clearBtn = wrapper.find('[data-testid="search-bar-mobile-clear"]');
+    expect(clearBtn.exists()).toBe(true);
+
+    await clearBtn.trigger('click');
+    expect(wrapper.emitted('update:modelValue')).toBeTruthy();
+    expect(wrapper.emitted('update:modelValue').at(-1)).toEqual(['']);
+  });
+
+  it('не показывает clear-кнопку в мобильном input при пустом запросе', async () => {
+    const wrapper = mount(SearchBar);
+    await wrapper.find('input[type="text"]').trigger('focus');
+    await nextTick();
+
+    expect(wrapper.find('[data-testid="search-bar-mobile-input"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="search-bar-mobile-clear"]').exists()).toBe(false);
+  });
+
+  it('кнопка удаления истории видна на touch: opacity: 1 в media (max-width: 767px)', () => {
+    const src = readFileSync(
+      resolve(__dirname, '../components/SearchBar.vue'),
+      'utf-8'
+    );
+    const mediaBlock = src.match(/@media \(max-width: 767px\) \{[\s\S]*?\n\}/);
+    expect(mediaBlock).toBeTruthy();
+    expect(mediaBlock[0]).toMatch(/\.search-bar__history-delete \{\s*opacity: 1;/);
+  });
+});
