@@ -428,3 +428,60 @@ describe('Cart.vue — гостевая корзина', () => {
     expect(wrapper.find('[data-testid="address-form"]').exists()).toBe(false);
   });
 });
+
+describe('Cart.vue — свайп-удаление (mobile)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockIsAuthenticated.value = true;
+    mockGuestItems.value = [];
+    mockCartCount.value = 0;
+    mockRecipients.value = [];
+    mockRecipientsLoading.value = false;
+    getSupplierCityCode.mockResolvedValue(44);
+    mockGet.mockImplementation((url) => {
+      if (url === '/cart/') return Promise.resolve({ data: mockCartWithItems });
+      if (url === '/auth/profile') return Promise.resolve({ data: {} });
+      if (url === '/delivery-methods/') return Promise.resolve({ data: [] });
+      if (url === '/me/recipients/') return Promise.resolve({ data: mockSavedRecipients });
+      return Promise.resolve({ data: {} });
+    });
+  });
+
+  it('свайп влево открывает подложку, клик по .cart-item__delete-bg удаляет товар', async () => {
+    mockDelete.mockResolvedValue({ data: {} });
+    const wrapper = mount(Cart, { global: { plugins: [router] } });
+    await flushPromises();
+
+    const item = wrapper.find('[data-cart-item-id="101"]');
+    // обёртка контента существует
+    expect(item.find('.cart-item__content').exists()).toBe(true);
+
+    // симуляция горизонтального свайпа влево
+    await item.trigger('touchstart', { touches: [{ clientX: 300, clientY: 100 }] });
+    await item.trigger('touchmove', { touches: [{ clientX: 200, clientY: 105 }] });
+    await item.trigger('touchend');
+
+    expect(item.classes()).toContain('cart-item--swiped');
+    // подложка — сиблинг обёртки, НЕ внутри неё (не трансформируется)
+    expect(item.find('.cart-item__content .cart-item__delete-bg').exists()).toBe(false);
+    const deleteBg = item.element.querySelector(':scope > .cart-item__delete-bg');
+    expect(deleteBg).not.toBeNull();
+
+    await item.find('.cart-item__delete-bg').trigger('click');
+    await flushPromises();
+
+    expect(mockDelete).toHaveBeenCalledWith('/cart/remove/101');
+  });
+
+  it('вертикальный жест не открывает свайп', async () => {
+    const wrapper = mount(Cart, { global: { plugins: [router] } });
+    await flushPromises();
+
+    const item = wrapper.find('[data-cart-item-id="101"]');
+    await item.trigger('touchstart', { touches: [{ clientX: 300, clientY: 100 }] });
+    await item.trigger('touchmove', { touches: [{ clientX: 280, clientY: 200 }] });
+    await item.trigger('touchend');
+
+    expect(item.classes()).not.toContain('cart-item--swiped');
+  });
+});
