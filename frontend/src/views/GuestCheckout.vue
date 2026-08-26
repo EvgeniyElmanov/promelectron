@@ -315,6 +315,13 @@ onMounted(() => {
   cursor: pointer;
 }
 
+@media (max-width: 767px) {
+  .guest-checkout__back {
+    min-width: 40px;
+    min-height: 40px;
+  }
+}
+
 .guest-checkout__title {
   font-size: 18px;
   font-weight: 700;

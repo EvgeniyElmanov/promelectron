@@ -38,9 +38,15 @@
           @touchstart="handleTouchStart($event, item.id)"
           @touchmove="handleTouchMove($event, item.id)"
           @touchend="handleTouchEnd(item.id)"
+          @touchcancel="handleTouchCancel(item.id)"
         >
           <!-- Mobile Swipe Delete Background (static layer under content) -->
-          <button class="cart-item__delete-bg" @click="removeItem(item.id)">
+          <button
+            class="cart-item__delete-bg"
+            :tabindex="swipedItemId === item.id ? 0 : -1"
+            :aria-hidden="swipedItemId === item.id ? null : 'true'"
+            @click="removeItem(item.id)"
+          >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="3 6 5 6 21 6"/>
               <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
@@ -554,6 +560,11 @@ const handleTouchEnd = () => {
   touchStartY.value = 0;
 };
 
+const handleTouchCancel = () => {
+  touchStartX.value = 0;
+  touchStartY.value = 0;
+};
+
 onMounted(() => {
   fetchCart();
 });
@@ -761,6 +772,13 @@ watch(supplierId, () => {
 
 .cart-item__qty-btn:active:not(:disabled) {
   background: var(--color-bg);
+}
+
+@media (max-width: 767px) {
+  .cart-item__qty-btn {
+    min-width: 40px;
+    min-height: 40px;
+  }
 }
 
 .cart-item__qty-value {
@@ -1002,6 +1020,12 @@ watch(supplierId, () => {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
+}
+
+@media (max-width: 480px) {
+  .cart__recipient-fields {
+    grid-template-columns: 1fr;
+  }
 }
 
 .cart__recipient-field {

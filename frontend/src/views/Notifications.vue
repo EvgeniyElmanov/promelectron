@@ -146,6 +146,13 @@ onMounted(fetchNotifications);
   cursor: pointer;
 }
 
+@media (max-width: 767px) {
+  .notifications-page__back {
+    min-width: 40px;
+    min-height: 40px;
+  }
+}
+
 .notifications-page__title {
   font-size: 18px;
   font-weight: 700;
@@ -245,6 +252,19 @@ onMounted(fetchNotifications);
   justify-content: center;
   cursor: pointer;
   flex-shrink: 0;
+}
+
+/* Touch target ≥40px без изменения визуального размера (прозрачный хит-бокс) */
+@media (max-width: 767px) {
+  .notification-item__delete {
+    position: relative;
+  }
+
+  .notification-item__delete::after {
+    content: '';
+    position: absolute;
+    inset: -6px;
+  }
 }
 
 .notification-item__delete:hover {

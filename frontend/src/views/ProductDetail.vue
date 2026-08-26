@@ -330,6 +330,13 @@ onMounted(fetchProduct);
   flex-shrink: 0;
 }
 
+@media (max-width: 767px) {
+  .product-detail__back {
+    min-width: 40px;
+    min-height: 40px;
+  }
+}
+
 .product-detail__title {
   flex: 1;
   font-size: 16px;
@@ -489,6 +496,8 @@ onMounted(fetchProduct);
   margin: 0;
   color: var(--color-text);
   text-align: right;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .product-detail__actions {
@@ -551,6 +560,14 @@ onMounted(fetchProduct);
 
 .product-detail__star-btn {
   padding: 2px;
+}
+
+/* Touch target ≥40px без изменения визуального размера (padding + negative margin) */
+@media (max-width: 767px) {
+  .product-detail__star-btn {
+    padding: 8px;
+    margin: -6px;
+  }
 }
 
 .product-detail__review-textarea {

@@ -496,7 +496,7 @@ const handleCancel = async () => {
   max-height: 90vh;
   overflow-y: auto;
   border-radius: 20px 20px 0 0;
-  padding: 20px 16px calc(24px + var(--bottom-nav-height, 60px));
+  padding: 20px 16px calc(24px + var(--bottom-nav-height, 60px) + env(safe-area-inset-bottom, 0px));
 }
 
 @media (min-width: 640px) {

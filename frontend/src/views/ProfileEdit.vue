@@ -505,6 +505,17 @@ onMounted(fetchProfile);
   flex-shrink: 0;
 }
 
+@media (max-width: 767px) {
+  .back-btn {
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  .header-spacer {
+    width: 40px;
+  }
+}
+
 .profile-edit-title {
   flex: 1;
   font-size: 18px;

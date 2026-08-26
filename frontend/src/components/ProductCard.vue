@@ -176,6 +176,15 @@ const addToCart = async () => {
   color: #ff4242;
 }
 
+/* Touch target ≥40px без изменения визуального размера (прозрачный хит-бокс) */
+@media (max-width: 767px) {
+  .product-card__heart::after {
+    content: '';
+    position: absolute;
+    inset: -4px;
+  }
+}
+
 .product-card__body {
   padding: 8px 10px 10px;
   display: flex;
@@ -223,5 +232,11 @@ const addToCart = async () => {
 .product-card__cart-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+@media (max-width: 767px) {
+  .product-card__cart-btn {
+    min-height: 40px;
+  }
 }
 </style>

@@ -150,6 +150,16 @@ function onSuggestionSelect(item) {
   gap: 12px;
 }
 
+@media (max-width: 480px) {
+  .address-form__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .address-field--wide {
+    grid-column: auto;
+  }
+}
+
 .address-field {
   display: flex;
   flex-direction: column;

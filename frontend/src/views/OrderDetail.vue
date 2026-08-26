@@ -311,6 +311,13 @@ onMounted(fetchOrder);
   flex-shrink: 0;
 }
 
+@media (max-width: 767px) {
+  .order-detail__back {
+    min-width: 40px;
+    min-height: 40px;
+  }
+}
+
 .order-detail__title {
   font-size: 20px;
   font-weight: 700;

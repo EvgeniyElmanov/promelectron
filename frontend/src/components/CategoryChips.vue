@@ -92,6 +92,14 @@ onMounted(async () => {
   min-height: 29px;
 }
 
+@media (max-width: 767px) {
+  .category-chips__chip {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+  }
+}
+
 @keyframes chip-skeleton-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }

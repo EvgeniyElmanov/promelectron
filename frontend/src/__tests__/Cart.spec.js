@@ -366,6 +366,53 @@ describe('Cart.vue', () => {
     expect(widget.props('isFallback')).toBe(true);
     expect(wrapper.find('[data-testid="cdek-fallback-hint"]').exists()).toBe(true);
   });
+
+  it('показывает swipe-delete по свайпу влево', async () => {
+    const wrapper = mount(Cart, { global: { plugins: [router] } });
+    await flushPromises();
+
+    const item = wrapper.find('[data-testid="cart-item"]');
+    await item.trigger('touchstart', { touches: [{ clientX: 200, clientY: 100 }] });
+    await item.trigger('touchmove', { touches: [{ clientX: 100, clientY: 100 }] });
+
+    expect(item.classes()).toContain('cart-item--swiped');
+  });
+
+  it('сбрасывает swipe-состояние по touchcancel', async () => {
+    const wrapper = mount(Cart, { global: { plugins: [router] } });
+    await flushPromises();
+
+    const item = wrapper.find('[data-testid="cart-item"]');
+    await item.trigger('touchstart', { touches: [{ clientX: 200 }] });
+    await item.trigger('touchcancel');
+    await item.trigger('touchmove', { touches: [{ clientX: 0 }] });
+
+    expect(item.classes()).not.toContain('cart-item--swiped');
+  });
+
+  it('помечает swipe-delete кнопку tabindex="-1" и aria-hidden до свайпа', async () => {
+    const wrapper = mount(Cart, { global: { plugins: [router] } });
+    await flushPromises();
+
+    const deleteBg = wrapper.find('.cart-item__delete-bg');
+    expect(deleteBg.exists()).toBe(true);
+    expect(deleteBg.attributes('tabindex')).toBe('-1');
+    expect(deleteBg.attributes('aria-hidden')).toBe('true');
+  });
+
+  it('делает swipe-delete кнопку доступной после свайпа', async () => {
+    const wrapper = mount(Cart, { global: { plugins: [router] } });
+    await flushPromises();
+
+    const item = wrapper.find('[data-testid="cart-item"]');
+    await item.trigger('touchstart', { touches: [{ clientX: 200, clientY: 100 }] });
+    await item.trigger('touchmove', { touches: [{ clientX: 100, clientY: 100 }] });
+    expect(item.classes()).toContain('cart-item--swiped');
+
+    const deleteBg = wrapper.find('.cart-item__delete-bg');
+    expect(deleteBg.attributes('tabindex')).toBe('0');
+    expect(deleteBg.attributes('aria-hidden')).toBeUndefined();
+  });
 });
 
 describe('Cart.vue — гостевая корзина', () => {
