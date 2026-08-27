@@ -243,5 +243,5 @@
 | — | fix(tests): test_seed_catalog_script.py падает в Docker | [#161](https://github.com/AutonomaCo/promelectron/issues/161) | — | P1 | **done** (PR #180) | — | — | — |
 | — | feat(onec): проверка X-1C-Checksum на /onec/intake/ | [#162](https://github.com/AutonomaCo/promelectron/issues/162) | — | P1 | **done** (PR #180) | — | — | — |
 | — | fix(infra): make test-e2e, concurrency в deploy.yml, автоподготовка frontend-deps в worktree | [#179](https://github.com/AutonomaCo/promelectron/issues/179) | 2026-08-27 | P1 | **done** (PR #182) | — | — | — |
-| — | tech-debt: привести alembic check в зелёное состояние (pre-existing schema/model drift) | [#183](https://github.com/AutonomaCo/promelectron/issues/183) | 2026-08-27 | P1 | **backlog** | — | — | — |
+| — | tech-debt: привести alembic check в зелёное состояние (pre-existing schema/model drift) | [#183](https://github.com/AutonomaCo/promelectron/issues/183) | 2026-08-27 | P1 | **in review** (PR #184) | — | — | — |
 | — | Spec: mobile-medium-fixes — пачка medium-фиксов мобильной версии | [#171](https://github.com/AutonomaCo/promelectron/issues/171) | — | P1 | **done** (PR #173) | — | — | — |

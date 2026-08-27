@@ -396,3 +396,15 @@ Backend-под уходил в CrashLoopBackOff при деплое в `promelec
 **Решение:** в `test-e2e`/`test-visual` поднимать явный список сервисов (`postgres redis minio meilisearch api job-worker onec-mock frontend`) без `frontend-test`; playwright бежит отдельным `run --rm --user 1000:1000 -e SEED_SECRET frontend`. SEED_SECRET в Makefile резолвится из `.env`/`../../.env` с fallback на dev-placeholder из `.env.example` (корневой `.env` его обычно не содержит).
 
 **Профилактика:** никогда не поднимать сервисы с `npm ci`/установкой зависимостей в общем `up -d` рядом с long-running процессами, использующими тот же примонтированный `node_modules`; установка зависимостей — только явным отдельным шагом (см. `_prepare_frontend_deps` в `scripts/implement-pipeline.py`), после неё — `chown 1000:1000`.
+
+---
+
+## 2026-08-27 | fix-alembic-check-drift-183: зелёный alembic check — model-to-schema без новых миграций
+
+**Ошибка:** `alembic check` годами был красным от pre-existing drift (6 пунктов: `categories.is_active`, nullable в cdek-таблицах, unique constraints vs `unique=True`, лишний `index=True` на `EmailVerificationToken.user_id`), поэтому реальный drift тонул в фоновом шуме.
+
+**Причина:** миграции выражали исходное намерение (явные `NOT NULL`, явные `UniqueConstraint`, осознанный набор индексов), а модели писались позже «на глаз» и не догнали схему.
+
+**Решение:** во всех пунктах правим модели под схему (model-to-schema), DDL на prod не нужен. Ключевые технические факты: (1) alembic не сравнивает **unnamed** UniqueConstraint — в модели constraint'ы надо объявлять в `__table_args__` с **точными PG-автоименами** (`<table>_<col>_key`), тогда они матчатся с реальными и drift уходит без миграций; (2) `unique=True` на колонке ≡ unique index `ix_*`, а в БД был constraint + неуникальный индекс — семантически эквивалентно, но autogenerate видит разницу; (3) standalone `index=True`, покрытый composite-индексом (leftmost prefix), — источник ложного drift, удалять из модели, а не добавлять миграцией.
+
+**Профилактика:** `make migrate-check` добавлен в Makefile; `alembic check` стал обязательным шагом QA (`qa/SKILL.md`, `qa-gate/SKILL.md`) и чекбоксом в `pre-edit-checklist.md` для задач, трогающих `backend/src/app/models/` или `backend/alembic/`. Красный check теперь = реальный drift, игнорировать нельзя.
