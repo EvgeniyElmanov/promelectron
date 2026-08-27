@@ -267,6 +267,28 @@ jobs:
           echo "=== 1C mock logs ==="
           kubectl logs -n promelectron-test -l app=promelectron-onec-mock --tail=200 || true
 
+  # Gate: schema/model drift check против test-БД после деплоя
+  # (миграции уже применил helm hook migrate-job из того же образа).
+  # Красный check = реальный drift, deploy-prod блокируется
+  # (LESSONS_LEARNED 2026-08-27, issue #185).
+  migrate-check:
+    needs: deploy-test
+    runs-on: self-hosted
+    if: github.event_name == 'push' || inputs.environment == 'test' || inputs.environment == 'all'
+    steps:
+      - name: alembic check (test)
+        env:
+          KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
+        run: |
+          POD=$(kubectl get pods -n promelectron-test -l app=promelectron-api \
+            -o jsonpath='{.items[0].metadata.name}')
+          if [ -z "$POD" ]; then
+            echo "ERROR: No promelectron-api pod found in promelectron-test"
+            exit 1
+          fi
+          echo "Running: alembic check on $POD in promelectron-test"
+          kubectl exec -n promelectron-test $POD -- alembic check
+
   test-e2e:
     needs: [deploy-test, seed-test-catalog]
     uses: ./.github/workflows/e2e.yml
@@ -275,13 +297,14 @@ jobs:
       environment: test
 
   deploy-prod:
-    needs: [build, test-e2e]
+    needs: [build, test-e2e, migrate-check]
     runs-on: self-hosted
     if: |
       always() &&
       (inputs.environment == 'prod' || inputs.environment == 'all') &&
       needs.build.result == 'success' &&
-      (needs.test-e2e.result == 'success' || needs.test-e2e.result == 'skipped')
+      (needs.test-e2e.result == 'success' || needs.test-e2e.result == 'skipped') &&
+      (needs.migrate-check.result == 'success' || needs.migrate-check.result == 'skipped')
     environment: production
     steps:
       - name: Checkout
