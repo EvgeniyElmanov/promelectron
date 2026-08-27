@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, JSON, Numeric, String
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, JSON, Numeric, String, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from src.app.db.database import Base
@@ -8,6 +8,9 @@ from src.app.db.database import Base
 
 class Order(Base):
     __tablename__ = "orders"
+    __table_args__ = (
+        UniqueConstraint("cdek_order_id", name="uq_orders_cdek_order_id"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
@@ -31,7 +34,6 @@ class Order(Base):
         Integer,
         ForeignKey("cdek_orders.id", ondelete="SET NULL"),
         nullable=True,
-        unique=True,
         index=True,
     )
     save_address = Column(Boolean, nullable=False, default=False)

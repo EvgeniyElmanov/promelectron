@@ -22,13 +22,16 @@ def _utc_now() -> datetime:
 
 class CdekOrder(Base):
     __tablename__ = "cdek_orders"
+    __table_args__ = (
+        UniqueConstraint("order_id", name="cdek_orders_order_id_key"),
+        UniqueConstraint("cdek_uuid", name="cdek_orders_cdek_uuid_key"),
+    )
 
     id = Column(Integer, primary_key=True)
     order_id = Column(
         Integer,
         ForeignKey("orders.id", ondelete="SET NULL"),
         nullable=True,
-        unique=True,
         index=True,
     )
 
@@ -43,18 +46,19 @@ class CdekOrder(Base):
     period_max = Column(Integer, nullable=True)
 
     # CDEK API state
-    cdek_uuid = Column(String, nullable=True, unique=True, index=True)
+    cdek_uuid = Column(String, nullable=True, index=True)
     cdek_number = Column(String, nullable=True, index=True)
     cdek_status = Column(String, nullable=True, index=True)
     tracking_number = Column(String, nullable=True)
     sync_attempts = Column(Integer, nullable=False, default=0)
     sync_failed = Column(Boolean, nullable=False, default=False)
 
-    created_at = Column(DateTime(timezone=True), default=_utc_now)
+    created_at = Column(DateTime(timezone=True), default=_utc_now, nullable=False)
     updated_at = Column(
         DateTime(timezone=True),
         default=_utc_now,
         onupdate=_utc_now,
+        nullable=False,
     )
 
     order = relationship("Order", back_populates="cdek_order", foreign_keys=[order_id])
@@ -91,6 +95,6 @@ class CdekStatusHistory(Base):
     cdek_status = Column(String, nullable=False, index=True)
     status_date_time = Column(DateTime(timezone=True), nullable=False, index=True)
     city_name = Column(String, nullable=True)
-    created_at = Column(DateTime(timezone=True), default=_utc_now)
+    created_at = Column(DateTime(timezone=True), default=_utc_now, nullable=False)
 
     cdek_order = relationship("CdekOrder", back_populates="status_history")
