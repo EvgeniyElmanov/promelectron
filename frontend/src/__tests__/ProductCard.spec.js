@@ -82,4 +82,66 @@ describe('ProductCard.vue', () => {
 
     expect(wrapper.find('[data-testid="add-to-cart-button"]').exists()).toBe(true)
   })
+
+  it('при stock=0 показывает бейдж и блокирует кнопку', () => {
+    const router = createRouter({
+      history: createWebHistory(),
+      routes: [{ path: '/', component: ProductCard }],
+    })
+
+    const wrapper = mount(ProductCard, {
+      global: { plugins: [router] },
+      props: {
+        product: { id: 3, name: 'Out Of Stock', price: 1999, stock: 0 },
+      },
+    })
+
+    const badge = wrapper.find('[data-testid="out-of-stock-badge"]')
+    expect(badge.exists()).toBe(true)
+    expect(badge.text()).toBe('Нет в наличии')
+
+    const button = wrapper.find('[data-testid="add-to-cart-button"]')
+    expect(button.attributes('disabled')).toBeDefined()
+    expect(button.text()).toContain('Нет в наличии')
+  })
+
+  it('при stock>0 не показывает бейдж и кнопка активна', () => {
+    const router = createRouter({
+      history: createWebHistory(),
+      routes: [{ path: '/', component: ProductCard }],
+    })
+
+    const wrapper = mount(ProductCard, {
+      global: { plugins: [router] },
+      props: {
+        product: { id: 4, name: 'In Stock', price: 1999, stock: 7 },
+      },
+    })
+
+    expect(wrapper.find('[data-testid="out-of-stock-badge"]').exists()).toBe(false)
+
+    const button = wrapper.find('[data-testid="add-to-cart-button"]')
+    expect(button.attributes('disabled')).toBeUndefined()
+    expect(button.text()).toContain('В корзину')
+  })
+
+  it('при отсутствии stock (undefined) не показывает бейдж и кнопка активна', () => {
+    const router = createRouter({
+      history: createWebHistory(),
+      routes: [{ path: '/', component: ProductCard }],
+    })
+
+    const wrapper = mount(ProductCard, {
+      global: { plugins: [router] },
+      props: {
+        product: { id: 5, name: 'No Stock Field', price: 1999 },
+      },
+    })
+
+    expect(wrapper.find('[data-testid="out-of-stock-badge"]').exists()).toBe(false)
+
+    const button = wrapper.find('[data-testid="add-to-cart-button"]')
+    expect(button.attributes('disabled')).toBeUndefined()
+    expect(button.text()).toContain('В корзину')
+  })
 })
