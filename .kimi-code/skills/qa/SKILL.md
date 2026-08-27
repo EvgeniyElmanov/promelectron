@@ -46,13 +46,14 @@ disableModelInvocation: true
 ## Рабочий процесс
 
 1. **Backend tests:** `make -C "$WORKTREE" test-backend`
-2. **Frontend unit tests:** `cd "$WORKTREE/frontend" && npm test`
-3. **E2E tests:**
+2. **Schema drift check:** если задача меняла `backend/src/app/models/` или `backend/alembic/` — прогнать `make -C "$WORKTREE" migrate-check` (`alembic check`); exit != 0 → `TESTS_FAILED`.
+3. **Frontend unit tests:** `cd "$WORKTREE/frontend" && npm test`
+4. **E2E tests:**
    - Если фича затрагивает UI или пользовательские потоки, запусти dev-окружение (`make dev`) в $WORKTREE, проверь health checks, затем запусти Playwright.
    - НЕ запускай субагента `e2e-tester` сам — субагенты не могут порождать вложенных субагентов; оркестратор запустит `e2e-tester` отдельно при необходимости.
    - Запуск: `cd "$WORKTREE/frontend" && npx playwright test <feature>.spec.js --workers=1`
-4. **Проверь Acceptance Criteria** из `$AGENT_DIR/spec.md` против реализации.
-5. Напиши `$AGENT_DIR/review/test-findings.md`.
+5. **Проверь Acceptance Criteria** из `$AGENT_DIR/spec.md` против реализации.
+6. Напиши `$AGENT_DIR/review/test-findings.md`.
 
 ## Output: `$AGENT_DIR/review/test-findings.md`
 

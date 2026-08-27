@@ -14,7 +14,7 @@ VENV             ?= $(shell [ -d $(CURDIR)/venv ] && echo $(CURDIR)/venv || echo
 
 .PHONY: help dev dev-backend dev-frontend stop logs \
         test test-backend test-onec-mock test-frontend test-e2e test-visual test-full \
-        migrate migrate-down migrate-generate migrate-history seed \
+        migrate migrate-down migrate-generate migrate-history migrate-check seed \
         lint lint-backend lint-onec-mock lint-frontend format format-backend format-frontend \
         build clean status \
         agent-context agent-status agent-audit
@@ -105,6 +105,10 @@ migrate-generate: ## Сгенерировать миграцию: make migrate-g
 
 migrate-history: ## История миграций
 	$(COMPOSE_BACKEND) run --rm --entrypoint "" $(DOCKER_USER) api alembic history
+
+migrate-check: ## Проверить drift схемы (alembic check)
+	$(COMPOSE_BACKEND) up -d postgres
+	$(COMPOSE_BACKEND) run --rm --entrypoint "" $(DOCKER_USER) api alembic check
 
 seed: ## Залить тестовые данные
 	$(COMPOSE_BACKEND) up -d postgres redis
