@@ -1,6 +1,6 @@
 import json
 
-from fastapi import APIRouter, Depends, Header, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.app.db.database import get_db
@@ -71,11 +71,17 @@ async def onec_webhook(
 async def onec_intake(
     request: Request,
     x_1c_api_key: str | None = Header(default=None, alias="X-1C-Api-Key"),
+    x_1c_checksum: str | None = Header(default=None, alias="X-1C-Checksum"),
     db: AsyncSession = Depends(get_db),
 ):
     validate_api_key(x_1c_api_key)
 
-    log = await store_intake(db, request)
+    log = await store_intake(db, request, expected_checksum=x_1c_checksum)
+    if log.status == "failed":
+        # Checksum mismatch: фиксируем отказ в onec_intake_log (коммитим),
+        # job разбора НЕ создаём — сырое тело остаётся в MinIO для форензики.
+        await db.commit()
+        raise HTTPException(status_code=400, detail="X-1C-Checksum mismatch")
     await create_onec_intake_process_job(db, str(log.intake_id))
     await db.commit()
 
