@@ -3833,4 +3833,4 @@
   - PR #184 влит в main (merge `46116cb`), issue #183 → Done; housekeeping (SESSION_LOG/BACKLOG/LESSONS_LEARNED) запушен коммитом `d1dd46c`; worktree и ветка fix-alembic-check-drift удалены.
   - Follow-up #185 (quick-режим): job `migrate-check` в deploy.yml (kubectl exec alembic check в api-pod promelectron-test после deploy-test, gate для deploy-prod при dispatch prod/all) + ручное действие `check` в migrate.yml. Подход верифицирован вживую: alembic check на test-окружении с текущим main → exit 0. YAML валиден.
   - pre-push: lint/unit зелёные; E2E 115/116 — падение на флаки cart-select.spec.js (3 прогона: fail@115 → fail@164 → pass; протечка server-side состояния корзины между тестами файла). Не связано с diff (только YAML workflows). Заведена issue #186.
-  - PR #187 открыт, issue #185 → In review. Ждём одобрения мержа.
+  - PR #187 влит в main (merge `d05b179`), issue #185 → Done; worktree/ветка удалены. Deploy-прогон main 33084220282 — SUCCESS: job `migrate-check` зелёный (`No new upgrade operations detected` на promelectron-test), gate работает end-to-end.
