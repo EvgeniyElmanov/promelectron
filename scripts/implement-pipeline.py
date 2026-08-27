@@ -21,6 +21,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 from datetime import datetime
@@ -217,6 +218,41 @@ def cmd_worktree_path(args: argparse.Namespace) -> int:
     return 0
 
 
+# Images for frontend deps prep in fresh worktrees (see .kimi-code/LESSONS_LEARNED.md, 2026-08-24).
+PLAYWRIGHT_IMAGE = "mcr.microsoft.com/playwright:v1.61.0-jammy"
+NODE_IMAGE = "node:20-slim"
+
+
+def _prepare_frontend_deps(worktree: Path) -> None:
+    """Install frontend dependencies in a fresh worktree.
+
+    Host `npm ci` misses the optional peer `picomatch` (vite then fails to
+    start); the containerised `npm install` in the Playwright image adds it
+    but leaves root-owned files in the bind-mounted node_modules, which
+    breaks later `--user` runs and worktree removal — fix with a chown pass.
+    """
+    frontend = worktree / "frontend"
+    if not (frontend / "package-lock.json").exists():
+        return
+    if not shutil.which("npm") or not shutil.which("docker"):
+        print("WARNING: npm or docker not found — skipping frontend deps prep, run it manually")
+        return
+    uid, gid = os.getuid(), os.getgid()
+    steps = [
+        (["npm", "ci", "--silent"], frontend),
+        (["docker", "run", "--rm", "-v", f"{frontend}:/app", "-w", "/app",
+          PLAYWRIGHT_IMAGE, "npm", "install", "--silent"], None),
+        (["docker", "run", "--rm", "-v", f"{frontend}:/app",
+          NODE_IMAGE, "chown", "-R", f"{uid}:{gid}", "/app/node_modules"], None),
+    ]
+    for cmd, cwd in steps:
+        result = run(cmd, cwd=cwd, check=False)
+        if result.returncode != 0:
+            print(f"WARNING: frontend deps prep failed at '{cmd[0]} {cmd[1]}': {result.stderr.strip()[:300]}")
+            return
+    print("Frontend dependencies prepared (npm ci + container install + chown).")
+
+
 @retry_on_kimi_errors(max_attempts=4, backoff_seconds=2.0)
 def cmd_create_worktree(args: argparse.Namespace) -> int:
     task_id = args.task_id
@@ -238,6 +274,8 @@ def cmd_create_worktree(args: argparse.Namespace) -> int:
     }
     if str(worktree) in existing_paths:
         print(f"Worktree already exists: {worktree}")
+        if args.prepare_frontend:
+            _prepare_frontend_deps(worktree)
         print(worktree)
         return 0
 
@@ -248,6 +286,8 @@ def cmd_create_worktree(args: argparse.Namespace) -> int:
         run(["git", "worktree", "add", str(worktree), branch])
     else:
         run(["git", "worktree", "add", str(worktree), "-b", branch, base_ref])
+    if not args.skip_frontend_prep:
+        _prepare_frontend_deps(worktree)
     print(worktree)
     return 0
 
@@ -616,6 +656,16 @@ def main() -> int:
     wt_create = sub.add_parser("create-worktree", help="Create git worktree for task-id")
     wt_create.add_argument("task_id", help="Task ID")
     wt_create.add_argument("--base-ref", default="origin/main", help="Base ref to branch from (default: origin/main)")
+    wt_create.add_argument(
+        "--skip-frontend-prep",
+        action="store_true",
+        help="Do not install frontend dependencies after creating the worktree",
+    )
+    wt_create.add_argument(
+        "--prepare-frontend",
+        action="store_true",
+        help="Re-run frontend deps prep for an already existing worktree",
+    )
 
     cleanup = sub.add_parser("cleanup", help="Remove worktree and feature branch")
     cleanup.add_argument("task_id", help="Task ID")

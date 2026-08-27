@@ -384,3 +384,15 @@ Backend-под уходил в CrashLoopBackOff при деплое в `promelec
 **Решение:** восстановление адаптивным переписыванием по спеке + `git show fe6f0f9` как референс (НЕ cherry-pick — main ушёл вперёд: product_prices, Recipient v1, #111). Drift «миграция есть, колонки в модели нет» чинится возвратом колонки в модель без новой миграции (верификация: `alembic check` без diff по этой колонке).
 
 **Профилактика:** (1) перед любым «хозяйственным» коммитом, собранным не через worktree-пайплайн, — `git status` + осмотр `git diff --stat` на предмет удалений чужого кода/тестов; (2) периодическая ревизия закрытых spec-issue «спека закрыта ≠ реализовано» (проверка кода, а не статуса на борде) — вошло в практику 2026-08-26; (3) drift-детектор: сделать `alembic check` зелёным (сейчас он всегда красный от pre-existing drift и потому бесполезен) — отдельная задача.
+
+---
+
+## 2026-08-27 | infra-test-e2e-concurrency-179: `frontend-test` в `make test-e2e` вайпит node_modules и гоняется с dev-server/playwright
+
+**Ошибка:** после починки `\&\&` и SEED_SECRET `make test-e2e` падал дважды подряд: сначала `vite: not found` у dev-server'а `frontend`, затем молчаливый exit 243 (EACCES) у playwright-раннера.
+
+**Причина:** `$(COMPOSE) up -d` поднимал и сервис `frontend-test`, чей entrypoint — `npm ci` в примонтированный `frontend/` worktree. `npm ci` полностью пересоздаёт `node_modules`: (1) гонка с dev-server'ом — vite теряет свой бинарник посреди работы; (2) `npm ci` идёт от root → `node_modules` становится root-owned → последующие `run --user 1000:1000` (playwright) не могут писать и падают без вывода. Тот же класс проблемы, что в уроках 2026-08-24 (root-owned node_modules, битый node_modules в свежем worktree).
+
+**Решение:** в `test-e2e`/`test-visual` поднимать явный список сервисов (`postgres redis minio meilisearch api job-worker onec-mock frontend`) без `frontend-test`; playwright бежит отдельным `run --rm --user 1000:1000 -e SEED_SECRET frontend`. SEED_SECRET в Makefile резолвится из `.env`/`../../.env` с fallback на dev-placeholder из `.env.example` (корневой `.env` его обычно не содержит).
+
+**Профилактика:** никогда не поднимать сервисы с `npm ci`/установкой зависимостей в общем `up -d` рядом с long-running процессами, использующими тот же примонтированный `node_modules`; установка зависимостей — только явным отдельным шагом (см. `_prepare_frontend_deps` в `scripts/implement-pipeline.py`), после неё — `chown 1000:1000`.

@@ -3,6 +3,11 @@ COMPOSE_BACKEND  := docker compose -f backend/docker-compose.yml -p promelectron
 COMPOSE_FRONTEND := docker compose -f frontend/docker-compose.yml -p promelectron
 COMPOSE          := docker compose -f backend/docker-compose.yml -f frontend/docker-compose.yml -p promelectron
 DOCKER_USER      := --user $(shell id -u):$(shell id -g)
+# SEED_SECRET для test-e2e: из .env (worktree или корень main-репо ../../.env),
+# с fallback на dev-placeholder из .env.example (backend в non-production его принимает).
+# Fail-fast на стороне e2e/global-setup.js, если не задан нигде.
+SEED_SECRET ?= $(shell grep -h '^SEED_SECRET=' .env ../../.env .env.example ../../.env.example 2>/dev/null | head -1 | cut -d= -f2-)
+export SEED_SECRET
 # venv проекта: из корня main-репо — ./venv, из worktree .worktrees/<id>/ — ../../venv.
 # Переопределяется через make VENV=...
 VENV             ?= $(shell [ -d $(CURDIR)/venv ] && echo $(CURDIR)/venv || echo $(CURDIR)/../../venv)
@@ -67,13 +72,15 @@ test-frontend: ## Запустить vitest
 	$(COMPOSE_FRONTEND) run --rm $(DOCKER_USER) frontend sh -c "npm install --silent && npm test"
 
 test-e2e: ## Запустить Playwright E2E тесты (требует запущенного стека)
-	$(COMPOSE) up -d
+	# frontend-test намеренно НЕ поднимаем: его `npm ci` вайпит примонтированный
+	# node_modules и гоняется с dev-server/playwright (LESSONS_LEARNED 2026-08-27).
+	$(COMPOSE) up -d postgres redis minio meilisearch api job-worker onec-mock frontend
 	@echo "Waiting for frontend dev server to be ready..."
 	@$(COMPOSE_FRONTEND) run --rm $(DOCKER_USER) frontend sh -c "until curl -s -o /dev/null http://frontend:5173; do sleep 1; done"
-	$(COMPOSE_FRONTEND) run --rm $(DOCKER_USER) frontend sh -c "npm install --silent \&\& npx playwright test --workers=1"
+	$(COMPOSE_FRONTEND) run --rm $(DOCKER_USER) -e SEED_SECRET frontend sh -c "npm install --silent && npx playwright test --workers=1"
 
 test-visual: ## Визуальный smoke (скриншоты)
-	$(COMPOSE) up -d
+	$(COMPOSE) up -d postgres redis minio meilisearch api job-worker onec-mock frontend
 	@echo "Waiting for frontend dev server to be ready..."
 	@$(COMPOSE_FRONTEND) run --rm $(DOCKER_USER) frontend sh -c "until curl -s -o /dev/null http://frontend:5173; do sleep 1; done"
 	$(COMPOSE_FRONTEND) run --rm $(DOCKER_USER) frontend npx playwright test --project=visual-smoke --workers=1
