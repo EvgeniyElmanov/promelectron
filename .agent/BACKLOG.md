@@ -229,13 +229,17 @@
 | — | [#66](https://github.com/AutonomaCo/promelectron/issues/66) | Specification: onec-integration | 2026-07-07 |
 | fix-rate-limit-register-login-crash | [#75](https://github.com/AutonomaCo/promelectron/issues/75) | Spec: fix-rate-limit-register-login-crash | 2026-07-12 |
 | fix-avatar-upload-kubernetes | [#77](https://github.com/AutonomaCo/promelectron/issues/77) | Writable `/app/uploads` for avatar upload in Kubernetes | 2026-07-12 |
-| — | Technical Specification: yookassa-e2e-ui-kassa-failed-3ds-0715 | [#96](https://github.com/AutonomaCo/promelectron/issues/96) | — | P1 | **backlog** | — | — | — |
-| — | Technical Specification: admin-orders-date-cancel | [#104](https://github.com/AutonomaCo/promelectron/issues/104) | — | P1 | **backlog** | — | — | — |
-| — | Technical Specification: admin-cancel-followups (--quick) | [#107](https://github.com/AutonomaCo/promelectron/issues/107) | — | P1 | **backlog** | — | — | — |
-| — | Bug Spec: fix-e2e-auth-after-guest-checkout | [#112](https://github.com/AutonomaCo/promelectron/issues/112) | — | P1 | **backlog** | — | — | — |
-| — | Technical Specification: catalog-filter-panel-122 | [#134](https://github.com/AutonomaCo/promelectron/issues/134) | — | P1 | **backlog** | — | — | — |
-| — | Спецификация: search-api-followups-0801 (#137, #138) | [#137](https://github.com/AutonomaCo/promelectron/issues/137) | — | P1 | **backlog** | — | — | — |
+| — | Technical Specification: yookassa-e2e-ui-kassa-failed-3ds-0715 | [#96](https://github.com/AutonomaCo/promelectron/issues/96) | — | P1 | **done** (PR #97; ревизия 2026-08-26) | — | — | — |
+| — | Technical Specification: admin-orders-date-cancel | [#104](https://github.com/AutonomaCo/promelectron/issues/104) | — | P1 | **done** (PR #106; ревизия 2026-08-26) | — | — | — |
+| — | Technical Specification: admin-cancel-followups (--quick) | [#107](https://github.com/AutonomaCo/promelectron/issues/107) | — | P1 | **done** (PR #108; ревизия 2026-08-26) | — | — | — |
+| — | Bug Spec: fix-e2e-auth-after-guest-checkout | [#112](https://github.com/AutonomaCo/promelectron/issues/112) | — | P1 | **done** (PR #113; ревизия 2026-08-26) | — | — | — |
+| — | Technical Specification: catalog-filter-panel-122 | [#134](https://github.com/AutonomaCo/promelectron/issues/134) | — | P1 | **done** (PR #135, #136; ревизия 2026-08-26) | — | — | — |
+| — | Спецификация: search-api-followups-0801 (#137, #138) | [#137](https://github.com/AutonomaCo/promelectron/issues/137) | — | P1 | **done** (PR #140; ревизия 2026-08-26) | — | — | — |
 | — | Spec: fix-uploads-cache-onec | [#158](https://github.com/AutonomaCo/promelectron/issues/158) | — | P1 | **done** (PR #159) | — | — | — |
 | — | Spec: feat-out-of-stock-ui | [#163](https://github.com/AutonomaCo/promelectron/issues/163) | — | P1 | **closed** — PDP через #165/#167, ProductCard → #176 | — | — | — |
 | — | feat: бейдж «Нет в наличии» в карточке товара (stock=0) | [#176](https://github.com/AutonomaCo/promelectron/issues/176) | — | P1 | **backlog** | — | — | — |
+| — | restore: cart-select-items-for-payment — фича #61 откачена в `41a5043`, восстановить из `fe6f0f9` | [#177](https://github.com/AutonomaCo/promelectron/issues/177) | 2026-08-26 | P1 | **done** (PR #178, merge `1569056`) | — | — | — |
+| — | fix(uploads): MinIO-ветка serve_upload ловит только FileNotFoundError | [#160](https://github.com/AutonomaCo/promelectron/issues/160) | — | P1 | **backlog** | — | — | — |
+| — | fix(tests): test_seed_catalog_script.py падает в Docker | [#161](https://github.com/AutonomaCo/promelectron/issues/161) | — | P1 | **backlog** | — | — | — |
+| — | feat(onec): проверка X-1C-Checksum на /onec/intake/ | [#162](https://github.com/AutonomaCo/promelectron/issues/162) | — | P1 | **backlog** | — | — | — |
 | — | Spec: mobile-medium-fixes — пачка medium-фиксов мобильной версии | [#171](https://github.com/AutonomaCo/promelectron/issues/171) | — | P1 | **done** (PR #173) | — | — | — |
