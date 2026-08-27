@@ -186,7 +186,7 @@ git -C "$PROJECT_ROOT" fetch origin
 python scripts/implement-pipeline.py create-worktree <task-id>
 ```
 
-This creates `$WORKTREE` on branch `feature/<task-id>` from `origin/main`. If the worktree already exists, reuse it. Copy gitignored local files needed for the build (`.env`, `backend/.env`, `frontend/.env`, `.worktreeinclude`).
+This creates `$WORKTREE` on branch `feature/<task-id>` from `origin/main`. If the worktree already exists, reuse it. `create-worktree` also prepares frontend dependencies automatically (`npm ci` + containerised install + chown; disable with `--skip-frontend-prep`, re-run for an existing worktree with `--prepare-frontend`). Copy gitignored local files needed for the build (`.env`, `backend/.env`, `frontend/.env`, `.worktreeinclude`).
 
 ---
 

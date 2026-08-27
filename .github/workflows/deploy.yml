@@ -23,6 +23,12 @@ on:
           - all
         default: test
 
+# Серия мержей в main не должна гоняться на общем test-окружении:
+# новый пуш отменяет предыдущий незавершённый прогон (LESSONS_LEARNED 2026-08-26).
+concurrency:
+  group: deploy-${{ github.ref_name }}
+  cancel-in-progress: true
+
 env:
   REGISTRY: harbor.kubeadm.ru
   API_IMAGE: harbor.kubeadm.ru/promelectron/promelectron-api
