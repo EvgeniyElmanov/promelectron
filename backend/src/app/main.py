@@ -109,6 +109,10 @@ async def serve_upload(path: str, size: str | None = None):
             logger.exception("Storage error downloading %r from MinIO", path)
             raise HTTPException(status_code=502, detail="Storage backend error") from exc
         except Exception as exc:
+            # HTTPException пробрасываем как есть — это осмысленные ответы,
+            # а не сбой хранилища.
+            if isinstance(exc, HTTPException):
+                raise
             # Fallback: невалидный ключ (null-byte), сетевые ошибки SDK и прочее.
             logger.exception("Unexpected storage error downloading %r", path)
             raise HTTPException(status_code=502, detail="Storage backend error") from exc
