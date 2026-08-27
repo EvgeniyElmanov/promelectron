@@ -19,6 +19,7 @@ on:
           - downgrade -1
           - current
           - history
+          - check
 
 env:
   KUBECONFIG_PATH: ${{ vars.KUBECONFIG_PATH }}
