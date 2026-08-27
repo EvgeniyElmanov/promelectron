@@ -3828,3 +3828,9 @@
   - Решение (spec D-01…D-09): model-to-schema — правки 4 моделей (category.py, cdek_order.py, order.py, user.py) без новых миграций; fallback-миграция не понадобилась (именованные UniqueConstraint сматчились с PG-автоименами). + Makefile target migrate-check; alembic check закреплён обязательным шагом в qa/SKILL.md, qa-gate/SKILL.md, pre-edit-checklist.md.
   - Результаты: alembic check exit 0 на dev-БД и на чистой БД (upgrade head с нуля); pytest 613 passed / 2 skipped; ruff clean; pre-push (lint + unit + E2E 116 passed / 4 skipped) зелёный. Ревью: APPROVED с 1-й итерации. QA-gate: TESTS_PASSED.
   - PR #184 открыт, issue #183 → In review. Урок записан в LESSONS_LEARNED (unnamed constraints alembic не сравнивает; имена под PG-автоимена).
+
+### 2026-08-27 | orchestrator | fix-alembic-check-drift → merged + ci-alembic-check-gate (#185, PR #187)
+  - PR #184 влит в main (merge `46116cb`), issue #183 → Done; housekeeping (SESSION_LOG/BACKLOG/LESSONS_LEARNED) запушен коммитом `d1dd46c`; worktree и ветка fix-alembic-check-drift удалены.
+  - Follow-up #185 (quick-режим): job `migrate-check` в deploy.yml (kubectl exec alembic check в api-pod promelectron-test после deploy-test, gate для deploy-prod при dispatch prod/all) + ручное действие `check` в migrate.yml. Подход верифицирован вживую: alembic check на test-окружении с текущим main → exit 0. YAML валиден.
+  - pre-push: lint/unit зелёные; E2E 115/116 — падение на флаки cart-select.spec.js (3 прогона: fail@115 → fail@164 → pass; протечка server-side состояния корзины между тестами файла). Не связано с diff (только YAML workflows). Заведена issue #186.
+  - PR #187 открыт, issue #185 → In review. Ждём одобрения мержа.
