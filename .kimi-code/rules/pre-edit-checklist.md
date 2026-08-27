@@ -40,6 +40,7 @@ disableModelInvocation: true
 - [ ] Меняю ли я модель SQLAlchemy (`Column`, `relationship`, `Table`)?
 - [ ] Если ДА — создать Alembic миграцию: `alembic revision --autogenerate -m "..."`
 - [ ] Проверить: `alembic upgrade head && alembic downgrade -1 && alembic upgrade head`
+- [ ] Прогнал `make migrate-check` (`alembic check`) — exit 0 (нет drift)
 
 #### 4. API Contract
 - [ ] Меняю ли я response/request schema?

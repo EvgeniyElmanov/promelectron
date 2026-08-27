@@ -92,11 +92,12 @@ Paths:
 
 Затем:
 1. Запусти backend-тесты в $WORKTREE: make -C "$WORKTREE" test-backend
-2. Запусти frontend unit-тесты в $WORKTREE: make -C "$WORKTREE" test-frontend
-3. Если фича затрагивает UI или пользовательские сценарии, или передан флаг --e2e — запусти E2E: `make -C "$WORKTREE" test-e2e`. Не делегируй E2E другому субагенту; при необходимости в запуске `e2e-tester` отдельно вернись к оркестратору после завершения.
-4. Проверь каждый Acceptance Criterion из $AGENT_DIR/spec.md.
-5. Запиши результаты в $AGENT_DIR/review/test-findings.md.
-6. Обнови $PROJECT_ROOT/.agent/SESSION_LOG.md.
+2. Если задача меняла `backend/src/app/models/` или `backend/alembic/` — прогнать `make -C "$WORKTREE" migrate-check` (`alembic check`); exit != 0 → `TESTS_FAILED`.
+3. Запусти frontend unit-тесты в $WORKTREE: make -C "$WORKTREE" test-frontend
+4. Если фича затрагивает UI или пользовательские сценарии, или передан флаг --e2e — запусти E2E: `make -C "$WORKTREE" test-e2e`. Не делегируй E2E другому субагенту; при необходимости в запуске `e2e-tester` отдельно вернись к оркестратору после завершения.
+5. Проверь каждый Acceptance Criterion из $AGENT_DIR/spec.md.
+6. Запиши результаты в $AGENT_DIR/review/test-findings.md.
+7. Обнови $PROJECT_ROOT/.agent/SESSION_LOG.md.
 
 Do NOT edit source code.
 
