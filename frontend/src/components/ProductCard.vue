@@ -16,6 +16,11 @@
         loading="lazy"
       />
       <span v-else class="product-card__image-letter">{{ product.name.charAt(0) }}</span>
+      <span
+        v-if="isOutOfStock"
+        class="product-card__badge"
+        data-testid="out-of-stock-badge"
+      >Нет в наличии</span>
       <button
         class="product-card__heart"
         :class="{ 'product-card__heart--active': isFavorite }"
@@ -33,7 +38,7 @@
       <button
         class="product-card__cart-btn"
         data-testid="add-to-cart-button"
-        :disabled="isLoading"
+        :disabled="isLoading || isOutOfStock"
         @click.stop="addToCart"
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
@@ -41,7 +46,7 @@
           <line x1="3" y1="6" x2="21" y2="6" stroke="currentColor" stroke-width="2"/>
           <path d="M16 10a4 4 0 01-8 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
         </svg>
-        <span>{{ isLoading ? '...' : 'В корзину' }}</span>
+        <span>{{ isOutOfStock ? 'Нет в наличии' : (isLoading ? '...' : 'В корзину') }}</span>
       </button>
     </div>
   </div>
@@ -79,6 +84,8 @@ const placeholderBg = computed(() =>
 );
 
 const formattedPrice = computed(() => formatPrice(props.product.price));
+
+const isOutOfStock = computed(() => props.product.stock === 0);
 
 const goToProduct = () => {
   router.push(`/product/${props.product.id}`);
@@ -174,6 +181,19 @@ const addToCart = async () => {
 
 .product-card__heart--active {
   color: #ff4242;
+}
+
+.product-card__badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--color-danger, #ff4242);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.3;
 }
 
 /* Touch target ≥40px без изменения визуального размера (прозрачный хит-бокс) */
