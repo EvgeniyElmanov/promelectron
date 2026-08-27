@@ -237,9 +237,10 @@
 | — | Спецификация: search-api-followups-0801 (#137, #138) | [#137](https://github.com/AutonomaCo/promelectron/issues/137) | — | P1 | **done** (PR #140; ревизия 2026-08-26) | — | — | — |
 | — | Spec: fix-uploads-cache-onec | [#158](https://github.com/AutonomaCo/promelectron/issues/158) | — | P1 | **done** (PR #159) | — | — | — |
 | — | Spec: feat-out-of-stock-ui | [#163](https://github.com/AutonomaCo/promelectron/issues/163) | — | P1 | **closed** — PDP через #165/#167, ProductCard → #176 | — | — | — |
-| — | feat: бейдж «Нет в наличии» в карточке товара (stock=0) | [#176](https://github.com/AutonomaCo/promelectron/issues/176) | — | P1 | **backlog** | — | — | — |
+| — | feat: бейдж «Нет в наличии» в карточке товара (stock=0) | [#176](https://github.com/AutonomaCo/promelectron/issues/176) | — | P1 | **done** (PR #181) | — | — | — |
 | — | restore: cart-select-items-for-payment — фича #61 откачена в `41a5043`, восстановить из `fe6f0f9` | [#177](https://github.com/AutonomaCo/promelectron/issues/177) | 2026-08-26 | P1 | **done** (PR #178, merge `1569056`) | — | — | — |
-| — | fix(uploads): MinIO-ветка serve_upload ловит только FileNotFoundError | [#160](https://github.com/AutonomaCo/promelectron/issues/160) | — | P1 | **backlog** | — | — | — |
-| — | fix(tests): test_seed_catalog_script.py падает в Docker | [#161](https://github.com/AutonomaCo/promelectron/issues/161) | — | P1 | **backlog** | — | — | — |
-| — | feat(onec): проверка X-1C-Checksum на /onec/intake/ | [#162](https://github.com/AutonomaCo/promelectron/issues/162) | — | P1 | **backlog** | — | — | — |
+| — | fix(uploads): MinIO-ветка serve_upload ловит только FileNotFoundError | [#160](https://github.com/AutonomaCo/promelectron/issues/160) | — | P1 | **done** (PR #180) | — | — | — |
+| — | fix(tests): test_seed_catalog_script.py падает в Docker | [#161](https://github.com/AutonomaCo/promelectron/issues/161) | — | P1 | **done** (PR #180) | — | — | — |
+| — | feat(onec): проверка X-1C-Checksum на /onec/intake/ | [#162](https://github.com/AutonomaCo/promelectron/issues/162) | — | P1 | **done** (PR #180) | — | — | — |
+| — | fix(infra): make test-e2e, concurrency в deploy.yml, автоподготовка frontend-deps в worktree | [#179](https://github.com/AutonomaCo/promelectron/issues/179) | 2026-08-27 | P1 | **done** (PR #182) | — | — | — |
 | — | Spec: mobile-medium-fixes — пачка medium-фиксов мобильной версии | [#171](https://github.com/AutonomaCo/promelectron/issues/171) | — | P1 | **done** (PR #173) | — | — | — |
