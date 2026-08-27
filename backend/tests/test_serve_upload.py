@@ -77,6 +77,31 @@ async def test_serve_upload_minio_404(monkeypatch):
     assert response.status_code == 404
 
 
+async def test_serve_upload_minio_s3_error_returns_502(monkeypatch):
+    """Сбой S3/MinIO SDK (ClientError) — 502, а не 500."""
+    from botocore.exceptions import ClientError
+
+    error = ClientError(
+        {"Error": {"Code": "InternalError", "Message": "boom"}}, "GetObject"
+    )
+    svc = _make_minio_storage(download_side_effect=error)
+    monkeypatch.setattr("src.app.main.storage", svc)
+
+    response = await _get("/uploads/products/x.jpg")
+
+    assert response.status_code == 502
+
+
+async def test_serve_upload_minio_unexpected_error_returns_502(monkeypatch):
+    """Прочие ошибки download_raw (недоступность MinIO, невалидный ключ) — 502."""
+    svc = _make_minio_storage(download_side_effect=ConnectionError("minio down"))
+    monkeypatch.setattr("src.app.main.storage", svc)
+
+    response = await _get("/uploads/products/x.jpg")
+
+    assert response.status_code == 502
+
+
 async def test_serve_upload_local_mode_unchanged(monkeypatch, tmp_path):
     """Local mode: файл отдаётся с файловой системы, как раньше (без redirect/stream)."""
     from src.app.services.storage_service import LocalStorageService

@@ -343,3 +343,98 @@ async def test_intake_rejected_creates_no_job(client: AsyncClient, test_session)
 
     result = await test_session.execute(select(Job))
     assert result.scalars().all() == []
+
+
+@pytest.mark.asyncio
+async def test_intake_valid_checksum_accepted(
+    client: AsyncClient, test_session, fake_storage, onec_api_key
+):
+    """Верный X-1C-Checksum (sha256:<hex>) → 202, log received, job создан."""
+    body = b'{"ref_key": "abc"}'
+    checksum = f"sha256:{hashlib.sha256(body).hexdigest()}"
+
+    response = await client.post(
+        "/api/v1/onec/intake/",
+        content=body,
+        headers={"X-1C-Api-Key": onec_api_key, "X-1C-Checksum": checksum},
+    )
+
+    assert response.status_code == 202
+    result = await test_session.execute(select(OnecIntakeLog))
+    log = result.scalar_one()
+    assert log.status == "received"
+    assert log.error is None
+
+    result = await test_session.execute(select(Job))
+    jobs = result.scalars().all()
+    assert len(jobs) == 1
+    assert jobs[0].job_type == "ONEC_INTAKE_PROCESS"
+
+
+@pytest.mark.asyncio
+async def test_intake_valid_checksum_bare_hex_accepted(
+    client: AsyncClient, test_session, fake_storage, onec_api_key
+):
+    """Голый hex без префикса sha256: тоже принимается → 202."""
+    body = b"data"
+    checksum = hashlib.sha256(body).hexdigest()
+
+    response = await client.post(
+        "/api/v1/onec/intake/",
+        content=body,
+        headers={"X-1C-Api-Key": onec_api_key, "X-1C-Checksum": checksum},
+    )
+
+    assert response.status_code == 202
+
+
+@pytest.mark.asyncio
+async def test_intake_checksum_mismatch_rejected(
+    client: AsyncClient, test_session, fake_storage, onec_api_key
+):
+    """Неверный X-1C-Checksum → 400, в onec_intake_log ошибка, job НЕ создан.
+
+    Сырое тело при этом сохраняется в storage для форензики.
+    """
+    body = b"payload-bytes"
+    bad_checksum = "sha256:" + "0" * 64
+
+    response = await client.post(
+        "/api/v1/onec/intake/",
+        content=body,
+        headers={"X-1C-Api-Key": onec_api_key, "X-1C-Checksum": bad_checksum},
+    )
+
+    assert response.status_code == 400
+
+    result = await test_session.execute(select(OnecIntakeLog))
+    log = result.scalar_one()
+    assert log.status == "failed"
+    assert "checksum" in log.error.lower()
+    assert log.sha256 == hashlib.sha256(body).hexdigest()
+    # Тело сохранено для разбора инцидента
+    assert fake_storage.objects[(log.bucket, log.object_key)] == body
+
+    result = await test_session.execute(select(Job))
+    assert result.scalars().all() == []
+
+
+@pytest.mark.asyncio
+async def test_intake_malformed_checksum_rejected(
+    client: AsyncClient, test_session, fake_storage, onec_api_key
+):
+    """Мусор в X-1C-Checksum (не hex) → 400, job НЕ создан."""
+    response = await client.post(
+        "/api/v1/onec/intake/",
+        content=b"data",
+        headers={"X-1C-Api-Key": onec_api_key, "X-1C-Checksum": "not-a-checksum"},
+    )
+
+    assert response.status_code == 400
+
+    result = await test_session.execute(select(OnecIntakeLog))
+    log = result.scalar_one()
+    assert log.status == "failed"
+
+    result = await test_session.execute(select(Job))
+    assert result.scalars().all() == []

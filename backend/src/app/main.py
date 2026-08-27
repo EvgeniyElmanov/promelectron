@@ -7,6 +7,7 @@ from logging import getLogger
 
 from alembic import command
 from alembic.config import Config
+from botocore.exceptions import ClientError
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
@@ -102,6 +103,19 @@ async def serve_upload(path: str, size: str | None = None):
             data = await storage.download_raw(path)
         except FileNotFoundError:
             raise HTTPException(status_code=404, detail="File not found")
+        except ClientError as exc:
+            # Сбой S3/MinIO SDK (недоступность, отказ доступа и т.п.) —
+            # это ошибка апстрима, а не отсутствие объекта.
+            logger.exception("Storage error downloading %r from MinIO", path)
+            raise HTTPException(status_code=502, detail="Storage backend error") from exc
+        except Exception as exc:
+            # HTTPException пробрасываем как есть — это осмысленные ответы,
+            # а не сбой хранилища.
+            if isinstance(exc, HTTPException):
+                raise
+            # Fallback: невалидный ключ (null-byte), сетевые ошибки SDK и прочее.
+            logger.exception("Unexpected storage error downloading %r", path)
+            raise HTTPException(status_code=502, detail="Storage backend error") from exc
         content_type = mimetypes.guess_type(path)[0]
         if content_type is None and path.endswith(".webp"):
             content_type = "image/webp"

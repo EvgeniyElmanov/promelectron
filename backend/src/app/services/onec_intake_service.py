@@ -1,4 +1,5 @@
 import hashlib
+import hmac
 import tempfile
 from datetime import datetime, timezone
 from uuid import uuid4
@@ -66,6 +67,25 @@ def make_object_key() -> str:
     return f"{stamp}_{uuid4()}.bin"
 
 
+def parse_checksum_header(value: str) -> str | None:
+    """Parse the X-1C-Checksum header: `sha256:<hex>` or bare hex.
+
+    Returns the lowercased hex digest, or None when the value is malformed.
+    """
+    digest = value.strip().lower()
+    if digest.startswith("sha256:"):
+        digest = digest[len("sha256:"):].strip()
+    if len(digest) == 64 and all(c in "0123456789abcdef" for c in digest):
+        return digest
+    return None
+
+
+def checksum_matches(expected_header: str, computed_hex: str) -> bool:
+    """Verify X-1C-Checksum against the computed body SHA256 (constant-time)."""
+    expected = parse_checksum_header(expected_header)
+    return expected is not None and hmac.compare_digest(expected, computed_hex)
+
+
 def _safe_headers(request: Request) -> dict[str, str]:
     return {
         name: value
@@ -74,11 +94,20 @@ def _safe_headers(request: Request) -> dict[str, str]:
     }
 
 
-async def store_intake(session: AsyncSession, request: Request) -> OnecIntakeLog:
+async def store_intake(
+    session: AsyncSession,
+    request: Request,
+    expected_checksum: str | None = None,
+) -> OnecIntakeLog:
     """Store the raw request body in the intake bucket and log the metadata.
 
     Uploads to storage first; any storage error propagates and no DB row is
     written. The caller (endpoint) is responsible for commit (D-10).
+
+    When `expected_checksum` (X-1C-Checksum header) is provided, the body
+    SHA256 is verified against it. On mismatch the log row is written with
+    status "failed" (raw bytes are kept in storage for forensics), and the
+    caller must NOT enqueue a processing job.
     """
     body_file, received_bytes, sha256_hex = await read_intake_body(request)
     object_key = make_object_key()
@@ -89,6 +118,10 @@ async def store_intake(session: AsyncSession, request: Request) -> OnecIntakeLog
         await storage.upload_raw(object_key, body_file, content_type, bucket=bucket)
     finally:
         body_file.close()
+
+    checksum_failed = expected_checksum is not None and not checksum_matches(
+        expected_checksum, sha256_hex
+    )
 
     log = OnecIntakeLog(
         bucket=bucket,
@@ -102,7 +135,12 @@ async def store_intake(session: AsyncSession, request: Request) -> OnecIntakeLog
         query_params=dict(request.query_params),
         remote_addr=request.client.host if request.client else None,
         user_agent=(request.headers.get("user-agent") or "")[:512] or None,
-        status="received",
+        status="failed" if checksum_failed else "received",
+        error=(
+            f"X-1C-Checksum mismatch: body sha256={sha256_hex}"
+            if checksum_failed
+            else None
+        ),
     )
     session.add(log)
     await session.flush()
