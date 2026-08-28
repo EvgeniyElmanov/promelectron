@@ -13,7 +13,7 @@
         data-testid="pdp-favorite-button"
         @click="toggleFavorite"
       >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <svg width="24" height="24" viewBox="0 0 24 24" :fill="isFavorite ? 'currentColor' : 'none'">
           <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       </button>
@@ -361,8 +361,28 @@ onMounted(fetchProduct);
   transition: color 0.15s;
 }
 
+.product-detail__fav-btn svg {
+  transition: fill 0.15s ease;
+}
+
 .product-detail__fav-btn--active {
   color: #ff4242;
+}
+
+.product-detail__fav-btn--active svg {
+  animation: heart-pop 0.25s ease;
+}
+
+@keyframes heart-pop {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.25);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 .product-detail__main {

@@ -64,6 +64,29 @@ describe('ProductDetail.vue', () => {
     vi.clearAllMocks()
   })
 
+  it('активное сердечко на PDP закрашено красным (fill currentColor)', async () => {
+    api.get.mockResolvedValueOnce({ data: { ...mockProduct, is_favorite: true } })
+    const wrapper = await mountProductDetail()
+
+    await vi.waitFor(() => {
+      const btn = wrapper.find('[data-testid="pdp-favorite-button"]')
+      expect(btn.classes()).toContain('product-detail__fav-btn--active')
+    })
+    const btn = wrapper.find('[data-testid="pdp-favorite-button"]')
+    expect(btn.find('svg').attributes('fill')).toBe('currentColor')
+  })
+
+  it('неактивное сердечко на PDP без заливки (fill none)', async () => {
+    const wrapper = await mountProductDetail()
+
+    await vi.waitFor(() => {
+      expect(wrapper.find('[data-testid="pdp-stock"]').exists()).toBe(true)
+    })
+    const btn = wrapper.find('[data-testid="pdp-favorite-button"]')
+    expect(btn.classes()).not.toContain('product-detail__fav-btn--active')
+    expect(btn.find('svg').attributes('fill')).toBe('none')
+  })
+
   it('отображает название и цену товара', async () => {
     const router = createRouter({
       history: createWebHistory(),

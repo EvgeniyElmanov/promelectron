@@ -27,7 +27,7 @@
         data-testid="favorite-button"
         @click.stop="toggleFavorite"
       >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+        <svg width="18" height="18" viewBox="0 0 24 24" :fill="isFavorite ? 'currentColor' : 'none'">
           <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       </button>
@@ -66,6 +66,8 @@ const props = defineProps({
   product: { type: Object, required: true },
 });
 
+const emit = defineEmits(['removed']);
+
 const router = useRouter();
 const { isAuthenticated } = useAuth();
 const { add: toast } = useToast();
@@ -100,6 +102,7 @@ const toggleFavorite = async () => {
     if (isFavorite.value) {
       await api.delete(`/favorites/remove/${props.product.id}`);
       isFavorite.value = false;
+      emit('removed', props.product.id);
       toast('Удалено из избранного', 'info');
     } else {
       await api.post(`/favorites/add/${props.product.id}`);
@@ -179,8 +182,28 @@ const addToCart = async () => {
   cursor: pointer;
 }
 
+.product-card__heart svg {
+  transition: fill 0.15s ease;
+}
+
 .product-card__heart--active {
   color: #ff4242;
+}
+
+.product-card__heart--active svg {
+  animation: heart-pop 0.25s ease;
+}
+
+@keyframes heart-pop {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.25);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 .product-card__badge {
