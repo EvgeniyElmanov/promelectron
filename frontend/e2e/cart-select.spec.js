@@ -204,11 +204,21 @@ test.describe('Cart item selection (#177)', () => {
 
     // Клик по indeterminate-чекбоксу сначала выбирает все (стандартное поведение браузера),
     // повторный клик снимает выбор со всех.
+    // UI обновляется оптимистично (Cart.vue toggleSelectAll), поэтому ждём ответы API,
+    // иначе последующий fetch /orders/create/ обгоняет deselect-all (race, run 33182200993).
+    const selectAllResponse = page.waitForResponse(
+      (response) => response.url().includes('/cart/select-all/') && response.status() === 200,
+    );
     await selectAllInput.click();
+    await selectAllResponse;
     await expect(itemCheckbox(page, productB.name)).toBeChecked();
 
     // Deselect all → checkout button disabled, API rejects order creation with 400.
+    const deselectAllResponse = page.waitForResponse(
+      (response) => response.url().includes('/cart/deselect-all/') && response.status() === 200,
+    );
     await selectAllInput.click();
+    await deselectAllResponse;
     await expect(itemCheckbox(page, productA.name)).not.toBeChecked();
     await expect(itemCheckbox(page, productB.name)).not.toBeChecked();
     await expect(page.locator('[data-testid="checkout-button"]')).toBeDisabled();
