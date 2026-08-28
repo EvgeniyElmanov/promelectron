@@ -230,7 +230,7 @@ settings = Settings(
     cdek_test_mode=os.getenv("CDEK_TEST_MODE", "true").lower() == "true",
     cdek_sync_cron_interval_seconds=_parse_int_env("CDEK_SYNC_CRON_INTERVAL_SECONDS", 900),
     cdek_terminal_statuses=_parse_csv_env(
-        "CDEK_TERMINAL_STATUSES", "DELIVERED,NOT_DELIVERED,RETURNED,CANCELLED"
+        "CDEK_TERMINAL_STATUSES", "DELIVERED,NOT_DELIVERED,RETURNED,CANCELLED,INVALID"
     ),
     job_worker_sleep_seconds=_parse_int_env("JOB_WORKER_SLEEP_SECONDS", 60),
     job_max_attempts=_parse_int_env("JOB_MAX_ATTEMPTS", 5),
