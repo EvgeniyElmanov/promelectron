@@ -1005,3 +1005,86 @@ class TestJobWorker:
 
         assert job.status == "pending"
         assert job.run_after is not None
+
+    @pytest.mark.asyncio
+    async def test_handle_cdek_sync_status_invalid_marks_failed_and_stops(
+        self, test_order, test_session, monkeypatch
+    ):
+        """INVALID-заказ: polling прекращается, sync_failed=True, история пишется."""
+        cdek_order = await _load_cdek_order(test_session, test_order.cdek_order_id)
+        cdek_order.cdek_uuid = "uuid-invalid"
+        await test_session.commit()
+
+        async def fake_get_order(self, uuid):
+            return {
+                "entity": {
+                    "statuses": [
+                        {"code": "INVALID", "date_time": "2026-08-28T10:00:00+00:00"},
+                    ],
+                }
+            }
+
+        monkeypatch.setattr("src.app.workers.job_worker.CdekClient.get_order", fake_get_order)
+
+        job = Job(
+            job_type="CDEK_SYNC_ORDER_STATUS",
+            payload={"cdek_order_id": cdek_order.id},
+            processing_log=[],
+        )
+        await handle_cdek_sync_status(job, test_session)
+
+        refreshed = await _load_cdek_order(test_session, cdek_order.id)
+        assert refreshed.cdek_status == "INVALID"
+        assert refreshed.sync_failed is True
+        assert refreshed.sync_attempts == 1
+        # Job НЕ перепланирован: остаётся "running" -> caller пометит completed
+        assert job.status == "running"
+        assert any("INVALID" in entry for entry in job.processing_log)
+
+        history = await test_session.execute(
+            select(CdekStatusHistory).where(CdekStatusHistory.cdek_order_id == cdek_order.id)
+        )
+        rows = history.scalars().all()
+        assert any(row.cdek_status == "INVALID" for row in rows)
+
+    @pytest.mark.asyncio
+    async def test_cron_sync_statuses_skips_sync_failed(self, test_order, test_session, monkeypatch):
+        """Cron не создаёт sync job для заказов с sync_failed=True."""
+        ok_order = await _load_cdek_order(test_session, test_order.cdek_order_id)
+        ok_order.cdek_uuid = "uuid-ok"
+
+        failed_order = CdekOrder(
+            tariff_code=1,
+            delivery_mode="PVZ",
+            cdek_uuid="uuid-failed",
+            sync_failed=True,
+        )
+        test_session.add(failed_order)
+        await test_session.commit()
+
+        class _NoCloseSession:
+            def __init__(self, session):
+                self._session = session
+
+            def __getattr__(self, name):
+                return getattr(self._session, name)
+
+            async def close(self):
+                pass
+
+        monkeypatch.setattr(
+            "src.app.workers.cron_cdek_sync_statuses.SessionLocal",
+            lambda: _NoCloseSession(test_session),
+        )
+
+        from src.app.workers.cron_cdek_sync_statuses import run
+
+        result = await run()
+
+        assert result["created"] == 1
+        jobs = await test_session.execute(
+            select(Job).where(Job.job_type == "CDEK_SYNC_ORDER_STATUS")
+        )
+        created_jobs = jobs.scalars().all()
+        assert len(created_jobs) == 1
+        assert created_jobs[0].payload["cdek_order_id"] == ok_order.id
