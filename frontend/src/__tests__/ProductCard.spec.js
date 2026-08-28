@@ -1,7 +1,8 @@
-import { describe, it, expect, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { mount, flushPromises } from '@vue/test-utils'
 import { createRouter, createWebHistory } from 'vue-router'
 import ProductCard from '@/components/ProductCard.vue'
+import api from '@/services/api'
 
 vi.mock('@/services/api', () => ({
   default: {
@@ -18,6 +19,57 @@ vi.mock('@/composables/useAuth', () => ({
 }))
 
 describe('ProductCard.vue', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  function mountCard(product) {
+    const router = createRouter({
+      history: createWebHistory(),
+      routes: [{ path: '/', component: ProductCard }],
+    })
+    return mount(ProductCard, {
+      global: { plugins: [router] },
+      props: { product },
+    })
+  }
+
+  it('клик по активному сердечку шлёт DELETE и эмитит removed', async () => {
+    api.delete.mockResolvedValue({})
+    const wrapper = mountCard({ id: 1, name: 'Fav Product', price: 4999, stock: 5, is_favorite: true })
+
+    await wrapper.find('[data-testid="favorite-button"]').trigger('click')
+    await flushPromises()
+
+    expect(api.delete).toHaveBeenCalledWith('/favorites/remove/1')
+    expect(api.post).not.toHaveBeenCalled()
+    expect(wrapper.emitted('removed')).toEqual([[1]])
+  })
+
+  it('клик по неактивному сердечку шлёт POST и не эмитит removed', async () => {
+    api.post.mockResolvedValue({})
+    const wrapper = mountCard({ id: 2, name: 'Plain Product', price: 4999, stock: 5 })
+
+    await wrapper.find('[data-testid="favorite-button"]').trigger('click')
+    await flushPromises()
+
+    expect(api.post).toHaveBeenCalledWith('/favorites/add/2')
+    expect(api.delete).not.toHaveBeenCalled()
+    expect(wrapper.emitted('removed')).toBeUndefined()
+  })
+
+  it('активное сердечко закрашено (fill currentColor), неактивное — без заливки', () => {
+    const active = mountCard({ id: 1, name: 'Fav', price: 100, stock: 1, is_favorite: true })
+    const activeBtn = active.find('[data-testid="favorite-button"]')
+    expect(activeBtn.classes()).toContain('product-card__heart--active')
+    expect(activeBtn.find('svg').attributes('fill')).toBe('currentColor')
+
+    const inactive = mountCard({ id: 2, name: 'Plain', price: 100, stock: 1 })
+    const inactiveBtn = inactive.find('[data-testid="favorite-button"]')
+    expect(inactiveBtn.classes()).not.toContain('product-card__heart--active')
+    expect(inactiveBtn.find('svg').attributes('fill')).toBe('none')
+  })
+
   it('отображает название и цену', () => {
     const router = createRouter({
       history: createWebHistory(),

@@ -1,7 +1,9 @@
 import { describe, it, expect, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { nextTick } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
 import Favorites from '@/views/Favorites.vue'
+import ProductCard from '@/components/ProductCard.vue'
 
 const mockFavorites = [
   {
@@ -56,6 +58,29 @@ describe('Favorites.vue', () => {
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('Favorite Product')
     })
+  })
+
+  it('удаляет карточку из списка после события removed', async () => {
+    const router = createRouter({
+      history: createWebHistory(),
+      routes: [{ path: '/favorites', component: Favorites }],
+    })
+    await router.push('/favorites')
+    await router.isReady()
+
+    const wrapper = mount(Favorites, {
+      global: { plugins: [router] },
+    })
+
+    await vi.waitFor(() => {
+      expect(wrapper.findComponent(ProductCard).exists()).toBe(true)
+    })
+
+    wrapper.findComponent(ProductCard).vm.$emit('removed', 10)
+    await nextTick()
+
+    expect(wrapper.findComponent(ProductCard).exists()).toBe(false)
+    expect(wrapper.find('[data-testid="favorites-empty"]').exists()).toBe(true)
   })
 
   it('отображает пустое состояние', async () => {
