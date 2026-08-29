@@ -1,5 +1,6 @@
 import json
 import logging
+import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any
@@ -374,7 +375,9 @@ class CdekService:
 
         payload: dict[str, Any] = {
             "type": 1,
-            "number": str(order.id),
+            # Номер заказа ИМ должен быть уникален среди активных заказов аккаунта CDEK;
+            # после reseed БД голый order.id коллидирует со старыми заказами на стенде.
+            "number": f"PM-{order.id}-{uuid.uuid4().hex[:6]}",
             "tariff_code": cdek_order.tariff_code,
             "recipient": recipient,
             "packages": packages,
@@ -651,11 +654,18 @@ class CdekService:
             try:
                 order_id = int(im_number)
             except (TypeError, ValueError):
-                # Handle "order-{id}" legacy format
-                if isinstance(im_number, str) and im_number.startswith("order-"):
+                order_id = None
+                if isinstance(im_number, str) and im_number.startswith("PM-"):
+                    # Current format "PM-{id}-{suffix}": extract the internal order id
+                    parts = im_number.split("-")
+                    if len(parts) >= 3:
+                        try:
+                            order_id = int(parts[1])
+                        except ValueError:
+                            order_id = None
+                elif isinstance(im_number, str) and im_number.startswith("order-"):
+                    # Handle "order-{id}" legacy format
                     order_id = int(im_number.replace("order-", ""))
-                else:
-                    order_id = None
 
             if order_id is not None:
                 result = await db.execute(
