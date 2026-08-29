@@ -93,6 +93,19 @@ def _find_branch(task_id: str) -> str | None:
     return None
 
 
+def _pr_ref_from_task_md(agent_dir: Path) -> str | None:
+    """pr_url из task.md — fallback, когда локальная ветка уже удалена после merge."""
+    task_md = agent_dir / "task.md"
+    if not task_md.exists():
+        return None
+    try:
+        text = task_md.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+    match = re.search(r"pr_url:\s*(https?://\S+)", text, re.IGNORECASE)
+    return match.group(1) if match else None
+
+
 def _find_pr(branch: str | None) -> tuple[str | None, str | None]:
     """Best-effort PR lookup; любые ошибки (нет gh, нет сети) -> (None, None)."""
     if not branch:
@@ -108,6 +121,25 @@ def _find_pr(branch: str | None) -> tuple[str | None, str | None]:
         return payload.get("state"), payload.get("url")
     except (subprocess.TimeoutExpired, json.JSONDecodeError, FileNotFoundError, OSError):
         return None, None
+
+
+def _find_pr_by_head(task_id: str) -> tuple[str | None, str | None]:
+    """PR по head-ветке feature|bugfix/<task-id>; работает и после удаления ветки."""
+    for prefix in ("feature/", "bugfix/"):
+        try:
+            result = subprocess.run(
+                ["gh", "pr", "list", "--state", "all", "--head",
+                 f"{prefix}{task_id}", "--json", "state,url", "--limit", "1"],
+                capture_output=True, text=True, timeout=10,
+            )
+            if result.returncode != 0:
+                continue
+            payload = json.loads(result.stdout)
+            if payload:
+                return payload[0].get("state"), payload[0].get("url")
+        except (subprocess.TimeoutExpired, json.JSONDecodeError, FileNotFoundError, OSError):
+            return None, None
+    return None, None
 
 
 def _parse_findings(findings_file: Path) -> FindingsSummary:
@@ -198,7 +230,15 @@ def collect_state(task_id: str, with_pr: bool = True) -> TaskState:
             str(p.relative_to(agent_dir)) for p in agent_dir.rglob("*") if p.is_file()
         )
     branch = _find_branch(task_id)
-    pr_state, pr_url = _find_pr(branch) if with_pr else (None, None)
+    pr_state, pr_url = None, None
+    if with_pr:
+        # 1) локальная ветка (быстрый путь); 2) pr_url из task.md;
+        # 3) head-ветка на GitHub — работает и после удаления ветки при cleanup.
+        pr_state, pr_url = _find_pr(branch)
+        if pr_state is None:
+            pr_state, pr_url = _find_pr(_pr_ref_from_task_md(agent_dir))
+        if pr_state is None:
+            pr_state, pr_url = _find_pr_by_head(task_id)
     findings = _parse_findings(agent_dir / "review" / "findings.md")
     tests_status = _parse_tests(agent_dir / "review" / "test-findings.md")
     return TaskState(
