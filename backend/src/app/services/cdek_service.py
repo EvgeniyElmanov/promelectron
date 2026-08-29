@@ -563,11 +563,18 @@ class CdekService:
                 try:
                     recipient_email = (order.user.email if order.user else None) or order.guest_email
                     if recipient_email:
+                        tracking_number = (
+                            order.tracking_number
+                            or cdek_order.tracking_number
+                            or cdek_order.cdek_number
+                        )
                         await EmailService.send_order_status_update(
                             to=recipient_email,
                             order_id=order.id,
                             status=order.status,
                             db=db,
+                            tracking_number=tracking_number,
+                            tracking_url=CdekService.build_tracking_url(cdek_order),
                         )
 
                     if order.user_id:

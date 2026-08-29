@@ -706,7 +706,7 @@ class TestPaymentsAPI:
                 mock_capture,
             ),
             patch(
-                "src.app.services.payment_service.EmailService.send_order_confirmation",
+                "src.app.services.payment_service.EmailService.send_order_paid",
                 AsyncMock(),
             ),
         ):
@@ -892,7 +892,7 @@ class TestPaymentsAPI:
                 mock_notification,
             ),
             patch(
-                "src.app.services.payment_service.EmailService.send_order_confirmation",
+                "src.app.services.payment_service.EmailService.send_order_paid",
                 AsyncMock(),
             ),
         ):
@@ -913,6 +913,87 @@ class TestPaymentsAPI:
             headers={"Authorization": f"Bearer {user_token}"},
         )
         assert order_get.json()["status"] == "paid"
+
+    @pytest.mark.asyncio
+    async def test_payment_success_sends_single_confirmation(
+        self,
+        client,
+        test_user,
+        user_token,
+        test_product,
+        test_session,
+        cdek_delivery_payload,
+    ):
+        """Полный цикл create+pay: ровно одно письмо «оформлен» и одно «оплачен» (без дубля)."""
+        await client.post(
+            "/api/v1/cart/add",
+            json={"product_id": test_product.id, "quantity": 1},
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+
+        mock_confirmation = AsyncMock(return_value=None)
+        mock_paid = AsyncMock(return_value=None)
+        with (
+            patch(
+                "src.app.services.order_service.EmailService.send_order_confirmation",
+                mock_confirmation,
+            ),
+            patch(
+                "src.app.services.payment_service.EmailService.send_order_paid",
+                mock_paid,
+            ),
+        ):
+            order_resp = await client.post(
+                "/api/v1/orders/create/",
+                json={
+                    "cdek_delivery": cdek_delivery_payload,
+                    "recipient_first_name": "Тест",
+                    "recipient_last_name": "Пользователь",
+                    "recipient_phone": "+79990001122",
+                },
+                headers={"Authorization": f"Bearer {user_token}"},
+            )
+            order_id = order_resp.json()["id"]
+
+            mock_yookassa = AsyncMock(
+                return_value={
+                    "yookassa_payment_id": "test-yookassa-id",
+                    "status": "pending",
+                    "confirmation_url": "https://yoomoney.ru/checkout/test",
+                    "amount": Decimal(str(test_product.price)),
+                    "created_at": "2026-06-02T12:00:00.000Z",
+                }
+            )
+            with (
+                patch(
+                    "src.app.services.payment_service.YooKassaService.is_configured",
+                    return_value=True,
+                ),
+                patch(
+                    "src.app.services.payment_service.YooKassaService.create_payment",
+                    mock_yookassa,
+                ),
+            ):
+                await client.post(
+                    f"/api/v1/payments/{order_id}/",
+                    headers={"Authorization": f"Bearer {user_token}"},
+                )
+
+            webhook_payload = {
+                "event": "payment.succeeded",
+                "object": {
+                    "id": "test-yookassa-id",
+                    "status": "succeeded",
+                    "amount": {"value": str(test_product.price), "currency": "RUB"},
+                },
+            }
+            resp = await client.post(
+                "/api/v1/payments/yookassa/webhook/", json=webhook_payload
+            )
+            assert resp.status_code == 200
+
+        mock_confirmation.assert_awaited_once()
+        mock_paid.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_payment_unauthorized(self, client):

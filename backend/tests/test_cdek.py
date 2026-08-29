@@ -499,6 +499,39 @@ class TestCdekService:
         assert "Доставлен" in notification.message
 
     @pytest.mark.asyncio
+    async def test_apply_cdek_status_shipped_email_includes_tracking(self, test_order, test_session):
+        """Shipped-письмо из apply_cdek_status содержит трек-номер и ссылку отслеживания."""
+        test_order.status = "paid"
+        await test_session.commit()
+
+        cdek_order = await _load_cdek_order(test_session, test_order.cdek_order_id)
+        payload = {
+            "entity": {
+                "cdek_number": "1101234567",
+                "statuses": [
+                    {"code": "TAKEN_BY_TRANSPORT", "date_time": "2026-06-24T10:00:00+00:00"},
+                ],
+            }
+        }
+        changed = await CdekService.apply_cdek_status(cdek_order, payload, test_session)
+        assert changed is True
+
+        refreshed_order = await _load_order_with_cdek(test_session, test_order.id)
+        assert refreshed_order.status == "shipped"
+
+        result = await test_session.execute(
+            select(Job).where(
+                Job.job_type == "SEND_EMAIL",
+                Job.payload.contains({"to": test_order.user.email}),
+            )
+        )
+        email_job = result.scalars().first()
+        assert email_job is not None
+        assert "Отправлен" in email_job.payload["subject"]
+        assert "1101234567" in email_job.payload["html"]
+        assert "https://www.cdek.ru/ru/tracking?order_id=1101234567" in email_job.payload["html"]
+
+    @pytest.mark.asyncio
     async def test_apply_cdek_status_propagates_tracking_to_order(self, test_order, test_session):
         """cdek_number пробрасывается в order.tracking_number, если оно пустое (автосинк после ship)."""
         test_order.tracking_number = None
