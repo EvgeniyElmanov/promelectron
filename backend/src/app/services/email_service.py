@@ -2,6 +2,7 @@ import asyncio
 import logging
 import re
 from email.message import EmailMessage
+from html import escape as html_escape
 
 from aiosmtplib import (
     send,
@@ -313,12 +314,15 @@ class EmailService:
         tracking_html = ""
         tracking_text = ""
         if tracking_number:
+            # Данные CDEK (webhook/API) — экранируем перед вставкой в HTML (S001).
+            safe_tracking_number = html_escape(tracking_number, quote=True)
             tracking_html = f"""
-    <p style="margin-top: 16px;"><strong>Трек-номер:</strong> {tracking_number}</p>"""
+    <p style="margin-top: 16px;"><strong>Трек-номер:</strong> {safe_tracking_number}</p>"""
             tracking_text = f" Трек-номер: {tracking_number}."
             if tracking_url:
+                safe_tracking_url = html_escape(tracking_url, quote=True)
                 tracking_html += f"""
-    <p><a href="{tracking_url}">Отследить посылку</a></p>"""
+    <p><a href="{safe_tracking_url}">Отследить посылку</a></p>"""
                 tracking_text += f" Отследить: {tracking_url}"
         html = f"""\
 <!DOCTYPE html>

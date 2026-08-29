@@ -1,5 +1,6 @@
 import json
 import logging
+import urllib.parse
 import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -437,7 +438,8 @@ class CdekService:
         identifier = cdek_order.cdek_number or cdek_order.tracking_number or cdek_order.cdek_uuid
         if not identifier:
             return None
-        return f"https://www.cdek.ru/ru/tracking?order_id={identifier}"
+        # identifier приходит из внешнего API CDEK — URL-encode перед вставкой (S001).
+        return f"https://www.cdek.ru/ru/tracking?order_id={urllib.parse.quote(identifier, safe='')}"
 
     @staticmethod
     def _map_cdek_status_to_order(status_code: str | None) -> str | None:

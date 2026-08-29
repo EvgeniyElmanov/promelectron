@@ -252,6 +252,15 @@ class TestCdekService:
 
         assert CdekService.build_tracking_url(None) is None
 
+    def test_build_tracking_url_quotes_identifier(self):
+        """identifier из CDEK URL-encod'ится: кавычки/HTML не выходят за пределы параметра (S001)."""
+        cdek_order = CdekOrder(cdek_number='110"><script>alert(1)</script>')
+        url = CdekService.build_tracking_url(cdek_order)
+        assert url is not None
+        assert '"' not in url
+        assert "<" not in url and ">" not in url
+        assert url == "https://www.cdek.ru/ru/tracking?order_id=110%22%3E%3Cscript%3Ealert%281%29%3C%2Fscript%3E"
+
     @pytest.mark.asyncio
     async def test_cancel_cdek_order_logs_safe_fields(self, monkeypatch, caplog):
         """cancel_cdek_order логирует только безопасные идентификаторы, не весь ответ."""
