@@ -3,6 +3,7 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { createRouter, createWebHistory } from 'vue-router'
 import ProductCard from '@/components/ProductCard.vue'
 import api from '@/services/api'
+import { useCart } from '@/composables/useCart'
 
 vi.mock('@/services/api', () => ({
   default: {
@@ -18,9 +19,19 @@ vi.mock('@/composables/useAuth', () => ({
   }),
 }))
 
+const mockToast = vi.hoisted(() => vi.fn())
+vi.mock('@/composables/useToast', () => ({
+  useToast: () => ({ add: mockToast }),
+}))
+
 describe('ProductCard.vue', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks()
+    localStorage.clear()
+    api.get.mockResolvedValue({ data: { items: [] } })
+    const { clearGuestCart, syncCartCount } = useCart()
+    clearGuestCart()
+    await syncCartCount()
   })
 
   function mountCard(product) {
@@ -195,5 +206,105 @@ describe('ProductCard.vue', () => {
     const button = wrapper.find('[data-testid="add-to-cart-button"]')
     expect(button.attributes('disabled')).toBeUndefined()
     expect(button.text()).toContain('В корзину')
+  })
+})
+
+describe('ProductCard.vue — состояние кнопки корзины', () => {
+  beforeEach(async () => {
+    vi.clearAllMocks()
+    localStorage.clear()
+    api.get.mockResolvedValue({ data: { items: [] } })
+    const { clearGuestCart, syncCartCount } = useCart()
+    clearGuestCart()
+    await syncCartCount()
+  })
+
+  function mountCard(product) {
+    const router = createRouter({
+      history: createWebHistory(),
+      routes: [
+        { path: '/', component: ProductCard },
+        { path: '/cart', component: { template: '<div />' } },
+      ],
+    })
+    return mount(ProductCard, {
+      global: { plugins: [router] },
+      props: { product },
+    })
+  }
+
+  it('после добавления кнопка показывает «В корзине · N» и класс --in-cart', async () => {
+    api.post.mockResolvedValue({})
+    api.get.mockResolvedValue({ data: { items: [{ product_id: 1, quantity: 2 }] } })
+    const wrapper = mountCard({ id: 1, name: 'P', price: 100, stock: 5 })
+
+    await wrapper.find('[data-testid="add-to-cart-button"]').trigger('click')
+    await flushPromises()
+
+    const button = wrapper.find('[data-testid="add-to-cart-button"]')
+    expect(button.text()).toContain('В корзине · 2')
+    expect(button.classes()).toContain('product-card__cart-btn--in-cart')
+    expect(button.attributes('disabled')).toBeUndefined()
+  })
+
+  it('клик по in-cart кнопке ведёт на /cart без повторного добавления', async () => {
+    api.get.mockResolvedValue({ data: { items: [{ product_id: 1, quantity: 1 }] } })
+    const { syncCartCount } = useCart()
+    await syncCartCount()
+
+    const router = createRouter({
+      history: createWebHistory(),
+      routes: [
+        { path: '/', component: ProductCard },
+        { path: '/cart', component: { template: '<div />' } },
+      ],
+    })
+    const pushSpy = vi.spyOn(router, 'push')
+    const wrapper = mount(ProductCard, {
+      global: { plugins: [router] },
+      props: { product: { id: 1, name: 'P', price: 100, stock: 5 } },
+    })
+
+    await wrapper.find('[data-testid="add-to-cart-button"]').trigger('click')
+    await flushPromises()
+
+    expect(pushSpy).toHaveBeenCalledWith('/cart')
+    expect(api.post).not.toHaveBeenCalled()
+  })
+
+  it('success-тост «Добавлено в корзину» не показывается', async () => {
+    api.post.mockResolvedValue({})
+    const wrapper = mountCard({ id: 1, name: 'P', price: 100, stock: 5 })
+
+    await wrapper.find('[data-testid="add-to-cart-button"]').trigger('click')
+    await flushPromises()
+
+    expect(mockToast).not.toHaveBeenCalledWith('Добавлено в корзину', 'success')
+  })
+
+  it('error-тост корзины остался при ошибке добавления', async () => {
+    api.post.mockRejectedValue(new Error('fail'))
+    const wrapper = mountCard({ id: 1, name: 'P', price: 100, stock: 5 })
+
+    await wrapper.find('[data-testid="add-to-cart-button"]').trigger('click')
+    await flushPromises()
+
+    expect(mockToast).toHaveBeenCalledWith('Не удалось добавить в корзину', 'error')
+  })
+
+  it('тосты успеха избранного не показываются, error-тост остался', async () => {
+    api.post.mockResolvedValue({})
+    api.delete.mockResolvedValue({})
+    const wrapper = mountCard({ id: 1, name: 'P', price: 100, stock: 5, is_favorite: true })
+
+    await wrapper.find('[data-testid="favorite-button"]').trigger('click')
+    await flushPromises()
+    expect(mockToast).not.toHaveBeenCalledWith('Удалено из избранного', 'info')
+    expect(mockToast).not.toHaveBeenCalledWith('Добавлено в избранное', 'success')
+
+    api.post.mockRejectedValue(new Error('fail'))
+    await wrapper.find('[data-testid="favorite-button"]').trigger('click')
+    await flushPromises()
+    expect(mockToast).toHaveBeenCalledWith('Не удалось обновить избранное', 'error')
   })
 })

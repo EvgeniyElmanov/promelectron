@@ -1,4 +1,4 @@
-import { ref, computed, watch } from 'vue';
+import { ref, computed, reactive, watch } from 'vue';
 import api from '@/services/api';
 import { useAuth } from '@/composables/useAuth';
 
@@ -28,6 +28,27 @@ const getGuestCartCount = () => {
 };
 
 const cartCount = ref(getGuestCartCount());
+
+// Per-product количество в корзине: { [productId]: qty }.
+// Гость — синхронно из localStorage, auth — из GET /cart/ через syncCartCount().
+const cartQuantities = reactive({});
+
+const _syncQuantities = (items) => {
+  for (const key of Object.keys(cartQuantities)) {
+    delete cartQuantities[key];
+  }
+  for (const item of items || []) {
+    if (item.quantity > 0) {
+      cartQuantities[item.product_id] = item.quantity;
+    }
+  }
+};
+
+// Init для гостя: map из localStorage синхронно при загрузке модуля.
+_syncQuantities(loadGuestCart());
+
+// Однократный sync для auth при первом useCart() (watch не ловит already-logged-in).
+let authSyncInitialized = false;
 
 export const useCart = () => {
   const { isAuthenticated } = useAuth();
@@ -66,6 +87,7 @@ export const useCart = () => {
       }
       saveGuestCart(items);
       cartCount.value = getGuestCartCount();
+      _syncQuantities(items);
     }
   };
 
@@ -73,6 +95,7 @@ export const useCart = () => {
     const items = loadGuestCart().filter((i) => i.product_id !== productId);
     saveGuestCart(items);
     cartCount.value = getGuestCartCount();
+    _syncQuantities(items);
   };
 
   const updateQuantity = async (productId, quantity) => {
@@ -86,6 +109,7 @@ export const useCart = () => {
       }
       saveGuestCart(items);
       cartCount.value = getGuestCartCount();
+      _syncQuantities(items);
     }
   };
 
@@ -115,6 +139,7 @@ export const useCart = () => {
   const clearGuestCart = () => {
     localStorage.removeItem(GUEST_CART_KEY);
     cartCount.value = 0;
+    _syncQuantities([]);
   };
 
   const mergeCartOnLogin = async () => {
@@ -136,11 +161,14 @@ export const useCart = () => {
         const { data } = await api.get('/cart/');
         const count = (data.items || []).reduce((sum, item) => sum + (item.quantity || 0), 0);
         cartCount.value = count;
+        _syncQuantities(data.items || []);
       } catch {
         cartCount.value = 0;
+        _syncQuantities([]);
       }
     } else {
       cartCount.value = getGuestCartCount();
+      _syncQuantities(loadGuestCart());
     }
   };
 
@@ -149,8 +177,15 @@ export const useCart = () => {
       syncCartCount();
     } else {
       cartCount.value = getGuestCartCount();
+      _syncQuantities(loadGuestCart());
     }
   });
+
+  // Однократный sync для auth при первом вызове (watch не ловит already-logged-in).
+  if (!authSyncInitialized && isAuthenticated.value) {
+    authSyncInitialized = true;
+    syncCartCount();
+  }
 
   return {
     cartCount: computed(() => cartCount.value),
@@ -165,5 +200,7 @@ export const useCart = () => {
     clearGuestCart,
     mergeCartOnLogin,
     syncCartCount,
+    getQuantityInCart: (productId) => cartQuantities[productId] || 0,
+    isInCart: (productId) => !!cartQuantities[productId],
   };
 };

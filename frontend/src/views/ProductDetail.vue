@@ -77,11 +77,12 @@
         <div class="product-detail__actions">
           <button
             class="product-detail__cart-btn"
+            :class="{ 'product-detail__cart-btn--in-cart': inCartQty > 0 }"
             data-testid="pdp-add-to-cart"
             :disabled="cartLoading || isOutOfStock"
             @click="addToCart"
           >
-            {{ cartLoading ? '...' : (isOutOfStock ? 'Нет в наличии' : 'В корзину') }}
+            {{ cartLoading ? '...' : (isOutOfStock ? 'Нет в наличии' : (inCartQty > 0 ? `В корзине · ${inCartQty}` : 'В корзину')) }}
           </button>
         </div>
 
@@ -184,7 +185,7 @@ const route = useRoute();
 const router = useRouter();
 const { isAuthenticated } = useAuth();
 const { add: toast } = useToast();
-const { addToCart: addToCartStore } = useCart();
+const { addToCart: addToCartStore, getQuantityInCart } = useCart();
 
 const product = ref({});
 const reviews = ref([]);
@@ -197,6 +198,7 @@ const newReviewText = ref('');
 const selectedImage = ref(0);
 
 const productId = computed(() => Number(route.params.id));
+const inCartQty = computed(() => getQuantityInCart(productId.value));
 
 const placeholderColors = [
   '#E3F2FD', '#FCE4EC', '#E8F5E9', '#FFF3E0',
@@ -249,11 +251,9 @@ const toggleFavorite = async () => {
     if (isFavorite.value) {
       await api.delete(`/favorites/remove/${productId.value}`);
       isFavorite.value = false;
-      toast('Удалено из избранного', 'info');
     } else {
       await api.post(`/favorites/add/${productId.value}`);
       isFavorite.value = true;
-      toast('Добавлено в избранное', 'success');
     }
   } catch {
     toast('Не удалось обновить избранное', 'error');
@@ -261,12 +261,15 @@ const toggleFavorite = async () => {
 };
 
 const addToCart = async () => {
+  if (inCartQty.value > 0) {
+    router.push('/cart');
+    return;
+  }
   if (isOutOfStock.value) return;
   if (cartLoading.value) return;
   cartLoading.value = true;
   try {
     await addToCartStore(productId.value, 1, product.value);
-    toast('Добавлено в корзину', 'success');
   } catch {
     toast('Не удалось добавить в корзину', 'error');
   } finally {
@@ -539,6 +542,10 @@ onMounted(fetchProduct);
 .product-detail__cart-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.product-detail__cart-btn--in-cart {
+  background: var(--color-success);
 }
 
 .product-detail__section {
