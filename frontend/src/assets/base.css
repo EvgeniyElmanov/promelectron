@@ -15,7 +15,8 @@
 }
 
 html {
-  overflow-x: hidden;
+  overflow-x: hidden; /* fallback для Safari < 16 */
+  overflow-x: clip;
 }
 
 @keyframes shimmer {
@@ -54,7 +55,8 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
-  overflow-x: hidden;
+  overflow-x: hidden; /* fallback для Safari < 16 */
+  overflow-x: clip;
 }
 
 /* iOS Safari зумит страницу при фокусе на input с font-size < 16px (issue #171).
