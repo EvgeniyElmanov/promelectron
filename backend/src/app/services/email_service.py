@@ -199,7 +199,8 @@ class EmailService:
     def _order_items_html(items: list[dict]) -> str:
         rows = ""
         for item in items:
-            name = item.get("product_name", "Товар")
+            # Escape: product_name comes from supplier/admin-controlled DB data.
+            name = html_escape(str(item.get("product_name", "Товар")))
             qty = item.get("quantity", 1)
             price = item.get("price_at_time", 0)
             rows += f"<tr><td>{name}</td><td>{qty}</td><td>{EmailService._format_price(price)} ₽</td></tr>"
@@ -210,6 +211,8 @@ class EmailService:
         cls, to: str, order_id: int, total_price: float, items: list[dict], shipping_address: str, db: AsyncSession
     ) -> None:
         items_html = cls._order_items_html(items)
+        # Escape: shipping_address is user input from checkout.
+        address_html = html_escape(shipping_address) if shipping_address else "Не указан"
         html = f"""\
 <!DOCTYPE html>
 <html>
@@ -233,7 +236,7 @@ class EmailService:
       Итого: {cls._format_price(total_price)} ₽
     </p>
 
-    <p><strong>Адрес доставки:</strong> {shipping_address or "Не указан"}</p>
+    <p><strong>Адрес доставки:</strong> {address_html}</p>
 
     <p style="margin-top: 24px; color: #6c757d; font-size: 12px;">
       Если у вас есть вопросы, ответьте на это письмо.
@@ -256,6 +259,8 @@ class EmailService:
         cls, to: str, order_id: int, total_price: float, items: list[dict], shipping_address: str, db: AsyncSession
     ) -> None:
         items_html = cls._order_items_html(items)
+        # Escape: shipping_address is user input from checkout.
+        address_html = html_escape(shipping_address) if shipping_address else "Не указан"
         html = f"""\
 <!DOCTYPE html>
 <html>
@@ -279,7 +284,7 @@ class EmailService:
       Итого: {cls._format_price(total_price)} ₽
     </p>
 
-    <p><strong>Адрес доставки:</strong> {shipping_address or "Не указан"}</p>
+    <p><strong>Адрес доставки:</strong> {address_html}</p>
 
     <p style="margin-top: 24px; color: #6c757d; font-size: 12px;">
       Если у вас есть вопросы, ответьте на это письмо.
