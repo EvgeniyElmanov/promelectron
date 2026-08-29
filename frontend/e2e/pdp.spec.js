@@ -35,10 +35,9 @@ test.describe('Product Detail Page', () => {
     await firstCard.click();
     await expect(page.locator('[data-testid="pdp-title"]')).toBeVisible();
 
-    // Add to cart
+    // Add to cart — кнопка переходит в состояние «В корзине · N» (тост успеха удалён, D-04)
     await page.click('[data-testid="pdp-add-to-cart"]');
-    await expect(page.locator('.toast--success')).toBeVisible({ timeout: 5000 });
-    await page.waitForTimeout(300);
+    await expect(page.locator('[data-testid="pdp-add-to-cart"]')).toContainText('В корзине', { timeout: 5000 });
 
     // Verify cart
     await goToCart(page);

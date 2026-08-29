@@ -29,9 +29,8 @@ test.describe('Catalog & Cart', () => {
     // Add product to cart
     const firstProduct = await getInStockProductCard(page);
     await firstProduct.locator('[data-testid="add-to-cart-button"]').click();
-    // Wait for success toast (not error)
-    await expect(page.locator('.toast--success')).toBeVisible({ timeout: 5000 });
-    await page.waitForTimeout(300);
+    // Wait for in-cart button state (success toast removed, D-04)
+    await expect(firstProduct.locator('[data-testid="add-to-cart-button"]')).toContainText('В корзине', { timeout: 5000 });
 
     // Go to cart
     await goToCart(page);
