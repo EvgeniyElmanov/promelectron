@@ -322,3 +322,90 @@ class TestEmailService:
         assert "tmp123" in job.payload["html"]
         assert "abc-token" in job.payload["html"]
         assert "Сменить пароль" in job.payload["html"]
+
+    @pytest.mark.asyncio
+    async def test_send_order_paid_creates_job(self, test_session):
+        """send_order_paid создаёт SEND_EMAIL job с шаблоном «Заказ оплачен»."""
+        await EmailService.send_order_paid(
+            to="user@example.com",
+            order_id=42,
+            total_price=1500.0,
+            items=[{"product_name": "Товар", "quantity": 1, "price_at_time": 1500.0}],
+            shipping_address="Москва",
+            db=test_session,
+        )
+
+        result = await test_session.execute(
+            select(Job).where(Job.job_type == "SEND_EMAIL")
+        )
+        job = result.scalars().first()
+        assert job is not None
+        assert job.payload["to"] == "user@example.com"
+        assert "Заказ №42 оплачен" in job.payload["subject"]
+        assert "оплачен" in job.payload["html"].lower()
+        assert "Товар" in job.payload["html"]
+
+    @pytest.mark.asyncio
+    async def test_send_order_status_update_with_tracking(self, test_session):
+        """send_order_status_update включает трек-номер и ссылку, когда они переданы."""
+        tracking_url = "https://www.cdek.ru/ru/tracking?order_id=1234567890"
+        await EmailService.send_order_status_update(
+            to="user@example.com",
+            order_id=42,
+            status="shipped",
+            db=test_session,
+            tracking_number="1234567890",
+            tracking_url=tracking_url,
+        )
+
+        result = await test_session.execute(
+            select(Job).where(Job.job_type == "SEND_EMAIL")
+        )
+        job = result.scalars().first()
+        assert job is not None
+        assert "1234567890" in job.payload["html"]
+        assert tracking_url in job.payload["html"]
+        assert "1234567890" in job.payload["text"]
+
+    @pytest.mark.asyncio
+    async def test_send_order_status_update_without_tracking(self, test_session):
+        """Без трек-номера блок отслеживания в письме не отображается."""
+        await EmailService.send_order_status_update(
+            to="user@example.com",
+            order_id=42,
+            status="shipped",
+            db=test_session,
+        )
+
+        result = await test_session.execute(
+            select(Job).where(Job.job_type == "SEND_EMAIL")
+        )
+        job = result.scalars().first()
+        assert job is not None
+        assert "Трек-номер" not in job.payload["html"]
+        assert "Трек-номер" not in job.payload["text"]
+
+    @pytest.mark.asyncio
+    async def test_send_order_status_update_escapes_tracking(self, test_session):
+        """tracking_number/tracking_url экранируются: HTML-инъекция из данных CDEK невозможна (S001)."""
+        malicious = '110"><script>alert(1)</script>'
+        malicious_url = 'https://www.cdek.ru/ru/tracking?order_id=110"onclick="evil()'
+        await EmailService.send_order_status_update(
+            to="user@example.com",
+            order_id=42,
+            status="shipped",
+            db=test_session,
+            tracking_number=malicious,
+            tracking_url=malicious_url,
+        )
+
+        result = await test_session.execute(
+            select(Job).where(Job.job_type == "SEND_EMAIL")
+        )
+        job = result.scalars().first()
+        assert job is not None
+        html_body = job.payload["html"]
+        assert "<script>" not in html_body
+        assert "&lt;script&gt;" in html_body
+        assert 'onclick="evil()"' not in html_body
+        assert "&quot;" in html_body

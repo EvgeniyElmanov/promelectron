@@ -1,5 +1,6 @@
 import json
 import logging
+import urllib.parse
 import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -437,7 +438,8 @@ class CdekService:
         identifier = cdek_order.cdek_number or cdek_order.tracking_number or cdek_order.cdek_uuid
         if not identifier:
             return None
-        return f"https://www.cdek.ru/ru/tracking?order_id={identifier}"
+        # identifier приходит из внешнего API CDEK — URL-encode перед вставкой (S001).
+        return f"https://www.cdek.ru/ru/tracking?order_id={urllib.parse.quote(identifier, safe='')}"
 
     @staticmethod
     def _map_cdek_status_to_order(status_code: str | None) -> str | None:
@@ -563,11 +565,18 @@ class CdekService:
                 try:
                     recipient_email = (order.user.email if order.user else None) or order.guest_email
                     if recipient_email:
+                        tracking_number = (
+                            order.tracking_number
+                            or cdek_order.tracking_number
+                            or cdek_order.cdek_number
+                        )
                         await EmailService.send_order_status_update(
                             to=recipient_email,
                             order_id=order.id,
                             status=order.status,
                             db=db,
+                            tracking_number=tracking_number,
+                            tracking_url=CdekService.build_tracking_url(cdek_order),
                         )
 
                     if order.user_id:
