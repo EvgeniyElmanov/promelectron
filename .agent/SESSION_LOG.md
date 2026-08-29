@@ -409,3 +409,9 @@
 - 2026-08-29: PR #207 (e2e-helper wait) и #208 (infra test resources) влиты пользователем в main. Запущен фоновый watch run 33259450261 (merge #208 → deploy test с новыми values + e2e) — по результату отчёт и решение по закрытию #206.
 - Run 33259450261 (merge #208): ПОЛНОСТЬЮ ЗЕЛЁНЫЙ — build/deploy-test/migrate-check/seed/smoke/**e2e** success. Флейки ушли после #207+#208. Issue #206 закрыт с комментарием (board → Done); кластерный CPU over-commit — чужая сторона, наша mitigated.
 - Cleanup: worktree'ы fix-e2e-specs/fix-e2e-helper-wait/fix-test-infra удалены, локальные и remote ветки 4 bugfix/* удалены, main checkout переключён на main и fast-forward до f37f413. Старые чужие worktree'ы (.worktrees/e2e-cart-select-race и др.) не трогал.
+
+
+## 2026-08-29 — коммит конфигов агентов + очистка worktree + фикс cleanup
+- Коммит `8b72e54` (main, запушен): skills/rules/AGENTS, SESSION_LOG + archive, хуки, пайплайн-хелперы, BLOCKERS/LESSONS.
+- Очищены все устаревшие worktree (6 зарегистрированных + 6 осиротевших каталогов, ~1.6 ГБ); ветки кроме main/recovery-local удалены. Понадобился docker chown — root-owned файлы от контейнерных прогонов.
+- Фикс `implement-pipeline.py`: `_remove_tree()` без ignore_errors + docker-chown fallback; cleanup/janitor больше не рапортуют ложный успех. Урок в LESSONS_LEARNED.

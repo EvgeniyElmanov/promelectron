@@ -295,23 +295,68 @@ def cmd_create_worktree(args: argparse.Namespace) -> int:
     return 0
 
 
-def _cleanup_task(task_id: str, branch_prefix: str) -> None:
-    """Remove the task worktree and its branch (idempotent)."""
+def _remove_tree(path: Path) -> bool:
+    """Remove a directory tree, fixing root-owned files via docker chown if needed.
+
+    Returns True when the path is gone afterwards, False (with a loud
+    WARNING) otherwise. Never fails silently: callers must not report
+    success unless this returns True.
+    """
+    if not path.exists():
+        return True
+    try:
+        shutil.rmtree(path)
+    except OSError as exc:
+        print(f"WARNING: rmtree {path} failed ({exc}); trying docker chown fallback")
+        if shutil.which("docker"):
+            uid, gid = os.getuid(), os.getgid()
+            result = run(
+                ["docker", "run", "--rm", "-v", f"{path}:/w",
+                 NODE_IMAGE, "chown", "-R", f"{uid}:{gid}", "/w"],
+                check=False,
+            )
+            if result.returncode != 0:
+                print(f"WARNING: docker chown failed: {result.stderr.strip()[:300]}")
+            try:
+                shutil.rmtree(path)
+            except OSError as exc2:
+                print(f"WARNING: rmtree {path} still failing after chown ({exc2})")
+        else:
+            print("WARNING: docker not found — cannot chown root-owned files")
+    if path.exists():
+        print(f"WARNING: {path} was NOT removed (leftover files on disk)")
+        return False
+    return True
+
+
+def _cleanup_task(task_id: str, branch_prefix: str) -> bool:
+    """Remove the task worktree and its branch (idempotent).
+
+    Returns True when the worktree directory is gone afterwards.
+    """
     worktree = WORKTREES_ROOT / task_id
     branch = f"{branch_prefix}/{task_id}"
 
+    removed = True
     if worktree.exists():
         run(["git", "worktree", "remove", "--force", str(worktree)], check=False)
+        # The dir survives `git worktree remove` when it is not a registered
+        # worktree (orphan checkout) or contains files git cannot delete —
+        # remove it explicitly instead of silently leaving gigabytes behind.
+        removed = _remove_tree(worktree)
 
     # Delete branch if it exists locally
     run(["git", "branch", "-D", branch], check=False)
     run(["git", "worktree", "prune"], check=False)
+    return removed
 
 
 @retry_on_kimi_errors(max_attempts=4, backoff_seconds=2.0)
 def cmd_cleanup(args: argparse.Namespace) -> int:
     task_id = args.task_id
-    _cleanup_task(task_id, args.branch_prefix)
+    if not _cleanup_task(task_id, args.branch_prefix):
+        print(f"CLEANUP_INCOMPLETE {WORKTREES_ROOT / task_id}")
+        return 1
     print(f"Cleaned up {WORKTREES_ROOT / task_id} and {args.branch_prefix}/{task_id}")
     return 0
 
@@ -351,10 +396,13 @@ def cmd_janitor(args: argparse.Namespace) -> int:
         if args.dry_run:
             print(f"[dry-run] would remove {task_dir}, worktree and feature|bugfix branches ({task_id}, age {age:.1f}d)")
         else:
-            shutil.rmtree(task_dir, ignore_errors=True)
-            _cleanup_task(task_id, "feature")
-            _cleanup_task(task_id, "bugfix")
-            print(f"REMOVED {task_id} (age {age:.1f}d)")
+            removed_dir = _remove_tree(task_dir)
+            removed_wt = _cleanup_task(task_id, "feature")
+            removed_wt = _cleanup_task(task_id, "bugfix") and removed_wt
+            if removed_dir and removed_wt:
+                print(f"REMOVED {task_id} (age {age:.1f}d)")
+            else:
+                print(f"REMOVE_INCOMPLETE {task_id} (age {age:.1f}d) — see WARNINGs above")
         candidates += 1
 
     print(f"JANITOR_CANDIDATES={candidates} DRY_RUN={int(args.dry_run)}")

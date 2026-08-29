@@ -456,3 +456,15 @@ Backend-под уходил в CrashLoopBackOff при деплое в `promelec
 **Решение:** замена ожидания на проверку состояния кнопки (`toContainText('В корзине')`) во всех 5 спеках; блокер пойман на code review (F001), исправлен и VERIFIED.
 
 **Профилактика:** (1) при удалении любого UI-элемента с testid/классом грепать ВЕСЬ `frontend/e2e/` по селектору и по тексту, включая хелперы (`e2e/helpers.js` и локальные функции спек), а не только очевидные спеки; (2) точечный e2e-прогон должен включать все спеки, которые нашёл grep, а не только отредактированные; (3) при host-прогонах Playwright экспортировать `API_URL=http://localhost:8000` — без него хелперы, дёргающие API напрямую (`setYooKassaPaymentStatus`), падают с `Invalid URL`.
+
+---
+
+## 2026-08-29 | implement-pipeline cleanup: молчаливый `rmtree(ignore_errors=True)` копил осиротевшие worktree
+
+**Ошибка:** `implement-pipeline.py cleanup` рапортовал «Cleaned up», но каталоги `.worktrees/<task-id>` оставались на диске (~1.6 ГБ на 6 задач): root-owned `__pycache__`/`node_modules` из docker-прогонов ломали `git worktree remove` и `shutil.rmtree(..., ignore_errors=True)`, а ошибка глоталась.
+
+**Причина:** `ignore_errors=True` + отсутствие post-check «каталог действительно исчез» + `git worktree remove` не удаляет незарегистрированные каталоги.
+
+**Решение:** новый `_remove_tree()` — явный rmtree без ignore_errors, при PermissionError fallback на docker chown (`node:20-slim`, тот же паттерн, что в `_prepare_frontend_deps`), затем повтор; `_cleanup_task`/`cmd_cleanup`/janitor возвращают/проверяют факт удаления и печатают WARNING/CLEANUP_INCOMPLETE вместо ложного успеха. Проверено на каталоге с root-owned файлами.
+
+**Профилактика:** (1) cleanup-операции всегда верифицировать post-condition («цели больше нет»), никогда не доверять коду возврата при ignore_errors/check=False; (2) всё, что docker пишет в bind-mount worktree, должно завершаться chown на uid пользователя — иначе следующий cleanup снова споткнётся.
