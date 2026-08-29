@@ -13,7 +13,7 @@ disableModelInvocation: false
 
 # /skill:review — Рабочий процесс Code Review
 
-> **ЯЗЫК / LANGUAGE:** Пользователь общается на русском. Все ответы пользователю и артефакты (findings, reports, SESSION_LOG) пиши на русском. Стремись рассуждать на русском, но если reasoning уходит на английский — это не ошибка; главное, чтобы финальные ответы и артефакты были на русском. Код, команды, идентификаторы, пути и технические термины оставляй в оригинале.
+> **ЯЗЫК / LANGUAGE:** Следуй [Rule: Agent Commons](../../rules/agent-commons.md) > Language Rule / Языковое правило.
 
 Проверь текущие изменения. НЕ редактируй код — только пиши findings.
 
@@ -179,6 +179,12 @@ Do NOT edit source code. Only write findings.
 - Количество проблем по severity
 - Пути файлов с findings
 - Открытые Human Decisions (если есть)
+
+Запиши trace-событие вердикта (формат — как в `/skill:implement` Step 1d; trace никогда не блокирует пайплайн: при ошибке — продолжай и упомяни в отчёте):
+
+```bash
+python3 scripts/agent_state.py trace <task-id> review_verdict --actor code-reviewer --data '{"iteration": N, "verdict": "APPROVED|FIXES_NEEDED"}'
+```
 
 ---
 

@@ -146,6 +146,26 @@ def _read_correlation_id(trace_file: Path) -> str | None:
     return None
 
 
+def _trace_has_event(agent_dir: Path, event_name: str) -> bool:
+    """Return True if the task trace contains the given event."""
+    trace_file = agent_dir / "trace.jsonl"
+    if not trace_file.exists():
+        return False
+    try:
+        for line in trace_file.read_text(encoding="utf-8", errors="replace").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                if json.loads(line).get("event") == event_name:
+                    return True
+            except json.JSONDecodeError:
+                continue
+    except OSError:
+        return False
+    return False
+
+
 def detect_phase(
     agent_dir: Path,
     findings: FindingsSummary,
@@ -154,9 +174,11 @@ def detect_phase(
 ) -> str:
     if pr_state == "MERGED":
         return "done"
-    if pr_state == "OPEN" or tests_status == "TESTS_PASSED":
+    # `mr` — только когда PR реально существует (или был открыт: событие в trace);
+    # прогон тестов без PR означает лишь пройденный QA gate.
+    if pr_state == "OPEN" or _trace_has_event(agent_dir, "pr_opened"):
         return "mr"
-    if findings.approved:
+    if findings.approved or tests_status == "TESTS_PASSED":
         return "qa_gate"
     if (agent_dir / "review" / "findings.md").exists():
         return "reviewer"

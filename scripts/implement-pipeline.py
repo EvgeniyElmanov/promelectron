@@ -14,6 +14,7 @@ Usage:
     python scripts/implement-pipeline.py sync-backlog
     python scripts/implement-pipeline.py check-context <task-id>
     python scripts/implement-pipeline.py cleanup <task-id>
+    python scripts/implement-pipeline.py janitor [--days N] [--dry-run]
 """
 
 import argparse
@@ -24,11 +25,13 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 from datetime import datetime
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "scripts"))
+import agent_state  # noqa: E402
 from agent_retry import retry_on_kimi_errors  # noqa: E402
 from agent_metrics import collect_task_metrics  # noqa: E402
 
@@ -102,7 +105,7 @@ def cmd_setup(args: argparse.Namespace) -> int:
     review_dir = task_dir / "review"
     # Worktree path is just <task-id>, aligned with the .claude pipeline convention.
     worktree = WORKTREES_ROOT / task_id
-    branch = f"feature/{task_id}"
+    branch = f"{args.branch_prefix}/{task_id}"
 
     task_dir.mkdir(parents=True, exist_ok=True)
     review_dir.mkdir(parents=True, exist_ok=True)
@@ -257,7 +260,7 @@ def _prepare_frontend_deps(worktree: Path) -> None:
 def cmd_create_worktree(args: argparse.Namespace) -> int:
     task_id = args.task_id
     worktree = WORKTREES_ROOT / task_id
-    branch = f"feature/{task_id}"
+    branch = f"{args.branch_prefix}/{task_id}"
     # Always branch from origin/main unless explicitly overridden.
     base_ref = args.base_ref or "origin/main"
 
@@ -279,7 +282,7 @@ def cmd_create_worktree(args: argparse.Namespace) -> int:
         print(worktree)
         return 0
 
-    # If the feature branch survived an interrupted run, attach the worktree
+    # If the task branch survived an interrupted run, attach the worktree
     # to it instead of failing on `-b` with "branch already exists".
     branch_exists = run(["git", "branch", "--list", branch], check=False).stdout.strip()
     if branch_exists:
@@ -292,11 +295,10 @@ def cmd_create_worktree(args: argparse.Namespace) -> int:
     return 0
 
 
-@retry_on_kimi_errors(max_attempts=4, backoff_seconds=2.0)
-def cmd_cleanup(args: argparse.Namespace) -> int:
-    task_id = args.task_id
+def _cleanup_task(task_id: str, branch_prefix: str) -> None:
+    """Remove the task worktree and its branch (idempotent)."""
     worktree = WORKTREES_ROOT / task_id
-    branch = f"feature/{task_id}"
+    branch = f"{branch_prefix}/{task_id}"
 
     if worktree.exists():
         run(["git", "worktree", "remove", "--force", str(worktree)], check=False)
@@ -305,7 +307,57 @@ def cmd_cleanup(args: argparse.Namespace) -> int:
     run(["git", "branch", "-D", branch], check=False)
     run(["git", "worktree", "prune"], check=False)
 
-    print(f"Cleaned up {worktree} and {branch}")
+
+@retry_on_kimi_errors(max_attempts=4, backoff_seconds=2.0)
+def cmd_cleanup(args: argparse.Namespace) -> int:
+    task_id = args.task_id
+    _cleanup_task(task_id, args.branch_prefix)
+    print(f"Cleaned up {WORKTREES_ROOT / task_id} and {args.branch_prefix}/{task_id}")
+    return 0
+
+
+def _task_age_days(task_dir: Path) -> float:
+    """Days since the newest file in the task directory (last activity)."""
+    mtimes = [p.stat().st_mtime for p in task_dir.rglob("*") if p.is_file()]
+    mtime = max(mtimes) if mtimes else task_dir.stat().st_mtime
+    return max(0.0, (time.time() - mtime) / 86400.0)
+
+
+def cmd_janitor(args: argparse.Namespace) -> int:
+    """Remove coordination dirs, worktrees and branches of done tasks older than N days.
+
+    Only tasks whose detected phase is `done` are touched; anything with an
+    unreadable state is skipped with a warning and never deleted.
+    """
+    if not AGENT_RUNS_DIR.exists():
+        print("Nothing to do: .agent/runs/ does not exist")
+        return 0
+
+    candidates = 0
+    for task_dir in sorted(AGENT_RUNS_DIR.iterdir()):
+        if not task_dir.is_dir():
+            continue
+        task_id = task_dir.name
+        try:
+            state = agent_state.collect_state(task_id)
+        except (SystemExit, Exception) as exc:  # unreadable state -> skip, never delete
+            print(f"SKIP {task_id}: could not read state ({exc})")
+            continue
+        if state.phase != "done":
+            continue
+        age = _task_age_days(task_dir)
+        if age < args.days:
+            continue
+        if args.dry_run:
+            print(f"[dry-run] would remove {task_dir}, worktree and feature|bugfix branches ({task_id}, age {age:.1f}d)")
+        else:
+            shutil.rmtree(task_dir, ignore_errors=True)
+            _cleanup_task(task_id, "feature")
+            _cleanup_task(task_id, "bugfix")
+            print(f"REMOVED {task_id} (age {age:.1f}d)")
+        candidates += 1
+
+    print(f"JANITOR_CANDIDATES={candidates} DRY_RUN={int(args.dry_run)}")
     return 0
 
 
@@ -425,6 +477,7 @@ def add_issue_to_project(issue_url: str) -> str:
 
 def find_project_item_id(issue_url: str) -> str:
     """Find the project item ID for a given issue URL."""
+    # gh project item-list не пагинирует: один запрос с высоким --limit.
     items = run_json(
         [
             "gh",
@@ -436,7 +489,7 @@ def find_project_item_id(issue_url: str) -> str:
             "--format",
             "json",
             "--limit",
-            "100",
+            "500",
         ]
     ).get("items", [])
     for item in items:
@@ -573,6 +626,7 @@ def cmd_set_status(args: argparse.Namespace) -> int:
 @retry_on_kimi_errors(max_attempts=4, backoff_seconds=2.0)
 def cmd_sync_backlog(args: argparse.Namespace) -> int:
     """One-way sync: update local BACKLOG.md with open issues from GitHub Project."""
+    # gh project item-list не пагинирует: один запрос с высоким --limit.
     items = run_json(
         [
             "gh",
@@ -584,7 +638,7 @@ def cmd_sync_backlog(args: argparse.Namespace) -> int:
             "--format",
             "json",
             "--limit",
-            "100",
+            "500",
         ]
     ).get("items", [])
 
@@ -606,7 +660,7 @@ def cmd_sync_backlog(args: argparse.Namespace) -> int:
         url = content.get("url", "")
         if not issue_number or url in text or f"#{issue_number}" in text:
             continue
-        new_entries.append(f"| — | [#{issue_number}]({url}) | {title} | — |")
+        new_entries.append(f"| — | {title} | [#{issue_number}]({url}) | — | P1 | **backlog** | — | — | — |")
 
     if new_entries:
         BACKLOG_FILE.write_text(
@@ -646,6 +700,12 @@ def main() -> int:
     setup = sub.add_parser("setup", help="Create task directory and generate task-id")
     setup.add_argument("description", nargs="+", help="Feature description")
     setup.add_argument("--flags", default="", help="Flags like --backend-only")
+    setup.add_argument(
+        "--branch-prefix",
+        choices=["feature", "bugfix"],
+        default="feature",
+        help="Prefix for the task branch (default: feature)",
+    )
 
     wt_path = sub.add_parser("worktree-path", help="Print worktree path for task-id")
     wt_path.add_argument("task_id", help="Task ID")
@@ -657,6 +717,12 @@ def main() -> int:
     wt_create.add_argument("task_id", help="Task ID")
     wt_create.add_argument("--base-ref", default="origin/main", help="Base ref to branch from (default: origin/main)")
     wt_create.add_argument(
+        "--branch-prefix",
+        choices=["feature", "bugfix"],
+        default="feature",
+        help="Prefix for the task branch (default: feature)",
+    )
+    wt_create.add_argument(
         "--skip-frontend-prep",
         action="store_true",
         help="Do not install frontend dependencies after creating the worktree",
@@ -667,8 +733,25 @@ def main() -> int:
         help="Re-run frontend deps prep for an already existing worktree",
     )
 
-    cleanup = sub.add_parser("cleanup", help="Remove worktree and feature branch")
+    cleanup = sub.add_parser("cleanup", help="Remove worktree and task branch")
     cleanup.add_argument("task_id", help="Task ID")
+    cleanup.add_argument(
+        "--branch-prefix",
+        choices=["feature", "bugfix"],
+        default="feature",
+        help="Prefix of the task branch to delete (default: feature)",
+    )
+
+    janitor = sub.add_parser(
+        "janitor",
+        help="Remove .agent/runs dirs, worktrees and branches of done tasks older than N days",
+    )
+    janitor.add_argument("--days", type=int, default=14, help="Age threshold in days (default: 14)")
+    janitor.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Only print what would be removed, delete nothing",
+    )
 
     issue_create = sub.add_parser(
         "create-issue",
@@ -713,6 +796,7 @@ def main() -> int:
         "check-context": cmd_check_context,
         "create-worktree": cmd_create_worktree,
         "cleanup": cmd_cleanup,
+        "janitor": cmd_janitor,
         "create-issue": cmd_create_issue,
         "set-status": cmd_set_status,
         "sync-backlog": cmd_sync_backlog,

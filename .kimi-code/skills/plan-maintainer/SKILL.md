@@ -26,10 +26,7 @@ disableModelInvocation: false
 
 ## Ограничения API (Kimi K3)
 
-- Thinking mode всегда включён, отключить нельзя; глубина задаётся `reasoning_effort` (`low`/`high`/`max`, default `max`). В multi-turn tool calls возвращай полное assistant message unchanged, включая `reasoning_content`.
-- Не считай переключение языка внутреннего рассуждения ошибкой. Пользовательские ответы, отчёты и артефакты должны соответствовать языку пользователя.
-- Sampling-параметры фиксированы: `temperature=1.0`, `top_p=0.95`, `n=1`, `presence_penalty=0.0`, `frequency_penalty=0.0`.
-- Контекстное окно 1M; при анализе больших бэклогов суммируй и читай только релевантные секции.
+Следуй [Rule: Agent Commons](../../rules/agent-commons.md) > Ограничения модели и API (Kimi K3).
 
 ---
 

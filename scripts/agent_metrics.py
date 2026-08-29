@@ -125,19 +125,44 @@ def estimate_tokens(task_dir: Path) -> int:
 
 
 def count_review_iterations(task_dir: Path) -> int:
-    """Count review iteration files in review/."""
-    review_dir = task_dir / "review"
-    if not review_dir.exists():
-        return 0
+    """Count review iterations.
 
-    # Match findings*.md, findings-backend*.md, findings-frontend*.md, etc.
-    count = 0
-    for path in review_dir.iterdir():
-        if path.is_file() and path.suffix == ".md" and "findings" in path.name.lower():
-            # Exclude QA-specific test-findings files.
-            if "test-findings" not in path.name.lower():
-                count += 1
-    return count
+    Primary source — `review_verdict` events in trace.jsonl (findings.md is
+    overwritten on every iteration, so counting findings files is wrong).
+    Fallback: the max `**Iteration:** N` marker in findings*.md; last
+    resort — 1 if any findings file exists, else 0.
+    """
+    trace_file = task_dir / "trace.jsonl"
+    if trace_file.exists():
+        iterations = 0
+        for line in trace_file.read_text(encoding="utf-8", errors="replace").splitlines():
+            try:
+                event = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if event.get("event") == "review_verdict":
+                iterations += 1
+        if iterations:
+            return iterations
+
+    review_dir = task_dir / "review"
+    if review_dir.exists():
+        max_iteration = 0
+        has_findings = False
+        for path in review_dir.iterdir():
+            if not (path.is_file() and path.suffix == ".md"):
+                continue
+            if "findings" not in path.name.lower() or "test-findings" in path.name.lower():
+                continue
+            has_findings = True
+            text = path.read_text(encoding="utf-8", errors="replace")
+            for match in re.finditer(r"\*\*Iteration:\*\*\s*(\d+)", text):
+                max_iteration = max(max_iteration, int(match.group(1)))
+        if max_iteration:
+            return max_iteration
+        if has_findings:
+            return 1
+    return 0
 
 
 def count_qa_iterations(task_dir: Path) -> int:

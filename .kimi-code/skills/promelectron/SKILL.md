@@ -3,7 +3,7 @@ name: promelectron
 description: >
   Master skill for the Promelectron e-commerce project (FastAPI + Vue 3 + PostgreSQL + Redis + MinIO + Celery + K8s Helm + GitHub Actions).
   ALWAYS load this first. Contains agent registry, keyword routing, development workflows, pre-edit checklists, golden path scenarios, and dependency maps.
-  Use for ANY task related to backend API, frontend UI, database models, Alembic migrations, SQLAlchemy, Pydantic, pytest, Vue 3 components, Pinia stores, Vite,
+  Use for ANY task related to backend API, frontend UI, database models, Alembic migrations, SQLAlchemy, Pydantic, pytest, Vue 3 components, composables, Vite,
   devops infrastructure, Docker, Kubernetes, Helm, CI/CD, nginx, SSL, Playwright E2E testing, code review, security audit, JWT auth, OAuth, payments, webhooks,
   or project planning and sprint management. Triggers on all development, deployment, review, testing, bug fix, and planning requests.
 type: prompt
@@ -36,7 +36,7 @@ Kimi K3 работает в **обязательном thinking mode** (откл
 | Роль | Ключевые слова | Зона | Workflow |
 |------|----------------|------|----------|
 | `backend-dev` | API, endpoint, backend, model, schema, service, route, migration, alembic, SQLAlchemy, FastAPI, pytest, DB, webhook, JWT, OAuth, payment, order, cart (API), admin (API), celery, redis, minio | `backend/src/app/` + `backend/tests/` | model → schema → service → route → tests |
-| `frontend-dev` | frontend, Vue, component, page, view, Pinia, store, composable, UI, form, CSS, Axios, router, cart (UI), checkout (UI) | `frontend/src/` + `frontend/tests/` | API service → composable → component → page → route → tests |
+| `frontend-dev` | frontend, Vue, component, page, view, composable, UI, form, CSS, Axios, router, cart (UI), checkout (UI) | `frontend/src/` + `frontend/tests/` | API service → composable → component → page → route → tests |
 | `devops` | Docker, K8s, Helm, nginx, CI/CD, deploy, infra, SSL, VPN, Sentry, monitoring, Harbor, GitHub Actions | `infra/` + `.github/` | Helm/Docker → CI/CD → verify |
 | `e2e-tester` | E2E, Playwright, test scenario, browser, click, regression | `frontend/e2e/` | scenario → selectors → test → run |
 | `code-reviewer` | review, code review, findings, quality | Whole project | diff → security → quality → findings |
@@ -121,11 +121,7 @@ Kimi K3 имеет контекстное окно 1M токенов с обяз
 
 ## 5. Политика повторных попыток (Retry Policy)
 
-При использовании `Agent` или `AgentSwarm`:
-- Повторять до 4 попыток (3 повторных) при временных ошибках (502, 504, timeout).
-- Использовать экспоненциальную задержку: 2s, 4s, 8s.
-- Сохранять `reasoning_content` между multi-turn tool calls.
-- Остановиться и сообщить, если все попытки неудачны.
+Следуй [Rule: Agent Commons](../../rules/agent-commons.md) > Политика повторных попыток (Retry Policy).
 
 ---
 

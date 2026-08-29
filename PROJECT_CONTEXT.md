@@ -1,15 +1,15 @@
 ---
-sprint: "Sprint 1"
-sprint_dates: "2026-06-29 — 2026-07-12"
-last_update: "2026-07-02"
-last_commit: "feature/admin-user-order-details"
-commit_message: "feat(admin): add GET /admin/users/{user_id}/ endpoint with orders"
-blockers_count: 2
+sprint: "issue-driven (классические спринты завершены)"
+sprint_dates: "—"
+last_update: "2026-08-28"
+last_commit: "23e0189"
+commit_message: "chore(agent): session log — #185 merged, migrate-check gate verified green"
+blockers_count: 3
 blockers_p0: 0
-blockers_p1: 2
-backend_tests: "335/335"
-frontend_tests: "245/245"
-e2e_tests: "108/108"
+blockers_p1: 3
+backend_tests: "613/613 (2026-08-27, PR #180)"
+frontend_tests: "374/374 (2026-08-27, PR #181)"
+e2e_tests: "116 passed / 4 skipped (2026-08-27)"
 ---
 
 # PROJECT_CONTEXT — Promelectron
@@ -19,7 +19,7 @@ e2e_tests: "108/108"
 
 > **Метаданные в YAML frontmatter выше.** Не дублируйте здесь.
 >
-> **Последний коммит:** `4dd041e` — fix(auth): send verification email asynchronously to avoid blocking registration
+> **Последний коммит:** `23e0189` — chore(agent): session log — #185 merged, migrate-check gate verified green
 
 ---
 
@@ -50,8 +50,17 @@ e2e_tests: "108/108"
 - [x] **Управление получателями** — сохранённые получатели в профиле, выбор/inline-получатель в корзине, отчество для резидентов РФ, валидация телефона `+7XXXXXXXXXX`
 - [x] **Email-верификация (backend)** — `User.email_verified`, `EmailVerificationToken`, verification email при регистрации, подтверждение по ссылке, повторная отправка, сброс флага при смене email
 - [x] **Yandex SMTP (backend)** — `SMTP_USE_TLS`/`SMTP_STARTTLS`, retry, fallback-логирование
-- [x] **Тесты зелёные** — Backend 320/320 ✅, Frontend 243/243 ✅, E2E 108/108 ✅
+- [x] **Тесты зелёные** — Backend 613/613 ✅ (2026-08-27), Frontend 374/374 ✅, E2E 116 passed / 4 skipped ✅
 - [x] **1C mock server** — `mocks/onec-server/`: standalone FastAPI + APScheduler симулятор 1С:УНФ; виртуальный каталог в PG-схеме `onec_mock`, инкрементальные CommerceML 2.x пакеты (ZIP `import.xml`+`offers.xml`) POST'ом на intake с retry/backoff, 7 сценариев мутаций, API управления (`/trigger/`, `/scenario/`, `/status/`, `/history/`); helm за `onecMock.enabled` (test: true, prod: false)
+- [x] **1C intake security** — проверка `X-1C-Checksum` на `POST /onec/intake/` (#162)
+- [x] **Цены в `product_prices`** (#166, PR #168) — все виды цен 1С без потерь, сайтовая через `ONEC_SITE_PRICE_TYPE`; колонки `products.price` нет
+- [x] **PDP: характеристики и артикул** (#165) — `attributes[]`/`sku` в product detail, отображение на фронте
+- [x] **Выбор товаров в корзине** (#177, PR #178) — `CartItem.selected`, endpoints `/cart/select/*`, заказ только из выбранных
+- [x] **Бейдж «Нет в наличии»** (#176, PR #181) — ProductCard/PDP при stock=0, кнопка disabled
+- [x] **Uploads hardening** (#158/#159, #160) — path traversal закрыт, `Cache-Control` на файлах, 502 вместо 500 при сбоях MinIO
+- [x] **Alembic check зелёный** (#183) + CI gate `make migrate-check` перед deploy-prod (#185, PR #187)
+- [x] **Мобильная версия** (#171–#175) — safe-area, iOS zoom, touch targets, фильтры, search overlay
+- [x] **E2E инфра** (#179, PR #182) — `make test-e2e` починен (116 passed/4 skipped), concurrency-группа в deploy.yml, автоподготовка frontend-deps в worktree
 
 ---
 
@@ -59,14 +68,10 @@ e2e_tests: "108/108"
 
 | Фича | Статус | Блокер | Примечание |
 |------|--------|--------|------------|
-| **ЮKassa (production креды)** | 🔄 in_progress | — | Test-режим работает. Нужны live-креды для prod. |
-| **Убрать hardcoded secrets** | ✅ done | — | Все креды вынесены в GitHub Secrets / SOPS. SECRET_KEY восстановлен. |
+| **ЮKassa (production креды)** | 🔄 in_progress | BLK-010 | Test-режим работает. Нужны live-креды для prod и настройка webhook URL. |
 | **Sentry (мониторинг)** | ⏳ todo | — | Backend + frontend |
 | **Backup БД** | ⏳ todo | — | pg_dump → S3/MinIO |
-| **Helm worker templates** | ✅ done | — | `job_worker` деплоится в K8s. Celery удалён. |
-| **Product.price → product_prices** | ✅ done (PR #168) | — | Цены в `product_prices` (виды цен 1С), сайтовая — через `ONEC_SITE_PRICE_TYPE` |
-| **Malformed Alembic revision** | ✅ done | — | Миграции чистые, история корректна |
-| **Yandex SMTP + email verification** | ✅ done | — | Реализовано и влито в main (#40). Backend + frontend + Helm values + SOPS TODOs. |
+| **Избранное: удаление + заливка сердечка** | 🔄 in review | — | bugfix `favorites-remove-broken-and-heart-fill-0828` (issue #188), dev done 2026-08-28 |
 
 ---
 
@@ -74,8 +79,10 @@ e2e_tests: "108/108"
 
 | ID | Уровень | Описание | Кто решает | Дедлайн |
 |----|---------|----------|------------|---------|
-| **BLK-009** | P1 | CDEK widget-service `calculate` возвращает 502 на test-окружении при передаче адреса без `code`. Блокирует UI-выбор доставки гостем. | backend-dev / devops | 2026-06-23 |
-| **BLK-010** | P1 | YooKassa webhook `payment.succeeded` не приходит на `/api/v1/payments/yookassa/webhook/` в test-окружении — заказ не переходит в `paid` без ручной синхронизации. Нужно настроить webhook URL в личном кабинете YooKassa. | devops / project-manager | 2026-06-23 |
+| **BLK-009** | P1 | CDEK widget-service `calculate` возвращает 502 на test-окружении при передаче адреса без `code`. Блокирует UI-выбор доставки гостем. **Эскалирован (открыт 2026-06-22, 67 дней).** | backend-dev / devops | ~~2026-06-23~~ просрочен |
+| **BLK-010** | P1 | YooKassa webhook `payment.succeeded` не приходит на `/api/v1/payments/yookassa/webhook/` в test-окружении — заказ не переходит в `paid` без ручной синхронизации. Нужно настроить webhook URL в личном кабинете YooKassa. **Эскалирован (открыт 2026-06-22, 67 дней).** | devops / project-manager | ~~2026-06-23~~ просрочен |
+| **BLK-013** | P1 | YooKassa E2E с тестовыми картами flaky в CI (race редиректов, 3DS sandbox). Отложено до получения реальных ключей YooKassa. | e2e-tester / project-manager | ~~2026-07-21~~ просрочен |
+| **BLK-014** | P1 | Нет production-ключей CDEK (подтверждено 2026-08-29). Перед деплоем prod: prod values → `CDEK_API_URL=https://api.cdek.ru` + `CDEK_TEST_MODE=false`; prod SOPS `SDEK_*` → `CDEK_ACCOUNT`/`CDEK_SECURE` (или GitHub Secrets). Детали в `.agent/BLOCKERS.md`. | devops + пользователь (ключи) | — |
 
 > **Правило:** Блокер >2 дней — эскалация пользователю.
 
@@ -277,6 +284,7 @@ make test-e2e      # Playwright
 ## История изменений (кратко)
 
 | Дата | Что изменилось | Кто |
+| 2026-08-28 | **context-sync + аудит пайплайна**: frontmatter и разделы приведены к реальности (спринты завершены, работа issue-driven; тесты 613/374/E2E 116+4skip). Блокеры BLK-009/010/013 помечены эскалированными (дедлайны просрочены на 2+ месяца). Добавлены в «работает»: cart-select (#177), out-of-stock (#176), PDP attributes (#165), product_prices (#168), uploads hardening (#158–160), X-1C-Checksum (#162), зелёный alembic check + CI gate (#183/#185), мобильная серия (#171–175), E2E-инфра (#179). | orchestrator |
 | 2026-07-30 | **onec-mock-server-0730** (Фаза 7, issue #124): новый standalone-сервис `mocks/onec-server/` — симулятор 1С:УНФ (FastAPI + APScheduler, без Celery/Redis). Виртуальный каталог в PG-схеме `onec_mock` (create_all на старте, без Alembic), журнал изменений `change_log` (план обмена), генератор CommerceML 2.x за интерфейсом `PackageGenerator` (ZIP `import.xml`+`offers.xml`), 7 детерминированных сценариев мутаций, sender с retry/backoff (1/5/15 мин) и журналом `sent_changes`, API управления `/trigger/` `/scenario/` `/status/` `/history/` (trailing slash, без auth). Infra: сервис `onec-mock` в `backend/docker-compose.yml`, helm Deployment/Service за `onecMock.enabled` (test: true, prod: false), CI build образа в `deploy.yml`. pytest 27/27 ✅ (Docker-PG, схема `onec_mock_test`), ruff чисто ✅. Backend/frontend не затронуты. | backend-dev |
 | 2026-07-18 | **remove-guest-checkout** (backend): `POST /api/v1/orders/create-guest/` и `POST /api/v1/payments/guest/{order_id}/` возвращают `410 Gone`; исторические guest-заказы продолжают читаться через `GET /orders/guest/{order_id}/`, mock-confirm и webhook. Backend-тесты обновлены: `test_guest_orders.py`, `test_guest_payments.py`, `test_payments.py::TestPaymentDebugSetStatusAPI`. Модель БД не изменена, миграций нет. Целевые тесты 26/26 ✅, `lint-backend` чисто ✅. | backend-dev |
 | 2026-07-18 | **cleanup/remove-celery**: удалена неиспользуемая Celery из backend (`celery_app.py`, `celery[redis]` из requirements, комментарии), Docker Compose (сервисы `worker` и `beat`), Helm (`worker-deployment.yaml` удалён, секция `worker` переименована в `jobWorker` для `job-worker-deployment.yaml`), документации (`PROJECT_CONTEXT.md`, `.agent/DECISIONS.md`) и Claude skills/commands. Redis оставлен для кэша и rate limit. Backend 414/414 ✅, lint чисто ✅. | backend-dev |

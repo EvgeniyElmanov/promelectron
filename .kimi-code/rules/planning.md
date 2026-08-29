@@ -27,6 +27,12 @@ disableModelInvocation: true
 | ID | Задача | Issue | Агент | Приоритет | Статус | Зависимости | Оценка | Блокер |
 ```
 
+Все 9 колонок обязательны; неизвестные значения — `—`. Каноническая живая строка (как в разделе agent intake `.agent/BACKLOG.md` и как пишут `implement-pipeline.py create-issue` / `sync-backlog`):
+
+```markdown
+| — | <название> | [#N](https://github.com/AutonomaCo/promelectron/issues/N) | — | P1 | **backlog** | — | — | — |
+```
+
 Где:
 - **ID** — `#N`, `task-slug` или `ID-XXX`
 - **Приоритет** — `P0` / `P1` / `P2` / `P3`

@@ -12,7 +12,7 @@ disableModelInvocation: false
 
 # /skill:fix — Рабочий процесс исправления багов
 
-> **ЯЗЫК / LANGUAGE:** Пользователь общается на русском. Все ответы пользователю, отчёты и артефакты (task.md, spec.md, findings, test-findings, SESSION_LOG) пиши на русском. Стремись рассуждать на русском, но если reasoning уходит на английский — это не ошибка; главное, чтобы финальные ответы и артефакты были на русском. Код, команды, идентификаторы, пути и технические термины оставляй в оригинале.
+> **ЯЗЫК / LANGUAGE:** Следуй [Rule: Agent Commons](../../rules/agent-commons.md) > Language Rule / Языковое правило.
 
 Исправь баг системно: анализ → воспроизведение → исправление → ревью → тесты → верификация.
 
@@ -62,6 +62,12 @@ BRANCH    = bugfix/<task-id>
 
 Напиши `$AGENT_DIR/task.md` по шаблону из [Rule: Task Template](../../rules/task-template.md). Укажи `github_issue`, если у бага уже есть issue.
 
+Запиши trace-событие на границе фазы (формат — как в `/skill:implement` Step 1d; trace никогда не блокирует пайплайн: при ошибке — продолжай и упомяни в итоговом отчёте):
+
+```bash
+python3 scripts/agent_state.py trace <task-id> task_created --actor orchestrator
+```
+
 ---
 
 ## Step 1: Анализ и маршрутизация
@@ -105,9 +111,11 @@ git -C "$PROJECT_ROOT" worktree add "$WORKTREE" -b "$BRANCH" origin/main
 Можно использовать хелпер:
 
 ```bash
-python scripts/implement-pipeline.py setup "<bug description>" --flags "<flags>"
-python scripts/implement-pipeline.py create-worktree <task-id>
+python scripts/implement-pipeline.py setup "<bug description>" --flags "<flags>" --branch-prefix bugfix
+python scripts/implement-pipeline.py create-worktree <task-id> --branch-prefix bugfix
 ```
+
+При cleanup используй тот же префикс: `python scripts/implement-pipeline.py cleanup <task-id> --branch-prefix bugfix`.
 
 ---
 
@@ -264,17 +272,35 @@ Report:
 
 Review findings пишутся в `$AGENT_DIR/review/findings.md` со статусами `OPEN` → `FIXED` (developer) → `VERIFIED` (reviewer).
 
+После каждого вердикта ревью запиши trace:
+
+```bash
+python3 scripts/agent_state.py trace <task-id> review_verdict --actor code-reviewer --data '{"iteration": N, "verdict": "..."}'
+```
+
 ---
 
 ## Step 8: QA-проверка
 
 Запускай QA как в `/skill:implement` Step 7, если задан флаг `--qa` или баг затрагивает критические пользовательские потоки.
 
+После прогона тестов запиши trace:
+
+```bash
+python3 scripts/agent_state.py trace <task-id> qa_done --actor qa --data '{"status": "TESTS_PASSED|TESTS_FAILED"}'
+```
+
 ---
 
 ## Step 9: Создание запроса на слияние
 
 Как в `/skill:implement` Step 8, с веткой `bugfix/<task-id>`.
+
+После создания PR запиши trace:
+
+```bash
+python3 scripts/agent_state.py trace <task-id> pr_opened --actor orchestrator --data '{"url": "..."}'
+```
 
 ---
 

@@ -11,6 +11,9 @@ export SEED_SECRET
 # venv проекта: из корня main-репо — ./venv, из worktree .worktrees/<id>/ — ../../venv.
 # Переопределяется через make VENV=...
 VENV             ?= $(shell [ -d $(CURDIR)/venv ] && echo $(CURDIR)/venv || echo $(CURDIR)/../../venv)
+# Lock-файл для сериализации прогонов backend-тестов (гонка template DB при
+# параллельных агентах — LESSONS_LEARNED 2026-08-01). flock ждёт до 30 минут.
+TEST_BACKEND_LOCK ?= /tmp/promelectron-test-backend.lock
 
 .PHONY: help dev dev-backend dev-frontend stop logs \
         test test-backend test-onec-mock test-frontend test-e2e test-visual test-full \
@@ -52,21 +55,23 @@ logs-frontend: ## Показать логи фронтенда
 
 test: test-backend test-frontend ## Запустить все unit-тесты
 
-test-backend: ## Запустить pytest (поднимает postgres/redis через docker compose)
-	$(COMPOSE_BACKEND) up -d postgres redis
-	$(COMPOSE_BACKEND) run --rm --entrypoint "" \
-	  $(DOCKER_USER) \
-	  -e DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/promelectron \
-	  -e REDIS_URL=redis://redis:6379/0 \
-	  -e SECRET_KEY=test-secret-key-32-chars-minimum \
-	  api sh -c "pytest tests/ -v --tb=short"
+test-backend: ## Запустить pytest (поднимает postgres/redis через docker compose; flock сериализует параллельные прогоны)
+	flock -w 1800 $(TEST_BACKEND_LOCK) bash -c '\
+	  $(COMPOSE_BACKEND) up -d postgres redis && \
+	  $(COMPOSE_BACKEND) run --rm --entrypoint "" \
+	    $(DOCKER_USER) \
+	    -e DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/promelectron \
+	    -e REDIS_URL=redis://redis:6379/0 \
+	    -e SECRET_KEY=test-secret-key-32-chars-minimum \
+	    api sh -c "pytest tests/ -v --tb=short"'
 
-test-onec-mock: ## Запустить pytest мок-сервера 1С (Docker-PG, схема onec_mock_test, pytest на хосте)
-	$(COMPOSE_BACKEND) up -d postgres
-	cd mocks/onec-server && \
+test-onec-mock: ## Запустить pytest мок-сервера 1С (Docker-PG, схема onec_mock_test, pytest на хосте; тот же flock)
+	flock -w 1800 $(TEST_BACKEND_LOCK) bash -c '\
+	  $(COMPOSE_BACKEND) up -d postgres && \
+	  cd mocks/onec-server && \
 	  ONEC_MOCK_SCHEMA=onec_mock_test \
 	  DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/promelectron \
-	  $(VENV)/bin/pytest
+	  $(VENV)/bin/pytest'
 
 test-frontend: ## Запустить vitest
 	$(COMPOSE_FRONTEND) run --rm $(DOCKER_USER) frontend sh -c "npm install --silent && npm test"

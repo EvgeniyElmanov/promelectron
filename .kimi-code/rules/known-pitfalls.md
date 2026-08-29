@@ -28,7 +28,7 @@ Foreign keys, unique constraints и SQL syntax отличаются. Тести�
 
 ## 5. Права доступа Docker `node_modules`
 
-После `npm install` в контейнере почини владельца: `sudo chown -R $(whoami):$(whoami) frontend/node_modules`.
+После `npm install` в контейнере файлы в bind-mounted `node_modules` остаются root-owned. Пайплайн чинит владельца без sudo — chown в контейнере `node:20-slim` (`implement-pipeline.py` `_prepare_frontend_deps`): `docker run --rm -v "$PWD/frontend:/app" node:20-slim chown -R "$(id -u):$(id -g)" /app/node_modules`.
 
 ## 6. Бит исполняемости `docker-entrypoint.sh`
 
@@ -57,5 +57,9 @@ Foreign keys, unique constraints и SQL syntax отличаются. Тести�
 ## 12. Красный CI без изменения кода — проверь feature flags
 
 Если e2e внезапно упал, а diff PR эти зоны не трогает, сначала проверь feature flags на окружении: `RedisClient.get('feature:<flag>')` в pod api. Флаги, меняющие backend-путь (как `catalog_search_meilisearch`), включают «спящие» e2e-тесты и новый UI — без готового окружения (миграции, индекс, данные) они краснеют. Перед включением такого флага: подготовь окружение → прогони зависимые e2e → только потом включай.
+
+## 13. Фронтенд читает поле, которого нет в response schema
+
+`ProductCard` инициализировал `isFavorite` из `props.product.is_favorite`, но вложенный `product` в `GET /favorites/` — это `ProductOut` без этого поля (оно только в `ProductDetailOut`). Итог: `undefined → false`, клик по сердечку шёл в `POST add` вместо `DELETE` → 400, товар «не удалялся» (#188, PR #189). Профилактика: когда фронтенд зависит от пер-юзерного поля (`is_favorite`, `in_cart`), сверяйся с конкретной response-схемой эндпоинта, а не с «соседней»; признак такого бага — тихая деградация в `false`/`undefined` без ошибок в консоли.
 
 ---

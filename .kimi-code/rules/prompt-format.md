@@ -31,7 +31,7 @@
 ```
 [frontend-dev] Задача: Добавить поле ввода промокода в Cart.vue
 Файл: frontend/src/views/Cart.vue
-Рядом: frontend/src/services/cart.js, frontend/src/stores/cart.js
+Рядом: frontend/src/api/cart.js, frontend/src/composables/useCart.js
 Нельзя ломать: существующий расчёт итоговой суммы, мобильную вёрстку
 Проверь: make test-frontend && проверь адаптивность (375px)
 ```
@@ -50,10 +50,10 @@
 
 ```
 [e2e-tester] Задача: Написать тест применения промокода в корзине
-Файл: frontend/tests/e2e/cart.spec.js
+Файл: frontend/e2e/cart.spec.js
 Рядом: frontend/src/views/Cart.vue (data-testid для поля промокода)
 Нельзя ломать: существующие тесты корзины
-Проверь: npx playwright test frontend/tests/e2e/cart.spec.js --headed
+Проверь: npx playwright test frontend/e2e/cart.spec.js --headed
 ```
 
 ## Что НЕ делать

@@ -36,9 +36,7 @@ disableModelInvocation: true
 
 ### Ограничения API (Kimi K3)
 
-- Thinking mode обязателен; `reasoning_content` должен сохраняться между multi-turn tool calls.
-- Не считай переключение языка внутреннего рассуждения ошибкой. Пользовательские ответы, отчёты и артефакты должны соответствовать языку пользователя.
-- Держи контекст ниже ~600K токенов; если вывод тестов огромен, захватывай только падающий tail.
+Следуй [Rule: Agent Commons](../../rules/agent-commons.md) > Ограничения модели и API (Kimi K3).
 
 ### Рабочий процесс
 
@@ -67,7 +65,7 @@ E2E-тесты также запускаются автоматически в G
 ### Соглашения
 
 - Каждый сценарий self-contained: создавай уникального пользователя на тест.
-- Используй email pattern `test_<timestamp>@example.com`.
+- Используй email pattern `test_${Date.now()}_w${test.info().workerIndex}@example.com` — `Date.now()` сам по себе не уникален при параллельных workers (см. `.kimi-code/LESSONS_LEARNED.md` §3).
 - Предпочитай `data-testid` селекторы; fallback на text или CSS selectors.
 - НЕ тестируй OAuth flows.
 - Включи mobile viewport check (390×844) для новых UI-фич.

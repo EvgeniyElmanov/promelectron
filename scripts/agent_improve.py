@@ -26,7 +26,6 @@ import argparse
 import json
 import re
 import sys
-from collections import defaultdict
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
@@ -39,7 +38,9 @@ SEVERITY_RE = re.compile(r"\b(CRITICAL|HIGH|MEDIUM|LOW)\b")
 STATUS_RE = re.compile(r"\b(OPEN|VERIFIED|FIXED|RESOLVED|CLOSED)\b")
 # Skills пишут заголовки findings без дефиса (### [F001]), но поддерживаем
 # и старый формат с дефисом (### [F-001]).
-FINDING_HEADER_RE = re.compile(r"^### \[([A-Z]+-?\d+)\]\s*(.*)$")
+FINDING_HEADER_RE = re.compile(r"^### \[([A-Z]+-?\d+)\]\s*(.*)$", re.MULTILINE)
+# По шаблону code-reviewer статус живёт в теле находки: `- **Status:** OPEN`.
+STATUS_BODY_RE = re.compile(r"\*\*Status:\*\*\s*(OPEN|VERIFIED|FIXED|RESOLVED|CLOSED)\b")
 
 # Маппинг категорий findings на файлы, где живут соответствующие правила.
 CATEGORY_TO_RULE_FILE = {
@@ -90,22 +91,24 @@ def _normalize_category(raw: str) -> str:
 
 
 def parse_findings(task_id: str, findings_file: Path) -> list[Finding]:
-    """Парсит заголовки `### [ID] emoji SEVERITY | Category — status` (оба формата)."""
+    """Парсит находки: severity — из заголовка `### [ID] emoji SEVERITY | Category`,
+    status — из тела находки (строка `**Status:** X` между заголовком и следующим)."""
     results: list[Finding] = []
     if not findings_file.exists():
         return results
-    for line in findings_file.read_text(encoding="utf-8", errors="replace").splitlines():
-        m = FINDING_HEADER_RE.match(line.strip())
-        if not m:
-            continue
+    text = findings_file.read_text(encoding="utf-8", errors="replace")
+    headers = list(FINDING_HEADER_RE.finditer(text))
+    for i, m in enumerate(headers):
         finding_id, rest = m.groups()
+        body_end = headers[i + 1].start() if i + 1 < len(headers) else len(text)
+        body = text[m.end():body_end]
         prefix = finding_id.split("-")[0]
         if "|" in rest:
             left, right = rest.split("|", 1)
         else:
             left, right = rest, ""
         sev = SEVERITY_RE.search(left) or SEVERITY_RE.search(right)
-        status = STATUS_RE.search(left) or STATUS_RE.search(right)
+        status = STATUS_BODY_RE.search(body) or STATUS_RE.search(left) or STATUS_RE.search(right)
         category = right.split("—")[0].split(" - ")[0] if right else left
         results.append(Finding(
             finding_id=finding_id,

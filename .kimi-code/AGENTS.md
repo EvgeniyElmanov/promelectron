@@ -161,7 +161,7 @@
 1. `PROJECT_CONTEXT.md` — стек, статус фич, блокеры, инвентарь API
 2. `.agent/BACKLOG.md` — текущий спринт
 3. `.agent/BLOCKERS.md` — активные блокеры
-4. `.agent/SESSION_LOG.md` — недавние сессии
+4. `.agent/SESSION_LOG.md` — недавние сессии (только tail ~200 строк)
 5. Соответствующий ролевой skill в `.kimi-code/skills/<role>/SKILL.md`
 6. [Rule: Agent Commons](./rules/agent-commons.md) — язык, retry policy, размер контекста, ограничения API
 7. [Rule: Pre-edit Checklist](./rules/pre-edit-checklist.md) (перед изменением кода)
@@ -194,6 +194,8 @@
 - `git push --force *`
 - `git reset --hard *`
 - `DROP *`, `truncate *`
+
+Safety hooks (PreToolUse, см. `.kimi-code/config.example.toml`, скрипты в `scripts/hooks/`): `block-dangerous-bash.py` — опасные команды; `block-main-git-mutations.py` — git commit/push/merge на ветке `main`; `single-test-run.py` — параллельный `make test-backend`/`test-frontend` при занятом flock.
 
 ---
 

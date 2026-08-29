@@ -15,7 +15,7 @@ disableModelInvocation: false
 
 # /skill:qa-gate — Автономный QA Gate
 
-> **ЯЗЫК / LANGUAGE:** Пользователь общается на русском. Все ответы пользователю и артефакты (findings, reports, test-findings, SESSION_LOG) пиши на русском. Стремись рассуждать на русском, но если reasoning уходит на английский — это не ошибка; главное, чтобы финальные ответы и артефакты были на русском. Код, команды, идентификаторы, пути и технические термины оставляй в оригинале.
+> **ЯЗЫК / LANGUAGE:** Следуй [Rule: Agent Commons](../../rules/agent-commons.md) > Language Rule / Языковое правило.
 
 Запусти **QA gate** для одной задачи и запиши результаты в `.agent/runs/<task-id>/review/test-findings.md`.
 
@@ -127,6 +127,12 @@ Do NOT edit source code.
 - Backend / frontend / E2E counts
 - Open F-findings and H-findings
 - Путь к report-файлу
+
+Запиши trace-событие после прогона (формат — как в `/skill:implement` Step 1d; trace никогда не блокирует пайплайн: при ошибке — продолжай и упомяни в отчёте):
+
+```bash
+python3 scripts/agent_state.py trace <task-id> qa_done --actor qa --data '{"status": "TESTS_PASSED|TESTS_FAILED"}'
+```
 
 Если `TESTS_FAILED`, предложи вызвать `/skill:implement <task-id>` или соответствующую роль разработчика для исправления, затем повторно `/skill:qa-gate <task-id>`.
 

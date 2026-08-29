@@ -1,12 +1,14 @@
 # Бэклог Promelectron
 
-**Версия:** 1.3
-**Дата:** 2026-07-10
+**Версия:** 1.4
+**Дата:** 2026-08-28
 **Формат:** 1 спринт = 2 недели
 
 ---
 
-## Текущий спринт: Sprint 1 (2026-06-29 — 2026-07-12)
+## Текущий спринт: Sprint 1 (2026-06-29 — 2026-07-12) — ЗАВЕРШЁН
+
+> С 2026-07 работа идёт issue-driven: актуальные задачи и статусы — в разделе agent intake внизу файла и на GitHub Project board. Таблица ниже — историческая (закрытый Sprint 1).
 
 | # | Задача | Issue | Агент | Приоритет | Статус | Зависимости | Оценка | Блокер |
 |---|--------|-------|-------|-----------|--------|-------------|--------|--------|--------|
@@ -247,3 +249,9 @@
 | — | ci: добавить alembic check (make migrate-check) в CI workflow | [#185](https://github.com/AutonomaCo/promelectron/issues/185) | 2026-08-27 | P1 | **in review** (PR #187) | — | — | — |
 | — | fix(e2e): флаки cart-select.spec.js — протечка состояния корзины между тестами | [#186](https://github.com/AutonomaCo/promelectron/issues/186) | 2026-08-27 | P1 | **backlog** | — | — | — |
 | — | Spec: mobile-medium-fixes — пачка medium-фиксов мобильной версии | [#171](https://github.com/AutonomaCo/promelectron/issues/171) | — | P1 | **done** (PR #173) | — | — | — |
+| — | Bug Spec: Избранное — удаление не работает + заливка сердечка | [#188](https://github.com/AutonomaCo/promelectron/issues/188) | — | P1 | **backlog** | — | — | — |
+| fix-cdek-tracking-number | Bug Spec: fix-cdek-tracking-number | [#190](https://github.com/AutonomaCo/promelectron/issues/190) | 2026-08-28 | P1 | **done** (PR #191, merge `dfc1c83`) | — | — | — |
+| — | Spec: toast-follow-scroll | [#194](https://github.com/AutonomaCo/promelectron/issues/194) | — | P1 | **backlog** | — | — | — |
+| fix-cdek-order-number-collision | fix(cdek): уникальный номер заказа ИМ PM-{id}-{suffix} — коллизия после reseed БД | [#195](https://github.com/AutonomaCo/promelectron/issues/195) | 2026-08-29 | P1 | **done** (PR #197, merge `75f5850`) | — | — | — |
+| — | Bug Spec: fix-order-emails | [#199](https://github.com/AutonomaCo/promelectron/issues/199) | — | P1 | **backlog** | — | — | — |
+| fix-order-emails | fix(email): дубль письма «Заказ оформлен» при оплате + нет трек-номера в письме «Отправлен» | [#199](https://github.com/AutonomaCo/promelectron/issues/199) | 2026-08-29 | P1 | **done** (PR #200, merge `232fc35`) | — | — | — |

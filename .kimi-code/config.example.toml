@@ -156,6 +156,23 @@ matcher = "Bash"
 command = "python3 ~/.kimi-code/hooks/block-dangerous-bash.py"
 timeout = 5
 
+# Block git commit/push/merge on the main branch (works in worktrees too;
+# fail-open outside git repos). Repo: scripts/hooks/block-main-git-mutations.py.
+[[hooks]]
+event = "PreToolUse"
+matcher = "Bash"
+command = "python3 ~/.kimi-code/hooks/block-main-git-mutations.py"
+timeout = 5
+
+# Block make test-backend/test-frontend while another backend test run holds
+# the Makefile flock (template DB race, LESSONS_LEARNED 2026-08-01; fail-open
+# for projects without the lock). Repo: scripts/hooks/single-test-run.py.
+[[hooks]]
+event = "PreToolUse"
+matcher = "Bash"
+command = "python3 ~/.kimi-code/hooks/single-test-run.py"
+timeout = 5
+
 # Notify when a background task completes (safe for any project).
 # Requires terminal-notifier on macOS or equivalent on Linux.
 # [[hooks]]

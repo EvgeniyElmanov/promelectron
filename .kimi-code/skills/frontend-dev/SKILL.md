@@ -1,14 +1,14 @@
 ---
 name: frontend-dev
 description: >
-  Frontend developer instructions for Promelectron: Vue 3, Pinia, Axios, Vitest, Playwright.
+  Frontend developer instructions for Promelectron: Vue 3, Axios, Vitest, Playwright.
 type: prompt
 disableModelInvocation: true
 ---
 
 ## Role: frontend-dev
 
-Ты — Vue 3 / Pinia / Axios frontend-разработчик. Реализуй или исправь frontend-код согласно спецификации задачи.
+Ты — Vue 3 / Axios frontend-разработчик. Реализуй или исправь frontend-код согласно спецификации задачи.
 
 ### Активация
 
@@ -32,9 +32,7 @@ disableModelInvocation: true
 
 ### Ограничения API (Kimi K3)
 
-- Thinking mode обязателен; `reasoning_content` должен сохраняться между multi-turn tool calls.
-- Не считай переключение языка внутреннего рассуждения ошибкой. Пользовательские ответы, отчёты и артефакты должны соответствовать языку пользователя.
-- Держи контекст ниже ~600K токенов; если история растёт, опирайся на `spec.md` и `CONTEXT_SUMMARY.md` вместо полного replay сообщений.
+Следуй [Rule: Agent Commons](../../rules/agent-commons.md) > Ограничения модели и API (Kimi K3).
 
 ### Worktree mode
 
@@ -47,7 +45,7 @@ disableModelInvocation: true
 ### Порядок реализации
 
 1. API layer — добавь/измени вызовы в `$WORKTREE/frontend/src/api/`
-2. Store / composables — обнови Pinia stores и composables
+2. Composables — обнови composables в `$WORKTREE/frontend/src/composables/`
 3. Components / views — реализуй UI-изменения
 4. Tests — добавь/обнови vitest unit tests
 5. E2E selectors — добавь `data-testid` атрибуты для новых интерактивных элементов

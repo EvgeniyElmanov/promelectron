@@ -2,8 +2,8 @@
 
 # Блокеры Promelectron
 
-**Версия:** 1.3
-**Дата:** 2026-07-10
+**Версия:** 1.4
+**Дата:** 2026-08-28
 **Правило:** Project-manager проверяет каждый день в 10:00 MSK. Блокер >2 дней — эскалация пользователю.
 
 ---
@@ -12,9 +12,11 @@
 
 | ID | Дата | Блокер | Severity | Затронуто | Кто решает | Статус | План B | Дедлайн |
 |----|------|--------|----------|-----------|------------|--------|--------|---------|
-| BLK-009 | 2026-06-22 | CDEK widget-service `calculate` возвращает 502 Bad Gateway на test-окружении при `action=calculate` с `to_location.address` без `code`. `action=offices` работает. Блокирует UI-выбор доставки при гостевом чекауте. | P1 | Гостевой чекаут, CDEK доставка | backend-dev / devops | **🔴 в работе** | Создание заказа через API с фиктивными CDEK-данными; починить прокси/геокодирование | 2026-06-23 |
-| BLK-010 | 2026-06-22 | YooKassa webhook `payment.succeeded` не приходит на `/api/v1/payments/yookassa/webhook/` в test-окружении. Заказы остаются в `pending` после успешной оплаты до ручной синхронизации или имитации webhook. | P1 | YooKassa интеграция, статусы заказов | devops / project-manager | **🔴 в работе** | Ручная синхронизация через API; настроить webhook URL в личном кабинете YooKassa | 2026-06-23 |
-| BLK-013 | 2026-07-14 | YooKassa E2E-тесты с тестовыми банковскими картами остаются flaky в CI из-за race condition редиректов и нестабильного прохождения 3DS sandbox. Полная стабилизация возможна только после получения реальных YooKassa-ключей и запуска интеграции в прод / полноценном test-окружении. Production-код (`cancellation_reason`) остаётся и работает. | P1 | Задача #65, PR #95, E2E-suite | e2e-tester / project-manager | **🟡 отложено** | Закрыть PR #95 без мержа; вернуться к E2E-стабилизации, когда будут реальные ключи | 2026-07-21 |
+| BLK-009 | 2026-06-22 | CDEK widget-service `calculate` возвращает 502 Bad Gateway на test-окружении при `action=calculate` с `to_location.address` без `code`. `action=offices` работает. Блокирует UI-выбор доставки при гостевом чекауте. | P1 | Гостевой чекаут, CDEK доставка | backend-dev / devops | **🔴 эскалирован (67 дней)** | Создание заказа через API с фиктивными CDEK-данными; починить прокси/геокодирование | ~~2026-06-23~~ просрочен |
+| BLK-010 | 2026-06-22 | YooKassa webhook `payment.succeeded` не приходит на `/api/v1/payments/yookassa/webhook/` в test-окружении. Заказы остаются в `pending` после успешной оплаты до ручной синхронизации или имитации webhook. | P1 | YooKassa интеграция, статусы заказов | devops / project-manager | **🔴 эскалирован (67 дней)** | Ручная синхронизация через API; настроить webhook URL в личном кабинете YooKassa | ~~2026-06-23~~ просрочен |
+| BLK-013 | 2026-07-14 | YooKassa E2E-тесты с тестовыми банковскими картами остаются flaky в CI из-за race condition редиректов и нестабильного прохождения 3DS sandbox. Полная стабилизация возможна только после получения реальных YooKassa-ключей и запуска интеграции в прод / полноценном test-окружении. Production-код (`cancellation_reason`) остаётся и работает. | P1 | Задача #65, PR #95, E2E-suite | e2e-tester / project-manager | **🟡 отложено (дедлайн просрочен)** | Закрыть PR #95 без мержа; вернуться к E2E-стабилизации, когда будут реальные ключи | ~~2026-07-21~~ просрочен |
+| BLK-014 | 2026-08-29 | Нет production-ключей CDEK — prod-конфиг не настроен (подтверждено пользователем). Когда ключи появятся: (1) `infra/helm/stage/prod/values.yaml` → `env.open`: `CDEK_API_URL: https://api.cdek.ru`, `CDEK_TEST_MODE: "false"` (сейчас prod наследует edu-стенд и test mode из базового values.yaml); (2) переименовать ключи в prod SOPS `SDEK_CLIENT_ID`/`SDEK_CLIENT_SECRET` → `CDEK_ACCOUNT`/`CDEK_SECURE` (backend читает именно их, `config.py:227-228`) или добавить `CDEK_ACCOUNT`/`CDEK_SECURE` в GitHub Secrets (deploy.yml уже прокидывает OVR_); (3) опционально — регистрация webhook-подписки CDEK (`POST /v2/webhooks`), сейчас только polling 15 мин. Prod namespace `promelectron` пока пуст (не задеплоен). Контекст: #190/PR #191. | P1 | CDEK на prod, трек-номера реальных заказов | devops + пользователь (ключи) | **🟡 ждём ключи** | Test работает на edu-стенде; prod не деплоить без этих правок | — |
+| BLK-015 | 2026-08-29 | Локальный docker postgres без template DB `promelectron_test_template` — `make test-backend`/`make pre-push` падают с 48 errors `InvalidCatalogNameError` на чистом коде (воспроизведено на задаче toast-follow-scroll, diff frontend-only). Лечится пересозданием template DB (см. backend test helper в `backend/tests/conftest.py`). | P3 | Локальные прогоны backend-тестов, `make pre-push` | backend-dev / devops | **🟡 открыт** | Прогонять только frontend-проверки; CI не затронут | — |
 
 ---
 
@@ -22,8 +24,9 @@
 
 | ID | Дата открытия | Дней открыт | Действие |
 |----|---------------|-------------|----------|
-| BLK-009 | 2026-06-22 | 18 | Требуется починка CDEK прокси/геокодирования на test-окружении |
-| BLK-010 | 2026-06-22 | 18 | Требуется настройка webhook URL в личном кабинете YooKassa |
+| BLK-009 | 2026-06-22 | 67 | Требуется починка CDEK прокси/геокодирования на test-окружении — **нужно решение пользователя** |
+| BLK-010 | 2026-06-22 | 67 | Требуется настройка webhook URL в личном кабинете YooKassa — **нужно действие пользователя (доступ к ЛК)** |
+| BLK-013 | 2026-07-14 | 45 | Отложено до реальных ключей YooKassa — связано с BLK-010 |
 
 ---
 

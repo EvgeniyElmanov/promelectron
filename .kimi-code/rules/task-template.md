@@ -7,25 +7,32 @@ disableModelInvocation: true
 ---
 
 > Это reference-шаблон для `.agent/runs/<task-id>/task.md` (task-id — kebab-case).  
-> Пайплайн создаёт этот файл автоматически; агенты читают его в начале задачи.
+> Пайплайн создаёт этот файл автоматически (`implement-pipeline.py setup`); агенты читают его в начале задачи.  
 > См. [Rule: Agent Commons](agent-commons.md) > Языковое правило.
 
-```yaml
----
-task-id: <kebab-case-slug>
-github_issue: #N
-jira_issue: PROJ-123          # опционально — для MCP atlassian
-confluence_spec_url: https://...  # опционально — для MCP atlassian
-figma_file_key: AbC123dEfG    # опционально — для MCP figma
-status: todo | in_progress | in_review | done
-branch: feature/<task-id>
-worktree: /abs/path/to/.worktrees/<task-id>
-date: YYYY-MM-DD
-flags: --quick | --backend-only | --frontend-only | --serial | --qa
-estimated_tokens: 0
-security_review: yes | no
----
+Канонический формат заголовка — markdown-заголовки (не YAML): именно его пишет генератор
+и парсит `agent_metrics._parse_task_md`. Дальше агент может дополнять файл секциями ниже по необходимости.
+
+```markdown
+# Task: <task-id>
+
+## Description
+<полное описание задачи>
+
+## Flags
+<активные флаги или "none">
+
+## Date
+<YYYY-MM-DD>
+
+## GitHub
+- github_issue: #N
+- issue_url: https://...
 ```
+
+Секция `## GitHub` добавляется автоматически при `create-issue` (`github_issue` обязателен для `set-status`).
+Опциональные поля, которые можно добавить в `## Description` или отдельными секциями: `jira_issue`,
+`confluence_spec_url`, `figma_file_key`, `security_review`, `estimated_tokens`.
 
 ## ЯЗЫК / LANGUAGE
 

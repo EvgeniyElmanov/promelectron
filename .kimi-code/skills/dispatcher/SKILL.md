@@ -25,7 +25,7 @@ disableModelInvocation: true
 | Роль | Ключевые слова |
 |------|----------------|
 | `backend-dev` | API, endpoint, backend, model, schema, service, route, migration, alembic, SQLAlchemy, FastAPI, pytest, DB, table, webhook, JWT, OAuth (backend), payment, order, cart (API), auth (backend), admin (API) |
-| `frontend-dev` | frontend, Vue, component, page, view, Pinia, store, composable, UI, UX, form, responsive, CSS, Axios, router, localStorage, cart (UI), login (UI), checkout (UI) |
+| `frontend-dev` | frontend, Vue, component, page, view, composable, UI, UX, form, responsive, CSS, Axios, router, localStorage, cart (UI), login (UI), checkout (UI) |
 | `devops` | Docker, K8s, Kubernetes, Helm, nginx, CI/CD, deploy, infra, SSL, VPN, backup, Sentry, monitoring, pod, container, GitHub Actions, workflow, secret, config |
 | `e2e-tester` | E2E, Playwright, test scenario, browser, click, end-to-end, regression, spec |
 | `code-reviewer` | review, code review, findings, quality |

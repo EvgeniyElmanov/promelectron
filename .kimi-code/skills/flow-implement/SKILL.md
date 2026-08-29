@@ -15,7 +15,7 @@ disableModelInvocation: false
 
 # /skill:flow-implement — Визуализатор пайплайна implement
 
-> **ЯЗЫК / LANGUAGE:** Пользователь общается на русском. Все ответы пользователю и артефакты пиши на русском. Стремись рассуждать на русском, но если reasoning уходит на английский — это не ошибка. Код, команды, идентификаторы, пути и технические термины оставляй в оригинале.
+> **ЯЗЫК / LANGUAGE:** Следуй [Rule: Agent Commons](../../rules/agent-commons.md) > Language Rule / Языковое правило.
 
 Покажи пользователю, **на какой фазе пайплайна `/skill:implement` находится задача**, в виде Mermaid-диаграммы с подсветкой (Mermaid рендерится в web chat Kimi Code) плюс краткий статус и следующее действие.
 
@@ -62,8 +62,8 @@ python3 scripts/agent_state.py state <task-id>
 | Фаза | Признак |
 |------|---------|
 | `done` | PR существует и `state == MERGED` |
-| `mr` | PR открыт (`OPEN`), либо `test-findings.md` содержит `TESTS_PASSED` |
-| `qa_gate` | `findings.md` содержит верхнеуровневый `APPROVED`, но `test-findings.md` нет или `TESTS_FAILED` |
+| `mr` | PR открыт (`OPEN`), либо в `trace.jsonl` есть событие `pr_opened` |
+| `qa_gate` | `findings.md` содержит верхнеуровневый `APPROVED`, либо `test-findings.md` содержит `TESTS_PASSED`, но PR ещё не открыт |
 | `reviewer` | `review/findings.md` существует, нет `APPROVED` |
 | `dev` | `spec.md` существует, `review/findings.md` нет |
 | `architect` | `task.md` существует, `spec.md` нет |

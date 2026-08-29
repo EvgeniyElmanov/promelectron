@@ -14,7 +14,7 @@ disableModelInvocation: false
 
 # /skill:ship — Создание GitHub Pull Request
 
-> **ЯЗЫК / LANGUAGE:** Пользователь общается на русском. Все ответы пользователю, title/body PR и артефакты пиши на русском. Стремись рассуждать на русском, но если reasoning уходит на английский — это не ошибка; главное, чтобы финальные ответы и артефакты были на русском. Код, команды, идентификаторы, пути и технические термины оставляй в оригинале.
+> **ЯЗЫК / LANGUAGE:** Следуй [Rule: Agent Commons](../../rules/agent-commons.md) > Language Rule / Языковое правило.
 
 Создай GitHub PR из **текущей feature-ветки**, используя шаблон проекта. Это автономная версия Step 8 из `/skill:implement` — для случая, когда код уже написан, закоммичен, и нужно просто открыть PR.
 
@@ -26,9 +26,7 @@ disableModelInvocation: false
 
 ## Ограничения API (Kimi K3)
 
-- Thinking mode всегда включён, отключить нельзя; глубина задаётся `reasoning_effort` (`low`/`high`/`max`, default `max`). В multi-turn tool calls возвращай полное assistant message unchanged, включая `reasoning_content` (особенно при повторных попытках `gh pr create` / `git push`).
-- Не считай переключение языка внутреннего рассуждения ошибкой. Главное — финальные ответы, title/body PR и артефакты на языке пользователя.
-- Sampling-параметры фиксированы: `temperature=1.0`, `top_p=0.95`, `n=1`, `presence_penalty=0.0`, `frequency_penalty=0.0`.
+Следуй [Rule: Agent Commons](../../rules/agent-commons.md) > Ограничения модели и API (Kimi K3).
 
 ---
 
@@ -167,6 +165,12 @@ EOF
 ```
 
 Захвати URL PR. Если `gh pr create` падает — остановись и сообщи об ошибке; не пытайся оставлять комментарии или обновлять статус доски.
+
+Запиши trace-событие (формат — как в `/skill:implement` Step 1d; trace никогда не блокирует пайплайн: при ошибке — продолжай и упомяни в итоговом отчёте):
+
+```bash
+python3 scripts/agent_state.py trace <task-id> pr_opened --actor orchestrator --data '{"url": "<PR URL>"}'
+```
 
 ---
 
