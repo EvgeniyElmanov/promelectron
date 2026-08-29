@@ -37,7 +37,7 @@
       <div class="product-card__name" data-testid="product-name">{{ product.name }}</div>
       <button
         class="product-card__cart-btn"
-        :class="{ 'product-card__cart-btn--in-cart': inCartQty > 0 }"
+        :class="{ 'product-card__cart-btn--in-cart': inCartQty > 0 && !isOutOfStock }"
         data-testid="add-to-cart-button"
         :disabled="isLoading || isOutOfStock"
         @click.stop="addToCart"

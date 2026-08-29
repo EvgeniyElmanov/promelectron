@@ -77,12 +77,12 @@
         <div class="product-detail__actions">
           <button
             class="product-detail__cart-btn"
-            :class="{ 'product-detail__cart-btn--in-cart': inCartQty > 0 }"
+            :class="{ 'product-detail__cart-btn--in-cart': inCartQty > 0 && !isOutOfStock }"
             data-testid="pdp-add-to-cart"
             :disabled="cartLoading || isOutOfStock"
             @click="addToCart"
           >
-            {{ cartLoading ? '...' : (isOutOfStock ? 'Нет в наличии' : (inCartQty > 0 ? `В корзине · ${inCartQty}` : 'В корзину')) }}
+            {{ isOutOfStock ? 'Нет в наличии' : (cartLoading ? '...' : (inCartQty > 0 ? `В корзине · ${inCartQty}` : 'В корзину')) }}
           </button>
         </div>
 
