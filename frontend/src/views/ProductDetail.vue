@@ -13,7 +13,7 @@
         data-testid="pdp-favorite-button"
         @click="toggleFavorite"
       >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <svg width="24" height="24" viewBox="0 0 24 24" :fill="isFavorite ? 'currentColor' : 'none'">
           <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       </button>
@@ -77,11 +77,12 @@
         <div class="product-detail__actions">
           <button
             class="product-detail__cart-btn"
+            :class="{ 'product-detail__cart-btn--in-cart': inCartQty > 0 && !isOutOfStock }"
             data-testid="pdp-add-to-cart"
             :disabled="cartLoading || isOutOfStock"
             @click="addToCart"
           >
-            {{ cartLoading ? '...' : (isOutOfStock ? 'Нет в наличии' : 'В корзину') }}
+            {{ isOutOfStock ? 'Нет в наличии' : (cartLoading ? '...' : (inCartQty > 0 ? `В корзине · ${inCartQty}` : 'В корзину')) }}
           </button>
         </div>
 
@@ -184,7 +185,7 @@ const route = useRoute();
 const router = useRouter();
 const { isAuthenticated } = useAuth();
 const { add: toast } = useToast();
-const { addToCart: addToCartStore } = useCart();
+const { addToCart: addToCartStore, getQuantityInCart } = useCart();
 
 const product = ref({});
 const reviews = ref([]);
@@ -197,6 +198,7 @@ const newReviewText = ref('');
 const selectedImage = ref(0);
 
 const productId = computed(() => Number(route.params.id));
+const inCartQty = computed(() => getQuantityInCart(productId.value));
 
 const placeholderColors = [
   '#E3F2FD', '#FCE4EC', '#E8F5E9', '#FFF3E0',
@@ -249,11 +251,9 @@ const toggleFavorite = async () => {
     if (isFavorite.value) {
       await api.delete(`/favorites/remove/${productId.value}`);
       isFavorite.value = false;
-      toast('Удалено из избранного', 'info');
     } else {
       await api.post(`/favorites/add/${productId.value}`);
       isFavorite.value = true;
-      toast('Добавлено в избранное', 'success');
     }
   } catch {
     toast('Не удалось обновить избранное', 'error');
@@ -261,12 +261,15 @@ const toggleFavorite = async () => {
 };
 
 const addToCart = async () => {
+  if (inCartQty.value > 0) {
+    router.push('/cart');
+    return;
+  }
   if (isOutOfStock.value) return;
   if (cartLoading.value) return;
   cartLoading.value = true;
   try {
     await addToCartStore(productId.value, 1, product.value);
-    toast('Добавлено в корзину', 'success');
   } catch {
     toast('Не удалось добавить в корзину', 'error');
   } finally {
@@ -361,8 +364,28 @@ onMounted(fetchProduct);
   transition: color 0.15s;
 }
 
+.product-detail__fav-btn svg {
+  transition: fill 0.15s ease;
+}
+
 .product-detail__fav-btn--active {
   color: #ff4242;
+}
+
+.product-detail__fav-btn--active svg {
+  animation: heart-pop 0.25s ease;
+}
+
+@keyframes heart-pop {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.25);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 .product-detail__main {
@@ -519,6 +542,10 @@ onMounted(fetchProduct);
 .product-detail__cart-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.product-detail__cart-btn--in-cart {
+  background: var(--color-success);
 }
 
 .product-detail__section {

@@ -57,8 +57,7 @@ async function addFirstProductToCart(page) {
   await page.goto('/');
   const firstProduct = await getInStockProductCard(page);
   await firstProduct.locator('[data-testid="add-to-cart-button"]').click();
-  await expect(page.locator('.toast--success')).toBeVisible({ timeout: 5000 });
-  await page.waitForTimeout(300);
+  await expect(firstProduct.locator('[data-testid="add-to-cart-button"]')).toContainText('В корзине', { timeout: 5000 });
 }
 
 async function registerUser(page, email, password) {

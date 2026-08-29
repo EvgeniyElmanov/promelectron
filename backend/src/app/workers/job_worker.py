@@ -105,6 +105,21 @@ async def handle_cdek_sync_status(job: Job, db: AsyncSession) -> None:
 
     await CdekService.apply_cdek_status(cdek_order, data, db, source="polling")
 
+    # INVALID — CDEK отклонил заказ: cdek_number не появится никогда.
+    # Прекращаем polling и делаем проблему видимой админу (sync_failed).
+    if cdek_order.cdek_status == "INVALID":
+        cdek_order.sync_attempts += 1
+        cdek_order.sync_failed = True
+        job.processing_log.append(
+            f"CDEK order {cdek_order.id} rejected by CDEK (status INVALID); polling stopped"
+        )
+        logger.warning(
+            "CDEK order %s is INVALID (order_id=%s); polling stopped, sync_failed=True",
+            cdek_order.id,
+            cdek_order.order_id,
+        )
+        return  # job остаётся "running" → caller (process_jobs) пометит completed
+
     # Reschedule unless we hit a terminal status
     if cdek_order.cdek_status not in settings.cdek_terminal_statuses:
         job.run_after = datetime.now(timezone.utc) + timedelta(

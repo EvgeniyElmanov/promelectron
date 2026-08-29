@@ -4,6 +4,7 @@
   --color-primary-hover: #0049CC;
   --color-primary-light: #E8F0FE;
   --color-danger: #FF3B30;
+  --color-success: #34C759;
   --color-white: #ffffff;
   --color-bg: #f2f5f9;
   --color-bg-white: #ffffff;
@@ -15,7 +16,8 @@
 }
 
 html {
-  overflow-x: hidden;
+  overflow-x: hidden; /* fallback для Safari < 16 */
+  overflow-x: clip;
 }
 
 @keyframes shimmer {
@@ -54,7 +56,8 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
-  overflow-x: hidden;
+  overflow-x: hidden; /* fallback для Safari < 16 */
+  overflow-x: clip;
 }
 
 /* iOS Safari зумит страницу при фокусе на input с font-size < 16px (issue #171).

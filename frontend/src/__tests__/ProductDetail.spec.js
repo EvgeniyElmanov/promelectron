@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import { createRouter, createWebHistory } from 'vue-router'
 import ProductDetail from '@/views/ProductDetail.vue'
 import api from '@/services/api'
+import { useCart } from '@/composables/useCart'
 
 const mockProduct = {
   id: 1,
@@ -62,6 +63,29 @@ async function mountProductDetail() {
 describe('ProductDetail.vue', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  it('активное сердечко на PDP закрашено красным (fill currentColor)', async () => {
+    api.get.mockResolvedValueOnce({ data: { ...mockProduct, is_favorite: true } })
+    const wrapper = await mountProductDetail()
+
+    await vi.waitFor(() => {
+      const btn = wrapper.find('[data-testid="pdp-favorite-button"]')
+      expect(btn.classes()).toContain('product-detail__fav-btn--active')
+    })
+    const btn = wrapper.find('[data-testid="pdp-favorite-button"]')
+    expect(btn.find('svg').attributes('fill')).toBe('currentColor')
+  })
+
+  it('неактивное сердечко на PDP без заливки (fill none)', async () => {
+    const wrapper = await mountProductDetail()
+
+    await vi.waitFor(() => {
+      expect(wrapper.find('[data-testid="pdp-stock"]').exists()).toBe(true)
+    })
+    const btn = wrapper.find('[data-testid="pdp-favorite-button"]')
+    expect(btn.classes()).not.toContain('product-detail__fav-btn--active')
+    expect(btn.find('svg').attributes('fill')).toBe('none')
   })
 
   it('отображает название и цену товара', async () => {
@@ -215,5 +239,64 @@ describe('ProductDetail.vue', () => {
       expect(wrapper.find('[data-testid="pdp-stock"]').exists()).toBe(true)
     })
     expect(wrapper.find('[data-testid="pdp-attributes"]').exists()).toBe(false)
+  })
+})
+
+const mockToast = vi.hoisted(() => vi.fn())
+vi.mock('@/composables/useToast', () => ({
+  useToast: () => ({ add: mockToast }),
+}))
+
+describe('ProductDetail.vue — состояние кнопки корзины', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    localStorage.clear()
+    const { clearGuestCart } = useCart()
+    clearGuestCart()
+  })
+
+  async function mountPdp() {
+    const router = createRouter({
+      history: createWebHistory(),
+      routes: [
+        { path: '/product/:id', component: ProductDetail },
+        { path: '/cart', component: { template: '<div />' } },
+      ],
+    })
+    await router.push('/product/1')
+    await router.isReady()
+    const wrapper = mount(ProductDetail, { global: { plugins: [router] } })
+    await vi.waitFor(() => {
+      expect(wrapper.find('[data-testid="pdp-add-to-cart"]').exists()).toBe(true)
+    })
+    return { wrapper, router }
+  }
+
+  it('после добавления кнопка показывает «В корзине · N» и класс --in-cart', async () => {
+    const { wrapper } = await mountPdp()
+
+    await wrapper.find('[data-testid="pdp-add-to-cart"]').trigger('click')
+    await flushPromises()
+
+    const button = wrapper.find('[data-testid="pdp-add-to-cart"]')
+    expect(button.text()).toContain('В корзине · 1')
+    expect(button.classes()).toContain('product-detail__cart-btn--in-cart')
+    expect(mockToast).not.toHaveBeenCalledWith('Добавлено в корзину', 'success')
+  })
+
+  it('клик по in-cart кнопке ведёт на /cart без повторного добавления', async () => {
+    const { wrapper, router } = await mountPdp()
+    const pushSpy = vi.spyOn(router, 'push')
+
+    await wrapper.find('[data-testid="pdp-add-to-cart"]').trigger('click')
+    await flushPromises()
+    pushSpy.mockClear()
+
+    await wrapper.find('[data-testid="pdp-add-to-cart"]').trigger('click')
+    await flushPromises()
+
+    expect(pushSpy).toHaveBeenCalledWith('/cart')
+    const { getQuantityInCart } = useCart()
+    expect(getQuantityInCart(1)).toBe(1)
   })
 })

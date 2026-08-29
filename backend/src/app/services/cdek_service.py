@@ -1,5 +1,7 @@
 import json
 import logging
+import urllib.parse
+import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any
@@ -374,7 +376,9 @@ class CdekService:
 
         payload: dict[str, Any] = {
             "type": 1,
-            "number": str(order.id),
+            # Номер заказа ИМ должен быть уникален среди активных заказов аккаунта CDEK;
+            # после reseed БД голый order.id коллидирует со старыми заказами на стенде.
+            "number": f"PM-{order.id}-{uuid.uuid4().hex[:6]}",
             "tariff_code": cdek_order.tariff_code,
             "recipient": recipient,
             "packages": packages,
@@ -434,7 +438,8 @@ class CdekService:
         identifier = cdek_order.cdek_number or cdek_order.tracking_number or cdek_order.cdek_uuid
         if not identifier:
             return None
-        return f"https://www.cdek.ru/ru/tracking?order_id={identifier}"
+        # identifier приходит из внешнего API CDEK — URL-encode перед вставкой (S001).
+        return f"https://www.cdek.ru/ru/tracking?order_id={urllib.parse.quote(identifier, safe='')}"
 
     @staticmethod
     def _map_cdek_status_to_order(status_code: str | None) -> str | None:
@@ -560,11 +565,18 @@ class CdekService:
                 try:
                     recipient_email = (order.user.email if order.user else None) or order.guest_email
                     if recipient_email:
+                        tracking_number = (
+                            order.tracking_number
+                            or cdek_order.tracking_number
+                            or cdek_order.cdek_number
+                        )
                         await EmailService.send_order_status_update(
                             to=recipient_email,
                             order_id=order.id,
                             status=order.status,
                             db=db,
+                            tracking_number=tracking_number,
+                            tracking_url=CdekService.build_tracking_url(cdek_order),
                         )
 
                     if order.user_id:
@@ -651,11 +663,18 @@ class CdekService:
             try:
                 order_id = int(im_number)
             except (TypeError, ValueError):
-                # Handle "order-{id}" legacy format
-                if isinstance(im_number, str) and im_number.startswith("order-"):
+                order_id = None
+                if isinstance(im_number, str) and im_number.startswith("PM-"):
+                    # Current format "PM-{id}-{suffix}": extract the internal order id
+                    parts = im_number.split("-")
+                    if len(parts) >= 3:
+                        try:
+                            order_id = int(parts[1])
+                        except ValueError:
+                            order_id = None
+                elif isinstance(im_number, str) and im_number.startswith("order-"):
+                    # Handle "order-{id}" legacy format
                     order_id = int(im_number.replace("order-", ""))
-                else:
-                    order_id = None
 
             if order_id is not None:
                 result = await db.execute(

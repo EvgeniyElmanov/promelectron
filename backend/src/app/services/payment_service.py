@@ -306,7 +306,7 @@ class PaymentService:
                             "price_at_time": float(oi.price_at_time),
                         }
                     )
-                await EmailService.send_order_confirmation(
+                await EmailService.send_order_paid(
                     to=user.email,
                     order_id=order_id,
                     total_price=order_total_price,

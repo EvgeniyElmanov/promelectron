@@ -1,3 +1,4 @@
+import re
 from decimal import Decimal
 from unittest.mock import AsyncMock
 
@@ -251,6 +252,15 @@ class TestCdekService:
 
         assert CdekService.build_tracking_url(None) is None
 
+    def test_build_tracking_url_quotes_identifier(self):
+        """identifier из CDEK URL-encod'ится: кавычки/HTML не выходят за пределы параметра (S001)."""
+        cdek_order = CdekOrder(cdek_number='110"><script>alert(1)</script>')
+        url = CdekService.build_tracking_url(cdek_order)
+        assert url is not None
+        assert '"' not in url
+        assert "<" not in url and ">" not in url
+        assert url == "https://www.cdek.ru/ru/tracking?order_id=110%22%3E%3Cscript%3Ealert%281%29%3C%2Fscript%3E"
+
     @pytest.mark.asyncio
     async def test_cancel_cdek_order_logs_safe_fields(self, monkeypatch, caplog):
         """cancel_cdek_order логирует только безопасные идентификаторы, не весь ответ."""
@@ -323,6 +333,83 @@ class TestCdekService:
         assert result.cdek_uuid == "new-uuid"
         assert captured_payload["recipient"]["name"] == "Иван Гость"
         assert captured_payload["from_location"]["code"] == 44
+
+    async def _capture_create_payload(self, test_order, test_supplier, test_session, monkeypatch):
+        """Общий setup: monkeypatch CdekClient, возвращает dict с захваченным payload."""
+        from src.app.models.supplier import Supplier
+
+        test_order.user.phone = "+79990001122"
+        result = await test_session.execute(select(Supplier).where(Supplier.user_id == test_supplier.id))
+        supplier = result.scalars().first()
+        supplier.cdek_shipment_point = "MSK123"
+        supplier.sender_phone = "+79990001122"
+        await test_session.commit()
+
+        captured_payload = {}
+
+        async def fake_get_delivery_point(*args):
+            return {"code": "MSK123", "location": {"city_code": 44}}
+
+        async def fake_create_order(payload):
+            captured_payload.update(payload)
+            return {"entity": {"uuid": "new-uuid"}, "requests": [{"state": "ACCEPTED"}]}
+
+        fake_client = AsyncMock()
+        fake_client.get_delivery_point = fake_get_delivery_point
+        fake_client.create_order = fake_create_order
+        fake_client.close = AsyncMock()
+        monkeypatch.setattr("src.app.services.cdek_service.CdekClient", lambda: fake_client)
+        return captured_payload
+
+    @pytest.mark.asyncio
+    async def test_create_cdek_order_sends_unique_pm_number(self, test_order, test_supplier, test_session, monkeypatch):
+        """Номер заказа ИМ в payload имеет уникальный формат PM-{id}-{suffix}, не голый order.id."""
+        captured_payload = await self._capture_create_payload(test_order, test_supplier, test_session, monkeypatch)
+
+        await CdekService.create_cdek_order(test_order, test_session)
+
+        number = captured_payload["number"]
+        assert number != str(test_order.id)
+        assert re.fullmatch(rf"PM-{test_order.id}-[0-9a-f]{{6}}", number)
+
+    @pytest.mark.asyncio
+    async def test_create_cdek_order_number_unique_across_calls(
+        self, test_order, test_supplier, test_session, monkeypatch
+    ):
+        """Повторная отправка заказа с тем же order.id даёт другой number (превенция коллизий CDEK)."""
+        captured_payload = await self._capture_create_payload(test_order, test_supplier, test_session, monkeypatch)
+
+        await CdekService.create_cdek_order(test_order, test_session)
+        first_number = captured_payload["number"]
+
+        # Симулируем повторную отправку того же заказа (uuid сброшен, как при resync)
+        cdek_order = await _load_cdek_order(test_session, test_order.cdek_order_id)
+        cdek_order.cdek_uuid = None
+        await test_session.commit()
+
+        await CdekService.create_cdek_order(test_order, test_session)
+        second_number = captured_payload["number"]
+
+        assert first_number != second_number
+        assert re.fullmatch(rf"PM-{test_order.id}-[0-9a-f]{{6}}", second_number)
+
+    @pytest.mark.asyncio
+    async def test_handle_order_status_webhook_finds_by_pm_number(self, test_order, test_session):
+        """Webhook ORDER_STATUS с number формата PM-{id}-{suffix} находит заказ и обновляет статус."""
+        test_order.status = "paid"
+        await test_session.commit()
+
+        payload = {
+            "type": "ORDER_STATUS",
+            "attributes": {
+                "number": f"PM-{test_order.id}-abcdef",
+                "code": "DELIVERED",
+            },
+        }
+        await CdekService.handle_order_status_webhook(payload, test_session)
+
+        refreshed_order = await _load_order_with_cdek(test_session, test_order.id)
+        assert refreshed_order.status == "delivered"
 
     @pytest.mark.asyncio
     async def test_create_cdek_order_success_with_recipient(
@@ -419,6 +506,39 @@ class TestCdekService:
         notification = result.scalars().first()
         assert notification is not None
         assert "Доставлен" in notification.message
+
+    @pytest.mark.asyncio
+    async def test_apply_cdek_status_shipped_email_includes_tracking(self, test_order, test_session):
+        """Shipped-письмо из apply_cdek_status содержит трек-номер и ссылку отслеживания."""
+        test_order.status = "paid"
+        await test_session.commit()
+
+        cdek_order = await _load_cdek_order(test_session, test_order.cdek_order_id)
+        payload = {
+            "entity": {
+                "cdek_number": "1101234567",
+                "statuses": [
+                    {"code": "TAKEN_BY_TRANSPORT", "date_time": "2026-06-24T10:00:00+00:00"},
+                ],
+            }
+        }
+        changed = await CdekService.apply_cdek_status(cdek_order, payload, test_session)
+        assert changed is True
+
+        refreshed_order = await _load_order_with_cdek(test_session, test_order.id)
+        assert refreshed_order.status == "shipped"
+
+        result = await test_session.execute(
+            select(Job).where(
+                Job.job_type == "SEND_EMAIL",
+                Job.payload.contains({"to": test_order.user.email}),
+            )
+        )
+        email_job = result.scalars().first()
+        assert email_job is not None
+        assert "Отправлен" in email_job.payload["subject"]
+        assert "1101234567" in email_job.payload["html"]
+        assert "https://www.cdek.ru/ru/tracking?order_id=1101234567" in email_job.payload["html"]
 
     @pytest.mark.asyncio
     async def test_apply_cdek_status_propagates_tracking_to_order(self, test_order, test_session):
@@ -1005,3 +1125,86 @@ class TestJobWorker:
 
         assert job.status == "pending"
         assert job.run_after is not None
+
+    @pytest.mark.asyncio
+    async def test_handle_cdek_sync_status_invalid_marks_failed_and_stops(
+        self, test_order, test_session, monkeypatch
+    ):
+        """INVALID-заказ: polling прекращается, sync_failed=True, история пишется."""
+        cdek_order = await _load_cdek_order(test_session, test_order.cdek_order_id)
+        cdek_order.cdek_uuid = "uuid-invalid"
+        await test_session.commit()
+
+        async def fake_get_order(self, uuid):
+            return {
+                "entity": {
+                    "statuses": [
+                        {"code": "INVALID", "date_time": "2026-08-28T10:00:00+00:00"},
+                    ],
+                }
+            }
+
+        monkeypatch.setattr("src.app.workers.job_worker.CdekClient.get_order", fake_get_order)
+
+        job = Job(
+            job_type="CDEK_SYNC_ORDER_STATUS",
+            payload={"cdek_order_id": cdek_order.id},
+            processing_log=[],
+        )
+        await handle_cdek_sync_status(job, test_session)
+
+        refreshed = await _load_cdek_order(test_session, cdek_order.id)
+        assert refreshed.cdek_status == "INVALID"
+        assert refreshed.sync_failed is True
+        assert refreshed.sync_attempts == 1
+        # Job НЕ перепланирован: остаётся "running" -> caller пометит completed
+        assert job.status == "running"
+        assert any("INVALID" in entry for entry in job.processing_log)
+
+        history = await test_session.execute(
+            select(CdekStatusHistory).where(CdekStatusHistory.cdek_order_id == cdek_order.id)
+        )
+        rows = history.scalars().all()
+        assert any(row.cdek_status == "INVALID" for row in rows)
+
+    @pytest.mark.asyncio
+    async def test_cron_sync_statuses_skips_sync_failed(self, test_order, test_session, monkeypatch):
+        """Cron не создаёт sync job для заказов с sync_failed=True."""
+        ok_order = await _load_cdek_order(test_session, test_order.cdek_order_id)
+        ok_order.cdek_uuid = "uuid-ok"
+
+        failed_order = CdekOrder(
+            tariff_code=1,
+            delivery_mode="PVZ",
+            cdek_uuid="uuid-failed",
+            sync_failed=True,
+        )
+        test_session.add(failed_order)
+        await test_session.commit()
+
+        class _NoCloseSession:
+            def __init__(self, session):
+                self._session = session
+
+            def __getattr__(self, name):
+                return getattr(self._session, name)
+
+            async def close(self):
+                pass
+
+        monkeypatch.setattr(
+            "src.app.workers.cron_cdek_sync_statuses.SessionLocal",
+            lambda: _NoCloseSession(test_session),
+        )
+
+        from src.app.workers.cron_cdek_sync_statuses import run
+
+        result = await run()
+
+        assert result["created"] == 1
+        jobs = await test_session.execute(
+            select(Job).where(Job.job_type == "CDEK_SYNC_ORDER_STATUS")
+        )
+        created_jobs = jobs.scalars().all()
+        assert len(created_jobs) == 1
+        assert created_jobs[0].payload["cdek_order_id"] == ok_order.id

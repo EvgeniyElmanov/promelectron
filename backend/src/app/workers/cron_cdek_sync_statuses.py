@@ -20,6 +20,7 @@ async def run() -> dict[str, int]:
         result = await session.execute(
             select(CdekOrder).where(
                 CdekOrder.cdek_uuid.isnot(None),
+                CdekOrder.sync_failed.is_(False),
                 CdekOrder.cdek_status.not_in(list(settings.cdek_terminal_statuses))
                 | CdekOrder.cdek_status.is_(None),
             )

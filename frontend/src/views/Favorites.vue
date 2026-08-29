@@ -17,8 +17,9 @@
       <ProductCard
         v-for="item in favorites"
         :key="item.id"
-        :product="item.product"
+        :product="{ ...item.product, is_favorite: true }"
         data-testid="favorite-item"
+        @removed="removeFavorite"
       />
     </div>
   </div>
@@ -48,6 +49,10 @@ const fetchFavorites = async () => {
   } finally {
     loading.value = false;
   }
+};
+
+const removeFavorite = (productId) => {
+  favorites.value = favorites.value.filter((item) => item.product.id !== productId);
 };
 
 onMounted(fetchFavorites);

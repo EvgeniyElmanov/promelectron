@@ -2,7 +2,7 @@ import asyncio
 import logging
 import re
 from email.message import EmailMessage
-from html import escape
+from html import escape as html_escape
 
 from aiosmtplib import (
     send,
@@ -200,7 +200,7 @@ class EmailService:
         rows = ""
         for item in items:
             # Escape: product_name comes from supplier/admin-controlled DB data.
-            name = escape(str(item.get("product_name", "Товар")))
+            name = html_escape(str(item.get("product_name", "Товар")))
             qty = item.get("quantity", 1)
             price = item.get("price_at_time", 0)
             rows += f"<tr><td>{name}</td><td>{qty}</td><td>{EmailService._format_price(price)} ₽</td></tr>"
@@ -212,7 +212,7 @@ class EmailService:
     ) -> None:
         items_html = cls._order_items_html(items)
         # Escape: shipping_address is user input from checkout.
-        address_html = escape(shipping_address) if shipping_address else "Не указан"
+        address_html = html_escape(shipping_address) if shipping_address else "Не указан"
         html = f"""\
 <!DOCTYPE html>
 <html>
@@ -255,8 +255,58 @@ class EmailService:
         )
 
     @classmethod
+    async def send_order_paid(
+        cls, to: str, order_id: int, total_price: float, items: list[dict], shipping_address: str, db: AsyncSession
+    ) -> None:
+        items_html = cls._order_items_html(items)
+        # Escape: shipping_address is user input from checkout.
+        address_html = html_escape(shipping_address) if shipping_address else "Не указан"
+        html = f"""\
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"></head>
+<body style="font-family: Arial, sans-serif; color: #181818;">
+  <div style="max-width: 600px; margin: 0 auto; padding: 24px;">
+    <h2 style="color: #005BFF;">MyShop — Заказ оплачен</h2>
+    <p>Ваш заказ <strong>№{order_id}</strong> успешно оплачен.</p>
+
+    <h3 style="margin-top: 24px;">Товары</h3>
+    <table style="width: 100%; border-collapse: collapse;">
+      <tr style="background: #f2f5f9;">
+        <th style="padding: 8px; text-align: left;">Товар</th>
+        <th style="padding: 8px; text-align: center;">Кол-во</th>
+        <th style="padding: 8px; text-align: right;">Цена</th>
+      </tr>
+      {items_html}
+    </table>
+
+    <p style="margin-top: 16px; font-size: 18px; font-weight: bold;">
+      Итого: {cls._format_price(total_price)} ₽
+    </p>
+
+    <p><strong>Адрес доставки:</strong> {address_html}</p>
+
+    <p style="margin-top: 24px; color: #6c757d; font-size: 12px;">
+      Если у вас есть вопросы, ответьте на это письмо.
+    </p>
+  </div>
+</body>
+</html>
+"""
+        text = f"Заказ №{order_id} оплачен. Итого: {cls._format_price(total_price)} ₽. Адрес: {shipping_address or 'Не указан'}."
+        await cls.enqueue_email(
+            to=to,
+            subject=f"MyShop — Заказ №{order_id} оплачен",
+            html=html,
+            text=text,
+            db=db,
+        )
+
+    @classmethod
     async def send_order_status_update(
-        cls, to: str, order_id: int, status: str, db: AsyncSession
+        cls, to: str, order_id: int, status: str, db: AsyncSession,
+        tracking_number: str | None = None,
+        tracking_url: str | None = None,
     ) -> None:
         status_labels = {
             "pending": "Ожидает обработки",
@@ -266,6 +316,19 @@ class EmailService:
             "cancelled": "Отменён",
         }
         label = status_labels.get(status, status)
+        tracking_html = ""
+        tracking_text = ""
+        if tracking_number:
+            # Данные CDEK (webhook/API) — экранируем перед вставкой в HTML (S001).
+            safe_tracking_number = html_escape(tracking_number, quote=True)
+            tracking_html = f"""
+    <p style="margin-top: 16px;"><strong>Трек-номер:</strong> {safe_tracking_number}</p>"""
+            tracking_text = f" Трек-номер: {tracking_number}."
+            if tracking_url:
+                safe_tracking_url = html_escape(tracking_url, quote=True)
+                tracking_html += f"""
+    <p><a href="{safe_tracking_url}">Отследить посылку</a></p>"""
+                tracking_text += f" Отследить: {tracking_url}"
         html = f"""\
 <!DOCTYPE html>
 <html>
@@ -274,12 +337,12 @@ class EmailService:
   <div style="max-width: 600px; margin: 0 auto; padding: 24px;">
     <h2 style="color: #005BFF;">MyShop — Обновление статуса заказа</h2>
     <p>Статус вашего заказа <strong>№{order_id}</strong> изменён:</p>
-    <p style="font-size: 20px; font-weight: bold; color: #005BFF;">{label}</p>
+    <p style="font-size: 20px; font-weight: bold; color: #005BFF;">{label}</p>{tracking_html}
   </div>
 </body>
 </html>
 """
-        text = f"Статус заказа №{order_id} изменён: {label}"
+        text = f"Статус заказа №{order_id} изменён: {label}.{tracking_text}"
         await cls.enqueue_email(
             to=to,
             subject=f"MyShop — Заказ №{order_id}: {label}",
