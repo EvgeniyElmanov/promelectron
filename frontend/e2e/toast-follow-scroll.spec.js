@@ -1,13 +1,21 @@
 import { test, expect } from '@playwright/test';
-import { getInStockProductCard } from './helpers.js';
 
 function uniqueEmail() {
   return `test_${Date.now()}_w${test.info().workerIndex}@example.com`;
 }
 
+function createAvatarPng() {
+  // 1x1 transparent PNG
+  return Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    'base64'
+  );
+}
+
 // Регрессия issue #194: toast-уведомления не следовали за скроллом, т.к.
 // `overflow-x: hidden` на html/body ломал `position: sticky` хедера,
 // к которому якорится .header__toast.
+// Триггер тоста — загрузка аватара: success-тосты корзины удалены в #198 (PR #201).
 async function scrollDeeply(page) {
   await page.evaluate(() => window.scrollTo(0, 1500));
   const scrollY = await page.evaluate(() => window.scrollY);
@@ -23,7 +31,7 @@ async function expectHeaderStickyAfterScroll(page) {
 }
 
 async function expectToastVisibleInViewportAfterScroll(page) {
-  // Register (add-to-cart требует авторизации, как в catalog.spec.js)
+  // Register (загрузка аватара требует авторизации)
   await page.goto('/register');
   await page.fill('[data-testid="register-name"]', 'Test User');
   await page.fill('[data-testid="register-email"]', uniqueEmail());
@@ -32,14 +40,20 @@ async function expectToastVisibleInViewportAfterScroll(page) {
   await page.click('[data-testid="register-submit"]');
   await expect(page).toHaveURL('/');
 
-  // Скроллим вниз и добавляем товар через DOM-click (без auto-scroll Playwright,
-  // который отменял бы scrollTo и проверка проходила бы не «из глубины страницы»).
+  // Скроллим вниз и загружаем аватар: success-тост должен появиться в viewport,
+  // несмотря на проскролленную страницу (тост якорится к sticky-хедеру).
+  await page.goto('/profile/edit');
+  await expect(page.locator('.edit-card--avatar input[type="file"]')).toBeAttached();
   await scrollDeeply(page);
-  const product = await getInStockProductCard(page);
-  await product.locator('[data-testid="add-to-cart-button"]').evaluate((btn) => btn.click());
+  await page.locator('.edit-card--avatar input[type="file"]').setInputFiles({
+    name: 'avatar.png',
+    mimeType: 'image/png',
+    buffer: createAvatarPng(),
+  });
 
   const toast = page.locator('.toast--success');
-  await expect(toast).toBeVisible({ timeout: 5000 });
+  await expect(toast).toBeVisible({ timeout: 10000 });
+  await expect(toast).toContainText('Фото профиля обновлено');
   // Убеждаемся, что проверка выполняется при реально проскролленной странице
   expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
   const box = await toast.boundingBox();
