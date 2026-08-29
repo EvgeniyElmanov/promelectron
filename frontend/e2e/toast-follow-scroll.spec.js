@@ -8,12 +8,18 @@ function uniqueEmail() {
 // Регрессия issue #194: toast-уведомления не следовали за скроллом, т.к.
 // `overflow-x: hidden` на html/body ломал `position: sticky` хедера,
 // к которому якорится .header__toast.
+async function scrollDeeply(page) {
+  await page.evaluate(() => window.scrollTo(0, 1500));
+  const scrollY = await page.evaluate(() => window.scrollY);
+  expect(scrollY, 'страница должна реально проскроллиться').toBeGreaterThan(0);
+}
+
 async function expectHeaderStickyAfterScroll(page) {
   await page.goto('/');
   await expect(page.locator('[data-testid="product-card"]').first()).toBeVisible();
-  await page.evaluate(() => window.scrollTo(0, 1500));
+  await scrollDeeply(page);
   const headerTop = await page.locator('header.header').evaluate((el) => el.getBoundingClientRect().top);
-  expect(headerTop).toBe(0);
+  expect(headerTop).toBeCloseTo(0, 0);
 }
 
 async function expectToastVisibleInViewportAfterScroll(page) {
@@ -26,13 +32,16 @@ async function expectToastVisibleInViewportAfterScroll(page) {
   await page.click('[data-testid="register-submit"]');
   await expect(page).toHaveURL('/');
 
-  // Скроллим вниз и добавляем товар из глубины страницы
-  await page.evaluate(() => window.scrollTo(0, 1500));
+  // Скроллим вниз и добавляем товар через DOM-click (без auto-scroll Playwright,
+  // который отменял бы scrollTo и проверка проходила бы не «из глубины страницы»).
+  await scrollDeeply(page);
   const product = await getInStockProductCard(page);
-  await product.locator('[data-testid="add-to-cart-button"]').click();
+  await product.locator('[data-testid="add-to-cart-button"]').evaluate((btn) => btn.click());
 
   const toast = page.locator('.toast--success');
   await expect(toast).toBeVisible({ timeout: 5000 });
+  // Убеждаемся, что проверка выполняется при реально проскролленной странице
+  expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
   const box = await toast.boundingBox();
   const viewport = page.viewportSize();
   expect(box).not.toBeNull();
