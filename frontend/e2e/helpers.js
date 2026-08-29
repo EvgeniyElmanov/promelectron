@@ -336,20 +336,31 @@ async function waitForYooKassaOutcome(page, patterns, timeout) {
  * @returns {Promise<import('@playwright/test').Locator>}
  */
 export async function getInStockProductCard(page) {
-  const response = await page.request.get('/api/v1/products/');
+  const response = await page.request.get('/api/v1/products/', {
+    params: { limit: 100 },
+  });
   expect(response.ok()).toBeTruthy();
   const data = await response.json();
-  const items = (data.items || [])
-    .filter((p) => (p.stock || 0) > 0)
-    .sort((a, b) => b.stock - a.stock);
-  if (items.length === 0) {
+  const inStock = (data.items || []).filter((p) => (p.stock || 0) > 0);
+  if (inStock.length === 0) {
     throw new Error('No in-stock product found in catalog');
   }
-  // Выбираем товар с максимальным stock на момент вызова. Так как заказы
-  // уменьшают stock по ходу прогона, helper автоматически переключается
-  // на следующий доступный товар.
-  const product = items[0];
-  const card = page.locator(`[data-product-id="${product.id}"]`);
+  // Берём только карточки, реально отрисованные на текущей странице: товар,
+  // выбранный по API, может оказаться за пределами первой страницы каталога.
+  const renderedIds = await page
+    .locator('[data-product-id]')
+    .evaluateAll((els) => els.map((el) => Number(el.getAttribute('data-product-id'))));
+  const stockById = new Map(inStock.map((p) => [p.id, p.stock || 0]));
+  const candidates = [...new Set(renderedIds)]
+    .filter((id) => stockById.has(id))
+    // Выбираем товар с максимальным stock на момент вызова. Так как заказы
+    // уменьшают stock по ходу прогона, helper автоматически переключается
+    // на следующий доступный товар.
+    .sort((a, b) => stockById.get(b) - stockById.get(a));
+  if (candidates.length === 0) {
+    throw new Error('No in-stock product rendered on the page');
+  }
+  const card = page.locator(`[data-product-id="${candidates[0]}"]`);
   await expect(card).toBeVisible();
   return card;
 }
