@@ -322,3 +322,32 @@ class TestEmailService:
         assert "tmp123" in job.payload["html"]
         assert "abc-token" in job.payload["html"]
         assert "Сменить пароль" in job.payload["html"]
+
+    @pytest.mark.asyncio
+    async def test_send_order_confirmation_escapes_html_injection(self, test_session):
+        """S002: product_name и shipping_address экранируются в HTML-шаблоне."""
+        await EmailService.send_order_confirmation(
+            to="user@example.com",
+            order_id=42,
+            total_price=1500.0,
+            items=[{
+                "product_name": '<script>alert("xss")</script>',
+                "quantity": 1,
+                "price_at_time": 1500.0,
+            }],
+            shipping_address='<img src=x onerror="alert(1)">',
+            db=test_session,
+        )
+
+        result = await test_session.execute(
+            select(Job).where(Job.job_type == "SEND_EMAIL")
+        )
+        job = result.scalars().first()
+        assert job is not None
+        html = job.payload["html"]
+        assert "<script>" not in html
+        assert "<img src=x" not in html
+        assert "&lt;script&gt;" in html
+        assert "&lt;img src=x" in html
+        # Текстовая версия письма не требует экранирования.
+        assert '<img src=x onerror="alert(1)">' in job.payload["text"]
