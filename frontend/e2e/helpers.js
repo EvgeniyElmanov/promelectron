@@ -347,6 +347,9 @@ export async function getInStockProductCard(page) {
   }
   // Берём только карточки, реально отрисованные на текущей странице: товар,
   // выбранный по API, может оказаться за пределами первой страницы каталога.
+  // Ждём первую карточку: каталог рендерится асинхронно, и на медленном
+  // окружении (CI) evaluateAll без ожидания отдаёт пустой список.
+  await expect(page.locator('[data-product-id]').first()).toBeVisible();
   const renderedIds = await page
     .locator('[data-product-id]')
     .evaluateAll((els) => els.map((el) => Number(el.getAttribute('data-product-id'))));
