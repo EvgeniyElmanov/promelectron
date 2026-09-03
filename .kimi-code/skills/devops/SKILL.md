@@ -23,7 +23,7 @@ disableModelInvocation: true
 ### Обязательный контекст (прочитать всё)
 
 1. Task spec или issue
-2. `MINIO_INTEGRATION.md`
+2. `docs/integrations/minio.md`
 3. `PROJECT_CONTEXT.md`
 4. `.agent/PLANNING_HANDOFF.md`
 5. `.agent/BACKLOG.md`

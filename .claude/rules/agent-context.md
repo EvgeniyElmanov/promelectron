@@ -5,10 +5,9 @@ paths:
   - "ai-launcher/**"
   - "README.md"
   - "ARCHITECTURE.md"
-  - "AUDIT.md"
   - "AGENTS.md"
   - "PROJECT_CONTEXT.md"
-  - "SESSION_START.md"
+  - "docs/guides/**"
 ---
 
 # Agent Bootstrap
@@ -17,7 +16,7 @@ At the start of EVERY session, you MUST:
 
 1. Read `AGENTS.md` — agent index, skills, rules, and permissions
 2. Read `PROJECT_CONTEXT.md` — current project status and focus
-3. Read `SESSION_START.md` — how to use the agent system
+3. Read `docs/guides/session-start.md` — how to use the agent system
 4. Read `.agent/BACKLOG.md` — what needs to be done (current sprint)
 5. Read `.agent/BLOCKERS.md` — what is blocked right now
 6. Read `ai-launcher/BOARD.md` — the launch board: what can be taken right now, which locks are

@@ -38,8 +38,8 @@ echo "📁 Проверка обязательных файлов..."
 
 required_files=(
     "PROJECT_CONTEXT.md"
-    "SESSION_START.md"
-    "ROUTER.md"
+    "docs/guides/session-start.md"
+    "docs/guides/agent-routing.md"
     "AGENTS.md"
     ".agent/BACKLOG.md"
     ".agent/BLOCKERS.md"
@@ -306,21 +306,21 @@ else
     ok ".vscode/tasks.json не ссылается на scripts/kimi.py"
 fi
 
-# ─── 10. SESSION_START.md и AGENTS.md ─────────────────────────────
+# ─── 10. docs/guides/session-start.md и AGENTS.md ─────────────────
 
 echo ""
 echo "🚀 Проверка документации..."
 
-if grep -q "/skill:implement" SESSION_START.md; then
-    ok "SESSION_START.md содержит /skill:implement"
+if grep -q "/skill:implement" docs/guides/session-start.md; then
+    ok "docs/guides/session-start.md содержит /skill:implement"
 else
-    error "SESSION_START.md НЕ содержит /skill:implement"
+    error "docs/guides/session-start.md НЕ содержит /skill:implement"
 fi
 
-if grep -q "/skill:promelectron" SESSION_START.md; then
-    ok "SESSION_START.md содержит /skill:promelectron"
+if grep -q "/skill:promelectron" docs/guides/session-start.md; then
+    ok "docs/guides/session-start.md содержит /skill:promelectron"
 else
-    error "SESSION_START.md НЕ содержит /skill:promelectron"
+    error "docs/guides/session-start.md НЕ содержит /skill:promelectron"
 fi
 
 if grep -q "\.kimi-code/skills/" AGENTS.md; then

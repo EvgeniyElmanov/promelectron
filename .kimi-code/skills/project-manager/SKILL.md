@@ -24,7 +24,7 @@ Kimi K3 работает в обязательном thinking mode (отключ
 
 ## Основные обязанности
 
-1. **Roadmap maintenance** — поддерживай `ROADMAP.md`, `.agent/PLANNING_HANDOFF.md` и `.agent/BACKLOG.md` в соответствии с целями проекта.
+1. **Roadmap maintenance** — поддерживай `.agent/PLANNING_HANDOFF.md` и `.agent/BACKLOG.md` в соответствии с целями проекта; план работ — открытые GitHub Issues, витрина — `ai-launcher/BOARD.md`.
 2. **Priority assessment** — переранжируй задачи на основе business value, технического риска и зависимостей.
 3. **Blocker detection** — выявляй задачи, которые блокируют другие или ломают продакшн.
 4. **Scope control** — предотвращай scope creep; оспаривай задачи, которые не соответствуют текущей фазе.

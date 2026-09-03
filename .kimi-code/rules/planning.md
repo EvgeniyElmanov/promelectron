@@ -13,11 +13,13 @@ disableModelInvocation: true
 
 ## Single Source of Truth
 
-`.agent/PLANNING_HANDOFF.md` — единственный авторитетный план. `ROADMAP.md` — историческая справка.
+`.agent/PLANNING_HANDOFF.md` — единственный авторитетный план внутри репозитория.
+`ROADMAP.md` **удалён** 2026-09-03: он был озаглавлен «Roadmap — MyShop» и не обновлялся с 11.06.
+План работ живёт в открытых GitHub Issues, его витрина — `ai-launcher/BOARD.md`.
 
 - При обновлении планов сначала редактируй `.agent/PLANNING_HANDOFF.md`.
-- Если `ROADMAP.md` противоречит `.agent/PLANNING_HANDOFF.md`, побеждает `.agent/PLANNING_HANDOFF.md`.
-- Обновляй `ROADMAP.md` только по явному запросу пользователя.
+- Если `.agent/PLANNING_HANDOFF.md` противоречит открытым GitHub Issues, побеждают Issues.
+- Историческую справку ищи в `docs/archive/` и `git log`, а не в живых планах.
 
 ## Формат задачи
 

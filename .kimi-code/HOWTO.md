@@ -158,9 +158,9 @@ Verify: [how to confirm it works]
 
 ## 11. Где почитать ещё
 
-- [SESSION_START.md](../SESSION_START.md) — шаблоны входа в сессию
+- [session-start.md](../docs/guides/session-start.md) — шаблоны входа в сессию
 - [AGENTS.md](../AGENTS.md) — индекс агентов и high-level workflow
 - [.kimi-code/AGENTS.md](./AGENTS.md) — активный индекс проектных инвариантов (загружается автоматически)
 - [.kimi-code/skills/promelectron/SKILL.md](./skills/promelectron/SKILL.md) — мастер-skill / индекс ролей
-- [ROUTER.md](../ROUTER.md) — документация по маршрутизации
+- [agent-routing.md](../docs/guides/agent-routing.md) — документация по маршрутизации
 - [Rule: Pre-edit Checklist](./rules/pre-edit-checklist.md) — проверки перед редактированием кода

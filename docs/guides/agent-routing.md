@@ -107,5 +107,5 @@ Task: Create an API for promo codes.
 1. Создать новый flat skill в `.kimi-code/skills/<role>/SKILL.md`
 2. Добавить роль в `.kimi-code/skills/promelectron/SKILL.md` (мастер-индекс)
 3. Добавить ключевые слова в `.kimi-code/skills/dispatcher/SKILL.md`
-4. Обновить `ROUTER.md` и `SESSION_START.md`
+4. Обновить `docs/guides/agent-routing.md` и `docs/guides/session-start.md`
 5. Если роль участвует в `/skill:implement`, обновить `.kimi-code/skills/implement/SKILL.md`

@@ -10,10 +10,10 @@
 
 > **Система агентов обновлена (2026-06-02):**  
 > - `PROJECT_CONTEXT.md` — единый источник контекста для всех агентов  
-> - `SESSION_START.md` — шаблон входа в сессию  
+> - `docs/guides/session-start.md` — шаблон входа в сессию  
 > - `scripts/kimi-task.sh` — автоматический роутер выбора агента по задаче  
 > - `.agent/SESSION_LOG.md` — append-only лог изменений по сессиям  
-> - Подробнее: `ROUTER.md`
+> - Подробнее: `docs/guides/agent-routing.md`
 
 ### 1.1 Что это
 Promelectron — интернет-магазин электротоваров. Проект частично реализован, требуется доведение до production-ready состояния и дальнейшее масштабирование.
@@ -233,9 +233,9 @@ graph TD
    - Предложи scope reduction (урезание функциональности) как альтернативу сдвигу сроков
 
 4. **Как фиксировать выполненное**:
-   - Ставь галочку в AUDIT.md
+   - Закрывай соответствующий GitHub Issue с доказательством
    - Обновляй CHANGELOG
-   - Веди `docs/ROADMAP.md` с актуальным статусом
+   - Держи `ai-launcher/BOARD.md` в соответствии с открытыми Issues
 
 ### 4.2 Формат задачи для разработчиков
 
@@ -334,7 +334,7 @@ graph TD
 
 Пятница:
   ├── Демо готовых фич
-  ├── Обновление ROADMAP.md
+  ├── Обновление ai-launcher/BOARD.md
   └── Ретроспектива (что пошло не так)
 ```
 
@@ -342,14 +342,14 @@ graph TD
 
 | Артефакт | Локация | Обновляет | Частота |
 |----------|---------|-----------|---------|
-| AUDIT.md | `/AUDIT.md` | Агент-аудитор | Раз в квартал |
+| Аудит (архив) | `docs/archive/2026-05-30-audit.md` | Агент-аудитор | снимок, не поддерживается |
 | PLANNING_HANDOFF.md | `.agent/PLANNING_HANDOFF.md` | project-manager | По мере изменений |
 | BACKLOG.md | `.agent/BACKLOG.md` | project-manager | Каждый спринт |
 | BLOCKERS.md | `.agent/BLOCKERS.md` | project-manager + все агенты | Ежедневно |
 | METRICS.md | `.agent/METRICS.md` | project-manager | Каждую пятницу |
 | DECISIONS.md | `.agent/DECISIONS.md` | project-manager | По каждому ADR |
 | AGENTS.md | `AGENTS.md` | project-manager | По изменению ролей |
-| ROADMAP.md | `docs/ROADMAP.md` | project-manager | Каждый спринт |
+| Пульт запуска | `ai-launcher/BOARD.md` | `/board refresh` | Каждую сессию |
 | CHANGELOG.md | `CHANGELOG.md` | project-manager | Каждый релиз |
 
 ---
@@ -399,7 +399,7 @@ graph TD
 - [ ] Проверить зависимости — что блокирует эту фичу
 - [ ] Оценить усилие (S/M/L/XL) и бизнес-влияние
 - [ ] Присвоить приоритет (P0/P1/P2/P3)
-- [ ] Обновить ROADMAP.md
+- [ ] Обновить ai-launcher/BOARD.md
 - [ ] Создать задачу в нужном формате
 - [ ] Назначить ответственного агента (backend-dev / frontend-dev / devops)
 - [ ] Установить критерии приёмки

@@ -49,7 +49,7 @@ disableModelInvocation: true
 - [ ] **No tokens in logs**: Не логировать JWT, OAuth tokens, API keys
 - [ ] **Secure fallback**: При ошибках SMTP/платежей не утекать секреты в traceback
 
-### Project-specific риски (из AUDIT.md)
+### Project-specific риски (из аудита 2026-05-30 — `docs/archive/2026-05-30-audit.md`)
 
 - [ ] **Hardcoded secrets**: Нет default `SECRET_KEY`, `SEED_SECRET`, тестовых паролей в коде
 - [ ] **Containers as root**: Docker-образы запускаются от non-root пользователя

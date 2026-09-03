@@ -240,7 +240,7 @@ Task: fix Helm template for Y
 | `.kimi-code/rules/task-template.md` | При создании нового пункта бэклога |
 | `.kimi-code/skills/<role>/SKILL.md` | При работе в фиксированной роли |
 | `.kimi-code/AGENTS.md` | Активный индекс инвариантов проекта и обзор системы агентов |
-| `ROUTER.md` | Документация по маршрутизации |
+| `docs/guides/agent-routing.md` | Документация по маршрутизации |
 | `PROJECT_CONTEXT.md` | В начале сессии — стек, статус, блокеры |
 | `.agent/BACKLOG.md` | В начале сессии — текущий спринт |
 | `.agent/BLOCKERS.md` | В начале сессии — активные блокеры |

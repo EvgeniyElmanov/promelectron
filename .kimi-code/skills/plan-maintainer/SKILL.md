@@ -83,7 +83,7 @@ Continuous improvement loop — анализ failure patterns поперёк в�
 - [ ] **CI covers it** — проверь `.github/workflows/`
 - [ ] **Docs updated** — проверь `README.md`, `.kimi-code/skills/<role>/SKILL.md` и `.kimi-code/rules/`, если изменились агентские правила
 
-Никогда не полагайся только на `ROADMAP.md` — он устаревает.
+Никогда не полагайся только на файлы планирования — они устаревают; сверяйся с открытыми GitHub Issues и `git log`.
 
 ---
 
@@ -128,5 +128,5 @@ Continuous improvement loop — анализ failure patterns поперёк в�
 - ❌ Не создавай задачи длиннее 1 дня работы.
 - ❌ Не назначай задачи в спринт без проверки зависимостей.
 - ❌ Не скрывай блокеры — эскалируй их.
-- ❌ Не дублируй задачи между PLANNING_HANDOFF.md и ROADMAP.md.
+- ❌ Не дублируй задачи между `.agent/PLANNING_HANDOFF.md` и GitHub Issues.
 - ❌ Не удаляй выполненные задачи — архивируй их.
