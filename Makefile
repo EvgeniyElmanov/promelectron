@@ -270,9 +270,18 @@ ai: ## Запустить агента по промпту: make ai PROMPT=ai-la
 	  echo "AI_CMD не задан. Заведи Makefile.override.mk — см. ai-launcher/README.md" >&2; exit 1; fi; \
 	if [ -z "$(PROMPT)" ]; then \
 	  echo "PROMPT не задан. make ai PROMPT=ai-launcher/prompts/<файл>.prompt.txt" >&2; exit 1; fi; \
-	if [ ! -f "$(PROMPT)" ]; then \
-	  echo "Нет файла промпта: $(PROMPT)" >&2; exit 1; fi; \
-	exec $(AI_CMD) $(if $(AI_NAME_OPT),$(if $(NAME),$(AI_NAME_OPT) "$(NAME)")) $(ARGS) $(AI_PROMPT_OPT) "$$(cat "$(PROMPT)")"
+	root="$$(git rev-parse --show-toplevel 2>/dev/null || echo "$(CURDIR)")"; \
+	f=""; \
+	for c in "$(PROMPT)" "$$root/$(PROMPT)" "$$root/ai-launcher/prompts/$(PROMPT)" \
+	         "$$root/ai-launcher/prompts/$$(basename "$(PROMPT)")"; do \
+	  if [ -f "$$c" ]; then f="$$c"; break; fi; \
+	done; \
+	if [ -z "$$f" ]; then \
+	  echo "Нет файла промпта: $(PROMPT)" >&2; \
+	  echo "Искал относительно текущего каталога, корня репозитория и ai-launcher/prompts/." >&2; \
+	  echo "Что есть:" >&2; ls "$$root/ai-launcher/prompts/" >&2; exit 1; fi; \
+	cd "$$root"; \
+	exec $(AI_CMD) $(if $(AI_NAME_OPT),$(if $(NAME),$(AI_NAME_OPT) "$(NAME)")) $(ARGS) $(AI_PROMPT_OPT) "$$(cat "$$f")"
 
 ai-check: ## Проверить, что лончер настроен на этой машине
 	@if [ -z "$(AI_CMD)" ]; then \
