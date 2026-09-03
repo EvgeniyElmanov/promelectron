@@ -97,6 +97,10 @@
 | `docs/MCP_INTEGRATION.md` | Настройка токенов и использование MCP-серверов figma/atlassian |
 | `.agent/runs/<task-id>/` | Gitignored coordination plane для задачи (`task.md`, `spec.md`, `review/findings.md`, `review/test-findings.md`) |
 | `.worktrees/<task-id>/` | Изолированный git worktree для feature-ветки |
+| `ai-launcher/BOARD.md` | **Пульт запуска** — витрина открытых GitHub Issues: что можно брать, какие замки заняты, что ждёт условия |
+| `ai-launcher/CONVENTIONS.md` | Форма пульта, замки, порядок сверки — **общий документ с Claude Code**, там же таблица замков |
+| `ai-launcher/prompts/` | Промпты запуска пунктов (`make ai PROMPT=…`) |
+| `Makefile.override.mk` | Машинно-локальные цели (gitignored). Задаёт `AI_CMD` — чем запускается кнопка борда: у одного kimi, у другого claude. Образец — `ai-launcher/README.md` |
 
 ---
 
@@ -162,10 +166,11 @@
 2. `.agent/BACKLOG.md` — текущий спринт
 3. `.agent/BLOCKERS.md` — активные блокеры
 4. `.agent/SESSION_LOG.md` — недавние сессии (только tail ~200 строк)
-5. Соответствующий ролевой skill в `.kimi-code/skills/<role>/SKILL.md`
-6. [Rule: Agent Commons](./rules/agent-commons.md) — язык, retry policy, размер контекста, ограничения API
-7. [Rule: Pre-edit Checklist](./rules/pre-edit-checklist.md) (перед изменением кода)
-8. [Rule: Business Rules](./rules/business.md) — инварианты интернет-магазина (цены, stock, заказы, платежи, доставка, возвраты)
+5. `ai-launcher/BOARD.md` — пульт запуска: что свободно, какие замки заняты, что ждёт условия
+6. Соответствующий ролевой skill в `.kimi-code/skills/<role>/SKILL.md`
+7. [Rule: Agent Commons](./rules/agent-commons.md) — язык, retry policy, размер контекста, ограничения API
+8. [Rule: Pre-edit Checklist](./rules/pre-edit-checklist.md) (перед изменением кода)
+9. [Rule: Business Rules](./rules/business.md) — инварианты интернет-магазина (цены, stock, заказы, платежи, доставка, возвраты)
 
 ---
 
@@ -177,6 +182,9 @@
 2. Обновить `.agent/BACKLOG.md`, если задача из спринта.
 3. Обновить `.agent/BLOCKERS.md`, если появился новый блокер.
 4. Обновить `PROJECT_CONTEXT.md`, если изменилась архитектура.
+5. Обновить `ai-launcher/BOARD.md`: снять закрытый пункт, освободить замок, пересчитать блок
+   «Замки». Борд, который не обновили, начинает врать уже через сессию — и коллега на другом
+   агенте возьмёт занятое.
 
 ---
 

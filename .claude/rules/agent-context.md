@@ -2,6 +2,7 @@
 description: Project-wide agent memory system. Read at the start of EVERY session before doing anything else.
 paths:
   - ".agent/**"
+  - "ai-launcher/**"
   - "README.md"
   - "ARCHITECTURE.md"
   - "AUDIT.md"
@@ -19,8 +20,15 @@ At the start of EVERY session, you MUST:
 3. Read `SESSION_START.md` — how to use the agent system
 4. Read `.agent/BACKLOG.md` — what needs to be done (current sprint)
 5. Read `.agent/BLOCKERS.md` — what is blocked right now
+6. Read `ai-launcher/BOARD.md` — the launch board: what can be taken right now, which locks are
+   busy, and which "⏰ waiting on a condition" tails may now be checkable
 
 Only THEN start working on user requests.
+
+> **The backlog is GitHub Issues** on `AutonomaCo/promelectron` + the Project board.
+> `ai-launcher/BOARD.md` is its **shop window**, and `.agent/BACKLOG.md` / `.agent/BLOCKERS.md`
+> are the human sprint planner and blocker journal — a *separate* artifact, not the backlog.
+> Lock rules: `.claude/rules/task-locks.md`. Board conventions: `ai-launcher/CONVENTIONS.md`.
 
 If `.agent/` files are missing or corrupted, report it immediately to the user.
 

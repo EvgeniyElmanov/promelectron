@@ -1,4 +1,24 @@
 SHELL := /bin/bash
+
+# Машинно-локальные настройки. Файл в .gitignore и подключается через `-include`:
+# на машине, где его нет, всё остальное обязано работать как раньше.
+# Здесь живёт только то, что завязано на конкретного разработчика — в первую
+# очередь AI_CMD: у одного это claude, у другого kimi. См. ai-launcher/README.md.
+-include Makefile.override.mk
+
+# ─── AI-лончер ──────────────────────────────────────────────────────────────
+# Команда агента НЕ в репозитории: её задаёт Makefile.override.mk на каждой
+# машине своя. Здесь только цель, чтобы кнопка на борде была одна для всех.
+#   AI_CMD        — сама команда с флагами (claude … / kimi …)
+#   AI_PROMPT_OPT — как этой команде передаётся промпт: пусто = позиционным
+#                   аргументом (claude), `-p` = флагом (kimi)
+#   AI_NAME_OPT   — флаг имени сессии, если у CLI такой есть; пусто = NAME игнорируется
+AI_CMD        ?=
+AI_PROMPT_OPT ?=
+AI_NAME_OPT   ?=
+PROMPT      ?=
+NAME        ?=
+ARGS        ?=
 COMPOSE_BACKEND  := docker compose -f backend/docker-compose.yml -p promelectron
 COMPOSE_FRONTEND := docker compose -f frontend/docker-compose.yml -p promelectron
 COMPOSE          := docker compose -f backend/docker-compose.yml -f frontend/docker-compose.yml -p promelectron
@@ -20,7 +40,8 @@ TEST_BACKEND_LOCK ?= /tmp/promelectron-test-backend.lock
         migrate migrate-down migrate-generate migrate-history migrate-check seed \
         lint lint-backend lint-onec-mock lint-frontend format format-backend format-frontend \
         build clean status \
-        agent-context agent-status agent-audit
+        agent-context agent-status agent-audit \
+        ai ai-check
 
 # ─── Справка ───────────────────────────────────────────────────────────────
 
@@ -240,3 +261,28 @@ agent-status: ## Быстрый health-check проекта
 	@grep -c "🔴\|🟡" .agent/BLOCKERS.md 2>/dev/null | sed 's/^/  Count: /' || echo "  N/A"
 	@echo ""
 	@echo "══════════════════════════════════════════════════════════════════"
+
+# ─── AI-лончер ──────────────────────────────────────────────────────────────
+
+ai: ## Запустить агента по промпту: make ai PROMPT=ai-launcher/prompts/x.prompt.txt NAME="#186 …"
+	@set -euo pipefail; \
+	if [ -z "$(AI_CMD)" ]; then \
+	  echo "AI_CMD не задан. Заведи Makefile.override.mk — см. ai-launcher/README.md" >&2; exit 1; fi; \
+	if [ -z "$(PROMPT)" ]; then \
+	  echo "PROMPT не задан. make ai PROMPT=ai-launcher/prompts/<файл>.prompt.txt" >&2; exit 1; fi; \
+	if [ ! -f "$(PROMPT)" ]; then \
+	  echo "Нет файла промпта: $(PROMPT)" >&2; exit 1; fi; \
+	exec $(AI_CMD) $(if $(AI_NAME_OPT),$(if $(NAME),$(AI_NAME_OPT) "$(NAME)")) $(ARGS) $(AI_PROMPT_OPT) "$$(cat "$(PROMPT)")"
+
+ai-check: ## Проверить, что лончер настроен на этой машине
+	@if [ -z "$(AI_CMD)" ]; then \
+	  echo "✗ AI_CMD пуст — Makefile.override.mk отсутствует или не задаёт его."; \
+	  echo "  Заведи его по образцу из ai-launcher/README.md."; exit 1; \
+	else \
+	  echo "✓ AI_CMD  = $(AI_CMD)"; \
+	  echo "  AI_PROMPT_OPT = $(if $(AI_PROMPT_OPT),$(AI_PROMPT_OPT),(пусто — промпт позиционным аргументом))"; \
+	  echo "  AI_NAME_OPT   = $(if $(AI_NAME_OPT),$(AI_NAME_OPT),(не задан — NAME игнорируется))"; \
+	  command -v $(firstword $(AI_CMD)) >/dev/null \
+	    && echo "✓ $(firstword $(AI_CMD)) есть в PATH" \
+	    || { echo "✗ $(firstword $(AI_CMD)) не найден в PATH"; exit 1; }; \
+	fi

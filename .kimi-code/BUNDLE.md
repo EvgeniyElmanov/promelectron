@@ -38,6 +38,8 @@
 | `/ship` | `.kimi-code/skills/ship/SKILL.md` |
 | `/flow-fix` | `.kimi-code/skills/flow-fix/SKILL.md` |
 | `/flow-implement` | `.kimi-code/skills/flow-implement/SKILL.md` |
+| `/board` | `.kimi-code/skills/board/SKILL.md` |
+| `/sessions` | `.kimi-code/skills/sessions/SKILL.md` |
 | `/flow-review` | `.kimi-code/skills/flow-review/SKILL.md` |
 
 ## Общие правила

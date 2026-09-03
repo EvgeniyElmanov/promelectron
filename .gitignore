@@ -100,3 +100,7 @@ tests/agent/*.png
 
 # Legacy transient task dirs (old pipeline). New tasks MUST use .agent/runs/<task-id>/.
 .agent/[0-9a-zA-Z_-]*/
+
+# Машинно-локальные цели make (в первую очередь AI_CMD для лончера борда):
+# у каждого разработчика свой агент — claude или kimi. Образец — ai-launcher/README.md.
+Makefile.override.mk

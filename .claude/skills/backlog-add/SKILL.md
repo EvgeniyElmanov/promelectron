@@ -3,7 +3,7 @@ name: backlog-add
 description: Add an idea/TODO to the project backlog as a GitHub Issue on AutonomaCo/promelectron, then place it on the GitHub Project board (Todo). Interactive — capture a quick one-liner, or spin up a background agent that enriches the idea with current session context before the issue is finalized.
 argument-hint: "<идея / TODO для бэклога>"
 disable-model-invocation: true
-allowed-tools: Read Write Bash(gh *) Bash(jq *) Bash(git *)
+allowed-tools: Read Write Edit Bash(gh *) Bash(jq *) Bash(git *)
 ---
 
 # /backlog-add — Capture an idea into the GitHub backlog
@@ -160,13 +160,26 @@ want for a fresh backlog idea — no status move needed. If the project has no d
 automation and the card needs an explicit `Todo`, use the `github-project` skill's `item-edit` to
 set Status → Todo. If the `project` scope is missing, skip this step and tell the user (Step 1).
 
+### Step 5b: Put it on the launch board
+
+The board `ai-launcher/BOARD.md` is the **shop window** of the open issues — a new issue that
+never reaches it is invisible to `/board` and `/sessions`, and to the colleague working on the
+other agent. Add a row to the Указатель table: issue number, one line of what it is, its **lock**
+(see `.claude/rules/task-locks.md`), status.
+
+Add **no button** — a button only exists for an item that has a prompt in `ai-launcher/prompts/`.
+The fresh issue goes under «заведено, но кнопки нет» until someone writes one.
+
+Board format, lock table and the pre-commit form check: `ai-launcher/CONVENTIONS.md`.
+
 ### Step 6: Report (in Russian)
 
 - `✓ В бэклог: #<N> «<title>»` + the issue URL.
 - Board: `на доске → Todo` — or, if scope was missing, `issue создан, но на доску не добавлен
   (нужен scope project: gh auth refresh -s project)`.
 - Short path → "готово." Enrich path → "разворачиваю в фоне, тело допишется когда агент закончит."
-- Hint: `/backlog-list` чтобы посмотреть весь бэклог · `/implement <N>` чтобы взять в работу.
+- Board: `на пульте → ai-launcher/BOARD.md` (без кнопки — промпта пока нет).
+- Hint: `/backlog-list` чтобы посмотреть весь бэклог · `/board` — пульт запуска · `/implement <N>` чтобы взять в работу.
 
 ## Rules
 

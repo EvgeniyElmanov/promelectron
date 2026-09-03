@@ -11,3 +11,13 @@
 - **`PROJECT_CONTEXT.md`** — единый источник истины по стеку, фичам, блокерам и API-инвентарю.
 - **`SESSION_START.md`** — шаблоны входа в сессию и ежедневный workflow.
 - **`ROUTER.md`** — документация по маршрутизации агентов.
+
+## Пульт запуска
+
+- **`ai-launcher/BOARD.md`** — что можно брать прямо сейчас, какие замки заняты, что ждёт условия.
+- **`ai-launcher/CONVENTIONS.md`** — форма пульта, замки, порядок сверки. Общий документ для
+  Claude Code и Kimi Code.
+- **`ai-launcher/README.md`** — как настроить лончер на своей машине (`Makefile.override.mk`).
+
+Кнопка запуска у всех одна — `make ai PROMPT=…`; чем она запускается (claude или kimi), задаётся
+машинно-локально. Команды: `/board`, `/sessions` (Claude) · `/skill:board`, `/skill:sessions` (Kimi).

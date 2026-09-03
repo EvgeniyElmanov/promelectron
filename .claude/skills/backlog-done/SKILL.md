@@ -3,7 +3,7 @@ name: backlog-done
 description: Close a backlog item (a GitHub Issue) — completed (default) or not-planned (drop). Closes the issue via gh, optionally moves the Project card to Done when completed, and optionally posts a closing comment when the user gives a reason. Closing is a status flip; nothing is deleted.
 argument-hint: "<issue#|#5|gh-5> [drop] [reason…]"
 disable-model-invocation: true
-allowed-tools: Read Write Bash(gh *) Bash(jq *) Bash(git *) Bash(mkdir *)
+allowed-tools: Read Write Edit Bash(gh *) Bash(jq *) Bash(git *) Bash(mkdir *)
 ---
 
 # /backlog-done — Close a backlog item
@@ -66,6 +66,20 @@ gh auth refresh -s project
 ```
 
 Note that the board was not updated rather than pretending it succeeded.
+
+### Step 4b: Take it off the launch board
+
+A merged PR that stays 🔵 on the board holds its lock hostage — the next session (possibly the
+colleague's, on the other agent) reads it as busy and skips work it could have taken. So, in
+`ai-launcher/BOARD.md`:
+
+1. Remove the item's row from «🔵 В работе» and its block with the button.
+2. Recount the «🔒 Замки» block — freed locks are the single most common board/reality drift.
+3. ⚠️ Check «⏰ Ждут условия» first: if the item has a row there, **merged is not done**. The row
+   stays until the condition is met AND the check was actually performed — say so to the owner
+   out loud rather than closing the item quietly.
+4. Run the form check from `ai-launcher/CONVENTIONS.md` §3, then commit the board directly to
+   `main` by name: `git add ai-launcher/BOARD.md`.
 
 ### Step 5: Report (in Russian)
 

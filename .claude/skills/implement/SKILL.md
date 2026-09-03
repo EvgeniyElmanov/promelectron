@@ -52,6 +52,28 @@ WORKTREE="$PROJECT_ROOT/.worktrees/<task-id>"
 
 ---
 
+## Step 1b: Occupy the item on the launch board
+
+**Before** the worktree exists — the board is how two agents (Claude and Kimi) avoid taking the
+same work. In `ai-launcher/BOARD.md`:
+
+1. Determine the item's **locks** from the files the task will touch — the table lives in
+   `.claude/rules/task-locks.md`. Take *every* lock the work touches, not just the main one.
+2. **A lock already held by another item in «🔵 В работе» means STOP.** Say so to the user and let
+   them decide; do not "work carefully alongside".
+3. Flip the item to 🔵, add a row to «🔵 В работе» (issue, locks, branch `feature/<task-id>`), and
+   recount the «🔒 Замки» block.
+4. The board is edited **only in the repo root on `main`**, by name, never from the worktree:
+   ```bash
+   git -C "$PROJECT_ROOT" add ai-launcher/BOARD.md
+   ```
+   Run the form check from `ai-launcher/CONVENTIONS.md` §3 before committing.
+
+Free-text task with no issue? Then there is no board item — skip this step, and say once that the
+work is invisible to `/board` and `/sessions` until an issue exists.
+
+---
+
 ## Step 2: Create the isolated worktree
 
 Do this **before** any agent touches code, in normal (non-plan) mode — `git worktree add` is a
@@ -216,6 +238,19 @@ All git ops target the worktree.
 5. Report to the user: PR URL · worktree path (kept for follow-up) · review iterations · board
    status now `In Review` (or "board not updated — task is free-text / scope missing") ·
    "After merge → test deploys via GitHub Actions; prod = manual workflow with environment=prod."
+
+---
+
+
+### Board: hand the lock back
+
+After the PR is open, update `ai-launcher/BOARD.md` in the repo root (not the worktree): the item
+stays 🔵 with its PR number until merge — that is what keeps the lock honest. **On merge** the row
+leaves «🔵 В работе», the block with the button is removed, and the «🔒 Замки» block is recounted.
+
+⚠️ If the item also has a row in «⏰ Ждут условия», **merged is not done**: that row stays until the
+condition is met and the check has actually been performed. Say it to the user out loud instead of
+closing the item quietly — this is exactly the tail that gets lost.
 
 ---
 
