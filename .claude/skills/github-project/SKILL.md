@@ -35,6 +35,31 @@ source of truth for *how* to do that with the `gh` CLI.
 If the task did **not** come from a GitHub Issue (free-text task), there is no card — skip every
 status step silently.
 
+
+## Запасной путь без scope: метки
+
+Доска — витрина, а не единственный носитель состояния. Если `gh project …` отвечает
+`missing required scopes`, **конвейер не останавливается**: ту же информацию несут метки,
+которым хватает обычного доступа к репозиторию.
+
+| Колонка доски | Метка-эквивалент |
+|---|---|
+| In Progress | `in-progress` |
+| In Review | `in-review` |
+| Todo | нет меток статуса |
+| Done | issue закрыт |
+
+```bash
+gh issue edit <N> --repo AutonomaCo/promelectron --add-label in-progress
+gh issue edit <N> --repo AutonomaCo/promelectron --remove-label in-progress --add-label in-review
+```
+
+Метка зоны (`backend` · `frontend` · `e2e` · `infra` · `docs` · `harness`) — это **замок**
+пункта, из неё борд берёт, что занято. Полный порядок движения — `ai-launcher/CONVENTIONS.md` §8.
+
+Скажи владельцу про `gh auth refresh -s project`, отметь на борде, что колонки не сверялись, и
+работай дальше по меткам.
+
 ## Config cache
 
 Discovery is cached in `.claude/.github-project.json` (safe to commit — it holds opaque GitHub

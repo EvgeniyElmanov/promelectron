@@ -192,7 +192,8 @@ If the user rejects or requests revisions, send the architect back to revise the
    ```bash
    git -C "$PROJECT_ROOT" add ai-launcher/BOARD.md
    ```
-   Перед коммитом прогони проверку формы из `ai-launcher/CONVENTIONS.md` §3.
+   Перед коммитом прогони `python3 scripts/check-board.py` — он проверяет форму пульта,
+   кнопки и связки промпт↔issue (правила — `ai-launcher/CONVENTIONS.md`).
 
 Задача из свободного текста без issue — пункта на борде нет, шаг пропускается; скажи один раз,
 что работа невидима для `/skill:board` и `/skill:sessions`, пока issue не заведён.
@@ -215,6 +216,9 @@ This creates `$WORKTREE` on branch `feature/<task-id>` from `origin/main`. If th
 ## Step 4.5: GitHub Issue Linking (before development)
 
 Per AGENTS.md, ALWAYS link a GitHub Issue before development starts and move the Project board on phase boundaries.
+   Полный порядок движения issue по фазам (метки, комментарии, закрытие с доказательством,
+   запасной путь без scope на Project) — `ai-launcher/CONVENTIONS.md` §8.
+
 
 1. Check for an existing `github_issue` in `$AGENT_DIR/task.md`. If present — reuse it; never create a duplicate issue for the same task-id.
 2. If missing — draft an issue from the spec/task description, confirm it with the user via `AskUserQuestion`, then run:

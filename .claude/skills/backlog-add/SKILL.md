@@ -43,11 +43,46 @@ gh auth refresh -s project
 Creating the Issue itself needs only normal repo scope — never block issue creation on the project
 scope. Worst case the issue is created but not placed on the board; report that honestly.
 
+### Step 1b: The issue body is for a HUMAN
+
+Write the body to `.github/ISSUE_TEMPLATE/task.md`'s shape, **in Russian**, readable by a
+colleague who returns to it in a month:
+
+```markdown
+## Проблема
+<что не так сейчас — один-два абзаца, без предыстории>
+
+## Почему это важно
+<чем грозит, если не делать>
+
+## Готово, когда
+- [ ] <проверяемый критерий, не «починить бейдж»>
+
+## Где смотреть
+<файлы, эндпоинты, прошлые PR и issue>
+
+---
+
+### 🤖 Запуск
+
+Промпт не написан. Запуск через конвейер: `/implement <N>` (Claude Code) ·
+`/skill:implement <N>` (Kimi Code).
+```
+
+**Инструкции агенту сюда не пишутся** — worktree, замки, порядок шагов и проверка мутацией живут
+в `ai-launcher/prompts/`, и подключаются блоком «Запуск», когда пункт попадёт в волну. Почему так
+разделено — `ai-launcher/CONVENTIONS.md` §7.
+
 ### Step 2: Derive a concise title
 
 From the idea text, distill a tight one-line **title** (Russian if the idea is Russian). The full
-idea goes in the body. Optionally pick 0–2 light **labels** (only if they obviously apply and exist
-on the repo — `gh label list`; don't invent labels).
+idea goes in the body. **Labels are not optional here.** Every issue gets:
+- its **zone = lock** — `backend` · `frontend` · `e2e` · `infra` · `docs` · `harness`; more than
+  one if the work touches more than one zone. The board reads the lock from this label.
+- a **priority** — `P0` (blocks, or risks data/money) · `P1` · `P2`.
+- optionally a **kind** — `security` · `tech-debt` · `bug` · `enhancement`.
+
+Don't invent labels beyond this set (`gh label list` to check).
 
 ### Step 3: Ask short vs. enrich (INTERACTIVE — the core)
 

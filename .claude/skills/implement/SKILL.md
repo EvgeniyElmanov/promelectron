@@ -44,6 +44,9 @@ the task identifier.
 3. Force `--quick` only if the task is genuinely trivial — otherwise still spec it.
 
 From here `<task-id>` is the issue id (`gh-<N>`) or the slug.
+   The full issue lifecycle — labels, comments, closing **with evidence**, and the label-based
+   fallback when the Project scope is missing — is `ai-launcher/CONVENTIONS.md` §8.
+
 
 ```bash
 AGENT_DIR="$PROJECT_ROOT/.agent/runs/<task-id>"
@@ -67,7 +70,8 @@ same work. In `ai-launcher/BOARD.md`:
    ```bash
    git -C "$PROJECT_ROOT" add ai-launcher/BOARD.md
    ```
-   Run the form check from `ai-launcher/CONVENTIONS.md` §3 before committing.
+   Run `python3 scripts/check-board.py` before committing — it verifies the board's form, its
+   buttons and the prompt↔issue cross-links (rules: `ai-launcher/CONVENTIONS.md`).
 
 Free-text task with no issue? Then there is no board item — skip this step, and say once that the
 work is invisible to `/board` and `/sessions` until an issue exists.
