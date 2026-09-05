@@ -81,9 +81,9 @@ disableModelInvocation: true
 ## ОБЯЗАТЕЛЬНЫЙ КОНТЕКСТ (прочитать)
 
 - [ ] `PROJECT_CONTEXT.md`
-- [ ] `.agent/BACKLOG.md`
-- [ ] `.agent/BLOCKERS.md`
-- [ ] `.agent/SESSION_LOG.md`
+- [ ] `docs/backlog.md`
+- [ ] `docs/blockers.md`
+- [ ] `docs/journal/session-log.md`
 - [ ] `.kimi-code/skills/<role>/SKILL.md`
 - [ ] [Rule: Pre-edit Checklist](pre-edit-checklist.md)
 - [ ] [Rule: Agent Commons](agent-commons.md)

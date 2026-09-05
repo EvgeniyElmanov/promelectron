@@ -49,9 +49,9 @@ disableModelInvocation: true
 
 Обязательно:
 1. `PROJECT_CONTEXT.md`
-2. `.agent/BACKLOG.md`
-3. `.agent/BLOCKERS.md`
-4. `.agent/SESSION_LOG.md`
+2. `docs/backlog.md`
+3. `docs/blockers.md`
+4. `docs/journal/session-log.md`
 5. [Rule: Agent Commons](../../rules/agent-commons.md)
 6. [Rule: Pre-edit Checklist](../../rules/pre-edit-checklist.md) (перед изменением кода)
 
@@ -62,8 +62,8 @@ disableModelInvocation: true
 ### Step 5: Report and reset
 
 После завершения:
-1. Обнови `.agent/SESSION_LOG.md`.
-2. Обнови `.agent/BACKLOG.md`, если задача в спринте.
+1. Обнови `docs/journal/session-log.md`.
+2. Обнови `docs/backlog.md`, если задача в спринте.
 3. Скажи пользователю: "Готово. Роль для этой задачи: <ROLE>. Следующая задача? Я заново проанализирую роль."
 
 ## Anti-patterns

@@ -8,7 +8,7 @@
 
 | Агент | Точка входа | Инструменто-специфичное |
 |---|---|---|
-| Claude Code | `CLAUDE.md` (импортирует этот файл) | `.claude/skills/` — скиллы и слэш-команды, `.claude/rules/` — правила по `paths:`, `.claude/agents/` — субагенты |
+| Claude Code | `CLAUDE.md` (импортирует этот файл) | `.agents/skills/` — скиллы и слэш-команды, `.agents/conventions/` — правила по `paths:`, `.claude/agents/` — субагенты |
 | Kimi Code | `.kimi-code/AGENTS.md` | `.kimi-code/skills/` — ролевые и workflow-навыки, `.kimi-code/rules/` — конвенции, `.kimi-code/BUNDLE.md` — реестр |
 | Gemini | — (подключится позже) | — |
 
@@ -21,8 +21,10 @@
 
 1. `PROJECT_CONTEXT.md` — стек, статус фич, инвентарь API
 2. `ai-launcher/BOARD.md` — **пульт запуска**: что брать сейчас, какие замки заняты, что ждёт условия
-3. `.agent/BLOCKERS.md` — активные блокеры
-4. `.agent/BACKLOG.md` — указатель на бэклог и на то, что ещё не заведено
+3. `docs/blockers.md` — активные блокеры
+4. `docs/backlog.md` — указатель на бэклог и на то, что ещё не заведено
+
+Конфигурация агентов — `.agents/` (общая) и `.claude/` / `.kimi-code/` (привязка); см. `.agents/README.md`.
 
 Дальше — по теме задачи, не раньше.
 
@@ -32,11 +34,11 @@
 
 | Что | Где | Не путать с |
 |---|---|---|
-| **План работ** | открытые GitHub Issues на `AutonomaCo/promelectron` + [доска](https://github.com/orgs/AutonomaCo/projects/1) | `.agent/BACKLOG.md` — это указатель на них |
+| **План работ** | открытые GitHub Issues на `AutonomaCo/promelectron` + [доска](https://github.com/orgs/AutonomaCo/projects/1) | `docs/backlog.md` — это указатель на них |
 | **Что брать сейчас** | `ai-launcher/BOARD.md` | витрина Issues, не отдельный список |
 | **Правила пульта, замков, связок** | `ai-launcher/CONVENTIONS.md` | общий документ для всех агентов |
-| **Принятые решения** | `.agent/DECISIONS.md`, `docs/adr/` | |
-| **История сессий** | `.agent/SESSION_LOG.md` (+ `.archive.md`) | |
+| **Принятые решения** | `docs/decisions/` — ADR по MADR | `docs/journal/` — это журнал, не решения |
+| **История сессий** | `docs/journal/` | ни один агент её не грузит автоматически |
 | **Документация** | `docs/README.md` — навигация | `docs/archive/` — снимки, НЕ истина |
 
 Любой документ, противоречащий открытым Issues, проиграл.
@@ -99,8 +101,8 @@ make ai PROMPT=ai-launcher/prompts/<замок>_<issue#>-<слаг>.prompt.txt
 
 ## После работы
 
-1. `.agent/SESSION_LOG.md` — что сделано, с доказательствами.
+1. `docs/journal/session-log.md` — что сделано, с доказательствами.
 2. `ai-launcher/BOARD.md` — снять пункт, освободить замок, пересчитать блок «Замки».
-3. `.agent/DECISIONS.md` — если принято решение, которое кто-то потом переспросит.
-4. `.agent/BLOCKERS.md` — если появился блокер.
+3. `docs/decisions/` — если принято решение, которое кто-то потом переспросит: отдельный ADR по шаблону из `docs/decisions/README.md`, а не строка в журнал.
+4. `docs/blockers.md` — если появился блокер.
 5. `PROJECT_CONTEXT.md` — если изменилась архитектура.

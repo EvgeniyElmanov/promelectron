@@ -79,8 +79,8 @@ git log --oneline -10
 
 ## Правила
 
-- **Борд — пульт, а не журнал.** Разборы и история живут в issue, `.agent/DECISIONS.md`,
-  `.agent/SESSION_LOG.md` и `git log`.
+- **Борд — пульт, а не журнал.** Разборы и история живут в issue, `docs/decisions/log.md`,
+  `docs/journal/session-log.md` и `git log`.
 - **Кнопка только там, где есть промпт** в `ai-launcher/prompts/`. Нет промпта — пункт в списке
   «заведено, но кнопки нет».
 - **Кнопка пишется как `make ai PROMPT=…`** — она нейтральна к агенту. Не подставляй `kimi …`

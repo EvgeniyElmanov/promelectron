@@ -199,9 +199,9 @@ Verify: npm run test:unit Cart && check responsiveness (375px)
 
 Агенты обновляют:
 
-1. `.agent/SESSION_LOG.md` — что сделано, изменённые файлы, риски
-2. `.agent/BACKLOG.md` — статус задачи (если из спринта)
-3. `.agent/BLOCKERS.md` — новые блокеры (если появились)
+1. `docs/journal/session-log.md` — что сделано, изменённые файлы, риски
+2. `docs/backlog.md` — статус задачи (если из спринта)
+3. `docs/blockers.md` — новые блокеры (если появились)
 4. `PROJECT_CONTEXT.md` — если архитектура изменилась
 
 Перед отчётом:
@@ -242,5 +242,5 @@ Task: fix Helm template for Y
 | `.kimi-code/AGENTS.md` | Активный индекс инвариантов проекта и обзор системы агентов |
 | `docs/guides/agent-routing.md` | Документация по маршрутизации |
 | `PROJECT_CONTEXT.md` | В начале сессии — стек, статус, блокеры |
-| `.agent/BACKLOG.md` | В начале сессии — текущий спринт |
-| `.agent/BLOCKERS.md` | В начале сессии — активные блокеры |
+| `docs/backlog.md` | В начале сессии — текущий спринт |
+| `docs/blockers.md` | В начале сессии — активные блокеры |

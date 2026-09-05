@@ -37,14 +37,16 @@ echo ""
 echo "📁 Проверка обязательных файлов..."
 
 required_files=(
+    "CLAUDE.md"
     "PROJECT_CONTEXT.md"
+    ".agents/README.md"
     "docs/guides/session-start.md"
     "docs/guides/agent-routing.md"
     "AGENTS.md"
-    ".agent/BACKLOG.md"
-    ".agent/BLOCKERS.md"
-    ".agent/SESSION_LOG.md"
-    ".agent/PLANNING_HANDOFF.md"
+    "docs/backlog.md"
+    "docs/blockers.md"
+    "docs/journal/session-log.md"
+    "docs/archive/2026-05-30-planning-handoff.md"
     ".kimi-code/AGENTS.md"
     ".kimi-code/BUNDLE.md"
     ".kimi-code/mcp.json"
@@ -74,12 +76,14 @@ echo ""
 echo "🗑️  Проверка устаревших файлов..."
 
 obsolete_files=(
-    ".agent/AGENTS.md"
-    ".agent/CONTEXT.md"
-    ".agent/CURSOR_RULES.md"
-    ".agent/START_HERE.md"
-    ".agent/DISPATCHER_PROMPT.md"
-    ".agent/ORCHESTRATOR_PROMPT.md"
+    ".agent/BACKLOG.md"
+    ".agent/BLOCKERS.md"
+    ".agent/DECISIONS.md"
+    ".agent/SESSION_LOG.md"
+    ".agent/METRICS.md"
+    ".agent/PLANNING_HANDOFF.md"
+    ".claude/commands/implement.md"
+    ".claude/rules/agent-context.md"
     ".kimi/"
     ".kimi/AGENTS.md"
     ".kimi/CLAUDE.md"
@@ -102,6 +106,33 @@ if [ -d ".kimi" ]; then
 else
     ok ".kimi/ — удалена"
 fi
+
+# ─── 2b. Привязка .claude → .agents ───────────────────────────────
+
+echo ""
+echo "🔗 Проверка привязки .claude → .agents..."
+
+# Содержание живёт в .agents/, а .claude/{skills,rules} — только симлинки на него.
+# Реальный файл вместо симлинка значит, что правка ушла в копию: через сессию
+# Claude и Kimi поедут по разным правилам, и понять это будет уже поздно.
+broken=0
+for link in .claude/skills/*/ .claude/rules/*.md; do
+    [ -e "$link" ] || continue
+    target="${link%/}"
+    if [ ! -L "$target" ]; then
+        error "$target — не симлинк; содержание должно лежать в .agents/, а здесь только ссылка"
+        broken=$((broken+1))
+    elif [ ! -e "$target" ]; then
+        error "$target — симлинк в никуда"
+        broken=$((broken+1))
+    fi
+done
+[ $broken -eq 0 ] && ok "все скиллы и правила .claude ссылаются в .agents/"
+
+for d in .agents/skills .agents/agents .agents/conventions; do
+    n=$(ls -1 "$d" 2>/dev/null | wc -l | tr -d ' ')
+    [ "$n" -gt 0 ] && ok "$d — $n шт." || error "$d пуст или отсутствует"
+done
 
 # ─── 3. Skills consistency ────────────────────────────────────────
 

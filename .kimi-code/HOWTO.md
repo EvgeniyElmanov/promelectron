@@ -99,16 +99,16 @@ python scripts/implement-pipeline.py cleanup <task-id>
 
 Агенты читают:
 - `PROJECT_CONTEXT.md`
-- `.agent/BACKLOG.md`
-- `.agent/BLOCKERS.md`
-- `.agent/SESSION_LOG.md`
+- `docs/backlog.md`
+- `docs/blockers.md`
+- `docs/journal/session-log.md`
 - `.kimi-code/skills/<role>/SKILL.md` — инструкции роли (flat Kimi skill)
 - [Rule: Pre-edit Checklist](./rules/pre-edit-checklist.md)
 
 Агенты обновляют:
-- `.agent/SESSION_LOG.md`
-- `.agent/BACKLOG.md`
-- `.agent/BLOCKERS.md`
+- `docs/journal/session-log.md`
+- `docs/backlog.md`
+- `docs/blockers.md`
 - `PROJECT_CONTEXT.md` (если изменилась архитектура)
 
 ## 8. Решение проблем
@@ -154,7 +154,7 @@ Verify: [how to confirm it works]
 - [ ] Запустить `/skill:implement "<описание фичи>"`
 - [ ] Одобрить спецификацию architect
 - [ ] Дать pipeline отработать
-- [ ] После завершения проверить `.agent/SESSION_LOG.md`
+- [ ] После завершения проверить `docs/journal/session-log.md`
 
 ## 11. Где почитать ещё
 

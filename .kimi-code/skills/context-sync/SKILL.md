@@ -16,7 +16,7 @@ disableModelInvocation: false
 
 > **ЯЗЫК / LANGUAGE:** Следуй [Rule: Agent Commons](../../rules/agent-commons.md) > Language Rule / Языковое правило.
 
-Синхронизируй `PROJECT_CONTEXT.md`, `.agent/BACKLOG.md`, `.agent/BLOCKERS.md` с реальностью.
+Синхронизируй `PROJECT_CONTEXT.md`, `docs/backlog.md`, `docs/blockers.md` с реальностью.
 
 ## Language / Язык
 
@@ -33,8 +33,8 @@ disableModelInvocation: false
 ## Поведение флагов
 
 - `--full` — запустить все проверки, включая E2E и валидацию Helm.
-- `--backlog-only` — обновить только `.agent/BACKLOG.md`.
-- `--blockers-only` — обновить только `.agent/BLOCKERS.md`.
+- `--backlog-only` — обновить только `docs/backlog.md`.
+- `--blockers-only` — обновить только `docs/blockers.md`.
 - `--quick` — пропустить долгие тесты и E2E; использовать только git status + recent log.
 
 ---
@@ -43,10 +43,10 @@ disableModelInvocation: false
 
 Прочитай параллельно:
 1. `PROJECT_CONTEXT.md`
-2. `.agent/BACKLOG.md`
-3. `.agent/BLOCKERS.md`
-4. `.agent/SESSION_LOG.md`
-5. `.agent/PLANNING_HANDOFF.md`
+2. `docs/backlog.md`
+3. `docs/blockers.md`
+4. `docs/journal/session-log.md`
+5. `docs/archive/2026-05-30-planning-handoff.md`
 
 Запиши `last_update` из frontmatter PROJECT_CONTEXT.md.
 

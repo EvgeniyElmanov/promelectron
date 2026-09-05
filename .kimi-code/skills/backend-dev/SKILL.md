@@ -22,8 +22,8 @@ disableModelInvocation: true
 3. `$AGENT_DIR/review/findings.md`, если существует (исправь все OPEN пункты)
 4. `$AGENT_DIR/review/test-findings.md`, если существует (исправь все OPEN пункты)
 5. `PROJECT_CONTEXT.md`
-6. `.agent/BACKLOG.md`
-7. `.agent/SESSION_LOG.md`
+6. `docs/backlog.md`
+7. `docs/journal/session-log.md`
 8. [Rule: Agent Commons](../../rules/agent-commons.md)
 9. [Rule: Pre-edit Checklist](../../rules/pre-edit-checklist.md)
 10. [Rule: Dependency Map](../../rules/dependency-map.md)
@@ -92,8 +92,8 @@ model → schema → service → route handler → tests
 
 ### После завершения
 
-1. Обнови `.agent/SESSION_LOG.md`: что сделано, изменённые файлы, риски.
-2. Если задача из `.agent/BACKLOG.md`, обнови её статус.
+1. Обнови `docs/journal/session-log.md`: что сделано, изменённые файлы, риски.
+2. Если задача из `docs/backlog.md`, обнови её статус.
 3. Сообщи готовность к ревью.
 
 ---

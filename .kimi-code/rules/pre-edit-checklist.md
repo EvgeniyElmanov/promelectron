@@ -18,9 +18,9 @@ disableModelInvocation: true
 ### Обязательный контекст (прочитать перед задачей)
 
 - [ ] `PROJECT_CONTEXT.md`
-- [ ] `.agent/BACKLOG.md`
-- [ ] `.agent/BLOCKERS.md`
-- [ ] `.agent/SESSION_LOG.md`
+- [ ] `docs/backlog.md`
+- [ ] `docs/blockers.md`
+- [ ] `docs/journal/session-log.md`
 - [ ] Релевантный role skill из `.kimi-code/skills/<role>/SKILL.md`
 - [ ] [Rule: Agent Commons](agent-commons.md) — язык, retry policy, API constraints Kimi K3
 - [ ] [Rule: Security](security.md) — всегда; lightweight pass для любой задачи, extended для auth/payments/PII/uploads/orders/webhooks
@@ -29,7 +29,7 @@ disableModelInvocation: true
 
 #### 1. GitHub Issue / Backlog
 - [ ] Задача связана с GitHub Issue (новая или существующая)?
-- [ ] Статус в `.agent/BACKLOG.md` / GitHub Project board обновлён?
+- [ ] Статус в `docs/backlog.md` / GitHub Project board обновлён?
 
 #### 2. Тесты
 - [ ] Есть ли тесты на этот модуль/компонент?
@@ -103,9 +103,9 @@ disableModelInvocation: true
 ### После завершения (before report)
 
 - [ ] `make pre-push` проходит (lint + unit + E2E)?
-- [ ] `.agent/SESSION_LOG.md` дописан?
-- [ ] `.agent/BACKLOG.md` обновлён (если задача из спринта)?
-- [ ] `.agent/BLOCKERS.md` обновлён, если появился новый блокер?
+- [ ] `docs/journal/session-log.md` дописан?
+- [ ] `docs/backlog.md` обновлён (если задача из спринта)?
+- [ ] `docs/blockers.md` обновлён, если появился новый блокер?
 - [ ] `PROJECT_CONTEXT.md` обновлён, если изменилась архитектура/API?
 
 ---

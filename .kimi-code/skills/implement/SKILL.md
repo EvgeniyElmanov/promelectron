@@ -60,7 +60,7 @@ mkdir -p "$PROJECT_ROOT/.agent/runs/<task-id>/review"
 mkdir -p "$PROJECT_ROOT/.worktrees"
 ```
 
-> **Important:** `.agent/runs/<task-id>/` is gitignored. Never write transient pipeline files into the committed `.agent/` planning dir (`BACKLOG.md`, `PLANNING_HANDOFF.md`, `tasks/`, etc.).
+> **Important:** `.agent/runs/<task-id>/` is gitignored. Never write transient pipeline files into the committed `docs/` planning dir (`BACKLOG.md`, `PLANNING_HANDOFF.md`, `tasks/`, etc.).
 
 Write `$AGENT_DIR/task.md` by the template from [Rule: Task Template](../../rules/task-template.md). Set `github_issue` if the task already has one:
 ```markdown
@@ -137,9 +137,9 @@ Read:
 1. .agent/runs/<task-id>/task.md
 2. .agent/runs/<task-id>/research/*.md (if present) — synthesize into .agent/runs/<task-id>/research.md
 3. PROJECT_CONTEXT.md
-4. .agent/BACKLOG.md
-5. .agent/BLOCKERS.md
-6. .agent/SESSION_LOG.md
+4. docs/backlog.md
+5. docs/blockers.md
+6. docs/journal/session-log.md
 7. `.kimi-code/skills/architect/SKILL.md`
 8. [Rule: Pre-edit Checklist](../../rules/pre-edit-checklist.md)
 
@@ -334,8 +334,8 @@ Read:
 2. .agent/runs/<task-id>/spec.md
 3. $WORKTREE/PLAN.md — одобренный план, реализуй строго по нему
 4. PROJECT_CONTEXT.md
-5. .agent/BACKLOG.md
-6. .agent/BLOCKERS.md
+5. docs/backlog.md
+6. docs/blockers.md
 7. `.kimi-code/skills/<ROLE>/SKILL.md`
 8. [Rule: Pre-edit Checklist](../../rules/pre-edit-checklist.md)
 
@@ -361,7 +361,7 @@ Rules:
 Before finishing:
 1. Run the role-specific tests (e.g. make -C "$WORKTREE" test-backend; cd "$WORKTREE/frontend" && npm test). Тесты — только foreground, дождись результата; NEVER оставляй фоновый прогон после отчёта (Rule: Agent Commons > Single Test Run Rule).
 2. Run lint (ruff / npm run lint).
-3. Update .agent/SESSION_LOG.md from the worktree (при параллельном запуске backend+frontend это делает оркестратор — пропусти).
+3. Update docs/journal/session-log.md from the worktree (при параллельном запуске backend+frontend это делает оркестратор — пропусти).
 
 Report:
 - Changed files
@@ -372,7 +372,7 @@ Report:
 НАПОМИНАНИЕ: ответы и артефакты — на русском; технические токены (код, пути, команды) — в оригинале.
 ```
 
-При параллельном запуске оба агента работают в **одном** worktree `.worktrees/<task-id>` (общая feature-ветка), но не пересекаются по файлам благодаря scope boundary. `.agent/SESSION_LOG.md` при параллельном режиме обновляет оркестратор после завершения обоих агентов, чтобы избежать конфликта записи.
+При параллельном запуске оба агента работают в **одном** worktree `.worktrees/<task-id>` (общая feature-ветка), но не пересекаются по файлам благодаря scope boundary. `docs/journal/session-log.md` при параллельном режиме обновляет оркестратор после завершения обоих агентов, чтобы избежать конфликта записи.
 
 > **Rate limits:** при большом fan-out или повторяющихся 429 установи `KIMI_CODE_AGENT_SWARM_MAX_CONCURRENCY=2` (env var, см. Kimi Code CLI v0.18.0+), чтобы параллельные субагенты не упирались в provider rate limits.
 
@@ -522,8 +522,8 @@ Read:
 2. .agent/runs/<task-id>/spec.md
 3. .agent/runs/<task-id>/review/findings.md
 4. PROJECT_CONTEXT.md
-5. .agent/BACKLOG.md
-6. .agent/BLOCKERS.md
+5. docs/backlog.md
+6. docs/blockers.md
 7. `.kimi-code/skills/qa/SKILL.md`
 8. [Rule: Golden Path](../../rules/golden-path.md)
 
@@ -624,9 +624,9 @@ If no lessons were identified, say so.
 Log the trace: `python3 scripts/agent_state.py trace <task-id> knowledge_captured --actor orchestrator --data '{"rules": N, "skills": N, "docs": N}'`.
 
 Also apply the AGENTS.md "Обновления после работы" rules:
-1. Update `.agent/SESSION_LOG.md`.
-2. Update `.agent/BACKLOG.md` if the task is from the sprint.
-3. Update `.agent/BLOCKERS.md` if a new blocker appeared.
+1. Update `docs/journal/session-log.md`.
+2. Update `docs/backlog.md` if the task is from the sprint.
+3. Update `docs/blockers.md` if a new blocker appeared.
 4. Update `PROJECT_CONTEXT.md` if the architecture changed.
 
 ---
@@ -637,7 +637,7 @@ After all phases:
 
 1. Run `python scripts/implement-pipeline.py record-metrics <task-id>` to collect and save pipeline metrics to `.agent/runs/<task-id>/metrics.json`.
 2. Run `python scripts/implement-pipeline.py check-context <task-id>` to capture final estimated tokens.
-3. Read `.agent/SESSION_LOG.md` and append a summary including estimated tokens and iteration count.
+3. Read `docs/journal/session-log.md` and append a summary including estimated tokens and iteration count.
 4. Report to the user:
    - Task ID
    - Worktree path: `.worktrees/<task-id>`
@@ -667,7 +667,7 @@ After all phases:
 - Developer marks findings FIXED; reviewer verifies and marks VERIFIED.
 - Max 3 review iterations, then escalate to user.
 - Max 2 QA iterations, then escalate to user.
-- Update `.agent/SESSION_LOG.md` after every significant phase.
-- Always write transient pipeline files to `.agent/runs/<task-id>/`, never to the committed `.agent/` planning dir.
+- Update `docs/journal/session-log.md` after every significant phase.
+- Always write transient pipeline files to `.agent/runs/<task-id>/`, never to the committed `docs/` planning dir.
 - **Idempotency:** never create a duplicate issue for the same `task-id`; reuse `github_issue` from `task.md`.
 - **No silent publish:** always ask the user before creating a GitHub Issue.

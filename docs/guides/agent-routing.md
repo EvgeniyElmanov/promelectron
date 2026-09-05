@@ -98,9 +98,9 @@ Task: Create an API for promo codes.
 | `.kimi-code/skills/<role>/SKILL.md` | Инструкции ролей (flat Kimi skills) |
 | `.kimi-code/rules/*.md` | Общие конвенции (reference markdown) |
 | `PROJECT_CONTEXT.md` | Единый источник истины |
-| `.agent/BACKLOG.md` | Текущий спринт |
-| `.agent/BLOCKERS.md` | Активные блокеры |
-| `.agent/SESSION_LOG.md` | Лог сессий |
+| `docs/backlog.md` | Текущий спринт |
+| `docs/blockers.md` | Активные блокеры |
+| `docs/journal/session-log.md` | Лог сессий |
 
 ## Добавление новой роли
 

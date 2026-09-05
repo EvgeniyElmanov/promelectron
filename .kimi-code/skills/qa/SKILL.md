@@ -23,9 +23,9 @@ disableModelInvocation: true
 2. `$AGENT_DIR/spec.md`
 3. `$AGENT_DIR/review/findings.md`
 4. `PROJECT_CONTEXT.md`
-5. `.agent/BACKLOG.md`
-6. `.agent/BLOCKERS.md`
-7. `.agent/SESSION_LOG.md`
+5. `docs/backlog.md`
+6. `docs/blockers.md`
+7. `docs/journal/session-log.md`
 8. [Rule: Agent Commons](../../rules/agent-commons.md)
 9. [Rule: Golden Path](../../rules/golden-path.md)
 

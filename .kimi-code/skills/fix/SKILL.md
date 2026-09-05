@@ -126,9 +126,9 @@ python scripts/implement-pipeline.py create-worktree <task-id> --branch-prefix b
 Прочитай параллельно:
 1. `$AGENT_DIR/task.md`
 2. `PROJECT_CONTEXT.md`
-3. `.agent/BACKLOG.md`
-4. `.agent/BLOCKERS.md`
-5. `.agent/SESSION_LOG.md`
+3. `docs/backlog.md`
+4. `docs/blockers.md`
+5. `docs/journal/session-log.md`
 6. `.kimi-code/skills/<ROLE>/SKILL.md`
 7. [Rule: Pre-edit Checklist](../../rules/pre-edit-checklist.md)
 8. [Rule: Golden Path](../../rules/golden-path.md), если баг затрагивает cart, checkout, auth, payment, orders
@@ -224,9 +224,9 @@ PLAN.md должен содержать:
 2. $AGENT_DIR/spec.md
 3. $WORKTREE/PLAN.md — одобренный план, реализуй строго по нему
 4. PROJECT_CONTEXT.md
-5. .agent/BACKLOG.md
-6. .agent/BLOCKERS.md
-7. .agent/SESSION_LOG.md
+5. docs/backlog.md
+6. docs/blockers.md
+7. docs/journal/session-log.md
 8. `.kimi-code/skills/<ROLE>/SKILL.md`
 9. [Rule: Pre-edit Checklist](../../rules/pre-edit-checklist.md)
 10. [Rule: Agent Commons](../../rules/agent-commons.md)
@@ -251,7 +251,7 @@ Before finishing:
 2. Run the role-specific tests in $WORKTREE: make -C "$WORKTREE" test-backend или make -C "$WORKTREE" test-frontend. Тесты — только foreground, дождись результата; NEVER оставляй фоновый прогон после отчёта (Rule: Agent Commons > Single Test Run Rule).
 3. Run lint: make -C "$WORKTREE" lint-backend / make -C "$WORKTREE" lint-frontend.
 4. If golden path affected → verify the corresponding scenario.
-5. Update $PROJECT_ROOT/.agent/SESSION_LOG.md.
+5. Update $PROJECT_ROOT/docs/journal/session-log.md.
 
 Report:
 - Root cause
@@ -325,8 +325,8 @@ python3 scripts/agent_state.py trace <task-id> pr_opened --actor orchestrator --
 
 1. Запусти `python scripts/implement-pipeline.py record-metrics <task-id>`, чтобы собрать и сохранить метрики пайплайна в `.agent/runs/<task-id>/metrics.json`.
 2. Запусти `python scripts/implement-pipeline.py check-context <task-id>`, чтобы зафиксировать итоговый estimated tokens.
-3. Обнови `$PROJECT_ROOT/.agent/SESSION_LOG.md`.
-4. Обнови `.agent/BACKLOG.md`, если баг был из спринта.
+3. Обнови `$PROJECT_ROOT/docs/journal/session-log.md`.
+4. Обнови `docs/backlog.md`, если баг был из спринта.
 5. Сообщи пользователю:
    - Task ID
    - Путь к worktree: `$WORKTREE`

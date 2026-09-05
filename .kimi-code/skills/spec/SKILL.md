@@ -121,9 +121,9 @@ items: `["libraries", "best-practices", "codebase-integration", "external-api-do
 1. $AGENT_DIR/task.md
 2. $AGENT_DIR/research/*.md (если есть) и синтезируй в $AGENT_DIR/research.md
 3. PROJECT_CONTEXT.md
-4. .agent/BACKLOG.md
-5. .agent/BLOCKERS.md
-6. .agent/SESSION_LOG.md
+4. docs/backlog.md
+5. docs/blockers.md
+6. docs/journal/session-log.md
 7. `.kimi-code/skills/architect/SKILL.md`
 8. [Rule: Pre-edit Checklist](../../rules/pre-edit-checklist.md)
 9. [Rule: Planning](../../rules/planning.md)
@@ -167,16 +167,16 @@ Do NOT write implementation code, tests, migrations, or config files.
 
 ## Step 7: Post-work updates
 
-Обнови `$PROJECT_ROOT/.agent/SESSION_LOG.md` сводкой по сессии спецификации.
+Обнови `$PROJECT_ROOT/docs/journal/session-log.md` сводкой по сессии спецификации.
 
-Если задача из спринта, обнови `.agent/BACKLOG.md` статусом `ready` или `in_progress`.
+Если задача из спринта, обнови `docs/backlog.md` статусом `ready` или `in_progress`.
 
 ---
 
 ## Rules / Правила
 
 - Только планирование — никакого worktree, кода или PR.
-- Никогда не пиши временные файлы в закоммиченную планировочную директорию `.agent/`.
+- Никогда не пиши временные файлы в закоммиченную планировочную директорию `docs/`.
 - Спецификация принадлежит архитектору; ты только управляешь циклом.
 - Всегда копируй plan-файл в `$AGENT_DIR/spec.md` перед циклом уточнений.
 

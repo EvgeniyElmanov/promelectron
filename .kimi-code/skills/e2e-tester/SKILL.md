@@ -29,7 +29,7 @@ disableModelInvocation: true
 1. `$AGENT_DIR/task.md` (`.agent/runs/<task-id>/task.md`)
 2. `$AGENT_DIR/spec.md`
 3. `PROJECT_CONTEXT.md`
-4. `.agent/SESSION_LOG.md`
+4. `docs/journal/session-log.md`
 5. Существующие E2E-тесты в `$WORKTREE/frontend/e2e/`
 6. [Rule: Agent Commons](../../rules/agent-commons.md)
 7. [Rule: Golden Path](../../rules/golden-path.md)

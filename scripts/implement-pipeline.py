@@ -827,7 +827,7 @@ def main() -> int:
 
     sub.add_parser(
         "sync-backlog",
-        help="Sync open GitHub Project issues into .agent/BACKLOG.md",
+        help="Sync open GitHub Project issues into docs/backlog.md",
     )
 
     record_metrics = sub.add_parser(

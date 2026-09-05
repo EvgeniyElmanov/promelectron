@@ -25,9 +25,9 @@ disableModelInvocation: true
 1. Task spec или issue
 2. `docs/integrations/minio.md`
 3. `PROJECT_CONTEXT.md`
-4. `.agent/PLANNING_HANDOFF.md`
-5. `.agent/BACKLOG.md`
-6. `.agent/SESSION_LOG.md`
+4. `docs/archive/2026-05-30-planning-handoff.md`
+5. `docs/backlog.md`
+6. `docs/journal/session-log.md`
 7. [Rule: Agent Commons](../../rules/agent-commons.md)
 8. [Rule: Security](../../rules/security.md)
 9. [Rule: Pre-edit Checklist](../../rules/pre-edit-checklist.md)

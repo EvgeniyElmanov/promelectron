@@ -94,10 +94,10 @@ python scripts/implement-pipeline.py check-context <task-id>
 ```
 
 - Если `ESTIMATED_TOKENS` >= 600000, читай `.agent/runs/<task-id>/CONTEXT_SUMMARY.md` вместо полной истории.
-- Логируй оценочное количество токенов в `.agent/SESSION_LOG.md`.
+- Логируй оценочное количество токенов в `docs/journal/session-log.md`.
 
 ### SESSION_LOG — только хвост
 
-Субагенты читают `.agent/SESSION_LOG.md` только как tail (~200 строк, `Read` с `line_offset: -200` или `tail -200`); читать файл целиком запрещено. История старше хвоста живёт в `.agent/SESSION_LOG.archive.md` и читается только при явной необходимости.
+Субагенты читают `docs/journal/session-log.md` только как tail (~200 строк, `Read` с `line_offset: -200` или `tail -200`); читать файл целиком запрещено. История старше хвоста живёт в `docs/journal/session-log-archive.md` и читается только при явной необходимости.
 
 Kimi K3 имеет контекстное окно 1M с обязательным thinking mode. Порог предупреждения 600K (~60% окна) оставляет ~400K для system prompt, reasoning_content, выводов инструментов и генерации ответа.

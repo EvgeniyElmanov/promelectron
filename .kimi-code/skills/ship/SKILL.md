@@ -213,7 +213,7 @@ python scripts/implement-pipeline.py set-status <task-id> in-review
 - Никогда не коммить код. Если рабочее дерево dirty — остановись и попроси пользователя сначала закоммитить.
 - Всегда запускай `make pre-push` перед открытием PR.
 - Title и body PR на русском.
-- Coordination files живут в gitignored `.agent/runs/<task-id>/`; никогда не пиши в закоммиченную планировочную директорию `.agent/`.
+- Coordination files живут в gitignored `.agent/runs/<task-id>/`; никогда не пиши в закоммиченную планировочную директорию `docs/`.
 - Обрабатывай ошибки `gh pr create` корректно.
 
 ---

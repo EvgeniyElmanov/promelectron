@@ -2,7 +2,7 @@
 name: plan-maintainer
 description: >
   Operational plan maintainer for Promelectron. Runs analyze/update/propose/sprint-review/improve
-  commands against `.agent/PLANNING_HANDOFF.md` and `.agent/BACKLOG.md`.
+  commands against `docs/archive/2026-05-30-planning-handoff.md` and `docs/backlog.md`.
   `improve` runs the continuous improvement loop: analyzes failure patterns across
   all pipeline runs (scripts/agent_improve.py) and proposes rule/skill updates.
   Use for concrete backlog operations, not strategic roadmap decisions.
@@ -14,7 +14,7 @@ disableModelInvocation: false
 
 # Plan Maintainer / Менеджер планов
 
-Поддерживай `.agent/PLANNING_HANDOFF.md` и `.agent/BACKLOG.md` как единый источник истины для повседневной работы.
+Поддерживай `docs/archive/2026-05-30-planning-handoff.md` и `docs/backlog.md` как единый источник истины для повседневной работы.
 
 > Для стратегических решений по роадмапу используй `/skill:project-manager`.
 
@@ -33,11 +33,11 @@ disableModelInvocation: false
 ## Обязательный контекст
 
 Перед анализом или редактированием прочитай:
-1. `.agent/PLANNING_HANDOFF.md`
-2. `.agent/BACKLOG.md`
+1. `docs/archive/2026-05-30-planning-handoff.md`
+2. `docs/backlog.md`
 3. `PROJECT_CONTEXT.md`
-4. `.agent/BLOCKERS.md`
-5. `.agent/SESSION_LOG.md`
+4. `docs/blockers.md`
+5. `docs/journal/session-log.md`
 6. [Rule: Agent Commons](../../rules/agent-commons.md)
 
 ---
@@ -45,16 +45,16 @@ disableModelInvocation: false
 ## Команды
 
 ### `analyze`
-Прочитай `.agent/PLANNING_HANDOFF.md` → `.agent/BACKLOG.md` → `git log --oneline -30` → просканируй ключевые файлы → сообщи о расхождениях.
+Прочитай `docs/archive/2026-05-30-planning-handoff.md` → `docs/backlog.md` → `git log --oneline -30` → просканируй ключевые файлы → сообщи о расхождениях.
 
 ### `update`
-Прочитай `.agent/BACKLOG.md` → проверь конкретную задачу в коде → обнови статус → запиши обратно.
+Прочитай `docs/backlog.md` → проверь конкретную задачу в коде → обнови статус → запиши обратно.
 
 ### `propose`
-Прочитай `.agent/BACKLOG.md` → определи разблокированные P0/P1 → оцени capacity → напиши предложение по спринту.
+Прочитай `docs/backlog.md` → определи разблокированные P0/P1 → оцени capacity → напиши предложение по спринту.
 
 ### `sprint-review`
-Прочитай `.agent/BACKLOG.md` → `git log --since="1 week ago"` → сравни запланированное и фактическое → напиши review.
+Прочитай `docs/backlog.md` → `git log --since="1 week ago"` → сравни запланированное и фактическое → напиши review.
 
 ### `improve`
 Continuous improvement loop — анализ failure patterns поперёк всех задач пайплайна.
@@ -128,5 +128,5 @@ Continuous improvement loop — анализ failure patterns поперёк в�
 - ❌ Не создавай задачи длиннее 1 дня работы.
 - ❌ Не назначай задачи в спринт без проверки зависимостей.
 - ❌ Не скрывай блокеры — эскалируй их.
-- ❌ Не дублируй задачи между `.agent/PLANNING_HANDOFF.md` и GitHub Issues.
+- ❌ Не дублируй задачи между `docs/archive/2026-05-30-planning-handoff.md` и GitHub Issues.
 - ❌ Не удаляй выполненные задачи — архивируй их.

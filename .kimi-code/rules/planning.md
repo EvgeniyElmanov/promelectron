@@ -13,23 +13,23 @@ disableModelInvocation: true
 
 ## Single Source of Truth
 
-`.agent/PLANNING_HANDOFF.md` — единственный авторитетный план внутри репозитория.
+`docs/archive/2026-05-30-planning-handoff.md` — единственный авторитетный план внутри репозитория.
 `ROADMAP.md` **удалён** 2026-09-03: он был озаглавлен «Roadmap — MyShop» и не обновлялся с 11.06.
 План работ живёт в открытых GitHub Issues, его витрина — `ai-launcher/BOARD.md`.
 
-- При обновлении планов сначала редактируй `.agent/PLANNING_HANDOFF.md`.
-- Если `.agent/PLANNING_HANDOFF.md` противоречит открытым GitHub Issues, побеждают Issues.
+- При обновлении планов сначала редактируй `docs/archive/2026-05-30-planning-handoff.md`.
+- Если `docs/archive/2026-05-30-planning-handoff.md` противоречит открытым GitHub Issues, побеждают Issues.
 - Историческую справку ищи в `docs/archive/` и `git log`, а не в живых планах.
 
 ## Формат задачи
 
-Задачи в `.agent/PLANNING_HANDOFF.md` и `.agent/BACKLOG.md` используют формат, совместимый с таблицей бэклога:
+Задачи в `docs/archive/2026-05-30-planning-handoff.md` и `docs/backlog.md` используют формат, совместимый с таблицей бэклога:
 
 ```markdown
 | ID | Задача | Issue | Агент | Приоритет | Статус | Зависимости | Оценка | Блокер |
 ```
 
-Все 9 колонок обязательны; неизвестные значения — `—`. Каноническая живая строка (как в разделе agent intake `.agent/BACKLOG.md` и как пишут `implement-pipeline.py create-issue` / `sync-backlog`):
+Все 9 колонок обязательны; неизвестные значения — `—`. Каноническая живая строка (как в разделе agent intake `docs/backlog.md` и как пишут `implement-pipeline.py create-issue` / `sync-backlog`):
 
 ```markdown
 | — | <название> | [#N](https://github.com/AutonomaCo/promelectron/issues/N) | — | P1 | **backlog** | — | — | — |
@@ -41,7 +41,7 @@ disableModelInvocation: true
 - **Статус** — `todo`, `in_progress`, `in_review`, `done`, `blocked`
 - **Оценка** — дни/недели или `(S|M|L)`
 
-Для подробного описания в `.agent/PLANNING_HANDOFF.md` допустим формат:
+Для подробного описания в `docs/archive/2026-05-30-planning-handoff.md` допустим формат:
 
 ```markdown
 - **ID-XXX** Task title (S|M|L) — risk: low|medium|high
@@ -70,9 +70,9 @@ disableModelInvocation: true
 
 ## Границы спринта
 
-- Спринт = 2 недели (как в `.agent/BACKLOG.md`).
+- Спринт = 2 недели (как в `docs/backlog.md`).
 - В спринте не более 2 задач P0 и 3 задач P1.
-- В конце спринта обнови `.agent/PLANNING_HANDOFF.md` и `.agent/BACKLOG.md`:
+- В конце спринта обнови `docs/archive/2026-05-30-planning-handoff.md` и `docs/backlog.md`:
   - Что выполнено
   - Что не выполнено и почему
   - Новые блокеры
@@ -106,8 +106,8 @@ disableModelInvocation: true
 - [ ] Линтер и security-чеклист чисты
 - [ ] Фича работает в local/dev окружении
 - [ ] GitHub Issue закрыт, статус в GitHub Project board — Done
-- [ ] `.agent/BACKLOG.md` / `.agent/SESSION_LOG.md` / `PROJECT_CONTEXT.md` обновлены
-- [ ] `.agent/BLOCKERS.md` обновлён, если были блокеры
+- [ ] `docs/backlog.md` / `docs/journal/session-log.md` / `PROJECT_CONTEXT.md` обновлены
+- [ ] `docs/blockers.md` обновлён, если были блокеры
 - [ ] Новые follow-up задачи созданы только с explicit approval пользователя
 
 ---

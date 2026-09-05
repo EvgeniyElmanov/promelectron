@@ -95,9 +95,9 @@ Shared rules (reference markdown, не skills):
 
 Перед любым изменением кода прочитай:
 1. `PROJECT_CONTEXT.md` — стек, статус фич, блокеры, инвентарь API
-2. `.agent/BACKLOG.md` — текущий спринт
-3. `.agent/BLOCKERS.md` — активные блокеры
-4. `.agent/SESSION_LOG.md` — недавние сессии
+2. `docs/backlog.md` — текущий спринт
+3. `docs/blockers.md` — активные блокеры
+4. `docs/journal/session-log.md` — недавние сессии
 5. Соответствующий `<role>` skill в `.kimi-code/skills/<role>/SKILL.md` — инструкции роли
 6. [Rule: Agent Commons](../../rules/agent-commons.md) — язык, retry policy, обработка контекста
 7. [Rule: Pre-edit Checklist](../../rules/pre-edit-checklist.md) — проверки перед редактированием
@@ -113,7 +113,7 @@ python scripts/implement-pipeline.py check-context <task-id>
 ```
 
 - Если `ESTIMATED_TOKENS` >= 600000, читай `.agent/runs/<task-id>/CONTEXT_SUMMARY.md` вместо полной истории.
-- Логируй оценочное количество токенов в `.agent/SESSION_LOG.md`.
+- Логируй оценочное количество токенов в `docs/journal/session-log.md`.
 
 Kimi K3 имеет контекстное окно 1M токенов с обязательным thinking mode. Порог 600K (~60% окна) оставляет место для `reasoning_content`, выводов инструментов и системных инструкций.
 
@@ -128,8 +128,8 @@ Kimi K3 имеет контекстное окно 1M токенов с обяз
 ## 6. Обновления после работы
 
 После завершения:
-1. Обновить `.agent/SESSION_LOG.md`
-2. Обновить `.agent/BACKLOG.md`, если задача из спринта
+1. Обновить `docs/journal/session-log.md`
+2. Обновить `docs/backlog.md`, если задача из спринта
 3. Обновить `PROJECT_CONTEXT.md`, если изменилась архитектура
 
 ---

@@ -20,9 +20,9 @@ disableModelInvocation: true
 
 Перед любой операцией прочитай:
 1. `PROJECT_CONTEXT.md`
-2. `.agent/BACKLOG.md`
-3. `.agent/BLOCKERS.md`
-4. `.agent/SESSION_LOG.md`
+2. `docs/backlog.md`
+3. `docs/blockers.md`
+4. `docs/journal/session-log.md`
 5. [Rule: Agent Commons](../../rules/agent-commons.md)
 
 ## Контекст проекта

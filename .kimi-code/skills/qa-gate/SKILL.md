@@ -84,8 +84,8 @@ Paths:
 2. $AGENT_DIR/spec.md (если есть)
 3. $AGENT_DIR/review/findings.md (если есть)
 4. PROJECT_CONTEXT.md
-5. .agent/BACKLOG.md
-6. .agent/BLOCKERS.md
+5. docs/backlog.md
+6. docs/blockers.md
 7. `.kimi-code/skills/qa/SKILL.md`
 8. [Rule: Golden Path](../../rules/golden-path.md)
 9. [Rule: Agent Commons](../../rules/agent-commons.md)
@@ -97,7 +97,7 @@ Paths:
 4. Если фича затрагивает UI или пользовательские сценарии, или передан флаг --e2e — запусти E2E: `make -C "$WORKTREE" test-e2e`. Не делегируй E2E другому субагенту; при необходимости в запуске `e2e-tester` отдельно вернись к оркестратору после завершения.
 5. Проверь каждый Acceptance Criterion из $AGENT_DIR/spec.md.
 6. Запиши результаты в $AGENT_DIR/review/test-findings.md.
-7. Обнови $PROJECT_ROOT/.agent/SESSION_LOG.md.
+7. Обнови $PROJECT_ROOT/docs/journal/session-log.md.
 
 Do NOT edit source code.
 
@@ -143,6 +143,6 @@ python3 scripts/agent_state.py trace <task-id> qa_done --actor qa --data '{"stat
 - QA-агент никогда не редактирует исходный код — только пишет findings.
 - Do not move the GitHub Project board.
 - Keep all reads/writes under `.agent/runs/<task-id>/` and `.worktrees/<task-id>/`.
-- Always update `$PROJECT_ROOT/.agent/SESSION_LOG.md` after the QA gate.
+- Always update `$PROJECT_ROOT/docs/journal/session-log.md` after the QA gate.
 
 ---

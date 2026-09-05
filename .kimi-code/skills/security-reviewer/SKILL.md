@@ -29,7 +29,7 @@ disableModelInvocation: true
 2. `$AGENT_DIR/spec.md`
 3. `git -C "$WORKTREE" diff origin/main...HEAD`
 4. `PROJECT_CONTEXT.md`
-5. `.agent/SESSION_LOG.md`
+5. `docs/journal/session-log.md`
 6. [Rule: Agent Commons](../../rules/agent-commons.md)
 7. [Rule: Security](../../rules/security.md)
 

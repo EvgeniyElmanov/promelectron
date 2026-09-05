@@ -22,8 +22,8 @@ disableModelInvocation: true
 2. `$AGENT_DIR/spec.md`
 3. Предыдущие findings (`$AGENT_DIR/review/findings.md`), если это повторное ревью
 4. `PROJECT_CONTEXT.md`
-5. `.agent/BACKLOG.md`
-6. `.agent/SESSION_LOG.md`
+5. `docs/backlog.md`
+6. `docs/journal/session-log.md`
 7. [Rule: Agent Commons](../../rules/agent-commons.md)
 8. [Rule: Pre-edit Checklist](../../rules/pre-edit-checklist.md)
 9. [Rule: Golden Path](../../rules/golden-path.md)

@@ -21,9 +21,9 @@ disableModelInvocation: true
 ### Обязательный контекст (прочитать всё)
 
 1. `PROJECT_CONTEXT.md` — стек, статус фич, инвентарь API, блокеры
-2. `.agent/BACKLOG.md` — текущий спринт
-3. `.agent/BLOCKERS.md` — активные блокеры
-4. `.agent/SESSION_LOG.md` — недавние изменения
+2. `docs/backlog.md` — текущий спринт
+3. `docs/blockers.md` — активные блокеры
+4. `docs/journal/session-log.md` — недавние изменения
 5. `$AGENT_DIR/task.md` и `$AGENT_DIR/research/*.md`, если есть
 6. Существующий код, связанный с задачей (models, services, API, frontend)
 7. [Rule: Agent Commons](../../rules/agent-commons.md)
@@ -41,7 +41,7 @@ disableModelInvocation: true
 - **AGENT_DIR** — `.agent/runs/<task-id>/`, gitignored coordination plane (task.md, research/, spec.md).
 - **WORKTREE** — `.worktrees/<task-id>/`, per-task code checkout.
 
-Читай task/research файлы из **AGENT_DIR**; исследуй код в **WORKTREE**. НЕ пиши spec.md в закоммиченную планировочную директорию `.agent/`. `cd` субагента не сохраняется между tool calls — используй явные пути для всех операций Read/Edit.
+Читай task/research файлы из **AGENT_DIR**; исследуй код в **WORKTREE**. НЕ пиши spec.md в закоммиченную планировочную директорию `docs/`. `cd` субагента не сохраняется между tool calls — используй явные пути для всех операций Read/Edit.
 
 Когда вызывается `/skill:spec` (standalone), worktree ещё нет. Используй `PROJECT_ROOT` для исследования кодовой базы и пиши spec в `$AGENT_DIR/spec.md`.
 
