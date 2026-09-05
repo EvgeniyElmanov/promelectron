@@ -18,7 +18,7 @@ have different lifetimes.
 > ### ⚠️ Do NOT confuse `.agent/runs/` with the committed `.agent/` planning dir
 > This project's **`.agent/`** root is a **committed** human planning system (`BACKLOG.md`,
 > `BLOCKERS.md`, `DECISIONS.md`, `METRICS.md`, `SESSION_LOG.md`, `tasks/`) read at session start
-> per the `agent-context` rule. The pipeline's transient per-task files live **only** under
+> per `AGENTS.md`. The pipeline's transient per-task files live **only** under
 > `.agent/runs/` (gitignored via `/.agent/runs/`). Never write pipeline scratch into the
 > committed planning files, and never `git add .agent/runs/`.
 
