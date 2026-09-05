@@ -62,27 +62,70 @@ gh issue edit <N> --repo AutonomaCo/promelectron --remove-label in-progress --ad
 
 ## Config cache
 
-Discovery is cached in `.claude/.github-project.json` (safe to commit — it holds opaque GitHub
-node IDs, no secrets, and is the same for the whole team). Shape:
+Discovery is **already done** and cached in `.claude/.github-project.json` (committed — it holds
+opaque GitHub node IDs, no secrets). Read it instead of rediscovering.
 
-```json
-{
-  "owner": "AutonomaCo",
-  "ownerType": "organization",
-  "projectNumber": 1,
-  "projectId": "PVT_xxx",
-  "statusFieldId": "PVTSSF_xxx",
-  "options": { "Todo": "f75ad846", "In Progress": "47fc9ee4", "In Review": "...", "Done": "98236657" },
-  "transitions": { "start": "In Progress", "pr_opened": "In Review", "merged": "Done" }
-}
+Project: **`AutonomaCo/1`** — https://github.com/orgs/AutonomaCo/projects/1
+
+### Columns of THIS board
+
+`Backlog` → `Ready` → `In progress` → `In review` → `Done`. Note the lowercase second words —
+`In progress`, not `In Progress`; an exact-name mismatch silently no-ops.
+
+| Milestone | Column |
+|---|---|
+| заведён | `Backlog` |
+| **промпт написан, замок свободен** | `Ready` — то же, что 🟢 с кнопкой на пульте |
+| взят в работу | `In progress` |
+| PR открыт | `In review` |
+| смержен | `Done` |
+
+`Ready` — единственная колонка, которую двигает не конвейер, а приоритизация: пункт попадает
+туда, когда для него написан промпт в `ai-launcher/prompts/`.
+
+### ⚠️ Два разных вида полей — и разные мутации
+
+Это главная ловушка этой доски.
+
+**Поля доски** — `Status`, `Size`, `Замок`. Пишутся обычным путём:
+
+```bash
+gh project item-edit --id <itemId> --project-id <projectId> \
+  --field-id <fieldId> --single-select-option-id <optionId>
 ```
 
-- `options` maps **column name → option id** (verbatim names from the board).
-- `transitions` maps the **pipeline milestone → column name** to set at that milestone. Edit this
-  if the board uses different column names (e.g. `"start": "Doing"`).
+**Поля уровня issue** — `Priority`, `Start date`, `Target date`, `Effort`. Живут на самой issue
+(видны и вне проекта) и через `updateProjectV2ItemFieldValue` **не пишутся**: GraphQL отвечает
+`Issue field values cannot be updated using the updateProjectV2ItemFieldValue mutation`.
+Им нужна своя мутация:
 
-If the cache is missing or stale (a `gh` call fails to match an id), re-run discovery (below) and
-rewrite it.
+```bash
+gh api graphql -f query='
+mutation { updateIssueFieldValue(input:{
+  issueId: "<issue node id>"
+  issueField: { fieldId: "IFSS_kgDOAoI0Aw", singleSelectOptionId: "<optionId>" }
+}) { clientMutationId } }'
+```
+
+Для даты вместо `singleSelectOptionId` идёт `dateValue: "2026-09-08"`. Node id issue берётся так:
+`gh api graphql -f query='query{repository(owner:"AutonomaCo",name:"promelectron"){issue(number:N){id}}}' -q .data.repository.issue.id`
+
+По той же причине **встроенный `Priority` нельзя переопределить** своими вариантами:
+`updateProjectV2Field` отвечает `Only custom fields can be updated`. Поэтому используется его
+родная шкала, а соответствие меткам репозитория такое:
+
+| Priority на issue | Метка | Что значит |
+|---|---|---|
+| `Urgent` | `P0` | деньги, данные, доступ |
+| `High` | `P1` | ломается молча |
+| `Medium` | `P2` | когда освободятся руки |
+
+### Виды доски
+
+`Backlog` · `Priority board` · `Team items` · `Roadmap` (по `Start date` / `Target date`) ·
+`My items` · `Замки`. Создать вид можно (`createProjectV2View`), а вот **группировку внутри вида
+API не отдаёт** — `configuration` принимает только `visibleFieldIds`. Группировку по `Замок`
+владелец ставит руками.
 
 ## Discovery (run when cache is absent)
 

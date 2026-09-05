@@ -1,0 +1,52 @@
+{
+  "_comment": "Обнаружено 2026-09-05. Только непрозрачные id GitHub, секретов нет — файл коммитится и общий на команду. Пересоздать: см. .claude/skills/github-project/SKILL.md.",
+  "owner": "AutonomaCo",
+  "ownerType": "organization",
+  "projectNumber": 1,
+  "projectId": "PVT_kwDOEOu5sM4BbRfc",
+  "projectUrl": "https://github.com/orgs/AutonomaCo/projects/1",
+  "statusFieldId": "PVTSSF_lADOEOu5sM4BbRfczhWDIWE",
+  "options": {
+    "Backlog": "f75ad846",
+    "Ready": "61e4505c",
+    "In progress": "47fc9ee4",
+    "In review": "df73e18b",
+    "Done": "98236657"
+  },
+  "transitions": {
+    "prompt_written": "Ready",
+    "start": "In progress",
+    "pr_opened": "In review",
+    "merged": "Done"
+  },
+  "lockField": {
+    "_comment": "Поле доски. Замок пункта = зона файлов; совпадает с меткой issue.",
+    "id": "PVTSSF_lADOEOu5sM4BbRfczhhYzpQ",
+    "name": "Замок",
+    "options": {
+      "backend": "9c5ee2fe", "infra": "4dc8b735", "e2e": "5d9ef725",
+      "frontend": "3d5e9615", "docs": "80d16404", "harness": "c1b19e17"
+    }
+  },
+  "sizeField": {
+    "id": "PVTSSF_lADOEOu5sM4BbRfczhWDIco",
+    "options": {"XS": "6c6483d2", "S": "f784b110", "M": "7515a9f1", "L": "817d0097", "XL": "db339eb2"}
+  },
+  "issueFields": {
+    "_comment": "Поля УРОВНЯ ISSUE, не доски. Пишутся мутацией updateIssueFieldValue(issueId, issueField{fieldId, ...}), а НЕ updateProjectV2ItemFieldValue — та отвечает 'Issue field values cannot be updated'. Видны и на самой issue, вне проекта.",
+    "priority": {
+      "id": "IFSS_kgDOAoI0Aw",
+      "map": {"P0": "Urgent", "P1": "High", "P2": "Medium"},
+      "options": {
+        "Urgent": "IFSSO_kgDOBGPDmg", "High": "IFSSO_kgDOBGPDmw",
+        "Medium": "IFSSO_kgDOBGPDnA", "Low": "IFSSO_kgDOBGPDnQ"
+      }
+    },
+    "startDate": {"id": "IFD_kgDOAoI0BA"},
+    "targetDate": {"id": "IFD_kgDOAoI0BQ"},
+    "effort": {
+      "id": "IFSS_kgDOAoI0Bg",
+      "options": {"High": "IFSSO_kgDOBGPDng", "Medium": "IFSSO_kgDOBGPDnw", "Low": "IFSSO_kgDOBGPDoA"}
+    }
+  }
+}

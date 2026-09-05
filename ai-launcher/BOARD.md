@@ -6,6 +6,8 @@
 Кнопка у всех одна — `make ai PROMPT=…`; чем она запускается (claude, kimi или следующий),
 задаётся машинно-локально в `Makefile.override.mk`. Настройка — [`README.md`](./README.md).
 Правила формы, замков, связок и движения issue — [`CONVENTIONS.md`](./CONVENTIONS.md).
+Доска: [AutonomaCo/1](https://github.com/orgs/AutonomaCo/projects/1) — вид **Roadmap** показывает волны по датам,
+вид **Замки** — четыре параллельные дорожки. `Ready` на доске = 🟢 с кнопкой здесь.
 Проверка согласованности: `python3 scripts/check-board.py`.
 
 Борд — **пульт, а не журнал**. Разборы живут в issue, `.agent/DECISIONS.md` и `git log`.
@@ -117,7 +119,6 @@
 | **#213**: смена ключа 1С ломает обмен на стороне 1С | кто и когда меняет ключ в 1С; без согласования выкат уронит каталог |
 | **#222**: приёмник наблюдаемости (Sentry SaaS / self-hosted / другое) | деньги и внешний сервис |
 | **Шесть продуктовых вопросов** — onboarding продавцов, product variants, sub-orders и комиссии, промо/купоны, возвраты, Pinia/модерация/refresh tokens | в коде по нулям; прежде чем заводить — решить, нужны ли | 
-| **`gh auth refresh -s project`** | без scope колонки GitHub Project не читаются; метки `in-progress`/`in-review` работают и без него |
 
 Подробности вопросов — `.agent/BACKLOG.md`, раздел «Ждут решения владельца».
 
