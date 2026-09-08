@@ -169,8 +169,8 @@ echo "$SYNC_OUT" | python3 -c \
   "import json,sys; d=json.load(sys.stdin); print(f'[seed-catalog] full-sync: {d}'); sys.exit(0 if d.get('status') == 'queued' else 1)" \
   || fail "full-sync вернул не queued: $SYNC_OUT"
 
-log "=== Шаг 6/10: ожидание pull-синка (ONEC_FULL_SYNC + батчи, timeout 900s) ==="
-wait_for "job ONEC_FULL_SYNC completed" 900 check_full_sync_done
+log "=== Шаг 6/10: ожидание pull-синка (ONEC_FULL_SYNC + батчи, timeout 1800s) ==="
+wait_for "job ONEC_FULL_SYNC completed" 1800 check_full_sync_done
 wait_for "все ONEC_APPLY_CHANGES settled" 900 check_apply_jobs_settled
 check_no_failed_apply || fail "есть failed ONEC_APPLY_CHANGES job'ы"
 PRODUCTS_TOTAL="$(psql_query "SELECT count(*) FROM products")"

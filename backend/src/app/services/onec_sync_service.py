@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
@@ -691,6 +692,37 @@ async def _enqueue_product_attribute_batches(
         )
 
 
+# Скачивание бинарей присоединённых файлов и загрузка в storage — чистый
+# network I/O (без обращений к БД), поэтому конвейер конкурентный: последовательно
+# 13K файлов реального каталога занимали бы часы (run 34231200427).
+_IMAGE_FETCH_CONCURRENCY = 16
+
+
+async def _download_and_upload_image(
+    client: "OnecClient", file: OnecProductFileOdata
+) -> tuple[str, str, str] | None:
+    """Скачать бинарь файла из 1С и загрузить в storage.
+
+    Возвращает ``(product_key, description, url)`` или None при ошибке
+    скачивания (файл пропускается, батч не валится).
+    """
+    try:
+        binary = await client.download_file_binary(file.ref_key)
+    except Exception as exc:
+        logger.warning(
+            "Failed to download 1C file %r for product %r: %s",
+            file.ref_key,
+            file.product_key,
+            exc,
+        )
+        return None
+    ext = file.extension.lower()
+    key = f"onec/{file.ref_key}.{ext}"
+    content_type = _IMAGE_CONTENT_TYPES.get(ext, "application/octet-stream")
+    url = await storage_service.storage.upload_raw(key, binary, content_type)
+    return (file.product_key, file.description, url)
+
+
 async def _enqueue_product_image_batches(
     session: AsyncSession,
     client: "OnecClient",
@@ -704,41 +736,31 @@ async def _enqueue_product_image_batches(
     перезаписывает тот же объект, дублей URL не плодится. Файлы с
     DeletionMark пропускаются. Порядок URL — по Description файла.
     """
-    grouped: dict[str, list[OnecProductFileOdata]] = {}
-    for file in files:
-        if file.deletion_mark:
-            continue
-        grouped.setdefault(file.product_key, []).append(file)
+    candidates = [f for f in files if not f.deletion_mark]
+    semaphore = asyncio.Semaphore(_IMAGE_FETCH_CONCURRENCY)
 
-    changes: list[OnecChange] = []
-    for product_key, product_files in grouped.items():
-        urls: list[str] = []
-        for file in sorted(product_files, key=lambda f: f.description):
-            try:
-                binary = await client.download_file_binary(file.ref_key)
-            except Exception as exc:
-                logger.warning(
-                    "Failed to download 1C file %r for product %r: %s",
-                    file.ref_key,
-                    product_key,
-                    exc,
-                )
-                continue
-            ext = file.extension.lower()
-            key = f"onec/{file.ref_key}.{ext}"
-            content_type = _IMAGE_CONTENT_TYPES.get(ext, "application/octet-stream")
-            url = await storage_service.storage.upload_raw(key, binary, content_type)
-            urls.append(url)
-        if not urls:
+    async def _bounded(file: OnecProductFileOdata) -> tuple[str, str, str] | None:
+        async with semaphore:
+            return await _download_and_upload_image(client, file)
+
+    results = await asyncio.gather(*(_bounded(f) for f in candidates))
+
+    grouped: dict[str, list[tuple[str, str]]] = {}
+    for result in results:
+        if result is None:
             continue
-        changes.append(
-            OnecChange(
-                external_id=product_key,
-                action="update",
-                version=version,
-                data={"images": urls},
-            )
+        product_key, description, url = result
+        grouped.setdefault(product_key, []).append((description, url))
+
+    changes = [
+        OnecChange(
+            external_id=product_key,
+            action="update",
+            version=version,
+            data={"images": [url for _, url in sorted(entries)]},
         )
+        for product_key, entries in grouped.items()
+    ]
     for chunk in batched(changes, BATCH_SIZE):
         await _enqueue_change_log_batch(
             session, "product_images", list(chunk), version, base_name
