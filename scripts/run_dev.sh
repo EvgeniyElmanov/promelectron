@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-cd /home/evgeniy/project/my_shop_backend
+cd /home/evgeniy/project/promelectron
 make dev
 
 echo "Waiting for services to start..."

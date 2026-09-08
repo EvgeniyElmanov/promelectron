@@ -19,7 +19,7 @@
       "args": [
         "-y",
         "@modelcontextprotocol/server-filesystem",
-        "/home/evgeniy/project/my_shop_backend"
+        "/home/evgeniy/project/promelectron"
       ]
     },
     "memory": {
@@ -49,7 +49,7 @@
     "figma": {
       "type": "stdio",
       "command": "python3",
-      "args": ["/home/evgeniy/project/my_shop_backend/scripts/mcp_figma.py"],
+      "args": ["/home/evgeniy/project/promelectron/scripts/mcp_figma.py"],
       "env": {
         "FIGMA_ACCESS_TOKEN": "${FIGMA_ACCESS_TOKEN}"
       }
@@ -57,7 +57,7 @@
     "atlassian": {
       "type": "stdio",
       "command": "python3",
-      "args": ["/home/evgeniy/project/my_shop_backend/scripts/mcp_atlassian.py"],
+      "args": ["/home/evgeniy/project/promelectron/scripts/mcp_atlassian.py"],
       "env": {
         "ATLASSIAN_URL": "${ATLASSIAN_URL}",
         "ATLASSIAN_USERNAME": "${ATLASSIAN_USERNAME}",
