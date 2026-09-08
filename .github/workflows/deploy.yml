@@ -134,7 +134,6 @@ jobs:
         env:
           KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
         run: |
-          kubectl create namespace promelectron-test --dry-run=client -o yaml | kubectl apply -f -
           kubectl create secret docker-registry harborcred \
             --docker-server=${{ env.REGISTRY }} \
             --docker-username=${{ secrets.HARBOR_USERNAME }} \
@@ -344,7 +343,6 @@ jobs:
         env:
           KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
         run: |
-          kubectl create namespace promelectron --dry-run=client -o yaml | kubectl apply -f -
           kubectl create secret docker-registry harborcred \
             --docker-server=${{ env.REGISTRY }} \
             --docker-username=${{ secrets.HARBOR_USERNAME }} \
