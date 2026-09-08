@@ -104,3 +104,6 @@ tests/agent/*.png
 # Машинно-локальные цели make (в первую очередь AI_CMD для лончера борда):
 # у каждого разработчика свой агент — claude или kimi. Образец — ai-launcher/README.md.
 Makefile.override.mk
+
+# Реальный снапshot 1С (7.4 МБ, issue #227) — не коммитим; восстановление: zcat | psql
+mocks/onec-server/data/onec_seed.sql.gz

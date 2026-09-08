@@ -54,6 +54,17 @@ _VALUE_TYPE_MAP = {
 }
 
 
+def odata_attribute_value_type(type_name: str | None) -> AttributeValueType:
+    """ValueType.Types[0] определения характеристики → AttributeValueType.
+
+    Общий хелпер для OData-ветки intake loader'а и pull-синка
+    (onec_sync_service): неизвестный/отсутствующий тип → string.
+    """
+    if type_name is None:
+        return AttributeValueType.string
+    return _VALUE_TYPE_MAP.get(type_name, AttributeValueType.string)
+
+
 @dataclass
 class LoadStats:
     """Счётчики разбора intake-файла (уходят в processing_log job'а)."""
@@ -518,16 +529,13 @@ async def _load_odata_attribute_defs(
             stats.skipped += 1
             continue
         types = (rec.get("ValueType") or {}).get("Types") or []
-        value_type = _VALUE_TYPE_MAP.get(types[0], AttributeValueType.string) if types else (
-            AttributeValueType.string
-        )
         await _upsert_attribute(
             session,
             cache,
             stats,
             onec_id=onec_id,
             name=rec.get("Description") or onec_id,
-            value_type=value_type,
+            value_type=odata_attribute_value_type(types[0] if types else None),
         )
     await session.commit()
 

@@ -184,18 +184,13 @@ services:
       - "8100:8100"
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/promelectron
-      ONEC_TARGET_URL: http://api:8000/api/v1/onec/intake/
-      ONEC_API_KEY: ${ONEC_WEBHOOK_API_KEY:-dev-onec-api-key}
-      SYNC_INTERVAL_MINUTES: ${ONEC_MOCK_SYNC_INTERVAL_MINUTES:-30}
-      SEED_ON_START: ${ONEC_MOCK_SEED_ON_START:-true}
-      SEED_PRODUCTS_COUNT: ${ONEC_MOCK_SEED_PRODUCTS_COUNT:-200}
-      CATALOG_SEED: ${ONEC_MOCK_CATALOG_SEED:-42}
+      ONEC_MOCK_SCHEMA: ${ONEC_MOCK_SCHEMA:-onec}
+      ONEC_MOCK_LOGIN: ${ONEC_MOCK_LOGIN:-onec}
+      ONEC_MOCK_PASSWORD: ${ONEC_MOCK_PASSWORD:-onec}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     depends_on:
       postgres:
         condition: service_healthy
-      api:
-        condition: service_started
     restart: unless-stopped
 
 volumes:

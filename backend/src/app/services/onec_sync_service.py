@@ -3,25 +3,36 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from hashlib import sha256
 from itertools import batched
+from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.app.core.config import settings
+from src.app.models.attribute import Attribute, AttributeValueType, ProductAttributeValue
 from src.app.models.category import Category
 from src.app.models.job import Job
 from src.app.models.onec_sync import OnecChangeLog
 from src.app.models.product import Product
 from src.app.schemas.onec import (
+    OnecAttributeDefinitionOdata,
     OnecCategoryOdata,
     OnecChange,
     OnecPriceOdata,
+    OnecProductAttributeOdata,
+    OnecProductFileOdata,
     OnecProductOdata,
     OnecStockOdata,
     OnecWebhookPayload,
 )
+from src.app.services import storage_service
+from src.app.services.onec_intake_loader import odata_attribute_value_type
+from src.app.services.onec_units import parse_value_with_unit
 from src.app.services.price_service import upsert_product_price
+
+if TYPE_CHECKING:
+    from src.app.workers.onec_client import OnecClient
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +82,40 @@ def _is_stale_change(change_version: datetime, existing_sync_at: datetime | None
     return change_version <= existing_sync_at
 
 
+async def _resolve_unique_sku(
+    session: AsyncSession, sku: Any, external_id: str
+) -> str | None:
+    """Нормализовать sku и проверить занятость другим товаром.
+
+    В 1С уникальность Артикула не гарантирована: у разных Ref_Key бывают
+    одинаковые артикулы, в т.ч. с хвостовыми пробелами. Дубль не должен
+    валить импорт (F002): товар сохраняется с sku=NULL, оригинальный
+    артикул остаётся в name. Проверка — явным SELECT, чтобы не ловить
+    IntegrityError внутри per-change savepoint'а.
+    """
+    if sku is None:
+        return None
+    sku = str(sku).strip()
+    if not sku:
+        return None
+    result = await session.execute(
+        select(Product.id).where(
+            Product.sku == sku,
+            # onec_id NULL (ручные/seed-товары) тоже считаем чужими: `!=` по NULL
+            # отфильтровал бы их из выборки
+            (Product.onec_id != external_id) | Product.onec_id.is_(None),
+        )
+    )
+    if result.first() is not None:
+        logger.warning(
+            "SKU %r already taken by another product — sku set to NULL for onec_id=%r",
+            sku,
+            external_id,
+        )
+        return None
+    return sku
+
+
 async def apply_product_change(session: AsyncSession, change: OnecChange) -> Product | None:
     """Apply a single 1C product change: create, update or soft-delete."""
     result = await session.execute(
@@ -94,19 +139,25 @@ async def apply_product_change(session: AsyncSession, change: OnecChange) -> Pro
         return product
 
     # Set required fields first so any autoflush triggered by FK resolution
-    # (e.g. category_id lookup) sees a valid product row.
+    # (e.g. category_id lookup) or the sku uniqueness SELECT sees a valid
+    # product row.
     if "name" in data:
         product.name = data["name"]
     if "description" in data:
         product.description = data["description"]
-    if "sku" in data:
-        product.sku = data["sku"]
     if "stock" in data:
         product.stock = data["stock"]
     if "supplier_id" in data:
         product.supplier_id = data["supplier_id"]
     if "is_active" in data:
         product.is_active = data["is_active"]
+    if "weight_grams" in data and data["weight_grams"]:
+        product.weight_grams = data["weight_grams"]
+
+    # Sku — после обязательных полей: проверка занятости делает SELECT,
+    # который вызывает autoflush нового товара.
+    if "sku" in data:
+        product.sku = await _resolve_unique_sku(session, data["sku"], change.external_id)
 
     # Resolve foreign keys after all required fields are present.
     if "category_id" in data:
@@ -222,6 +273,108 @@ async def apply_stock_change(session: AsyncSession, change: OnecChange) -> Produ
     return product
 
 
+async def apply_product_attributes_change(
+    session: AsyncSession, change: OnecChange
+) -> Product | None:
+    """Apply характеристики товара из 1С (pull-синк, entity_type=product_attributes).
+
+    change.data["attributes"] — список dict с ключами attribute_key
+    (onec_id атрибута) и value (уже разрешённое значение: enum-GUID заменён
+    на Description на этапе синка). Типизация значения — по семантике
+    onec_intake_loader (parse_value_with_unit, D-10). Неизвестный товар или
+    атрибут молча пропускаются (цены/остатки/атрибуты в 1С ссылаются на
+    товары вне выгруженного подмножества).
+    """
+    result = await session.execute(
+        select(Product).where(Product.onec_id == change.external_id)
+    )
+    product = result.scalar_one_or_none()
+    if product is None:
+        return None
+
+    for item in change.data.get("attributes") or []:
+        attribute_key = item.get("attribute_key")
+        if not attribute_key:
+            continue
+        result = await session.execute(
+            select(Attribute).where(Attribute.onec_id == attribute_key)
+        )
+        attribute = result.scalar_one_or_none()
+        if attribute is None:
+            # Определение ещё не загружено — auto-create заглушкой
+            # (is_filterable=false), имя/тип подтянутся следующим синком (D-05).
+            attribute = Attribute(
+                code=attribute_key,
+                onec_id=attribute_key,
+                name=attribute_key,
+                value_type=AttributeValueType.string,
+                is_filterable=False,
+            )
+            session.add(attribute)
+            await session.flush()
+
+        raw_value = item.get("value")
+        if isinstance(raw_value, bool):
+            number, unit, text, bool_value = None, None, None, raw_value
+        else:
+            parsed = parse_value_with_unit(None if raw_value is None else str(raw_value))
+            number, unit, text, bool_value = parsed.number, parsed.unit, parsed.text, None
+            if attribute.value_type == AttributeValueType.bool:
+                bool_value = (text or "").strip().lower() in ("true", "да", "1")
+                number, text = None, None if bool_value else text
+            if unit and attribute.unit is None:
+                # Базовая единица атрибута фиксируется по первому числовому
+                # значению (D-10)
+                attribute.unit = unit
+
+        await session.flush()  # гарантируем id у свежих product/attribute
+        result = await session.execute(
+            select(ProductAttributeValue).where(
+                ProductAttributeValue.product_id == product.id,
+                ProductAttributeValue.attribute_id == attribute.id,
+            )
+        )
+        value = result.scalar_one_or_none()
+        if value is None:
+            value = ProductAttributeValue(product_id=product.id, attribute_id=attribute.id)
+            session.add(value)
+        value.value_number = number
+        value.value_text = text
+        value.value_bool = bool_value
+
+    return product
+
+
+async def apply_product_images_change(
+    session: AsyncSession, change: OnecChange
+) -> Product | None:
+    """Apply изображения товара из 1С (pull-синк, entity_type=product_images).
+
+    change.data["images"] — список URL (products.images — JSON list строк,
+    формат читает frontend getImageUrl: строка "/uploads/<key>" или внешний
+    URL). Бинарь уже скачан и загружен в storage на этапе синка; здесь только
+    идемпотентный merge URL без дублей, порядок — по Description файла.
+    Неизвестный товар молча пропускается.
+    """
+    result = await session.execute(
+        select(Product).where(Product.onec_id == change.external_id)
+    )
+    product = result.scalar_one_or_none()
+    if product is None:
+        return None
+
+    urls = [u for u in (change.data.get("images") or []) if u]
+    if not urls:
+        return product
+    images = list(product.images or [])
+    for url in urls:
+        if url not in images:
+            images.append(url)
+    if images != (product.images or []):
+        product.images = images
+    return product
+
+
 async def handle_onec_apply_changes(session: AsyncSession, payload: dict) -> None:
     """Process an ONEC_APPLY_CHANGES job payload and update the catalog."""
     log_id = payload.get("log_id")
@@ -247,18 +400,48 @@ async def handle_onec_apply_changes(session: AsyncSession, payload: dict) -> Non
             "price": apply_price_change,
             "stock": apply_stock_change,
             "order_status": apply_order_status_change,
+            "product_attributes": apply_product_attributes_change,
+            "product_images": apply_product_images_change,
         }.get(webhook_payload.entity_type)
 
         if not handler:
             raise ValueError(f"Unsupported entity_type: {webhook_payload.entity_type}")
 
-        async with session.begin_nested():
-            for change in webhook_payload.changes:
-                await handler(session, change)
+        # Per-change savepoint: один битый change (напр. дубль sku из 1С)
+        # не валит весь батч — ошибка фиксируется, батч продолжается.
+        failed_changes: list[str] = []
+        applied_count = 0
+        for change in webhook_payload.changes:
+            new_before = set(session.new)
+            try:
+                async with session.begin_nested():
+                    await handler(session, change)
+                applied_count += 1
+            except Exception as exc:
+                # Savepoint откатил БД-изменения, но свежие ORM-объекты
+                # остаются в session.new и упали бы повторно на commit.
+                for obj in set(session.new) - new_before:
+                    session.expunge(obj)
+                logger.warning(
+                    "Failed to apply %s change for %r: %s",
+                    webhook_payload.entity_type,
+                    change.external_id,
+                    exc,
+                )
+                failed_changes.append(f"{change.external_id}: {exc}")
 
-        log.status = "done"
-        log.applied_at = datetime.now(timezone.utc)
-        log.error_message = None
+        if applied_count > 0 or not webhook_payload.changes:
+            log.status = "done"
+            log.applied_at = datetime.now(timezone.utc)
+            log.error_message = (
+                f"{len(failed_changes)} change(s) failed: " + "; ".join(failed_changes)
+                if failed_changes
+                else None
+            )
+        else:
+            # Ни один change не применился — raise уходит во внешний except,
+            # который ставит failed/error/retry_count (retry-семантика сохранена)
+            raise ValueError("; ".join(failed_changes))
     except Exception as exc:
         log.status = "failed"
         log.error_message = str(exc)
@@ -286,7 +469,7 @@ def build_category_change(category: OnecCategoryOdata, version: datetime) -> One
         data={
             "name": category.description,
             "parent_id": category.parent_key,
-            "is_active": True,
+            "is_active": not category.deletion_mark,
         },
     )
 
@@ -298,10 +481,14 @@ def build_product_change(product: OnecProductOdata, version: datetime, supplier_
         version=version,
         data={
             "name": product.description,
+            "description": product.full_name or product.description,
             "sku": product.article or product.code,
-            "category_id": product.parent_key,
+            # Категория — по КатегорияНоменклатуры_Key (у реальных товаров
+            # Parent_Key нулевой, FORMAT_MAP.md §2)
+            "category_id": product.category_key,
             "supplier_id": supplier_id,
-            "is_active": True,
+            "weight_grams": product.weight_grams,
+            "is_active": not product.deletion_mark,
         },
     )
 
@@ -389,6 +576,175 @@ async def create_onec_full_sync_job(session: AsyncSession) -> Job:
     return job
 
 
+# ─── Pull-синк характеристик и изображений ────────────────────────────────────
+
+# Content-Type загружаемого бинаря по расширению файла 1С.
+_IMAGE_CONTENT_TYPES = {
+    "jpg": "image/jpeg",
+    "jpeg": "image/jpeg",
+    "png": "image/png",
+    "webp": "image/webp",
+    "gif": "image/gif",
+}
+
+
+async def _upsert_attribute_definitions(
+    session: AsyncSession,
+    definitions: list[OnecAttributeDefinitionOdata],
+) -> None:
+    """Upsert справочника Attribute по onec_id (code = onec_id, D-05).
+
+    Применяется напрямую (без OnecChangeLog): определения не зависят от
+    товаров и нужны как справочник до батчей product_attributes.
+    """
+    cache: dict[str, Attribute] = {}
+    for defn in definitions:
+        attribute = cache.get(defn.ref_key)
+        if attribute is None:
+            result = await session.execute(
+                select(Attribute).where(Attribute.onec_id == defn.ref_key)
+            )
+            attribute = result.scalar_one_or_none()
+        value_type = odata_attribute_value_type(defn.value_type)
+        if attribute is None:
+            attribute = Attribute(
+                code=defn.ref_key,
+                onec_id=defn.ref_key,
+                name=defn.name or defn.ref_key,
+                value_type=value_type,
+                is_filterable=False,
+            )
+            session.add(attribute)
+        else:
+            attribute.name = defn.name or attribute.name
+            attribute.value_type = value_type
+        cache[defn.ref_key] = attribute
+    await session.flush()
+
+
+def _resolve_product_attribute_value(
+    attr: OnecProductAttributeOdata,
+    enum_values: dict[str, str],
+) -> object:
+    """Разрешить значение строки ТЧ «Дополнительные реквизиты» в текст/bool.
+
+    Семантика — как в OData-ветке onec_intake_loader: ссылочное значение
+    (Значение_Type = StandardODATA.Catalog_ЗначенияСвойствОбъектов /
+    CatalogRef.*) резолвится в Description справочника значений; иначе —
+    ТекстоваяСтрока. Неразрешённый GUID сохраняется текстом (warning).
+    """
+    type_name = attr.value_type_name or ""
+    is_enum_ref = type_name.startswith("CatalogRef.") or type_name.endswith(
+        "Catalog_ЗначенияСвойствОбъектов"
+    )
+    if is_enum_ref and attr.value_key:
+        resolved = enum_values.get(attr.value_key)
+        if resolved is None:
+            logger.warning(
+                "Unresolved enum value GUID %r for attribute %r — stored as text",
+                attr.value_key,
+                attr.attribute_key,
+            )
+            resolved = attr.value_key
+        return resolved
+    if type_name == "Boolean":
+        return (attr.text_value or "").strip().lower() in ("true", "да", "1")
+    return attr.text_value
+
+
+def _group_attributes_by_product(
+    rows: list[OnecProductAttributeOdata],
+    enum_values: dict[str, str],
+) -> dict[str, list[dict]]:
+    """Сгруппировать строки ТЧ по товару: product_key → [{attribute_key, value}]."""
+    grouped: dict[str, list[dict]] = {}
+    for row in sorted(rows, key=lambda r: (r.product_key, int(r.line_number or 0))):
+        grouped.setdefault(row.product_key, []).append(
+            {
+                "attribute_key": row.attribute_key,
+                "value": _resolve_product_attribute_value(row, enum_values),
+            }
+        )
+    return grouped
+
+
+async def _enqueue_product_attribute_batches(
+    session: AsyncSession,
+    rows: list[OnecProductAttributeOdata],
+    enum_values: dict[str, str],
+    version: datetime,
+    base_name: str,
+) -> None:
+    grouped = _group_attributes_by_product(rows, enum_values)
+    changes = [
+        OnecChange(
+            external_id=product_key,
+            action="update",
+            version=version,
+            data={"attributes": attributes},
+        )
+        for product_key, attributes in grouped.items()
+    ]
+    for chunk in batched(changes, BATCH_SIZE):
+        await _enqueue_change_log_batch(
+            session, "product_attributes", list(chunk), version, base_name
+        )
+
+
+async def _enqueue_product_image_batches(
+    session: AsyncSession,
+    client: "OnecClient",
+    files: list[OnecProductFileOdata],
+    version: datetime,
+    base_name: str,
+) -> None:
+    """Скачать бинари файлов, загрузить в storage, enqueue product_images.
+
+    Ключ объекта детерминирован (``onec/<ref_key>.<ext>``) — повторный синк
+    перезаписывает тот же объект, дублей URL не плодится. Файлы с
+    DeletionMark пропускаются. Порядок URL — по Description файла.
+    """
+    grouped: dict[str, list[OnecProductFileOdata]] = {}
+    for file in files:
+        if file.deletion_mark:
+            continue
+        grouped.setdefault(file.product_key, []).append(file)
+
+    changes: list[OnecChange] = []
+    for product_key, product_files in grouped.items():
+        urls: list[str] = []
+        for file in sorted(product_files, key=lambda f: f.description):
+            try:
+                binary = await client.download_file_binary(file.ref_key)
+            except Exception as exc:
+                logger.warning(
+                    "Failed to download 1C file %r for product %r: %s",
+                    file.ref_key,
+                    product_key,
+                    exc,
+                )
+                continue
+            ext = file.extension.lower()
+            key = f"onec/{file.ref_key}.{ext}"
+            content_type = _IMAGE_CONTENT_TYPES.get(ext, "application/octet-stream")
+            url = await storage_service.storage.upload_raw(key, binary, content_type)
+            urls.append(url)
+        if not urls:
+            continue
+        changes.append(
+            OnecChange(
+                external_id=product_key,
+                action="update",
+                version=version,
+                data={"images": urls},
+            )
+        )
+    for chunk in batched(changes, BATCH_SIZE):
+        await _enqueue_change_log_batch(
+            session, "product_images", list(chunk), version, base_name
+        )
+
+
 async def run_onec_full_sync(
     session: AsyncSession,
     default_supplier_id: int | None = None,
@@ -396,7 +752,10 @@ async def run_onec_full_sync(
     """Pull catalog data from 1C and enqueue ONEC_APPLY_CHANGES jobs.
 
     This helper is invoked by ``handle_onec_full_sync`` in the job worker.
-    It does **not** apply changes synchronously — it only enqueues batches.
+    Категории/товары/цены/остатки идут через OnecChangeLog → job'ы;
+    определения характеристик применяются напрямую (справочник, не зависит
+    от товаров); значения характеристик и изображения — батчами после
+    товарных (job'ы обрабатываются FIFO, товары к этому моменту созданы).
     """
     from src.app.workers.onec_client import OnecClient
 
@@ -423,6 +782,22 @@ async def run_onec_full_sync(
         for chunk in batched(products, BATCH_SIZE):
             changes = [build_product_change(p, _version(100), supplier_id) for p in chunk]
             await _enqueue_change_log_batch(session, "product", changes, _version(100), base_name)
+
+        # Характеристики: определения → справочник значений → связки с товарами
+        attribute_definitions = await client.get_all_attribute_definitions()
+        await _upsert_attribute_definitions(session, attribute_definitions)
+        attribute_values = await client.get_all_attribute_values()
+        enum_values = {v.ref_key: v.description for v in attribute_values}
+        product_attributes = await client.get_all_product_attributes()
+        await _enqueue_product_attribute_batches(
+            session, product_attributes, enum_values, _version(400), base_name
+        )
+
+        # Изображения: метаданные → бинарь → storage → URL в products.images
+        product_files = await client.get_all_product_files()
+        await _enqueue_product_image_batches(
+            session, client, product_files, _version(500), base_name
+        )
 
         prices = await client.get_all_prices()
         for chunk in batched(prices, BATCH_SIZE):

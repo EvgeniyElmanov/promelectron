@@ -1,7 +1,7 @@
 [project]
 name = "onec-mock-server"
 version = "0.1.0"
-description = "1C:UNF mock server for Promelectron (CommerceML 2.x change feed simulator)"
+description = "1C:UNF OData mock server for Promelectron (OData pull over onec schema dump)"
 requires-python = ">=3.12"
 
 [tool.ruff]

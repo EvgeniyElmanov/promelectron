@@ -86,11 +86,11 @@ test-backend: ## Запустить pytest (поднимает postgres/redis ч
 	    -e SECRET_KEY=test-secret-key-32-chars-minimum \
 	    api sh -c "pytest tests/ -v --tb=short"'
 
-test-onec-mock: ## Запустить pytest мок-сервера 1С (Docker-PG, схема onec_mock_test, pytest на хосте; тот же flock)
+test-onec-mock: ## Запустить pytest мок-сервера 1С (Docker-PG, схема onec_test, pytest на хосте; тот же flock)
 	flock -w 1800 $(TEST_BACKEND_LOCK) bash -c '\
 	  $(COMPOSE_BACKEND) up -d postgres && \
 	  cd mocks/onec-server && \
-	  ONEC_MOCK_SCHEMA=onec_mock_test \
+	  ONEC_MOCK_SCHEMA=onec_test \
 	  DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/promelectron \
 	  $(VENV)/bin/pytest'
 
