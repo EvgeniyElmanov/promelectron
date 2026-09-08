@@ -1,9 +1,15 @@
 #!/usr/bin/env bash
-# CI-оркестратор сидинга каталога электротоваров на test-стенде (issue #147).
+# CI-оркестратор сидинга каталога электротоваров на test-стенде (issue #147,
+# переписан под OData pull в #227).
 #
-# Цепочка: cleanup → reseed users/supplier → restart api+onec-mock → seed мока
-# (30 SKU) → /trigger/ → intake → ONEC_INTAKE_PROCESS → SEARCH_INDEX_PRODUCTS →
-# Meilisearch → фасеты (is_filterable + full reindex) → реальные фото → верификация поиска.
+# Цепочка: cleanup → reseed users/supplier → restart api → проверка сида мока
+# (схема onec, ~1523 SKU из дампа реальной 1С) → POST /admin/onec/full-sync/ →
+# ожидание ONEC_FULL_SYNC + ONEC_APPLY_CHANGES → фасеты (is_filterable по имени
+# атрибута, коды = GUID) + full reindex Meilisearch → реальные фото → верификация.
+#
+# Схему onec сид-скрипт НЕ пересоздаёт: сид (mocks/onec-server/data/onec_seed.sql.gz,
+# gitignored) загружается в test-БД вручную один раз; cleanup_test_env.py чистит
+# только public-таблицы и legacy-схему onec_mock.
 #
 # Запускается из job'а seed-test-catalog в deploy.yml (self-hosted runner с kubeconfig).
 # Только test-окружение: cleanup_test_env.py защищён env-флагом + --confirm (D-02).
@@ -17,12 +23,9 @@ API="${API:-https://api.promelectron-test.aidrivencode.ru}"
 : "${SEED_SUPPLIER_PASSWORD:?SEED_SUPPLIER_PASSWORD не задан — пробросьте из GitHub Secret SEED_SUPPLIER_PASSWORD}"
 ADMIN_EMAIL="${SEED_ADMIN_EMAIL:-seed-admin@example.com}"
 ADMIN_PASSWORD="$SEED_ADMIN_PASSWORD"
-# F004: значение читаем из кластера (onecMock.seedProductsCount → env деплоя),
-# fallback 30 при недоступности (например, до первого деплоя значения).
-EXPECTED_PRODUCTS="$(kubectl get deploy promelectron-onec-mock -n "$NS" \
-  -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name=="SEED_PRODUCTS_COUNT")].value}' \
-  2>/dev/null || true)"
-EXPECTED_PRODUCTS="${EXPECTED_PRODUCTS:-30}"
+# Ожидание сида мока: схема onec в test-БД (загружается вручную из
+# onec_seed.sql.gz), 1523 номенклатуры. 1000 — нижняя граница «сид на месте».
+EXPECTED_PRODUCTS=1000
 MIN_PRODUCTS=25        # нижняя граница Acceptance Criteria
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
@@ -93,17 +96,23 @@ port_forward() { # <svc> <port>
 # --- Проверки для wait_for ---
 
 check_mock_seeded() {
+  # Формат /status/ OData-мока (#227): {"status","schema","tables":{<table>:count}}
   curl -sf "http://localhost:8100/status/" | python3 -c \
-    "import json,sys; d=json.load(sys.stdin); sys.exit(0 if d['catalog']['products'] >= ${EXPECTED_PRODUCTS} else 1)" \
+    "import json,sys; d=json.load(sys.stdin); sys.exit(0 if d['tables']['products'] >= ${EXPECTED_PRODUCTS} else 1)" \
     2>/dev/null
 }
 
-check_intake_parsed() {
-  [ "$(psql_query "SELECT status FROM onec_intake_log ORDER BY id DESC LIMIT 1" 2>/dev/null)" = "parsed" ]
+check_full_sync_done() {
+  [ "$(psql_query "SELECT status FROM jobs WHERE job_type='ONEC_FULL_SYNC' ORDER BY id DESC LIMIT 1" 2>/dev/null)" = "completed" ]
 }
 
-check_index_job_done() {
-  [ "$(psql_query "SELECT count(*) FROM jobs WHERE job_type='SEARCH_INDEX_PRODUCTS' AND status='completed'" 2>/dev/null)" -ge 1 ] 2>/dev/null
+check_apply_jobs_settled() {
+  # Все батчи применены: нет pending/processing; failed считаем отдельно в verify
+  [ "$(psql_query "SELECT count(*) FROM jobs WHERE job_type='ONEC_APPLY_CHANGES' AND status NOT IN ('completed','failed')" 2>/dev/null)" = "0" ] 2>/dev/null
+}
+
+check_no_failed_apply() {
+  [ "$(psql_query "SELECT count(*) FROM jobs WHERE job_type='ONEC_APPLY_CHANGES' AND status='failed'" 2>/dev/null)" = "0" ] 2>/dev/null
 }
 
 check_reindex_done() {
@@ -139,39 +148,45 @@ SUPPLIER_ID="$(psql_query "SELECT id FROM suppliers WHERE api_key='seed-supplier
 [ "$SUPPLIER_ID" = "1" ] || fail "guard D-06: seed-supplier id=$SUPPLIER_ID, ожидался 1"
 log "guard D-06: seed-supplier id=1 — OK"
 
-log "=== Шаг 3/10: rollout restart api + onec-mock ==="
-# api — стирает local uploads (emptyDir); мок — пересоздаёт схему onec_mock и сеет каталог
-kubectl rollout restart deployment/promelectron-api deployment/promelectron-onec-mock -n "$NS"
+log "=== Шаг 3/10: rollout restart api ==="
+# api — стирает local uploads (emptyDir); мок не рестартуем: сид в схеме onec
+# переживает рестарты, а deploy-test уже выкатил свежий образ мока
+kubectl rollout restart deployment/promelectron-api -n "$NS"
 kubectl rollout status deployment/promelectron-api -n "$NS" --timeout=180s \
   || fail "api не поднялся после restart"
-kubectl rollout status deployment/promelectron-onec-mock -n "$NS" --timeout=180s \
-  || fail "onec-mock не поднялся после restart"
 
-log "=== Шаг 4/10: ожидание seed мока (>= ${EXPECTED_PRODUCTS} SKU) ==="
+log "=== Шаг 4/10: проверка сида мока (схема onec, >= ${EXPECTED_PRODUCTS} SKU) ==="
 port_forward promelectron-onec-mock 8100
-wait_for "мок посеял каталог" 120 check_mock_seeded
+wait_for "мок видит сид каталога" 120 check_mock_seeded
 
-log "=== Шаг 5/10: триггер отправки каталога ==="
-TRIGGER_OUT="$(curl -sf -X POST http://localhost:8100/trigger/)" \
-  || fail "POST /trigger/ мока не удался"
-echo "$TRIGGER_OUT" | python3 -c \
-  "import json,sys; d=json.load(sys.stdin); print(f'[seed-catalog] trigger: {d}'); sys.exit(0 if d.get('status') == 'success' else 1)" \
-  || fail "trigger вернул не success: $TRIGGER_OUT"
+log "=== Шаг 5/10: триггер pull-синка из мока (POST /admin/onec/full-sync/) ==="
+ADMIN_TOKEN="$(api_login "$ADMIN_EMAIL" "$ADMIN_PASSWORD")" \
+  || fail "login seed-admin не удался"
+SYNC_OUT="$(curl -sf -X POST -H "Authorization: Bearer $ADMIN_TOKEN" \
+  "$API/api/v1/admin/onec/full-sync/")" \
+  || fail "POST /admin/onec/full-sync/ не удался (ONEC_API_URL/креды мока в секрете?)"
+echo "$SYNC_OUT" | python3 -c \
+  "import json,sys; d=json.load(sys.stdin); print(f'[seed-catalog] full-sync: {d}'); sys.exit(0 if d.get('status') == 'queued' else 1)" \
+  || fail "full-sync вернул не queued: $SYNC_OUT"
 
-log "=== Шаг 6/10: ожидание парсинга intake (timeout 360s) ==="
-wait_for "onec_intake_log.status='parsed'" 360 check_intake_parsed
+log "=== Шаг 6/10: ожидание pull-синка (ONEC_FULL_SYNC + батчи, timeout 900s) ==="
+wait_for "job ONEC_FULL_SYNC completed" 900 check_full_sync_done
+wait_for "все ONEC_APPLY_CHANGES settled" 900 check_apply_jobs_settled
+check_no_failed_apply || fail "есть failed ONEC_APPLY_CHANGES job'ы"
+PRODUCTS_TOTAL="$(psql_query "SELECT count(*) FROM products")"
+[ "${PRODUCTS_TOTAL:-0}" -ge "$MIN_PRODUCTS" ] \
+  || fail "после синка товаров=$PRODUCTS_TOTAL, ожидалось >= $MIN_PRODUCTS"
+log "pull-синк завершён: товаров=$PRODUCTS_TOTAL"
 
-log "=== Шаг 7/10: ожидание индексации Meilisearch ==="
-wait_for "job SEARCH_INDEX_PRODUCTS completed" 360 check_index_job_done
+log "=== Шаг 7/10: подготовка Meilisearch ==="
+# apply-путь pull-синка не ставит SEARCH_INDEX_PRODUCTS — индекс заполнит
+# full reindex на шаге 8
 MEILI_KEY="$(kubectl get secret promelectron-secrets -n "$NS" \
   -o jsonpath='{.data.MEILISEARCH_MASTER_KEY}' | base64 -d)"
 [ -n "$MEILI_KEY" ] || fail "MEILISEARCH_MASTER_KEY пуст в promelectron-secrets"
 port_forward promelectron-meilisearch 7700
-wait_for "Meili products >= ${MIN_PRODUCTS} документов" 180 check_meili_docs
 
 log "=== Шаг 8/10: фасеты (is_filterable + full reindex) ==="
-ADMIN_TOKEN="$(api_login "$ADMIN_EMAIL" "$ADMIN_PASSWORD")" \
-  || fail "login seed-admin не удался"
 # Feature flag поиска (Redis переживает рестарты, но проверяем идемпотентно)
 FLAG_ENABLED="$(curl -sf -H "Authorization: Bearer $ADMIN_TOKEN" "$API/api/v1/admin/feature-flags" | python3 -c \
   "import json,sys; flags=json.load(sys.stdin); print(next((str(f['enabled']) for f in flags if f['name']=='catalog_search_meilisearch'), 'False'))")"
@@ -182,22 +197,22 @@ if [ "$FLAG_ENABLED" != "True" ]; then
     "$API/api/v1/admin/feature-flags/catalog_search_meilisearch" >/dev/null \
     || fail "не удалось включить catalog_search_meilisearch"
 fi
-# is_filterable для ключевых атрибутов (только существующие коды)
-FILTERABLE_CODES="brand color rated_current_a wire_cross_section_mm2 ip_rating"
+# is_filterable для «Бренд»: в реальном каталоге 1С code атрибута = onec GUID (D-05),
+# поэтому ищем по имени; BRAND_CODE нужен шагу 10 для проверки фасета
 ATTRS_JSON="$(curl -sf -H "Authorization: Bearer $ADMIN_TOKEN" "$API/api/v1/admin/attributes/")"
-for code in $FILTERABLE_CODES; do
-  ATTR_ID="$(echo "$ATTRS_JSON" | python3 -c \
-    "import json,sys; attrs=json.load(sys.stdin); print(next((a['id'] for a in attrs if a['code']=='$code'), ''))")"
-  if [ -n "$ATTR_ID" ]; then
-    curl -sf -X PATCH -H "Authorization: Bearer $ADMIN_TOKEN" \
-      -H 'Content-Type: application/json' -d '{"is_filterable": true}' \
-      "$API/api/v1/admin/attributes/$ATTR_ID/" >/dev/null \
-      && log "is_filterable=true: $code (id=$ATTR_ID)" \
-      || fail "PATCH attribute $code не удался"
-  else
-    log "атрибут $code отсутствует в каталоге — пропуск"
-  fi
-done
+BRAND_ATTR="$(echo "$ATTRS_JSON" | python3 -c \
+  "import json,sys; attrs=json.load(sys.stdin); a=next((x for x in attrs if x['name']=='Бренд'), None); print(f\"{a['id']} {a['code']}\" if a else '')")"
+if [ -n "$BRAND_ATTR" ]; then
+  BRAND_ID="${BRAND_ATTR%% *}"
+  BRAND_CODE="${BRAND_ATTR##* }"
+  curl -sf -X PATCH -H "Authorization: Bearer $ADMIN_TOKEN" \
+    -H 'Content-Type: application/json' -d '{"is_filterable": true}' \
+    "$API/api/v1/admin/attributes/$BRAND_ID/" >/dev/null \
+    && log "is_filterable=true: Бренд (id=$BRAND_ID, code=$BRAND_CODE)" \
+    || fail "PATCH attribute Бренд не удался"
+else
+  fail "атрибут «Бренд» отсутствует в каталоге после синка"
+fi
 curl -sf -X POST -H "Authorization: Bearer $ADMIN_TOKEN" \
   "$API/api/v1/admin/search/reindex/" >/dev/null \
   || fail "POST /admin/search/reindex/ не удался"
@@ -213,19 +228,20 @@ curl -sf "$API/api/v1/search/?q=%D1%80%D0%BE%D0%B7%D0%B5%D1%82%D0%BA%D0%B0" | py
 import json, sys
 d = json.load(sys.stdin)
 assert d['total'] > 0, 'поиск «розетка»: total=0'
-brand = next((f for f in d['facets'] if f['code'] == 'brand'), None)
-assert brand and brand.get('values'), 'фасет brand пуст'
+brand = next((f for f in d['facets'] if f['code'] == '$BRAND_CODE'), None)
+assert brand and brand.get('values'), 'фасет «Бренд» пуст'
 print(f\"[seed-catalog] search 'розетка': total={d['total']}, бренды={[v['value'] for v in brand['values']]}\")
 " || fail "верификация поиска 'розетка' не прошла"
-curl -sf "$API/api/v1/search/suggestions/?q=%D0%B2%D0%B2%D0%B3" | python3 -c "
+# «ввг» в реальном каталоге нет — проверяем по «кабель» (57 активных товаров в сиде)
+curl -sf "$API/api/v1/search/suggestions/?q=%D0%BA%D0%B0%D0%B1%D0%B5%D0%BB%D1%8C" | python3 -c "
 import json, sys
 d = json.load(sys.stdin)
-assert d['products'], 'suggestions «ввг» пусты'
-print(f\"[seed-catalog] suggestions 'ввг': {len(d['products'])} подсказок\")
-" || fail "верификация suggestions 'ввг' не прошла"
-# выборочно: у первого товара есть фото
-FIRST_ID="$(curl -sf "$API/api/v1/products/?limit=1" | python3 -c \
-  "import json,sys; print(json.load(sys.stdin)['items'][0]['id'])")"
+assert d['products'], 'suggestions «кабель» пусты'
+print(f\"[seed-catalog] suggestions 'кабель': {len(d['products'])} подсказок\")
+" || fail "верификация suggestions 'кабель' не прошла"
+# выборочно: товар с фото (в реальном каталоге фото не у всех — берём тот, что с images)
+FIRST_ID="$(psql_query "SELECT id FROM products WHERE images IS NOT NULL AND images::text != '[]' ORDER BY id LIMIT 1")"
+[ -n "$FIRST_ID" ] || fail "в каталоге нет ни одного товара с фото"
 # ВАЖНО: route /products/{id} БЕЗ trailing slash (иначе 307 → curl -sf даст пустое тело)
 curl -sf "$API/api/v1/products/$FIRST_ID" | python3 -c "
 import json, sys
