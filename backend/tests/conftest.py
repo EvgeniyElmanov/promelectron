@@ -130,6 +130,12 @@ def mock_storage_service(monkeypatch):
         async def upload(self, key, file):
             return f"/uploads/{key}"
 
+        async def upload_raw(self, key, data, content_type, bucket=None):
+            return f"/uploads/{key}"
+
+        async def download_raw(self, key, bucket=None):
+            raise FileNotFoundError(key)
+
         async def upload_image(self, key, file, content=None):
             base, _ = os.path.splitext(key)
             return {

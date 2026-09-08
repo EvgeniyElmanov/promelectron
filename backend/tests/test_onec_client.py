@@ -48,11 +48,18 @@ async def test_get_products(client):
     assert isinstance(product, OnecProductOdata)
     assert product.ref_key == "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
     assert product.description == "Smartphone X"
+    assert product.full_name == "Smartphone X 256GB Black"
     assert product.article == "PHONE-001"
     assert product.code == "000000001"
-    assert product.parent_key == "22222222-2222-2222-2222-222222222222"
+    # У реальных товаров Parent_Key нулевой GUID → None (FORMAT_MAP.md §2)
+    assert product.parent_key is None
+    # Категория — по КатегорияНоменклатуры_Key
+    assert product.category_key == "22222222-2222-2222-2222-222222222222"
     assert product.is_folder is False
     assert product.item_type == "Запас"
+    # Вес в кг → граммы
+    assert product.weight_grams == 250
+    assert product.deletion_mark is False
 
 
 @pytest.mark.asyncio
@@ -79,6 +86,7 @@ async def test_get_stock_balance_all_warehouses(client):
 
 @pytest.mark.asyncio
 async def test_get_stock_balance_single_warehouse(client):
+    """Фильтр остатков — по СтруктурнаяЕдиница_Key (реальная УНФ), не Склад_Key."""
     stocks = await client.get_stock_balance("99999999-9999-9999-9999-999999999999")
     assert len(stocks) == 2
     assert all(isinstance(s, OnecStockOdata) for s in stocks)
@@ -164,3 +172,120 @@ async def test_auth_error(onec_mock_server, monkeypatch):
     async with OnecClient() as c:
         with pytest.raises(OnecClientAuthError):
             await c.get_categories()
+
+
+@pytest.mark.asyncio
+async def test_get_attribute_definitions(client):
+    definitions = await client.get_all_attribute_definitions()
+    assert len(definitions) == 2
+    color = next(d for d in definitions if d.ref_key == "dddddddd-dddd-dddd-dddd-dddddddddddd")
+    # Имя — Заголовок, fallback Description
+    assert color.name == "Цвет корпуса"
+    assert color.value_type == "CatalogRef.ЗначенияСвойствОбъектов"
+    power = next(d for d in definitions if d.ref_key == "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee")
+    assert power.name == "Мощность"
+    assert power.value_type == "Number"
+
+
+@pytest.mark.asyncio
+async def test_get_attribute_values(client):
+    values = await client.get_all_attribute_values()
+    assert len(values) == 2
+    assert {v.description for v in values} == {"Чёрный", "Белый"}
+    # Фильтр по Owner_Key
+    filtered = await client.get_all_attribute_values("dddddddd-dddd-dddd-dddd-dddddddddddd")
+    assert len(filtered) == 2
+
+
+@pytest.mark.asyncio
+async def test_get_product_attributes(client):
+    rows = await client.get_all_product_attributes()
+    assert len(rows) == 3
+    enum_row = next(r for r in rows if r.line_number == "1" and r.product_key.startswith("aaaaaaaa"))
+    assert enum_row.value_key == "ffffffff-ffff-ffff-ffff-ffffffffffff"
+    assert enum_row.value_type_name == "StandardODATA.Catalog_ЗначенияСвойствОбъектов"
+    text_row = next(r for r in rows if r.line_number == "2")
+    # Нулевой GUID значения → None, значение — в ТекстоваяСтрока
+    assert text_row.value_key is None
+    assert text_row.text_value == "65 Вт"
+    # Фильтр по Ref_Key (guid'' форма)
+    filtered = await client.get_all_product_attributes("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
+    assert len(filtered) == 2
+
+
+@pytest.mark.asyncio
+async def test_get_product_files(client):
+    files = await client.get_all_product_files()
+    assert len(files) == 3
+    by_ref = {f.ref_key: f for f in files}
+    assert by_ref["34343434-3434-3434-3434-343434343434"].extension == "jpg"
+    assert by_ref["56565656-5656-5656-5656-565656565656"].deletion_mark is True
+    filtered = await client.get_all_product_files("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
+    assert len(filtered) == 3
+
+
+@pytest.mark.asyncio
+async def test_download_file_binary(client):
+    binary = await client.download_file_binary("34343434-3434-3434-3434-343434343434")
+    assert binary.startswith(b"\xff\xd8\xff\xe0")
+    with pytest.raises(OnecClientError):
+        await client.download_file_binary("00000000-0000-0000-0000-000000000042")
+
+
+@pytest.mark.asyncio
+async def test_get_all_stock_balance_aggregates_across_pages(client, monkeypatch):
+    """Строки баланса одного товара на разных страницах суммируются в одну запись."""
+    from tests.mocks import onec_server
+
+    monkeypatch.setattr(
+        onec_server,
+        "STOCKS",
+        [
+            {
+                "Номенклатура_Key": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                "СтруктурнаяЕдиница_Key": "99999999-9999-9999-9999-999999999999",
+                "КоличествоBalance": -6,
+            },
+            {
+                "Номенклатура_Key": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                "СтруктурнаяЕдиница_Key": "00000000-0000-0000-0000-000000000001",
+                "КоличествоBalance": 63,
+            },
+        ],
+    )
+    # page_size=1: две строки товара гарантированно на разных страницах
+    stocks = await client.get_all_stock_balance(page_size=1)
+    assert len(stocks) == 1
+    assert stocks[0].product_key == "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+    assert stocks[0].quantity == 57
+    # Без фильтра по складу warehouse_key сбрасывается
+    assert stocks[0].warehouse_key is None
+
+    # С фильтром по складу — страницы одного склада, ключ сохраняется
+    filtered = await client.get_all_stock_balance(
+        "99999999-9999-9999-9999-999999999999", page_size=1
+    )
+    assert len(filtered) == 1
+    assert filtered[0].quantity == -6
+    assert filtered[0].warehouse_key == "99999999-9999-9999-9999-999999999999"
+
+
+@pytest.mark.asyncio
+async def test_get_all_stock_balance_negative_not_clamped_in_client(client, monkeypatch):
+    """Отрицательный итог клиент не клампит — это обязанность apply_stock_change (B-02)."""
+    from tests.mocks import onec_server
+
+    monkeypatch.setattr(
+        onec_server,
+        "STOCKS",
+        [
+            {
+                "Номенклатура_Key": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                "СтруктурнаяЕдиница_Key": "99999999-9999-9999-9999-999999999999",
+                "КоличествоBalance": -6,
+            },
+        ],
+    )
+    stocks = await client.get_all_stock_balance()
+    assert len(stocks) == 1
+    assert stocks[0].quantity == -6

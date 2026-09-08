@@ -9,8 +9,12 @@ import aiohttp
 
 from src.app.core.config import settings
 from src.app.schemas.onec import (
+    OnecAttributeDefinitionOdata,
+    OnecAttributeValueOdata,
     OnecCategoryOdata,
     OnecPriceOdata,
+    OnecProductAttributeOdata,
+    OnecProductFileOdata,
     OnecProductOdata,
     OnecStockOdata,
 )
@@ -143,6 +147,23 @@ class OnecClient:
             logger.warning("1C API request failed: %s %s -> %s", method, url, exc)
             raise OnecClientError(f"1C API request failed: {exc}") from exc
 
+    async def _request_bytes(self, path: str) -> bytes:
+        """GET-запрос бинарного содержимого (например, ``.../$value`` файла)."""
+        url = f"{self.base_url}/{path.lstrip('/')}"
+        session = self._session_or_create()
+        try:
+            async with session.get(url) as response:
+                if response.status == 401:
+                    raise OnecClientAuthError("Invalid 1C credentials")
+                response.raise_for_status()
+                return await response.read()
+        except aiohttp.ClientResponseError as exc:
+            logger.warning("1C API binary request failed: %s -> %s", url, exc.status)
+            raise OnecClientError(f"1C API binary request failed: {exc.status}") from exc
+        except aiohttp.ClientError as exc:
+            logger.warning("1C API binary request failed: %s -> %s", url, exc)
+            raise OnecClientError(f"1C API binary request failed: {exc}") from exc
+
     @staticmethod
     def _normalize_guid(value: str | None) -> str | None:
         if not value:
@@ -177,6 +198,7 @@ class OnecClient:
                     ref_key=ref_key,
                     parent_key=self._normalize_guid(item.get("Parent_Key")),
                     description=item.get("Description") or "",
+                    deletion_mark=bool(item.get("DeletionMark", False)),
                 )
             )
         return result
@@ -213,15 +235,24 @@ class OnecClient:
             if not ref_key:
                 logger.warning("Skipping 1C product with empty Ref_Key")
                 continue
+            # Вес хранится в 1С в кг; 0/None → дефолт 1000 г (FORMAT_MAP.md §2)
+            try:
+                weight_grams = int(float(item.get("Вес") or 0) * 1000) or 1000
+            except (TypeError, ValueError):
+                weight_grams = 1000
             result.append(
                 OnecProductOdata(
                     ref_key=ref_key,
                     description=item.get("Description") or "",
+                    full_name=item.get("НаименованиеПолное") or None,
                     article=item.get("Артикул") or None,
                     code=item.get("Code") or None,
                     parent_key=self._normalize_guid(item.get("Parent_Key")),
+                    category_key=self._normalize_guid(item.get("КатегорияНоменклатуры_Key")),
                     is_folder=bool(item.get("IsFolder", False)),
                     item_type=item.get("ТипНоменклатуры") or "",
+                    weight_grams=weight_grams,
+                    deletion_mark=bool(item.get("DeletionMark", False)),
                 )
             )
         return result
@@ -281,6 +312,53 @@ class OnecClient:
 
     # ─── Stock balances ───────────────────────────────────────────────────────
 
+    async def _get_stock_balance_raw_page(
+        self,
+        warehouse: str | None,
+        top: int,
+        skip: int,
+    ) -> list[dict[str, Any]]:
+        """Сырая страница AccumulationRegister_ЗапасыНаСкладах/Balance."""
+        params: dict[str, Any] = {"$top": top, "$skip": skip, "$format": "json"}
+        if warehouse:
+            warehouse = warehouse.strip()
+            if not _is_valid_guid(warehouse):
+                raise OnecClientConfigurationError(
+                    f"ONEC_WAREHOUSE_KEY must be a valid GUID. Got: {warehouse!r}"
+                )
+            params["$filter"] = f"СтруктурнаяЕдиница_Key eq '{_escape_odata_string(warehouse)}'"
+
+        data = await self._request(
+            "GET",
+            "/AccumulationRegister_ЗапасыНаСкладах/Balance",
+            params=params,
+        )
+        return data.get("value", []) if isinstance(data, dict) else []
+
+    @staticmethod
+    def _aggregate_stock_rows(
+        rows: list[dict[str, Any]],
+        totals: dict[str, dict[str, Any]],
+        single_warehouse: bool,
+    ) -> None:
+        """Накопить строки баланса в ``totals`` по product_key (in-place)."""
+        for item in rows:
+            product_key = OnecClient._normalize_guid(item.get("Номенклатура_Key"))
+            if not product_key:
+                logger.warning("Skipping 1C stock balance with empty product Ref_Key")
+                continue
+            wh_key = OnecClient._normalize_guid(
+                item.get("СтруктурнаяЕдиница_Key") or item.get("Склад_Key")
+            )
+            qty_key = "КоличествоBalance" if "КоличествоBalance" in item else "Количество"
+            quantity = round(item.get(qty_key, 0) or 0)
+            if product_key not in totals:
+                totals[product_key] = {"quantity": 0, "warehouse_key": wh_key}
+            totals[product_key]["quantity"] += quantity
+            # When summing across warehouses we drop the per-row warehouse key.
+            if not single_warehouse:
+                totals[product_key]["warehouse_key"] = None
+
     async def get_stock_balance(
         self,
         warehouse_key: str | None = None,
@@ -290,60 +368,258 @@ class OnecClient:
         """Fetch stock balances from AccumulationRegister_ЗапасыНаСкладах/Balance.
 
         If ``warehouse_key`` is not provided, balances are aggregated by product
-        across all warehouses.
+        across all warehouses. Агрегация — только в рамках одной страницы;
+        полная сводка по всем страницам — в ``get_all_stock_balance``.
         """
         warehouse = warehouse_key or settings.onec_warehouse_key
-        params: dict[str, Any] = {"$top": top, "$skip": skip, "$format": "json"}
-        if warehouse:
-            warehouse = warehouse.strip()
-            if not _is_valid_guid(warehouse):
-                raise OnecClientConfigurationError(
-                    f"ONEC_WAREHOUSE_KEY must be a valid GUID. Got: {warehouse!r}"
-                )
-            params["$filter"] = f"Склад_Key eq '{_escape_odata_string(warehouse)}'"
+        rows = await self._get_stock_balance_raw_page(warehouse, top, skip)
+        totals: dict[str, dict[str, Any]] = {}
+        self._aggregate_stock_rows(rows, totals, single_warehouse=bool(warehouse))
+        return [
+            OnecStockOdata(
+                product_key=product_key,
+                warehouse_key=agg["warehouse_key"],
+                quantity=agg["quantity"],
+            )
+            for product_key, agg in totals.items()
+        ]
 
+    async def get_all_stock_balance(
+        self, warehouse_key: str | None = None, page_size: int = 100
+    ) -> list[OnecStockOdata]:
+        """Fetch all stock balances across pages, aggregated per product.
+
+        Balance отдаёт строку на комбинацию измерений (склад/организация/
+        партия), и строки одного товара попадают в разные страницы — поэтому
+        суммирование идёт по ВСЕМ страницам выборки, иначе один товар
+        порождал бы несколько частичных stock-change (применялась только
+        первая — см. _is_stale_change). Кламп отрицательного итога в 0 —
+        обязанность apply_stock_change (B-02), клиент отдаёт сумму как есть.
+        """
+        warehouse = warehouse_key or settings.onec_warehouse_key
+        totals: dict[str, dict[str, Any]] = {}
+        skip = 0
+        while True:
+            rows = await self._get_stock_balance_raw_page(warehouse, page_size, skip)
+            if not rows:
+                break
+            self._aggregate_stock_rows(rows, totals, single_warehouse=bool(warehouse))
+            if len(rows) < page_size:
+                break
+            skip += page_size
+        return [
+            OnecStockOdata(
+                product_key=product_key,
+                warehouse_key=agg["warehouse_key"],
+                quantity=agg["quantity"],
+            )
+            for product_key, agg in totals.items()
+        ]
+
+    # ─── Attribute definitions ────────────────────────────────────────────────
+
+    async def get_attribute_definitions(
+        self,
+        top: int = 100,
+        skip: int = 0,
+    ) -> list[OnecAttributeDefinitionOdata]:
+        """Fetch attribute definitions from
+        ChartOfCharacteristicTypes_ДополнительныеРеквизитыИСведения."""
         data = await self._request(
             "GET",
-            "/AccumulationRegister_ЗапасыНаСкладах/Balance",
-            params=params,
+            "/ChartOfCharacteristicTypes_ДополнительныеРеквизитыИСведения",
+            params={"$top": top, "$skip": skip, "$format": "json"},
         )
-
-        raw_balances: dict[str, dict[str, Any]] = {}
+        result: list[OnecAttributeDefinitionOdata] = []
         for item in data.get("value", []) if isinstance(data, dict) else []:
-            product_key = self._normalize_guid(item.get("Номенклатура_Key"))
-            if not product_key:
-                logger.warning("Skipping 1C stock balance with empty product Ref_Key")
+            ref_key = self._normalize_guid(item.get("Ref_Key"))
+            if not ref_key:
+                logger.warning("Skipping 1C attribute definition with empty Ref_Key")
                 continue
-            wh_key = self._normalize_guid(item.get("Склад_Key"))
-            qty_key = "КоличествоBalance" if "КоличествоBalance" in item else "Количество"
-            quantity = round(item.get(qty_key, 0) or 0)
-            if product_key not in raw_balances:
-                raw_balances[product_key] = {"quantity": 0, "warehouse_key": wh_key}
-            raw_balances[product_key]["quantity"] += quantity
-            # When summing across warehouses we drop the per-row warehouse key.
-            if not warehouse:
-                raw_balances[product_key]["warehouse_key"] = None
-
-        result: list[OnecStockOdata] = []
-        for product_key, agg in raw_balances.items():
+            types = (item.get("ValueType") or {}).get("Types") or []
+            # Имя — Заголовок, fallback Description (FORMAT_MAP.md §3)
+            name = item.get("Заголовок") or item.get("Description") or ref_key
             result.append(
-                OnecStockOdata(
-                    product_key=product_key,
-                    warehouse_key=agg["warehouse_key"],
-                    quantity=agg["quantity"],
+                OnecAttributeDefinitionOdata(
+                    ref_key=ref_key,
+                    name=name,
+                    value_type=types[0] if types else None,
+                    deletion_mark=bool(item.get("DeletionMark", False)),
                 )
             )
         return result
 
-    async def get_all_stock_balance(
-        self, warehouse_key: str | None = None
-    ) -> list[OnecStockOdata]:
-        """Fetch all stock balances across pages."""
+    async def get_all_attribute_definitions(self) -> list[OnecAttributeDefinitionOdata]:
+        """Fetch all attribute definitions across pages."""
+        return await self._fetch_all(self.get_attribute_definitions)
 
-        async def _page(top: int, skip: int) -> list[OnecStockOdata]:
-            return await self.get_stock_balance(warehouse_key, top=top, skip=skip)
+    # ─── Attribute enum values ────────────────────────────────────────────────
+
+    async def get_attribute_values(
+        self,
+        owner_key: str | None = None,
+        top: int = 100,
+        skip: int = 0,
+    ) -> list[OnecAttributeValueOdata]:
+        """Fetch enum values from Catalog_ЗначенияСвойствОбъектов.
+
+        ``owner_key`` — GUID определения характеристики (Owner_Key); без него
+        тянем весь справочник.
+        """
+        params: dict[str, Any] = {"$top": top, "$skip": skip, "$format": "json"}
+        if owner_key:
+            owner = owner_key.strip()
+            if not _is_valid_guid(owner):
+                raise OnecClientConfigurationError(
+                    f"owner_key must be a valid GUID. Got: {owner!r}"
+                )
+            params["$filter"] = f"Owner_Key eq '{_escape_odata_string(owner)}'"
+        data = await self._request(
+            "GET",
+            "/Catalog_ЗначенияСвойствОбъектов",
+            params=params,
+        )
+        result: list[OnecAttributeValueOdata] = []
+        for item in data.get("value", []) if isinstance(data, dict) else []:
+            ref_key = self._normalize_guid(item.get("Ref_Key"))
+            if not ref_key:
+                continue
+            result.append(
+                OnecAttributeValueOdata(
+                    ref_key=ref_key,
+                    description=item.get("Description") or "",
+                    owner_key=self._normalize_guid(item.get("Owner_Key")),
+                    deletion_mark=bool(item.get("DeletionMark", False)),
+                )
+            )
+        return result
+
+    async def get_all_attribute_values(
+        self, owner_key: str | None = None
+    ) -> list[OnecAttributeValueOdata]:
+        """Fetch all enum values across pages."""
+
+        async def _page(top: int, skip: int) -> list[OnecAttributeValueOdata]:
+            return await self.get_attribute_values(owner_key, top=top, skip=skip)
 
         return await self._fetch_all(_page)
+
+    # ─── Product attributes (tabular section) ─────────────────────────────────
+
+    async def get_product_attributes(
+        self,
+        product_key: str | None = None,
+        top: int = 100,
+        skip: int = 0,
+    ) -> list[OnecProductAttributeOdata]:
+        """Fetch rows from Catalog_Номенклатура_ДополнительныеРеквизиты.
+
+        ``product_key`` — GUID товара (Ref_Key); без него тянем все строки.
+        """
+        params: dict[str, Any] = {"$top": top, "$skip": skip, "$format": "json"}
+        if product_key:
+            product = product_key.strip()
+            if not _is_valid_guid(product):
+                raise OnecClientConfigurationError(
+                    f"product_key must be a valid GUID. Got: {product!r}"
+                )
+            params["$filter"] = f"Ref_Key eq guid'{product}'"
+        data = await self._request(
+            "GET",
+            "/Catalog_Номенклатура_ДополнительныеРеквизиты",
+            params=params,
+        )
+        result: list[OnecProductAttributeOdata] = []
+        for item in data.get("value", []) if isinstance(data, dict) else []:
+            product_ref = self._normalize_guid(item.get("Ref_Key"))
+            attribute_key = self._normalize_guid(item.get("Свойство_Key"))
+            if not product_ref or not attribute_key:
+                continue
+            result.append(
+                OnecProductAttributeOdata(
+                    product_key=product_ref,
+                    line_number=item.get("LineNumber") or None,
+                    attribute_key=attribute_key,
+                    value_key=self._normalize_guid(item.get("Значение")),
+                    text_value=item.get("ТекстоваяСтрока") or None,
+                    value_type_name=item.get("Значение_Type") or None,
+                )
+            )
+        return result
+
+    async def get_all_product_attributes(
+        self, product_key: str | None = None
+    ) -> list[OnecProductAttributeOdata]:
+        """Fetch all product attribute rows across pages."""
+
+        async def _page(top: int, skip: int) -> list[OnecProductAttributeOdata]:
+            return await self.get_product_attributes(product_key, top=top, skip=skip)
+
+        return await self._fetch_all(_page)
+
+    # ─── Product files (images) ───────────────────────────────────────────────
+
+    async def get_product_files(
+        self,
+        product_key: str | None = None,
+        top: int = 100,
+        skip: int = 0,
+    ) -> list[OnecProductFileOdata]:
+        """Fetch file metadata from Catalog_НоменклатураПрисоединенныеФайлы.
+
+        ``product_key`` — GUID товара (ВладелецФайла_Key); без него тянем все
+        файлы.
+        """
+        params: dict[str, Any] = {"$top": top, "$skip": skip, "$format": "json"}
+        if product_key:
+            product = product_key.strip()
+            if not _is_valid_guid(product):
+                raise OnecClientConfigurationError(
+                    f"product_key must be a valid GUID. Got: {product!r}"
+                )
+            params["$filter"] = f"ВладелецФайла_Key eq guid'{product}'"
+        data = await self._request(
+            "GET",
+            "/Catalog_НоменклатураПрисоединенныеФайлы",
+            params=params,
+        )
+        result: list[OnecProductFileOdata] = []
+        for item in data.get("value", []) if isinstance(data, dict) else []:
+            ref_key = self._normalize_guid(item.get("Ref_Key"))
+            product_ref = self._normalize_guid(item.get("ВладелецФайла_Key"))
+            if not ref_key or not product_ref:
+                continue
+            result.append(
+                OnecProductFileOdata(
+                    ref_key=ref_key,
+                    description=item.get("Description") or "",
+                    product_key=product_ref,
+                    extension=(item.get("Расширение") or "jpg").lstrip("."),
+                    deletion_mark=bool(item.get("DeletionMark", False)),
+                )
+            )
+        return result
+
+    async def get_all_product_files(
+        self, product_key: str | None = None
+    ) -> list[OnecProductFileOdata]:
+        """Fetch all product files across pages."""
+
+        async def _page(top: int, skip: int) -> list[OnecProductFileOdata]:
+            return await self.get_product_files(product_key, top=top, skip=skip)
+
+        return await self._fetch_all(_page)
+
+    async def download_file_binary(self, ref_key: str) -> bytes:
+        """Download the binary body of an attached file via ``.../$value``."""
+        key = ref_key.strip()
+        if not _is_valid_guid(key):
+            raise OnecClientConfigurationError(
+                f"file ref_key must be a valid GUID. Got: {ref_key!r}"
+            )
+        return await self._request_bytes(
+            f"/Catalog_НоменклатураПрисоединенныеФайлы(guid'{key}')/$value"
+        )
 
     # ─── Pagination helper ────────────────────────────────────────────────────
 

@@ -1,19 +1,27 @@
-# 1C Mock Server (onec-mock)
+# 1C OData Mock Server (onec-mock)
 
-Standalone-сервис, симулирующий 1С:УНФ для разработки и E2E (Фаза 7 эпика #117, issue #124).
-**НЕ** часть `backend/` — играет роль внешней системы и версионируется независимо (D-01/D-14).
-
-Раз в `SYNC_INTERVAL_MINUTES` (по умолчанию 30 мин) сервис собирает неподтверждённые
-изменения виртуального каталога, генерирует инкрементальный CommerceML 2.x пакет
-(ZIP с `import.xml` + `offers.xml`) и шлёт `POST` на `ONEC_TARGET_URL` с заголовком
-`X-1C-Api-Key` (D-02). При 200/202 изменения помечаются отправленными; при ошибке —
-retry с backoff (1/5/15 мин, max 3 попытки на тик) и запись в журнал `sent_changes` (D-07).
+Standalone-сервис, имитирующий OData API 1С:УНФ поверх реального мартовского дампа
+(схема PostgreSQL `onec`: 1523 товара, 31 категория, 82 388 цен, 5 244 остатка,
+50 874 значений характеристик, 13 028 файлов-метаданных). Backend ходит в мок **pull-синком** —
+мок ничего не отправляет сам (issue #227). **НЕ** часть `backend/` — играет роль внешней
+системы и версионируется независимо (D-01/D-14).
 
 ## Стек
 
-Python 3.12, FastAPI, APScheduler (AsyncIOScheduler) в одном процессе, SQLAlchemy 2.0 async,
-PostgreSQL (та же БД, что у backend, отдельная схема `onec_mock`, без Alembic — D-03).
-Без Celery/Redis.
+Python 3.12, FastAPI, SQLAlchemy 2.0 async (asyncpg, NullPool), Pillow (placeholder-изображения).
+Без Celery/Redis/APScheduler — сервис read-only поверх схемы `onec`.
+
+## Данные
+
+Сид: `data/onec_seed.sql.gz` (gitignored) — plain SQL схемы `onec`. Восстановление:
+
+```bash
+zcat mocks/onec-server/data/onec_seed.sql.gz | docker exec -i promelectron-postgres-1 \
+  psql -U postgres -d promelectron   # нужен extension uuid-ossp
+```
+
+Мок отдаёт всё содержимое схемы «как настоящая 1С»: цены/остатки/файлы ссылаются и на товары
+вне 1523 (дамп — подмножество полного каталога). Sync-код молча пропускает неизвестные товары.
 
 ## Запуск (dev)
 
@@ -23,6 +31,7 @@ make dev        # или: docker compose -f backend/docker-compose.yml up -d one
 
 curl localhost:8100/health/
 curl localhost:8100/status/
+curl -u onec:onec "localhost:8100/odata/standard.odata/Catalog_Номенклатура?\$top=2"
 ```
 
 Локально без Docker (PG из compose):
@@ -37,69 +46,79 @@ PYTHONPATH=src DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:543
 
 ## Тесты
 
-Только Docker-PG (схема `onec_mock_test`, drop per test), никогда SQLite:
+Только Docker-PG (схема `onec_test`, синтетические фикстуры — сид в тестах не используется),
+никогда SQLite:
 
 ```bash
 make test-onec-mock   # поднимает postgres + pytest из venv
 make lint-onec-mock   # ruff
 ```
 
-## Переменные окружения (D-10)
+## Переменные окружения
 
 | Переменная | Default | Описание |
 |-----------|---------|----------|
 | `DATABASE_URL` | `postgresql+asyncpg://postgres:postgres@localhost:5432/promelectron` | Строка подключения (та же БД, что backend) |
-| `ONEC_MOCK_DATABASE_URL` | — | Override `DATABASE_URL` для мока (D-03), если задана — имеет приоритет |
-| `ONEC_TARGET_URL` | `http://api:8000/api/v1/onec/intake/` | Целевой intake endpoint (D-02) |
-| `ONEC_API_KEY` | `dev-onec-api-key` | Ключ `X-1C-Api-Key` (в K8s — из `promelectron-secrets.ONEC_WEBHOOK_API_KEY`). **Default только для локальной разработки** — в compose/K8s ключ всегда приходит из env/секрета |
-| `SYNC_INTERVAL_MINUTES` | `30` | Интервал регламентной отправки |
-| `SEED_ON_START` | `true` | Заполнить каталог стартовым набором при пустой БД |
-| `SEED_PRODUCTS_COUNT` | `200` | Число товаров при seed |
-| `CATALOG_SEED` | `42` | Seed детерминированного RNG каталога/сценариев |
+| `ONEC_MOCK_DATABASE_URL` | — | Override `DATABASE_URL` для мока, если задана — имеет приоритет |
+| `ONEC_MOCK_SCHEMA` | `onec` | Имя PG-схемы с данными дампа (тесты используют `onec_test`) |
+| `ONEC_MOCK_LOGIN` | `onec` | Basic Auth логин к OData-эндпоинтам (в K8s — из `promelectron-secrets`) |
+| `ONEC_MOCK_PASSWORD` | `onec` | Basic Auth пароль. **Default только для локальной разработки** |
+| `ONEC_MOCK_BASE_PATH` | `/odata/standard.odata` | Базовый путь OData API |
 | `LOG_LEVEL` | `INFO` | Уровень логирования |
-| `ONEC_MOCK_SCHEMA` | `onec_mock` | Имя PG-схемы (тесты используют `onec_mock_test`) |
 
-## Сценарии мутаций (D-06)
+## OData API
 
-| Сценарий | Параметры | Эффект |
-|----------|-----------|--------|
-| `normal` | — | Цены ±1–5% и остатки у 5–10% товаров |
-| `new_products` | `count` (5) | Новые товары с GUID-ами и атрибутами |
-| `mass_price_update` | `pct` (10) | Цены всех активных товаров ±pct% (ROUND_HALF_UP, 2 знака) |
-| `stock_out` | `share` (0.2) | Обнуление остатков у доли товаров (stock ≥ 0) |
-| `delete_products` | `count` (3) | Пометка товаров удалёнными (`ПометкаУдаления` в import.xml) |
-| `duplicate_batch` | — | Повторная отправка последнего пакета (те же байты и `X-1C-Batch-Id`) |
-| `bad_checksum` | — | Отправка с заведомо неверным `X-1C-Checksum` |
+Base path: `/odata/standard.odata`. Все OData-эндпоинты требуют Basic Auth
+(`ONEC_MOCK_LOGIN`/`ONEC_MOCK_PASSWORD`); неверная/отсутствующая пара → 401 с `odata.error`.
 
-Детерминизм: RNG каждого сценария seeded из `CATALOG_SEED` — воспроизводимость в тестах/E2E.
+Общее:
 
-## API управления (D-08, без auth, только внутренняя сеть)
+- Ответ списка: `{"odata.metadata": "<abs base>/$metadata#<Entity>", "value": [...]}`.
+- Query-параметры: `$format=json` (игнорируется), `$top` (default 100), `$skip` (default 0),
+  `$select`/`$orderby` (игнорируются), `$filter` — подмножество: `<поле> eq '<строка>'`,
+  `<поле> eq guid'<guid>'`, `<поле> eq true|false`, соединение через ` and `.
+- Неизвестная сущность → 404
+  `{"odata.error": {"code": "8", "message": {"lang": "ru", "value": "Сущность '<name>' не найдена"}}}`.
+- Нулевой GUID `00000000-0000-0000-0000-000000000000` отдаётся строкой-константой (как 1С).
 
-Trailing slash обязателен во всех endpoint'ах.
+Сущности (таблица `onec.*` → entity):
+
+| Entity | Таблица | Ключевые поля / фильтр |
+|---|---|---|
+| `Catalog_КатегорииНоменклатуры` | `categories` | `Ref_Key, Description, Parent_Key`=нулевой GUID, `IsFolder=false, DeletionMark` |
+| `Catalog_Номенклатура` | `products` | `Ref_Key, Description, НаименованиеПолное, Артикул, Code, Parent_Key, IsFolder, ТипНоменклатуры, КатегорияНоменклатуры_Key, ЕдиницаИзмерения_Key, Вес=0, DeletionMark`. Фильтр: `ТипНоменклатуры eq 'Запас' and IsFolder eq false` |
+| `InformationRegister_ЦеныНоменклатуры` | `prices` | `Period, ВидЦен_Key, Номенклатура_Key, Характеристика_Key, Цена, Актуальность`. Фильтр: `ВидЦен_Key eq '<guid>'` |
+| `AccumulationRegister_ЗапасыНаСкладах/Balance` | `stock_balance` | `Организация_Key, Номенклатура_Key, СтруктурнаяЕдиница_Key, КоличествоBalance, КоличествоИнтBalance=0` (остальные *_Key — нулевые GUID). Фильтр: `СтруктурнаяЕдиница_Key eq '<guid>'` |
+| `ChartOfCharacteristicTypes_ДополнительныеРеквизитыИСведения` | `attribute_definitions` | `raw` отдаётся как есть; при `raw = NULL` (весь дамп) собирается минимальный record: `Ref_Key, Description, DeletionMark, Заголовок=Description, ValueType=CatalogRef.ЗначенияСвойствОбъектов` |
+| `Catalog_ЗначенияСвойствОбъектов` | `attribute_values` | `Ref_Key, Description, Owner_Key, DeletionMark`. Фильтр: `Owner_Key eq '<guid>'` |
+| `Catalog_Номенклатура_ДополнительныеРеквизиты` | `product_attributes` | `Ref_Key, LineNumber (строка), Свойство_Key, Значение, ТекстоваяСтрока, Значение_Type`. Фильтр: `Ref_Key eq guid'<guid>'` (обе формы) |
+| `Catalog_КлассификаторЕдиницИзмерения` | `units` | `Ref_Key, Description, Code` |
+| `Catalog_ВидыЦен` | `price_types` | `Ref_Key, Description, DeletionMark` |
+| `Catalog_НоменклатураПрисоединенныеФайлы` | `product_files` | `Ref_Key, Description, ВладелецФайла_Key, Размер (строка), Расширение, DeletionMark, ДатаСоздания`. Фильтр: `ВладелецФайла_Key eq guid'<guid>'` |
+
+Бинарь файла (бинарников в дампе нет — генерируется детерминированный placeholder):
+
+```
+GET /odata/standard.odata/Catalog_НоменклатураПрисоединенныеФайлы(guid'<ref_key>')/$value
+→ 200, Content-Type: image/jpeg (цветная плашка 320x240 из md5(ref_key))
+→ неизвестный guid → 404 odata.error
+```
+
+## Management API (без auth, trailing slash)
 
 - `GET /health/` — healthcheck.
-- `POST /trigger/` — форс-отправка pending changes вне расписания.
-  Ответ: `{"batch_id": "...", "http_status": 202, "status": "success", "changes_sent": N}`
-  или `{"status": "nothing_to_send"}`.
-- `POST /scenario/` — тело `{"scenario": "new_products", "params": {"count": 5}, "send_now": true}`.
-  Ответ: `{"scenario_run_id": N, "changes_created": M, "batch_id": "..." | null}`.
-  Неизвестный сценарий → 422.
-- `GET /status/` — состояние планировщика, число pending changes, размер каталога.
-- `GET /history/?limit=20&offset=0` — журнал отправок `sent_changes` (limit ≤ 100).
+- `GET /status/` — счётчики строк по таблицам схемы.
 
-## Деплой (D-09)
+## Структура
 
-- Dev: сервис `onec-mock` в `backend/docker-compose.yml` (build из `mocks/onec-server`).
-- K8s: `infra/helm/templates/onec-mock-{deployment,service}.yaml` за флагом
-  `onecMock.enabled` (default `false`; test — `true`, prod — `false`). Только ClusterIP,
-  ingress НЕ создаётся. Образ собирается CI (`deploy.yml`, `ONEC_MOCK_IMAGE`).
-
-## Контракт отправки (D-02)
-
-`POST {ONEC_TARGET_URL}`, тело — ZIP (`import.xml` + `offers.xml`, CommerceML 2.10,
-`СодержитТолькоИзменения="true"`), заголовки: `X-1C-Api-Key`,
-`Content-Type: application/xml; charset=utf-8`, `X-1C-Batch-Id: {uuid}`,
-`X-1C-Checksum: sha256:{hex}`. Успех = HTTP 200/202.
-
-Генератор пакета — за интерфейсом `PackageGenerator` (`commerceml.py`): точка расширения
-под реальный диалект 1С после первой живой выгрузки (D-05).
+```
+src/onec_mock/
+  config.py   — env-конфигурация (Settings)
+  db.py       — async engine/session (NullPool)
+  odata.py    — реестр сущностей, сериализаторы, парсер $filter, запросы
+  images.py   — детерминированный placeholder JPEG (Pillow)
+  main.py     — FastAPI: Basic Auth, OData-роуты, /health/, /status/
+tests/
+  conftest.py — схема onec_test, синтетические фикстуры
+  test_odata.py — контрактные тесты
+```

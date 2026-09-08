@@ -1,12 +1,8 @@
-"""Async engine/session по DATABASE_URL (D-03)."""
+"""Async engine/session по DATABASE_URL (та же БД, что у backend; схема из ONEC_MOCK_SCHEMA)."""
 
 from collections.abc import AsyncIterator
 
-from sqlalchemy.ext.asyncio import (
-    AsyncSession,
-    async_sessionmaker,
-    create_async_engine,
-)
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
 from onec_mock.config import settings
@@ -19,14 +15,3 @@ async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit
 async def get_session() -> AsyncIterator[AsyncSession]:
     async with async_session() as session:
         yield session
-
-
-async def init_db() -> None:
-    """Создать схему и таблицы onec_mock (без Alembic, D-03)."""
-    from sqlalchemy import text
-
-    from onec_mock.models import Base
-
-    async with engine.begin() as conn:
-        await conn.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{settings.onec_mock_schema}"'))
-        await conn.run_sync(Base.metadata.create_all)

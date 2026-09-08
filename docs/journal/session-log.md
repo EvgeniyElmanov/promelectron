@@ -415,3 +415,11 @@
 - Коммит `8b72e54` (main, запушен): skills/rules/AGENTS, SESSION_LOG + archive, хуки, пайплайн-хелперы, BLOCKERS/LESSONS.
 - Очищены все устаревшие worktree (6 зарегистрированных + 6 осиротевших каталогов, ~1.6 ГБ); ветки кроме main/recovery-local удалены. Понадобился docker chown — root-owned файлы от контейнерных прогонов.
 - Фикс `implement-pipeline.py`: `_remove_tree()` без ignore_errors + docker-chown fallback; cleanup/janitor больше не рапортуют ложный успех. Урок в LESSONS_LEARNED.
+
+## 2026-09-08 — onec-odata-real-catalog-0908 (issue #227): переход на OData pull + реальный каталог
+- Решение владельца: финальная архитектура обмена с 1С:УНФ — **OData pull** (не CommerceML push). Данные — мартовский дамп реальной 1С `1c.74bita.ru/UNF-PromElektron` (1523 товара из ~10К каталога; цены/атрибуты/остатки ссылаются и за его пределы).
+- Мок `mocks/onec-server/` переписан из CommerceML-симулятора в **OData-сервер** поверх PG-схемы `onec` (сид `data/onec_seed.sql.gz`, gitignored; курация: последние цены per вид/товар, 364K→82K строк). 10 сущностей, `$top/$skip/$filter`, Basic Auth, `odata.error`, placeholder-JPEG по `$value`. 23 теста ✅.
+- Backend: `onec_client` + `onec_sync_service` — категория по `КатегорияНоменклатуры_Key` (не Parent_Key), вес кг→г, DeletionMark→is_active, синк характеристик (Attribute/ProductAttributeValue) и изображений (MinIO → products.images), исправлен фильтр склада (`СтруктурнаяЕдиница_Key` вместо `Склад_Key`), per-change savepoints (битый change не валит батч), дубли SKU → sku=NULL+strip, сквозная агрегация остатков по страницам.
+- Живые прогоны против мока: каталог загружен и сверен с дампом — 1343 товара (1328 активных = точное подмножество), 31 категория, 15405 цен, 5535 значений характеристик (= мартовскому логу), изображения у 922, остатки сошлись 0/0 расхождений по round(sum). Найдено и починено 3 бага: дубли SKU валили батч, частичная агрегация остатков + staleness, нестабильный ORDER BY пагинации мока (964 потери/дубли на 5244 строках).
+- **H-001 решён**: сайтовый вид цен — «Розница» `3d3bea35-5d6a-11eb-948a-f81a67046005` (решение владельца); price_type пишется реальными GUID сразу.
+- Follow-up (не в объёме): удаление CommerceML-ветки лоадера и push-эндпоинтов, инкрементальный синк, helm values onecMock, секреты ONEC_MOCK_* в test, деплой на test.
