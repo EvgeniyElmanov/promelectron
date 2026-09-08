@@ -54,6 +54,7 @@ class Settings:
     onec_password: str | None
     onec_site_price_type: str
     onec_warehouse_key: str | None
+    onec_allow_insecure_http: bool
     onec_webhook_api_key: str
     onec_default_supplier_id: int | None
     yookassa_shop_id: str
@@ -212,6 +213,7 @@ settings = Settings(
     onec_password=os.getenv("ONEC_PASSWORD"),
     onec_site_price_type=os.getenv("ONEC_SITE_PRICE_TYPE", "site"),
     onec_warehouse_key=os.getenv("ONEC_WAREHOUSE_KEY"),
+    onec_allow_insecure_http=os.getenv("ONEC_ALLOW_INSECURE_HTTP", "").lower() == "true",
     onec_webhook_api_key=_load_onec_webhook_api_key(),
     onec_default_supplier_id=_parse_optional_int_env("ONEC_DEFAULT_SUPPLIER_ID"),
     yookassa_shop_id=os.getenv("YOOKASSA_SHOP_ID", ""),

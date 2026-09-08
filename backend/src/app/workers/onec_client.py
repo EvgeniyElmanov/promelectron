@@ -64,7 +64,10 @@ def _validate_base_url(url: str) -> str:
         raise OnecClientConfigurationError(f"ONEC_API_URL is not a valid URL: {url!r}")
 
     if os.getenv("ENVIRONMENT") == "production":
-        if parsed.scheme != "https":
+        # ONEC_ALLOW_INSECURE_HTTP=true — осознанный escape hatch для
+        # внутрикластерного мока на test-стенде (ENVIRONMENT там = production,
+        # а мок ходит по http ClusterIP). В prod-манифестах флаг отсутствует.
+        if parsed.scheme != "https" and not settings.onec_allow_insecure_http:
             raise OnecClientConfigurationError(
                 f"ONEC_API_URL must use https:// in production. Got: {url!r}"
             )

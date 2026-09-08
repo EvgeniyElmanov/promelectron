@@ -122,6 +122,32 @@ async def test_unconfigured_client_raises_error(monkeypatch):
         OnecClient()
 
 
+def test_production_http_url_rejected(monkeypatch):
+    """В production ONEC_API_URL обязан быть https (SSRF-guard)."""
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    patched = replace(settings, onec_allow_insecure_http=False)
+    monkeypatch.setattr("src.app.workers.onec_client.settings", patched)
+    with pytest.raises(OnecClientError, match="https"):
+        OnecClient(base_url="http://promelectron-onec-mock:8100/odata/standard.odata")
+
+
+def test_production_http_url_allowed_with_insecure_flag(monkeypatch):
+    """ONEC_ALLOW_INSECURE_HTTP=true — escape hatch для мока на test-стенде."""
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    patched = replace(settings, onec_allow_insecure_http=True)
+    monkeypatch.setattr("src.app.workers.onec_client.settings", patched)
+    client = OnecClient(base_url="http://promelectron-onec-mock:8100/odata/standard.odata")
+    assert client.base_url == "http://promelectron-onec-mock:8100/odata/standard.odata"
+
+
+def test_production_https_url_accepted(monkeypatch):
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    patched = replace(settings, onec_allow_insecure_http=False)
+    monkeypatch.setattr("src.app.workers.onec_client.settings", patched)
+    client = OnecClient(base_url="https://1c.example.com/unf/odata/standard.odata/")
+    assert client.base_url == "https://1c.example.com/unf/odata/standard.odata"
+
+
 @pytest.mark.asyncio
 async def test_get_prices_without_price_type_key_fetches_all(client):
     """D-04: без price_type_key запрос идёт без $filter — тянем все виды цен."""
