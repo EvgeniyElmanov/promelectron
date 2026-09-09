@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from onec_mock.config import settings
 from onec_mock.db import get_session
-from onec_mock.images import placeholder_jpeg
+from onec_mock.images import placeholder_jpeg, warmup_pool
 from onec_mock.odata import ENTITIES, FilterError, query_entity
 
 logger = logging.getLogger("onec_mock")
@@ -31,6 +31,7 @@ _FILE_VALUE_RE = re.compile(
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     logging.basicConfig(level=settings.log_level)
+    warmup_pool()
     logger.info(
         "onec-mock starting (schema=%s, base_path=%s)", settings.onec_mock_schema, settings.base_path
     )

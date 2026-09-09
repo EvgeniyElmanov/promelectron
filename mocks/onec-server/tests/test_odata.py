@@ -339,3 +339,14 @@ async def test_file_value_unknown_guid_404(client):
     )
     assert response.status_code == 404
     assert "odata.error" in response.json()
+
+
+def test_placeholder_pool_deterministic_after_warmup():
+    """После warmup_pool() (боевой путь, lifespan) ref_key → тот же валидный JPEG из пула."""
+    from onec_mock.images import placeholder_jpeg, warmup_pool
+
+    warmup_pool()
+    first = placeholder_jpeg(F1)
+    Image.open(io.BytesIO(first)).verify()
+    assert placeholder_jpeg(F1) == first
+    assert placeholder_jpeg(NULL_GUID) != b""

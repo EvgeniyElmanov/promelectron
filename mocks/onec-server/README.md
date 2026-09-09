@@ -96,11 +96,12 @@ Base path: `/odata/standard.odata`. Все OData-эндпоинты требую
 | `Catalog_ВидыЦен` | `price_types` | `Ref_Key, Description, DeletionMark` |
 | `Catalog_НоменклатураПрисоединенныеФайлы` | `product_files` | `Ref_Key, Description, ВладелецФайла_Key, Размер (строка), Расширение, DeletionMark, ДатаСоздания`. Фильтр: `ВладелецФайла_Key eq guid'<guid>'` |
 
-Бинарь файла (бинарников в дампе нет — генерируется детерминированный placeholder):
+Бинарь файла (бинарников в дампе нет — отдаётся детерминированный placeholder из
+предгенерированного пула, см. `images.py`):
 
 ```
 GET /odata/standard.odata/Catalog_НоменклатураПрисоединенныеФайлы(guid'<ref_key>')/$value
-→ 200, Content-Type: image/jpeg (цветная плашка 320x240 из md5(ref_key))
+→ 200, Content-Type: image/jpeg (цветная плашка 320x240, вариант из пула по md5(ref_key))
 → неизвестный guid → 404 odata.error
 ```
 
@@ -116,7 +117,7 @@ src/onec_mock/
   config.py   — env-конфигурация (Settings)
   db.py       — async engine/session (NullPool)
   odata.py    — реестр сущностей, сериализаторы, парсер $filter, запросы
-  images.py   — детерминированный placeholder JPEG (Pillow)
+  images.py   — placeholder JPEG: пул 256 вариантов, предгенерация на старте (Pillow)
   main.py     — FastAPI: Basic Auth, OData-роуты, /health/, /status/
 tests/
   conftest.py — схема onec_test, синтетические фикстуры
