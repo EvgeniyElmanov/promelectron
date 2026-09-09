@@ -456,3 +456,12 @@
 - Аномалия при проверке: у «Бренда» 1887 из 2102 value_key не резолвятся в attribute_values — свойство исходного дампа, НЕ следствие сокращения. Facet не ломается: `_resolve_product_attribute_value` (onec_sync_service.py:641-649) складывает unresolved enum как GUID-текст, шаг 10 (facet non-empty) проходит.
 - PR #231: `EXPECTED_PRODUCTS` 1000→200; таймаут `ONEC_APPLY_CHANGES` 900s→1800s (запас от объёма каталога); README мока и PROJECT_CONTEXT приведены к факту. bash -n OK, test-onec-mock 25/25.
 - Проверка мока в кластере после сокращения: `/status/` products=227.
+
+## 2026-09-09 — Deploy CI полностью зелёный (run 34363297961): алиас сайтовой цены + admin-спека (PR #232)
+- Run 34358721559 (после сокращения каталога): `seed-test-catalog` зелёный за 9 мин, но `test-e2e` упал — 12 failed / 4 flaky / 107 passed. E2E впервые дошёл до прогона в мире OData pull.
+- Разбор по trace-артефактам Playwright: 10 из 12 падений — **`ONEC_SITE_PRICE_TYPE=BASE` в `infra/helm/stage/test/values.yaml`** (наследие CommerceML) против реальных GUID, которые пишет OData-синк (сайтовый вид «Розница» `3d3bea35-...`, H-001). `get_site_price` → None → `/orders/create` 400 (checkout ×3, checkout-failed-cards ×5, cart-select ×1), `price=null` в Meilisearch → сортировка перемешана (search-filter sort ×1).
+- Ещё 2 падения (admin categories): вкладка «Все» пагинирует по 20 (`useCategories.js` PAGE_LIMIT), onec привнёс 31 категорию → созданная тестом категория за 1-й страницей.
+- Helm по решению владельца НЕ тронут. Фикс (PR #232): идемпотентный data-патч в `seed_test_catalog.sh` после синка и до reindex — `UPDATE product_prices SET price_type=<ONEC_SITE_PRICE_TYPE из env api> WHERE price_type=<GUID Розница>` (когда helm поправят — станет no-op); admin-спека переведена на `category-search-input`.
+- Дополнительно из onec удалены 7 товаров без актуальной цены «Розница» → каталог 220 SKU (209 активных, все с сайтовой ценой), свежий `onec_seed.sql.gz` перегенерирован.
+- **Итог: run 34363297961 полностью зелёный** — build 19s, deploy-test 44s, migrate-check 7s, seed-test-catalog 9m06s (было ~35 мин), e2e 4m19s: **121 passed, 0 failed, 2 flaky, 1 skipped**. deploy-prod/prod-smoke пропущены по условию workflow (штатно).
+- Долг: `ONEC_SITE_PRICE_TYPE=BASE` в helm test-values маскируется data-патчем; prod-values держат `"site"` — при подключении prod к OData-каталогу понадобится то же решение (владелец + infra).

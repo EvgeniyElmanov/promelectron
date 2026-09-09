@@ -66,8 +66,8 @@
 
 ## 🔒 Замки
 
-**Занято:** `backend` + `harness` + `docs` — [#227](https://github.com/AutonomaCo/promelectron/issues/227) (OData pull, ветка `feature/onec-odata-real-catalog-0908`).
-**Свободны:** `frontend`, `e2e`, `infra`.
+**Занято:** ничего.
+**Свободны:** `backend`, `frontend`, `e2e`, `infra`, `docs`, `harness`.
 
 | Замок | Сколько issue | Кто следующий |
 |---|---|---|
@@ -87,9 +87,7 @@
 
 # 🔵 В работе
 
-| ID | Что делается | Замок | Ветка |
-|---|---|---|---|
-| [#227](https://github.com/AutonomaCo/promelectron/issues/227) | OData pull: мок на реальных данных + полный синк каталога | `backend` `harness` `docs` | `feature/onec-odata-real-catalog-0908` |
+Пусто. #227 (OData pull) закрыт: CI Deploy полностью зелёный (run 34363297961, 2026-09-09).
 
 ---
 
