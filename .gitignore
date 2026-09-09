@@ -107,3 +107,4 @@ Makefile.override.mk
 
 # Реальный снапshot 1С (7.4 МБ, issue #227) — не коммитим; восстановление: zcat | psql
 mocks/onec-server/data/onec_seed.sql.gz
+mocks/onec-server/data/onec_seed_full_backup_*.sql.gz

@@ -3,7 +3,9 @@
 # переписан под OData pull в #227).
 #
 # Цепочка: cleanup → reseed users/supplier → restart api → проверка сида мока
-# (схема onec, ~1523 SKU из дампа реальной 1С) → POST /admin/onec/full-sync/ →
+# (схема onec, ~227 SKU — дамп реальной 1С, сокращён 2026-09-09 с ~1523 для
+# скорости CI; полный бэкап: mocks/onec-server/data/onec_seed_full_backup_20260909.sql.gz)
+# → POST /admin/onec/full-sync/ →
 # ожидание ONEC_FULL_SYNC + ONEC_APPLY_CHANGES → фасеты (is_filterable по имени
 # атрибута, коды = GUID) + full reindex Meilisearch → реальные фото → верификация.
 #
@@ -24,8 +26,9 @@ API="${API:-https://api.promelectron-test.aidrivencode.ru}"
 ADMIN_EMAIL="${SEED_ADMIN_EMAIL:-seed-admin@example.com}"
 ADMIN_PASSWORD="$SEED_ADMIN_PASSWORD"
 # Ожидание сида мока: схема onec в test-БД (загружается вручную из
-# onec_seed.sql.gz), 1523 номенклатуры. 1000 — нижняя граница «сид на месте».
-EXPECTED_PRODUCTS=1000
+# onec_seed.sql.gz), 227 номенклатур после сокращения 2026-09-09 (было 1523).
+# 200 — нижняя граница «сид на месте».
+EXPECTED_PRODUCTS=200
 MIN_PRODUCTS=25        # нижняя граница Acceptance Criteria
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
@@ -171,7 +174,10 @@ echo "$SYNC_OUT" | python3 -c \
 
 log "=== Шаг 6/10: ожидание pull-синка (ONEC_FULL_SYNC + батчи, timeout 1800s) ==="
 wait_for "job ONEC_FULL_SYNC completed" 1800 check_full_sync_done
-wait_for "все ONEC_APPLY_CHANGES settled" 900 check_apply_jobs_settled
+# apply-батчи идут на одном job-worker'е с троттлингом по CPU limit — при росте
+# каталога 900s уже не хватало (run 34350753192); 1800s даёт запас, чтобы CI
+# не зависел от объёма каталога
+wait_for "все ONEC_APPLY_CHANGES settled" 1800 check_apply_jobs_settled
 check_no_failed_apply || fail "есть failed ONEC_APPLY_CHANGES job'ы"
 PRODUCTS_TOTAL="$(psql_query "SELECT count(*) FROM products")"
 [ "${PRODUCTS_TOTAL:-0}" -ge "$MIN_PRODUCTS" ] \
