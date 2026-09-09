@@ -72,8 +72,12 @@ test.describe('Admin Panel', () => {
     await page.fill('[data-testid="category-description-input"]', 'Test description');
     await page.click('[data-testid="category-submit-btn"]');
 
-    // 5. Wait for modal to close, then verify category appears in table
+    // 5. Wait for modal to close, then verify category appears in table.
+    // Таблица «Все» пагинирует по 20 (PAGE_LIMIT в useCategories), а onec-синк
+    // добавляет 30+ категорий — созданная оказывается за пределами первой
+    // страницы. Ищем через поиск по названию вместо скролла страниц.
     await expect(page.locator('.modal-overlay')).not.toBeVisible({ timeout: 10000 });
+    await page.fill('[data-testid="category-search-input"]', 'E2E Test Category');
     const categoryRow = page.locator('.admin__table tr').filter({ hasText: 'E2E Test Category' }).first();
     await expect(categoryRow).toBeVisible({ timeout: 10000 });
 
@@ -119,6 +123,9 @@ test.describe('Admin Panel', () => {
     expect(rootResponse.status()).toBe(200);
     await expect(page.locator('.modal-overlay')).not.toBeVisible({ timeout: 10000 });
 
+    // Пагинация «Все» — 20 строк (PAGE_LIMIT), onec-каталог > 30 категорий:
+    // ищем созданную через поиск, иначе строка за пределами первой страницы
+    await page.fill('[data-testid="category-search-input"]', rootName);
     const rootRow = page.locator('.admin__table tr').filter({ hasText: rootName }).first();
     await expect(rootRow).toBeVisible({ timeout: 10000 });
 
@@ -136,8 +143,11 @@ test.describe('Admin Panel', () => {
     expect(childResponse.status()).toBe(200);
     await expect(page.locator('.modal-overlay')).not.toBeVisible({ timeout: 10000 });
 
+    await page.fill('[data-testid="category-search-input"]', childName);
     const childRow = page.locator('.admin__table tr').filter({ hasText: childName }).first();
     await expect(childRow).toBeVisible({ timeout: 10000 });
+    // Сброс поиска: он комбинируется с табом (buildListParams шлёт q + parent_id)
+    await page.fill('[data-testid="category-search-input"]', '');
 
     // 6. Switch to root category tab
     const rootTab = page.locator('.admin__category-tab').filter({ hasText: rootName }).first();
@@ -153,8 +163,9 @@ test.describe('Admin Panel', () => {
     await childRow.locator('.admin__icon-btn--delete').click();
     await expect(childRow).not.toBeVisible({ timeout: 10000 });
 
-    // Return to "All" tab to delete root
+    // Return to "All" tab to delete root (снова через поиск — пагинация по 20)
     await page.click('[data-testid="category-tab-all"]');
+    await page.fill('[data-testid="category-search-input"]', rootName);
     await expect(rootRow).toBeVisible({ timeout: 10000 });
     page.once('dialog', (dialog) => dialog.accept());
     await rootRow.locator('.admin__icon-btn--delete').click();

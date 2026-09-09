@@ -3,7 +3,7 @@
 # переписан под OData pull в #227).
 #
 # Цепочка: cleanup → reseed users/supplier → restart api → проверка сида мока
-# (схема onec, ~227 SKU — дамп реальной 1С, сокращён 2026-09-09 с ~1523 для
+# (схема onec, ~220 SKU — дамп реальной 1С, сокращён 2026-09-09 с ~1523 для
 # скорости CI; полный бэкап: mocks/onec-server/data/onec_seed_full_backup_20260909.sql.gz)
 # → POST /admin/onec/full-sync/ →
 # ожидание ONEC_FULL_SYNC + ONEC_APPLY_CHANGES → фасеты (is_filterable по имени
@@ -26,7 +26,7 @@ API="${API:-https://api.promelectron-test.aidrivencode.ru}"
 ADMIN_EMAIL="${SEED_ADMIN_EMAIL:-seed-admin@example.com}"
 ADMIN_PASSWORD="$SEED_ADMIN_PASSWORD"
 # Ожидание сида мока: схема onec в test-БД (загружается вручную из
-# onec_seed.sql.gz), 227 номенклатур после сокращения 2026-09-09 (было 1523).
+# onec_seed.sql.gz), 220 номенклатур после сокращения 2026-09-09 (было 1523).
 # 200 — нижняя граница «сид на месте».
 EXPECTED_PRODUCTS=200
 MIN_PRODUCTS=25        # нижняя граница Acceptance Criteria
@@ -183,6 +183,21 @@ PRODUCTS_TOTAL="$(psql_query "SELECT count(*) FROM products")"
 [ "${PRODUCTS_TOTAL:-0}" -ge "$MIN_PRODUCTS" ] \
   || fail "после синка товаров=$PRODUCTS_TOTAL, ожидалось >= $MIN_PRODUCTS"
 log "pull-синк завершён: товаров=$PRODUCTS_TOTAL"
+
+# Алиас сайтового вида цены. Helm test-values задают ONEC_SITE_PRICE_TYPE=BASE
+# (наследие CommerceML-эпохи), а OData-синк пишет price_type реальными GUID 1С
+# (сайтовый вид «Розница» 3d3bea35-5d6a-11eb-948a-f81a67046005, H-001). Без
+# алиаса get_site_price возвращает None → заказ 400, price=null в Meilisearch
+# (12 падений e2e в run 34358721559). Правильный фикс — helm values, но infra
+# без разрешения владельца не трогаем; патч данных стенда идемпотентен: если
+# helm когда-нибудь поправят на GUID, UPDATE станет no-op. До шага 8 (reindex),
+# чтобы в Meilisearch ушли реальные цены.
+SITE_PRICE_TYPE="$(kubectl exec deploy/promelectron-api -n "$NS" -- \
+  printenv ONEC_SITE_PRICE_TYPE)" \
+  || fail "не удалось прочитать ONEC_SITE_PRICE_TYPE из api"
+[ -n "$SITE_PRICE_TYPE" ] || fail "ONEC_SITE_PRICE_TYPE пуст в api"
+ALIASED="$(psql_query "UPDATE product_prices SET price_type='$SITE_PRICE_TYPE' WHERE price_type='3d3bea35-5d6a-11eb-948a-f81a67046005' AND price_type <> '$SITE_PRICE_TYPE' RETURNING 1" | wc -l)"
+log "алиас сайтовой цены → '$SITE_PRICE_TYPE': обновлено строк product_prices: $ALIASED"
 
 log "=== Шаг 7/10: подготовка Meilisearch ==="
 # apply-путь pull-синка не ставит SEARCH_INDEX_PRODUCTS — индекс заполнит

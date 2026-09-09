@@ -441,3 +441,18 @@
 - Проверка: lint-onec-mock чист, test-onec-mock 24/24; `make pre-push`: lint всего проекта зелёный, backend 644 passed, frontend 395 passed, E2E 115/119 — 4 падения (admin ×2, auth merge, search-filter sort) воспроизводятся на грязной локальной БД (в ней дамп 1С вместо E2E-фикстуры), к моку отношения не имеют.
 - Попутно: починен локальный `frontend/node_modules` — root-owned файлы от старых docker-прогонов ломали `npm ci` в lint-frontend (EACCES rmdir); вылечено `chown -R 1000:1000` через контейнер. Урок: при EACCES в node_modules проверять владельца.
 - infra/helm по решению владельца не трогаем (CPU limit/probe-страховка отложена). После merge — перезапуск «Deploy to Kubernetes» на main.
+
+## 2026-09-09 — fix(onec-mock) #2: in-memory индекс $value (PR #230) + разбор run 34350753192
+- Контекст: после PR #229 деплой всё равно падал — мок продолжал умирать под синком.
+- Диагностика: каждый `$value` делал SQL-запрос по `product_files` (ref_key) — под конкурентным синком PG-запросы на горячем пути + 200m CPU limit снова давали liveness-фейлы.
+- Фикс (PR #230, merge `424a995`): in-memory frozenset `_file_keys`, warmup в lifespan, fallback на БД до warmup. Тесты мока 25/25, unit backend 644 + frontend 395 зелёные.
+- Deploy run 34350753192 после merge: мок выжил (0 рестартов), ONEC_FULL_SYNC completed за 28m23s, но `seed-test-catalog` упал на `wait_for "все ONEC_APPLY_CHANGES settled" 900` — 977 батчей на одном job-worker'е (троттлинг 27% периодов — его CPU limit) не осели за 900s. По правилу владельца: отчёт без исправлений.
+- Побочный разбор: переполненность кластера по CPU **requests** (99–100%, rook-ceph ~15.9 ядер) — фоновый риск шедулинга (Pending по Insufficient cpu у cdek-cronjobs), но не причина падений: троттлинг идёт по **limits**, память чистая (OOMKilled нет).
+
+## 2026-09-09 — ci(seed): сокращение тестового каталога onec 1523→227 SKU (PR #231)
+- Решение владельца: сократить каталог до комфортного вместо (запрещённого) лазания в infra/helm.
+- Схема `onec` в test-БД урезана вручную: 1523 → 227 товаров (216 активных `Запас`). Критерии keep-set: все «розетка» (11) и «кабель» (57) — нужны шагу 10 seed-скрипта и E2E; топ-18 на категорию с приоритетом «есть фото + есть цена»; все 31 категории, справочники и 50 874 значений характеристик не тронуты. Удалено: 1296 products, 12813 files, 19310 attributes, 79574 prices, 5118 stock.
+- Перед удалением — полный бэкап `mocks/onec-server/data/onec_seed_full_backup_20260909.sql.gz` (7.3M); свежий урезанный `onec_seed.sql.gz` (2.0M) перегенерирован из кластера (оба gitignored, правило для бэкапов добавлено в .gitignore).
+- Аномалия при проверке: у «Бренда» 1887 из 2102 value_key не резолвятся в attribute_values — свойство исходного дампа, НЕ следствие сокращения. Facet не ломается: `_resolve_product_attribute_value` (onec_sync_service.py:641-649) складывает unresolved enum как GUID-текст, шаг 10 (facet non-empty) проходит.
+- PR #231: `EXPECTED_PRODUCTS` 1000→200; таймаут `ONEC_APPLY_CHANGES` 900s→1800s (запас от объёма каталога); README мока и PROJECT_CONTEXT приведены к факту. bash -n OK, test-onec-mock 25/25.
+- Проверка мока в кластере после сокращения: `/status/` products=227.
