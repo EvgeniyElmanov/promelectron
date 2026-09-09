@@ -14,7 +14,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from onec_mock.config import settings
-from onec_mock.db import get_session
+from onec_mock.db import async_session, get_session
 from onec_mock.images import placeholder_jpeg, warmup_pool
 from onec_mock.odata import ENTITIES, FilterError, query_entity
 
@@ -28,10 +28,28 @@ _FILE_VALUE_RE = re.compile(
 )
 
 
+# Индекс ref_key присоединённых файлов: $value — самый горячий путь pull-синка
+# (13K запросов подряд), а каждый SELECT через NullPool — новое TCP-подключение
+# к PG. На лимите 200m CPU это душило event loop до таймаутов liveness probe
+# (kill мока посреди синка, run 34343673575). None — до warmup (тесты без
+# lifespan): проверка существования идёт через БД, как раньше.
+_file_keys: frozenset[str] | None = None
+
+
+async def _warmup_file_index() -> None:
+    global _file_keys
+    async with async_session() as session:
+        result = await session.execute(
+            text(f"SELECT ref_key FROM {settings.onec_mock_schema}.product_files")
+        )
+        _file_keys = frozenset(row[0] for row in result)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     logging.basicConfig(level=settings.log_level)
     warmup_pool()
+    await _warmup_file_index()
     logger.info(
         "onec-mock starting (schema=%s, base_path=%s)", settings.onec_mock_schema, settings.base_path
     )
@@ -95,7 +113,6 @@ async def odata_endpoint(path: str, request: Request, session: DbSession) -> Res
     file_value = _FILE_VALUE_RE.match(path)
     if file_value:
         return await _file_value_response(file_value.group("ref_key"), session)
-
     entity_name = path.rstrip("/")
     if entity_name not in ENTITIES:
         return odata_error(404, "8", f"Сущность '{entity_name}' не найдена")
@@ -129,10 +146,14 @@ async def odata_endpoint(path: str, request: Request, session: DbSession) -> Res
 
 
 async def _file_value_response(ref_key: str, session: AsyncSession) -> Response:
-    result = await session.execute(
-        text(f"SELECT 1 FROM {settings.onec_mock_schema}.product_files WHERE ref_key = :ref_key"),
-        {"ref_key": ref_key},
-    )
-    if result.first() is None:
-        return odata_error(404, "8", f"Сущность '{ref_key}' не найдена")
+    if _file_keys is not None:
+        if ref_key not in _file_keys:
+            return odata_error(404, "8", f"Сущность '{ref_key}' не найдена")
+    else:
+        result = await session.execute(
+            text(f"SELECT 1 FROM {settings.onec_mock_schema}.product_files WHERE ref_key = :ref_key"),
+            {"ref_key": ref_key},
+        )
+        if result.first() is None:
+            return odata_error(404, "8", f"Сущность '{ref_key}' не найдена")
     return Response(content=placeholder_jpeg(ref_key), media_type="image/jpeg")

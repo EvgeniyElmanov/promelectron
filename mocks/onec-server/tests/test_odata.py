@@ -350,3 +350,22 @@ def test_placeholder_pool_deterministic_after_warmup():
     Image.open(io.BytesIO(first)).verify()
     assert placeholder_jpeg(F1) == first
     assert placeholder_jpeg(NULL_GUID) != b""
+
+
+async def test_file_value_served_from_memory_index(client, monkeypatch):
+    """С прогретым _file_keys (боевой путь, lifespan) 404 решается по индексу,
+    без запроса в БД: ключ есть в БД, но не в индексе → 404."""
+    import onec_mock.main as onec_main
+
+    monkeypatch.setattr(onec_main, "_file_keys", frozenset({F1}))
+    ok = await get(client, f"Catalog_НоменклатураПрисоединенныеФайлы(guid'{F1}')/$value")
+    assert ok.status_code == 200
+    # F1 в индексе; этот guid есть в БД (см. conftest), но не в индексе → 404
+    body = (
+        await get(client, "Catalog_НоменклатураПрисоединенныеФайлы")
+    ).json()["value"]
+    other = next(row["Ref_Key"] for row in body if row["Ref_Key"] != F1)
+    missing = await get(
+        client, f"Catalog_НоменклатураПрисоединенныеФайлы(guid'{other}')/$value"
+    )
+    assert missing.status_code == 404
