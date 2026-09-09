@@ -97,7 +97,8 @@ Base path: `/odata/standard.odata`. Все OData-эндпоинты требую
 | `Catalog_НоменклатураПрисоединенныеФайлы` | `product_files` | `Ref_Key, Description, ВладелецФайла_Key, Размер (строка), Расширение, DeletionMark, ДатаСоздания`. Фильтр: `ВладелецФайла_Key eq guid'<guid>'` |
 
 Бинарь файла (бинарников в дампе нет — отдаётся детерминированный placeholder из
-предгенерированного пула, см. `images.py`):
+предгенерированного пула, см. `images.py`; существование `ref_key` проверяется по
+in-memory индексу, прогретому на старте, — без PG-запроса на каждый `$value`):
 
 ```
 GET /odata/standard.odata/Catalog_НоменклатураПрисоединенныеФайлы(guid'<ref_key>')/$value
