@@ -66,8 +66,8 @@
 
 ## 🔒 Замки
 
-**Занято:** `harness` + `docs` — [#236](https://github.com/AutonomaCo/promelectron/issues/236) (ролевые скиллы → обёртки), ветка `feature/kimi-role-skills-thin-wrappers`.
-**Свободны:** `backend`, `frontend`, `e2e`, `infra`.
+**Занято:** ничего.
+**Свободны:** `backend`, `frontend`, `e2e`, `infra`, `docs`, `harness`.
 
 | Замок | Сколько issue | Кто следующий |
 |---|---|---|
@@ -87,9 +87,7 @@
 
 # 🔵 В работе
 
-| ID | Что делается | Замок | Ветка |
-|---|---|---|---|
-| [#236](https://github.com/AutonomaCo/promelectron/issues/236) | 6 ролевых Kimi-скиллов → обёртки над `.agents/agents/` (волна 2), PR [#237](https://github.com/AutonomaCo/promelectron/pull/237) | `harness` `docs` | `feature/kimi-role-skills-thin-wrappers` |
+Пусто. #236 смержен (PR #237, 2026-09-11): 6 ролевых скиллов — обёртки над `.agents/agents/`, дублирование Claude↔Kimi закрыто, замки `harness`/`docs` свободны.
 
 #234 смержен (PR #235, 2026-09-11): 7 Kimi-скиллов — обёртки над `.agents/`, замки `harness`/`docs` освобождены.
 
