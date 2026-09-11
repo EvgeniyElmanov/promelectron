@@ -17,7 +17,7 @@ disableModelInvocation: true
 ## Язык
 
 Следуй [Rule: Agent Commons](../../rules/agent-commons.md) > Language Rule / Языковое правило.
-Kimi K3 работает в обязательном thinking mode (отключить нельзя; глубина задаётся `reasoning_effort`); в multi-turn tool calls возвращай полное assistant message unchanged, включая `reasoning_content`.
+Thinking mode у Kimi K3 включён по умолчанию (глубина задаётся `reasoning_effort`) и следует языку беседы; не выключать — выключение молча переключает модель на K2.8 Preview без thinking.
 Пользовательские ответы, отчёты и артефакты должны соответствовать языку пользователя.
 
 ---

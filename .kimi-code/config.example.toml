@@ -16,10 +16,12 @@ telemetry = true
 
 # Kimi K3 specifics:
 # - Context window: 1M tokens (1,048,576).
-# - Thinking mode is always enabled and cannot be disabled; control depth via
+# - Thinking mode is enabled by default; control depth via
 #   reasoning_effort = "low" | "high" | "max" (default "max").
-# - For multi-turn tool calls, return the complete assistant message unchanged
-#   (including reasoning_content).
+#   Do not disable thinking: disabling it silently switches the model to
+#   K2.8 Preview without thinking.
+# - The CLI preserves reasoning across turns automatically ([thinking] keep,
+#   default on); no manual reasoning_content handling is needed.
 # - Automatic prefix caching: keep the stable part of subagent prompts at the front.
 # - Project retry policy: transient errors (502/504/timeout) are retried up to 4
 #   attempts (3 retries) with exponential backoff via scripts/agent_retry.py.
