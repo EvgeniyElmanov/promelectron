@@ -89,7 +89,7 @@
 
 | ID | Что делается | Замок | Ветка |
 |---|---|---|---|
-| [#234](https://github.com/AutonomaCo/promelectron/issues/234) | 7 дублирующихся Kimi-скиллов → тонкие обёртки над `.agents/` | `harness` `docs` | `feature/kimi-skills-thin-wrappers` |
+| [#234](https://github.com/AutonomaCo/promelectron/issues/234) | 7 дублирующихся Kimi-скиллов → тонкие обёртки над `.agents/` (PR [#235](https://github.com/AutonomaCo/promelectron/pull/235)) | `harness` `docs` | `feature/kimi-skills-thin-wrappers` |
 
 #227 (OData pull) закрыт: CI Deploy полностью зелёный (run 34363297961, 2026-09-09).
 
