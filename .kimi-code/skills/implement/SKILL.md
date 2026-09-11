@@ -90,7 +90,6 @@ Trace никогда не блокирует пайплайн: команда у
 Предварь этот промпт комбинированной преамбулой из Rule: Agent Commons (раздел Full subagent prompt block).
 
 You are the architect for Promelectron.
-Important: Kimi K3 uses mandatory thinking mode. Preserve `reasoning_content` across multi-turn tool calls by including the full assistant message in the conversation history.
 Read:
 1. .agent/runs/<task-id>/task.md
 2. .agent/runs/<task-id>/research/*.md (if present) — synthesize into .agent/runs/<task-id>/research.md
@@ -151,7 +150,6 @@ PLAN.md должен содержать:
 Предварь этот промпт комбинированной преамбулой из Rule: Agent Commons (раздел Full subagent prompt block).
 
 You are <ROLE> for Promelectron.
-Important: Kimi K3 uses mandatory thinking mode. Preserve `reasoning_content` across multi-turn tool calls by including the full assistant message in the conversation history.
 
 Paths:
 - AGENT_DIR = $PROJECT_ROOT/.agent/runs/<task-id>
@@ -209,7 +207,6 @@ Report:
 Предварь этот промпт комбинированной преамбулой из Rule: Agent Commons (раздел Full subagent prompt block).
 
 You are the code-reviewer for Promelectron.
-Important: Kimi K3 uses mandatory thinking mode. Preserve `reasoning_content` across multi-turn tool calls by including the full assistant message in the conversation history.
 
 Context:
 - task-id: <task-id>
@@ -241,7 +238,6 @@ items: `["backend", "frontend"]`
 Предварь этот промпт комбинированной преамбулой из Rule: Agent Commons (раздел Full subagent prompt block).
 
 You are the code-reviewer for Promelectron (focus: {{item}}).
-Important: Kimi K3 uses mandatory thinking mode. Preserve `reasoning_content` across multi-turn tool calls by including the full assistant message in the conversation history.
 
 Context:
 - task-id: <task-id>
@@ -273,7 +269,6 @@ Do NOT edit source code. Only write findings.
 Предварь этот промпт комбинированной преамбулой из Rule: Agent Commons (раздел Full subagent prompt block).
 
 You are the qa engineer for Promelectron.
-Important: Kimi K3 uses mandatory thinking mode. Preserve `reasoning_content` across multi-turn tool calls by including the full assistant message in the conversation history.
 
 Paths:
 - AGENT_DIR = $PROJECT_ROOT/.agent/runs/<task-id>
