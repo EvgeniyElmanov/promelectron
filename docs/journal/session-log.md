@@ -478,3 +478,10 @@
 - Ревью: 2 итерации, 6 findings (F-001 frontmatter e2e-tester, F-002/F-003 нейтральные refs, F-004 golden-path стоп у backend-dev) — исправлены и VERIFIED, APPROVED.
 - Проверки: audit-agents.sh зелёный; указатели/frontmatter/нейтральность — grep-чек-лист пройден; make pre-push пропущен (markdown-only + BLK-015, прецедент #234).
 - Дублирование скиллов между Claude и Kimi закрыто полностью; остались Kimi-only: fix, review, spec, qa-gate, flow-*, context-sync, plan-maintainer, promelectron, dispatcher, project-manager, integration-dev (единственные копии, не расходятся).
+
+## 2026-09-11 — kimi-k3-docs-rules-sync (#238): синхронизация thinking-правил с документацией Kimi K3/CLI (PR #239)
+- Сверка с whats-new/changelog/customization (2026-09-11) нашла 3 устаревших места в `.kimi-code/`; исправлены: (1) «принудительный thinking, отключить нельзя» → «включён по умолчанию; выключение молча переключает на K2.8 Preview без thinking»; (2) «язык thinking промптом не управляется» → «Reasoning follows your language»; (3) ручные `reasoning_content`-инструкции убраны из преамбулы, retry-политики и 5 промптов субагентов в implement — CLI хранит reasoning сам (`[thinking] keep`, default on).
+- Файлы: rules/agent-commons.md, .kimi-code/AGENTS.md, config.example.toml, skills/{implement,integration-dev,project-manager,promelectron}/SKILL.md. В `.agents/` устаревших формулировок не было (grep).
+- Ревью: 1 итерация, APPROVED, 0 находок. Проверки: audit-agents.sh зелёный, grep-чек чист; make pre-push пропущен (markdown-only + BLK-015, прецедент #234/#236).
+- PR #239 смержен (merge commit 7058375), issue #238 закрыт с доказательством, статус done, замок harness освобождён.
+- Вне скоупа (идеи): `[swarm] timeout_ms`, `[secondary_model]` pool, `.agents/agents/` как нативный каталог кастомных субагентов CLI.

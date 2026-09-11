@@ -66,8 +66,8 @@
 
 ## 🔒 Замки
 
-**Занято:** `harness` — #238 kimi-k3-docs-rules-sync (PR #239, in-review).
-**Свободны:** `backend`, `frontend`, `e2e`, `infra`, `docs`.
+**Занято:** ничего.
+**Свободны:** `backend`, `frontend`, `e2e`, `infra`, `docs`, `harness`.
 
 | Замок | Сколько issue | Кто следующий |
 |---|---|---|
