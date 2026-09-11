@@ -66,8 +66,8 @@
 
 ## 🔒 Замки
 
-**Занято:** ничего.
-**Свободны:** `backend`, `frontend`, `e2e`, `infra`, `docs`, `harness`.
+**Занято:** `harness` + `docs` — [#234](https://github.com/AutonomaCo/promelectron/issues/234) (миграция Kimi-скиллов на `.agents/`, ветка `feature/kimi-skills-thin-wrappers`).
+**Свободны:** `backend`, `frontend`, `e2e`, `infra`.
 
 | Замок | Сколько issue | Кто следующий |
 |---|---|---|
@@ -87,7 +87,11 @@
 
 # 🔵 В работе
 
-Пусто. #227 (OData pull) закрыт: CI Deploy полностью зелёный (run 34363297961, 2026-09-09).
+| ID | Что делается | Замок | Ветка |
+|---|---|---|---|
+| [#234](https://github.com/AutonomaCo/promelectron/issues/234) | 7 дублирующихся Kimi-скиллов → тонкие обёртки над `.agents/` | `harness` `docs` | `feature/kimi-skills-thin-wrappers` |
+
+#227 (OData pull) закрыт: CI Deploy полностью зелёный (run 34363297961, 2026-09-09).
 
 ---
 
