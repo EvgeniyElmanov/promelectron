@@ -82,7 +82,7 @@ Trace никогда не блокирует пайплайн: команда у
 
 ### Промпты субагентов
 
-Все промпты ниже предваряются комбинированной преамбулой из Rule: Agent Commons (раздел Full subagent prompt block) — в начало и конец промпта. Чтение ролей: для ролей с общим файлом — `.agents/agents/<role>.md` (architect, backend-dev, code-reviewer, devops, frontend-dev, qa, security-reviewer); для e2e-tester — `.kimi-code/skills/e2e-tester/SKILL.md`.
+Все промпты ниже предваряются комбинированной преамбулой из Rule: Agent Commons (раздел Full subagent prompt block) — в начало и конец промпта. Чтение ролей: для ролей с общим файлом — `.agents/agents/<role>.md` (architect, backend-dev, code-reviewer, devops, e2e-tester, frontend-dev, qa, security-reviewer).
 
 #### Architect (`Agent`, subagent_type: plan)
 
@@ -315,7 +315,7 @@ Paths:
 Read:
 1. .agent/runs/<task-id>/task.md
 2. .agent/runs/<task-id>/spec.md (feature scope + Acceptance Criteria)
-3. `.kimi-code/skills/e2e-tester/SKILL.md`
+3. `.agents/agents/e2e-tester.md`
 4. [Rule: Golden Path](../../rules/golden-path.md)
 
 Then:

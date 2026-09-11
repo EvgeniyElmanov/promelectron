@@ -10,13 +10,13 @@
 | Роль | Вызов | Файл |
 |------|-------|------|
 | `architect` | `/skill:architect` | `.kimi-code/skills/architect/SKILL.md` — обёртка → `.agents/agents/architect.md` |
-| `backend-dev` | `/skill:backend-dev` | `.kimi-code/skills/backend-dev/SKILL.md` |
-| `frontend-dev` | `/skill:frontend-dev` | `.kimi-code/skills/frontend-dev/SKILL.md` |
-| `code-reviewer` | `/skill:code-reviewer` | `.kimi-code/skills/code-reviewer/SKILL.md` |
-| `security-reviewer` | `/skill:security-reviewer` | `.kimi-code/skills/security-reviewer/SKILL.md` |
-| `e2e-tester` | `/skill:e2e-tester` | `.kimi-code/skills/e2e-tester/SKILL.md` |
+| `backend-dev` | `/skill:backend-dev` | `.kimi-code/skills/backend-dev/SKILL.md` — обёртка → `.agents/agents/backend-dev.md` |
+| `frontend-dev` | `/skill:frontend-dev` | `.kimi-code/skills/frontend-dev/SKILL.md` — обёртка → `.agents/agents/frontend-dev.md` |
+| `code-reviewer` | `/skill:code-reviewer` | `.kimi-code/skills/code-reviewer/SKILL.md` — обёртка → `.agents/agents/code-reviewer.md` |
+| `security-reviewer` | `/skill:security-reviewer` | `.kimi-code/skills/security-reviewer/SKILL.md` — обёртка → `.agents/agents/security-reviewer.md` |
+| `e2e-tester` | `/skill:e2e-tester` | `.kimi-code/skills/e2e-tester/SKILL.md` — обёртка → `.agents/agents/e2e-tester.md` |
 | `qa` | `/skill:qa` | `.kimi-code/skills/qa/SKILL.md` — обёртка → `.agents/agents/qa.md` |
-| `devops` | `/skill:devops` | `.kimi-code/skills/devops/SKILL.md` |
+| `devops` | `/skill:devops` | `.kimi-code/skills/devops/SKILL.md` — обёртка → `.agents/agents/devops.md` |
 | `project-manager` | `/skill:project-manager` | `.kimi-code/skills/project-manager/SKILL.md` |
 | `plan-maintainer` | `/skill:plan-maintainer` | `.kimi-code/skills/plan-maintainer/SKILL.md` |
 | `integration-dev` | `/skill:integration-dev` | `.kimi-code/skills/integration-dev/SKILL.md` |

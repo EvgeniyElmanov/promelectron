@@ -472,3 +472,9 @@
 - Ревью: 2 итерации, 5 findings (F-001 HIGH ship task-id, F-002 HIGH qa команды/E2E — см. LESSONS_LEARNED) исправлены и VERIFIED, APPROVED.
 - Проверки: audit-agents.sh зелёный; grep-критерии приёмки пройдены; make pre-push пропущен с одобрением владельца (harness-only diff + BLK-015).
 - PR #235, issue #234 → In review. Урок записан в .kimi-code/LESSONS_LEARNED.md (pointer-миграция = поведенческий дифф команд).
+
+## 2026-09-11 — kimi-role-skills-thin-wrappers (#236): 6 ролевых скиллов → обёртки над .agents/agents/ (волна 2)
+- backend-dev, frontend-dev, code-reviewer, security-reviewer, devops — обёртки над существующими `.agents/agents/<роль>.md` (дослиты PLAN.md-фаза, self-review, чек-листы, validation-команды); e2e-tester — создан общий `.agents/agents/e2e-tester.md` + обёртка; ссылки в implement/spec/qa-gate/review/promelectron переведены на общие роли; BUNDLE.md и .agents/README.md обновлены.
+- Ревью: 2 итерации, 6 findings (F-001 frontmatter e2e-tester, F-002/F-003 нейтральные refs, F-004 golden-path стоп у backend-dev) — исправлены и VERIFIED, APPROVED.
+- Проверки: audit-agents.sh зелёный; указатели/frontmatter/нейтральность — grep-чек-лист пройден; make pre-push пропущен (markdown-only + BLK-015, прецедент #234).
+- Дублирование скиллов между Claude и Kimi закрыто полностью; остались Kimi-only: fix, review, spec, qa-gate, flow-*, context-sync, plan-maintainer, promelectron, dispatcher, project-manager, integration-dev (единственные копии, не расходятся).

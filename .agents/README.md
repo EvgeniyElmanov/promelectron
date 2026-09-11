@@ -56,8 +56,10 @@
 первая строка тела отправляет читать общий файл (`.agents/skills/<имя>/SKILL.md` для
 команд, `.agents/agents/<имя>.md` для ролей), а ниже — блок «Kimi-специфика» (retry
 policy, trace-события, маппинг `subagent_type`, преамбулы субагентов, `/skill:`-вызовы).
-Мигрированы: `architect`, `board`, `deploy`, `implement`, `qa`, `sessions`, `ship`;
-остальные скиллы `.kimi-code/skills/` мигрируются по той же модели отдельными задачами.
+Мигрированы: команды `board`, `deploy`, `implement`, `sessions`, `ship` и роли
+`architect`, `backend-dev`, `code-reviewer`, `devops`, `e2e-tester`, `frontend-dev`,
+`qa`, `security-reviewer`; остальные скиллы `.kimi-code/skills/` мигрируются по той же
+модели отдельными задачами.
 
 ---
 

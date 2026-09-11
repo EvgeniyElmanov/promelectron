@@ -121,7 +121,7 @@ Skill автоматически направляет нужному субаг�
 Role: backend-dev. Task: add email validation to registration.
 
 Read PROJECT_CONTEXT.md, BACKLOG.md, BLOCKERS.md, SESSION_LOG.md.
-Load `/skill:backend-dev` or read `.kimi-code/skills/backend-dev/SKILL.md` and `.kimi-code/rules/pre-edit-checklist.md`.
+Load `/skill:backend-dev` (обёртка) or read `.agents/agents/backend-dev.md` and `.kimi-code/rules/pre-edit-checklist.md`.
 After work update SESSION_LOG.md.
 ```
 

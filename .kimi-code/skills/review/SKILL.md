@@ -17,7 +17,7 @@ disableModelInvocation: false
 
 Проверь текущие изменения. НЕ редактируй код — только пиши findings.
 
-Фактическая логика ревью живёт в `.kimi-code/skills/code-reviewer/SKILL.md`.
+Фактическая логика ревью живёт в `.agents/agents/code-reviewer.md`.
 
 ## Language / Язык
 
@@ -117,11 +117,11 @@ git -C "$WORKTREE" --no-pager diff --no-color origin/main...HEAD -- <files>
 Прочитай (параллельно, где возможно):
 1. $AGENT_DIR/task.md (если есть)
 2. $AGENT_DIR/spec.md (если есть)
-3. `.kimi-code/skills/code-reviewer/SKILL.md`
+3. `.agents/agents/code-reviewer.md`
 4. [Rule: Security](../../rules/security.md)
 5. [Rule: Agent Commons](../../rules/agent-commons.md)
 
-Затем следуй workflow из `.kimi-code/skills/code-reviewer/SKILL.md` строго. Запиши findings в $AGENT_DIR/review/findings.md.
+Затем следуй workflow из `.agents/agents/code-reviewer.md` строго. Запиши findings в $AGENT_DIR/review/findings.md.
 
 Do NOT edit source code. Only write findings.
 
@@ -150,11 +150,11 @@ items: `["backend", "frontend"]`
 Прочитай (параллельно, где возможно):
 1. $AGENT_DIR/task.md (если есть)
 2. $AGENT_DIR/spec.md (если есть)
-3. `.kimi-code/skills/code-reviewer/SKILL.md`
+3. `.agents/agents/code-reviewer.md`
 4. [Rule: Security](../../rules/security.md)
 5. [Rule: Agent Commons](../../rules/agent-commons.md)
 
-Затем следуй workflow из `.kimi-code/skills/code-reviewer/SKILL.md` строго. Запиши findings в $AGENT_DIR/review/findings-{{item}}.md.
+Затем следуй workflow из `.agents/agents/code-reviewer.md` строго. Запиши findings в $AGENT_DIR/review/findings-{{item}}.md.
 
 Do NOT edit source code. Only write findings.
 

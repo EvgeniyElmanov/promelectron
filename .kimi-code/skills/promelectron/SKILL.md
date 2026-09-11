@@ -65,17 +65,17 @@ Kimi K3 работает в **обязательном thinking mode** (откл
 
 | Роль | Skill | Файл |
 |------|-------|------|
-| `backend-dev` | `/skill:backend-dev` | `.kimi-code/skills/backend-dev/SKILL.md` |
-| `frontend-dev` | `/skill:frontend-dev` | `.kimi-code/skills/frontend-dev/SKILL.md` |
-| `devops` | `/skill:devops` | `.kimi-code/skills/devops/SKILL.md` |
-| `e2e-tester` | `/skill:e2e-tester` | `.kimi-code/skills/e2e-tester/SKILL.md` |
-| `code-reviewer` | `/skill:code-reviewer` | `.kimi-code/skills/code-reviewer/SKILL.md` |
-| `security-reviewer` | `/skill:security-reviewer` | `.kimi-code/skills/security-reviewer/SKILL.md` |
-| `qa` | `/skill:qa` | `.kimi-code/skills/qa/SKILL.md` |
+| `backend-dev` | `/skill:backend-dev` | `.kimi-code/skills/backend-dev/SKILL.md` — обёртка → `.agents/agents/backend-dev.md` |
+| `frontend-dev` | `/skill:frontend-dev` | `.kimi-code/skills/frontend-dev/SKILL.md` — обёртка → `.agents/agents/frontend-dev.md` |
+| `devops` | `/skill:devops` | `.kimi-code/skills/devops/SKILL.md` — обёртка → `.agents/agents/devops.md` |
+| `e2e-tester` | `/skill:e2e-tester` | `.kimi-code/skills/e2e-tester/SKILL.md` — обёртка → `.agents/agents/e2e-tester.md` |
+| `code-reviewer` | `/skill:code-reviewer` | `.kimi-code/skills/code-reviewer/SKILL.md` — обёртка → `.agents/agents/code-reviewer.md` |
+| `security-reviewer` | `/skill:security-reviewer` | `.kimi-code/skills/security-reviewer/SKILL.md` — обёртка → `.agents/agents/security-reviewer.md` |
+| `qa` | `/skill:qa` | `.kimi-code/skills/qa/SKILL.md` — обёртка → `.agents/agents/qa.md` |
 | `project-manager` | `/skill:project-manager` | `.kimi-code/skills/project-manager/SKILL.md` |
 | `integration-dev` | `/skill:integration-dev` | `.kimi-code/skills/integration-dev/SKILL.md` |
 | `dispatcher` | `/skill:dispatcher` | `.kimi-code/skills/dispatcher/SKILL.md` |
-| `architect` | `/skill:architect` | `.kimi-code/skills/architect/SKILL.md` |
+| `architect` | `/skill:architect` | `.kimi-code/skills/architect/SKILL.md` — обёртка → `.agents/agents/architect.md` |
 
 Shared rules (reference markdown, не skills):
 - Pre-edit checklist: [Rule: Pre-edit Checklist](../../rules/pre-edit-checklist.md)
