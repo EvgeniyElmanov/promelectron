@@ -66,8 +66,8 @@
 
 ## 🔒 Замки
 
-**Занято:** ничего.
-**Свободны:** `backend`, `frontend`, `e2e`, `infra`, `docs`, `harness`.
+**Занято:** `harness` — kimi-k3-docs-rules-sync (синхронизация правил с актуальной документацией Kimi K3/CLI, вне очереди).
+**Свободны:** `backend`, `frontend`, `e2e`, `infra`, `docs`.
 
 | Замок | Сколько issue | Кто следующий |
 |---|---|---|
