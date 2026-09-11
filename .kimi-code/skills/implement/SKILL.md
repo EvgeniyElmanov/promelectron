@@ -11,122 +11,80 @@ arguments: "<task description> [--quick] [--backend-only] [--frontend-only] [--s
 disableModelInvocation: false
 ---
 
-# /skill:implement — Full Development Cycle
+**Первым делом прочитай `.agents/skills/implement/SKILL.md` — там тело сценария, общее для всех агентов проекта. Правится там, а не здесь.** Ниже — только Kimi-специфика.
 
-Implement a new feature from idea to tested code using isolated git worktrees, plan-mode architecture, review loops, and E2E tests.
+## Kimi-специфика
 
-## Language
+### Язык
 
-Follow [Rule: Agent Commons](../../rules/agent-commons.md) > Language Rule. All Russian-language requirements and subagent prompt preambles live there.
+[Rule: Agent Commons](../../rules/agent-commons.md) > Language Rule. Преамбула для субагентов — раздел **Full subagent prompt block** там же; вставляется в начало и конец промпта каждого субагента. `task.md`, `spec.md`, findings, отчёты и записи в session-log — на русском, когда пользователь русскоязычный.
 
-Also: write `task.md`, `spec.md`, findings, reports, and `SESSION_LOG.md` entries in Russian when the user is Russian.
+### Step 1b: Context Size Check
 
----
-
-## Step 1: Parse and Setup
-
-Extract from the user request:
-- Task description (everything before flags)
-- Flags: `--quick`, `--backend-only`, `--frontend-only`, `--serial`, `--qa`
-
-Check GitHub CLI access — backlog automation depends on it:
+Перед запуском субагентов — [Rule: Agent Commons](../../rules/agent-commons.md) > Context Size Check:
 
 ```bash
-gh auth status
-gh project view 1 --owner AutonomaCo
+python scripts/implement-pipeline.py check-context <task-id>
 ```
 
-If either fails — stop and ask the user to run `gh auth login` or grant the `project` scope.
+Если оценка контекста ≥ 600000 токенов — сначала прочитай `CONTEXT_SUMMARY.md` и работай от него, а не от полной истории.
 
-Generate `<task-id>`: short kebab-case slug, e.g. `add-promo-codes`, `fix-cart-stock`.
+### Step 1c: Retry Policy
 
-Record the repo root:
+При запуске субагентов — [Rule: Agent Commons](../../rules/agent-commons.md) > Retry Policy: 4 попытки, backoff 2/4/8s.
 
-```bash
-PROJECT_ROOT="$(git rev-parse --show-toplevel)"
-```
+### Step 1d: Observability — phase-boundary trace
 
-Paths for the rest of the pipeline:
-
-```text
-AGENT_DIR = $PROJECT_ROOT/.agent/runs/<task-id>       (gitignored coordination plane)
-WORKTREE  = $PROJECT_ROOT/.worktrees/<task-id>        (per-task code checkout)
-BRANCH    = feature/<task-id>
-```
-
-Create directories:
-```bash
-mkdir -p "$PROJECT_ROOT/.agent/runs/<task-id>/review"
-mkdir -p "$PROJECT_ROOT/.worktrees"
-```
-
-> **Important:** `.agent/runs/<task-id>/` is gitignored. Never write transient pipeline files into the committed `docs/` planning dir (`BACKLOG.md`, `PLANNING_HANDOFF.md`, `tasks/`, etc.).
-
-Write `$AGENT_DIR/task.md` by the template from [Rule: Task Template](../../rules/task-template.md). Set `github_issue` if the task already has one:
-```markdown
-# Task: <task-id>
-
-## Description
-<full task description>
-
-## Flags
-<active flags or "none">
-
-## Date
-<YYYY-MM-DD>
-```
-
----
-
-## Step 1b: Context Size Check (Kimi K3)
-
-Follow [Rule: Agent Commons](../../rules/agent-commons.md) > Context Size Check before launching subagents.
-
----
-
-## Step 1c: Retry Policy
-
-Follow [Rule: Agent Commons](../../rules/agent-commons.md) > Retry Policy when launching subagents.
-
----
-
-## Step 1d: Observability — phase-boundary trace
-
-At every phase boundary, append an event to the task's append-only trace (a single correlation ID per task is created automatically on the first event):
+На каждой границе фазы добавляй событие в append-only trace задачи (единый correlation ID на задачу создаётся автоматически при первом событии):
 
 ```bash
 python3 scripts/agent_state.py trace <task-id> <event> --actor <actor> --data '{"key": "value"}'
 ```
 
-Required events:
+Обязательные события:
 
-| Moment | event | actor |
+| Момент | event | actor |
 |--------|-------|-------|
-| task.md created | `task_created` | orchestrator |
-| spec approved by user | `spec_approved` | orchestrator |
-| plan created | `plan_created` | orchestrator |
-| plan auto-approved | `plan_auto_approved` | orchestrator |
-| plan approved by human | `plan_human_approved` | human |
-| plan revised | `plan_revised` | orchestrator |
-| developer(s) reported done | `dev_done` | backend-dev / frontend-dev |
-| review verdict (each iteration) | `review_verdict` | code-reviewer (data: `{"iteration": N, "verdict": "..."}`) |
-| QA gate finished | `qa_done` | qa (data: `{"status": "TESTS_PASSED|TESTS_FAILED"}`) |
-| PR opened | `pr_opened` | orchestrator (data: `{"url": "..."}`) |
+| task.md создан | `task_created` | orchestrator |
+| spec одобрен пользователем | `spec_approved` | orchestrator |
+| план создан | `plan_created` | orchestrator |
+| план auto-approved | `plan_auto_approved` | orchestrator |
+| план одобрен человеком | `plan_human_approved` | human |
+| план переработан | `plan_revised` | orchestrator |
+| developer(ы) отчитались | `dev_done` | backend-dev / frontend-dev |
+| вердикт ревью (каждая итерация) | `review_verdict` | code-reviewer (data: `{"iteration": N, "verdict": "..."}`) |
+| QA gate завершён | `qa_done` | qa (data: `{"status": "TESTS_PASSED|TESTS_FAILED"}`) |
+| PR открыт | `pr_opened` | orchestrator (data: `{"url": "..."}`) |
 | Knowledge capture | `knowledge_captured` | orchestrator (data: `{"rules": N, "skills": N, "docs": N}`) |
 
-The trace must never block the pipeline: if the command fails — continue and mention it in the final report.
+Trace никогда не блокирует пайплайн: команда упала — продолжай и упомяни в финальном отчёте.
 
----
+### Маппинг ролей на субагентов Kimi
 
-## Step 2: Architect Phase (skip if --quick)
+- architect → `Agent(subagent_type: plan)` — plan-контекст уже отключает shell и фокусирует на планировании; **не вызывай `EnterPlanMode` повторно**, спеку пиши в plan-файл контекста и завершай `ExitPlanMode`.
+- developer (backend-dev / frontend-dev / devops), code-reviewer, qa, e2e-tester → `Agent(subagent_type: coder)`.
+- Research fan-out → `AgentSwarm(subagent_type: explore)` — по одному исследователю на ось.
+- Mixed review (backend + frontend) → `AgentSwarm(subagent_type: coder)` с items `["backend", "frontend"]`.
+- Параллельные разношёрстные developer-роли (backend + frontend) → **два раздельных вызова `Agent`** в одном сообщении (промпты разные, поэтому не один `AgentSwarm` с `{{item}}`).
 
-You are the `architect`. Read `.kimi-code/skills/architect/SKILL.md` and follow it strictly.
+**После возврата `AgentSwarm` (mixed review):**
+1. Прочитай `review/findings-backend.md` и `review/findings-frontend.md`.
+2. Смерджи в `review/findings.md`:
+   - Overall **Status** = `FIXES_NEEDED`, если хотя бы один sub-report `FIXES_NEEDED`; иначе `APPROVED`.
+   - Сохрани номер **Iteration**.
+   - Объедини списки findings; перенумеруй так, чтобы ID были уникальны между backend и frontend.
+   - Сохрани Human Decisions из обоих отчётов.
+3. Временные `findings-backend.md` / `findings-frontend.md` удали или оставь для отладки.
 
-### Research fan-out (parallel, optional)
+**Rate limits:** при большом fan-out или повторяющихся 429 установи `KIMI_CODE_AGENT_SWARM_MAX_CONCURRENCY=2` (env var, Kimi Code CLI v0.18.0+), чтобы параллельные субагенты не упирались в provider rate limits.
 
-For non-trivial tasks, launch read-only research subagents in parallel via `AgentSwarm` with `subagent_type: explore` — one per axis (libraries, best-practices, codebase integration) — each writes `$AGENT_DIR/research/<axis>.md`. Skip for small internal changes.
+**Вложенность:** субагенты Kimi не могут порождать вложенных субагентов. e2e-tester запускается **только оркестратором** — никогда изнутри qa-субагента.
 
-Launch an architect subagent via `Agent` tool with `subagent_type: plan`. Apply the retry policy from Step 1c:
+### Промпты субагентов
+
+Все промпты ниже предваряются комбинированной преамбулой из Rule: Agent Commons (раздел Full subagent prompt block) — в начало и конец промпта. Чтение ролей: для ролей с общим файлом — `.agents/agents/<role>.md` (architect, backend-dev, code-reviewer, devops, frontend-dev, qa, security-reviewer); для e2e-tester — `.kimi-code/skills/e2e-tester/SKILL.md`.
+
+#### Architect (`Agent`, subagent_type: plan)
 
 ```text
 Предварь этот промпт комбинированной преамбулой из Rule: Agent Commons (раздел Full subagent prompt block).
@@ -140,7 +98,7 @@ Read:
 4. docs/backlog.md
 5. docs/blockers.md
 6. docs/journal/session-log.md
-7. `.kimi-code/skills/architect/SKILL.md`
+7. `.agents/agents/architect.md`
 8. [Rule: Pre-edit Checklist](../../rules/pre-edit-checklist.md)
 
 Then:
@@ -167,113 +125,16 @@ Do NOT write implementation code, tests, or migrations.
 НАПОМИНАНИЕ: ответы и артефакты — на русском; технические токены (код, пути, команды) — в оригинале.
 ```
 
----
+После одобрения плана пользователем скопируй содержимое plan-файла в `$AGENT_DIR/spec.md`. Если пользователь отклонил или попросил доработку — отправь architect на переработку.
 
-## Step 3: Spec Approval (skip if --quick)
+#### Developer, фаза Plan (`Agent`, subagent_type: coder)
 
-After the user approves the plan, copy the plan file content to `$AGENT_DIR/spec.md`.
-
-If the user rejects or requests revisions, send the architect back to revise the plan.
-
----
-
-## Step 3.5: Занять пункт на пульте запуска
-
-**До** создания worktree. Пульт `ai-launcher/BOARD.md` — то, чем две сессии (Claude и Kimi)
-разводятся между собой, чтобы не взять одну и ту же работу и не переписать одни и те же файлы.
-
-1. Определи **замки** пункта по файлам, которые задача трогает. Таблица — `ai-launcher/CONVENTIONS.md`
-   §2. Бери **все** замки, которых касается работа, а не только основной.
-2. **Замок уже занят другим пунктом в «🔵 В работе» — остановись** и скажи пользователю. Не
-   «аккуратно рядом»: это единственный способ не разгребать конфликты в чужой ветке.
-3. Переведи пункт в 🔵, добавь строку в «🔵 В работе» (issue, замки, ветка `feature/<task-id>`),
-   пересчитай блок «🔒 Замки».
-4. Пульт правится **только в корне репозитория на `main`**, поимённо, никогда не из worktree:
-   ```bash
-   git -C "$PROJECT_ROOT" add ai-launcher/BOARD.md
-   ```
-   Перед коммитом прогони `python3 scripts/check-board.py` — он проверяет форму пульта,
-   кнопки и связки промпт↔issue (правила — `ai-launcher/CONVENTIONS.md`).
-
-Задача из свободного текста без issue — пункта на борде нет, шаг пропускается; скажи один раз,
-что работа невидима для `/skill:board` и `/skill:sessions`, пока issue не заведён.
-
----
-
-## Step 4: Worktree Setup
-
-Create the isolated worktree before any agent touches the code:
-
-```bash
-git -C "$PROJECT_ROOT" fetch origin
-python scripts/implement-pipeline.py create-worktree <task-id>
-```
-
-This creates `$WORKTREE` on branch `feature/<task-id>` from `origin/main`. If the worktree already exists, reuse it. `create-worktree` also prepares frontend dependencies automatically (`npm ci` + containerised install + chown; disable with `--skip-frontend-prep`, re-run for an existing worktree with `--prepare-frontend`). Copy gitignored local files needed for the build (`.env`, `backend/.env`, `frontend/.env`, `.worktreeinclude`).
-
----
-
-## Step 4.5: GitHub Issue Linking (before development)
-
-Per AGENTS.md, ALWAYS link a GitHub Issue before development starts and move the Project board on phase boundaries.
-   Полный порядок движения issue по фазам (метки, комментарии, закрытие с доказательством,
-   запасной путь без scope на Project) — `ai-launcher/CONVENTIONS.md` §8.
-
-
-1. Check for an existing `github_issue` in `$AGENT_DIR/task.md`. If present — reuse it; never create a duplicate issue for the same task-id.
-2. If missing — draft an issue from the spec/task description, confirm it with the user via `AskUserQuestion`, then run:
-   ```bash
-   python scripts/implement-pipeline.py create-issue <task-id> --status in-progress
-   ```
-3. Once the spec is approved, make sure the board status is `In progress`:
-   ```bash
-   python scripts/implement-pipeline.py set-status <task-id> in-progress
-   ```
-
----
-
-## Step 4.6: Figma design tokens (optional)
-
-If `spec.md` specifies a `figma_file_key` (e.g. `figma_file_key: AbC123dEfG`), use the `figma` MCP server to pull design tokens before frontend development starts:
-
-```text
-MCP tools:
-- figma/get_design_tokens — aggregated summary (colors, typography, spacing)
-- figma/get_file — document tree, if screen structure is needed
-- figma/get_components — reusable components
-```
-
-Save the extracted tokens as a reference for the frontend-dev agent (briefly in `task.md` or as a separate `$AGENT_DIR/design-tokens.md`).
-
-If the MCP server is unavailable (no `FIGMA_ACCESS_TOKEN`) — continue without it; this is not a blocker. Frontend-dev should then follow the existing UI conventions of the project.
-
----
-
-## Step 5: Developer Phase — plan → approve → execute
-
-Determine which roles are needed from `Components Affected` in the spec:
-- Backend → `backend-dev`
-- Frontend → `frontend-dev`
-- DevOps → `devops`
-
-Development is split into three phases: **Plan → Approve → Execute**. A developer agent **does not write code without an approved plan**.
-
-Режим запуска (одинаков для фаз Plan и Execute):
-
-- `--backend-only` / `--frontend-only` — запусти только эту одну роль (параллелизм не нужен).
-- `--serial` — последовательно: backend → frontend → devops (старое поведение).
-- По умолчанию (нужны и backend, и frontend) — запусти `backend-dev` и `frontend-dev` **параллельно**: два раздельных вызова `Agent` в одном сообщении (промпты разношёрстные, поэтому два вызова, а не один `AgentSwarm` с `{{item}}`). `devops`, если нужен, запускай после их завершения.
-
-### Step 5a: Plan — developer writes PLAN.md
-
-Launch the required roles with the task to **only write a plan**, without changing code. Each role creates `$WORKTREE/PLAN.md` (a single shared one if serial; one per side — e.g. `PLAN.backend.md` / `PLAN.frontend.md` — if parallel). If the feature touches both backend and frontend, two independent plans are written.
-
-Use the same prompt as for execution (Step 5c), but prepend:
+Тот же промпт, что для Execute (ниже), но с префиксом:
 
 ```text
 === PHASE A: PLAN ONLY — DO NOT WRITE CODE ===
 
-Перед кодированием напиши $WORKTREE/PLAN.md (или $WORKTREE/PLAN.<role>.md при параллельном запуске) по spec. Следуй секции «План перед кодированием (PLAN.md)» своего ролевого SKILL.md.
+Перед кодированием напиши $WORKTREE/PLAN.md (или $WORKTREE/PLAN.<role>.md при параллельном запуске) по spec. Следуй секции «План перед кодированием (PLAN.md)» своего ролевого файла.
 
 PLAN.md должен содержать:
 1. Goal — одно предложение.
@@ -284,39 +145,7 @@ PLAN.md должен содержать:
 После написания PLAN.md остановись и сообщи: «PLAN.md готов».
 ```
 
-After all roles finish, read `$WORKTREE/PLAN.md` (and the per-side plans, if split).
-
-### Step 5b: Approve — auto or human
-
-The orchestrator evaluates the plan(s) against the **auto-approve** criteria. A plan is auto-approved if **all** conditions hold:
-
-1. Only one side is affected OR backend and frontend have independent plans without cross-dependencies.
-2. ≤ 5 Must-haves / Acceptance Criteria in the spec.
-3. ≤ 4 major steps in the plan.
-4. No auth / payments / PII / uploads / orders / webhooks (extended security scope).
-5. No external integrations (1C, YooKassa, CDEK, Telegram, external APIs).
-6. All risks are marked LOW or a standard rollback is described.
-
-Log the trace:
-
-```bash
-python3 scripts/agent_state.py trace <task-id> plan_created --actor orchestrator
-python3 scripts/agent_state.py trace <task-id> plan_auto_approved --actor orchestrator
-# or
-python3 scripts/agent_state.py trace <task-id> plan_human_approved --actor human --data '{"reason": "..."}'
-# on revision
-python3 scripts/agent_state.py trace <task-id> plan_revised --actor orchestrator
-```
-
-If the plan is auto-approved — proceed to Step 5c.
-
-If **any** criterion fails — show the user a brief summary of PLAN.md (Goal, Steps, Risks) and ask: **«одобрить план / доработать?»**. On revision go back to Step 5a. On approval proceed to Step 5c.
-
-> **Don't skimp on human approval:** if the plan touches money, security, public API, or critical infrastructure — always show it to the user, even if it formally passes auto-approve.
-
-### Step 5c: Execute — implement the approved plan
-
-For each role, launch a developer subagent via `Agent` tool with `subagent_type: coder` (при параллельном режиме — оба вызова `Agent` в одном сообщении). Apply the retry policy from Step 1c:
+#### Developer, фаза Execute (`Agent`, subagent_type: coder; при параллельном режиме — оба вызова в одном сообщении)
 
 ```text
 Предварь этот промпт комбинированной преамбулой из Rule: Agent Commons (раздел Full subagent prompt block).
@@ -336,7 +165,7 @@ Read:
 4. PROJECT_CONTEXT.md
 5. docs/backlog.md
 6. docs/blockers.md
-7. `.kimi-code/skills/<ROLE>/SKILL.md`
+7. `.agents/agents/<ROLE>.md`
 8. [Rule: Pre-edit Checklist](../../rules/pre-edit-checklist.md)
 
 Setup:
@@ -374,47 +203,7 @@ Report:
 
 При параллельном запуске оба агента работают в **одном** worktree `.worktrees/<task-id>` (общая feature-ветка), но не пересекаются по файлам благодаря scope boundary. `docs/journal/session-log.md` при параллельном режиме обновляет оркестратор после завершения обоих агентов, чтобы избежать конфликта записи.
 
-> **Rate limits:** при большом fan-out или повторяющихся 429 установи `KIMI_CODE_AGENT_SWARM_MAX_CONCURRENCY=2` (env var, см. Kimi Code CLI v0.18.0+), чтобы параллельные субагенты не упирались в provider rate limits.
-
----
-
-## Step 5.5: API Contract Validation (backend ↔ frontend)
-
-Skip if the feature touches only backend or only frontend. Otherwise — **before launching reviewer subagents** the orchestrator personally verifies that backend and frontend converged on the contract from `$AGENT_DIR/spec.md`:
-
-1. Extract changed/new endpoints from the backend diff:
-   ```bash
-   git -C "$WORKTREE" --no-pager diff origin/main...HEAD -- 'backend/src/app/api/*.py' | grep -E '^\+.*@(router|.*)\.(get|post|put|patch|delete)'
-   ```
-2. Extract API calls from the frontend diff:
-   ```bash
-   git -C "$WORKTREE" --no-pager diff origin/main...HEAD -- 'frontend/src/api/*' | grep -E '^\+.*(get|post|put|patch|delete)\('
-   ```
-3. Check every endpoint from the spec's `API Changes`:
-   - **path** matches, including **trailing slash** (`/items/`, not `/items`)
-   - **HTTP method** matches
-   - **request fields** (body/params/query) match the Pydantic schema
-   - **response fields** the frontend actually reads are present in the response schema
-4. On any mismatch — record it in `$AGENT_DIR/review/findings.md` as `[F-xxx] CRITICAL | API Contract` with status `OPEN` and send the respective developer subagent back to fix it **before** Step 6.
-5. No mismatches — proceed to Step 6.
-
-This step catches the "backend and frontend diverged on the contract in parallel" class of bugs, which is cheaper to fix before review than after it.
-
----
-
-## Step 6: Code Review Loop (max 3 iterations)
-
-### Determine review scope
-
-Based on the spec and flags (`--backend-only`, `--frontend-only`):
-
-- **Backend only or frontend only** → run one reviewer subagent.
-- **Mixed (backend + frontend)** → run two reviewer subagents in parallel via `AgentSwarm`.
-- **Security-sensitive work** (auth, payments, orders) → add `security-reviewer` to the parallel batch.
-
-### Single-component review
-
-Launch one reviewer subagent via `Agent` tool with `subagent_type: coder`. Apply the retry policy from Step 1c:
+#### Code-reviewer, single scope (`Agent`, subagent_type: coder)
 
 ```text
 Предварь этот промпт комбинированной преамбулой из Rule: Agent Commons (раздел Full subagent prompt block).
@@ -434,19 +223,17 @@ Read:
 1. .agent/runs/<task-id>/task.md
 2. .agent/runs/<task-id>/spec.md
 3. .agent/runs/<task-id>/review/findings.md (if this is a re-review)
-4. `.kimi-code/skills/code-reviewer/SKILL.md`
+4. `.agents/agents/code-reviewer.md`
 5. [Rule: Security](../../rules/security.md)
 
-Then follow the workflow of `.kimi-code/skills/code-reviewer/SKILL.md` strictly. Write findings to $AGENT_DIR/review/findings.md.
+Then follow the workflow of `.agents/agents/code-reviewer.md` strictly. Write findings to $AGENT_DIR/review/findings.md.
 
 Do NOT edit source code. Only write findings.
 
 НАПОМИНАНИЕ: ответы и артефакты — на русском; технические токены (код, пути, команды) — в оригинале.
 ```
 
-### Mixed review (backend + frontend in parallel)
-
-Launch reviewer subagents via `AgentSwarm` tool with `subagent_type: coder`. Apply the retry policy from Step 1c:
+#### Code-reviewer, mixed (`AgentSwarm`, subagent_type: coder)
 
 items: `["backend", "frontend"]`
 
@@ -468,44 +255,19 @@ Read:
 1. .agent/runs/<task-id>/task.md
 2. .agent/runs/<task-id>/spec.md
 3. .agent/runs/<task-id>/review/findings-{{item}}.md (if this is a re-review)
-4. `.kimi-code/skills/code-reviewer/SKILL.md`
+4. `.agents/agents/code-reviewer.md`
 5. [Rule: Security](../../rules/security.md)
 
-Then follow the workflow of `.kimi-code/skills/code-reviewer/SKILL.md` strictly. Write findings to $AGENT_DIR/review/findings-{{item}}.md.
+Then follow the workflow of `.agents/agents/code-reviewer.md` strictly. Write findings to $AGENT_DIR/review/findings-{{item}}.md.
 
 Do NOT edit source code. Only write findings.
 
 НАПОМИНАНИЕ: ответы и артефакты — на русском; технические токены (код, пути, команды) — в оригинале.
 ```
 
-**After `AgentSwarm` returns:**
-1. Read `.agent/runs/<task-id>/review/findings-backend.md` and `.agent/runs/<task-id>/review/findings-frontend.md`.
-2. Merge them into `.agent/runs/<task-id>/review/findings.md`:
-   - Overall **Status** is `FIXES_NEEDED` if any sub-report is `FIXES_NEEDED`; otherwise `APPROVED`.
-   - Preserve **Iteration** number.
-   - Combine findings lists; renumber if needed so IDs are unique across backend and frontend.
-   - Preserve Human Decisions from both reports.
-3. Delete the temporary `findings-backend.md` and `findings-frontend.md` or keep them for debugging.
+#### QA (`Agent`, subagent_type: coder)
 
-### Review loop continuation
-
-1. Read `.agent/runs/<task-id>/review/findings.md`.
-2. If `APPROVED` → go to Step 7.
-3. If `FIXES_NEEDED`:
-   - Show the user a summary of findings.
-   - For H-items, wait for user decision.
-   - Launch the developer subagent again to fix OPEN findings and mark them FIXED.
-   - **Before repeating review, re-run the relevant tests** (backend: `make -C "$WORKTREE" test-backend`; frontend: `cd "$WORKTREE/frontend" && npm test`). If tests fail, fix them first.
-   - Repeat review. The reviewer verifies FIXED items and marks them `VERIFIED`; if not fixed — reopens as `OPEN` with an explanation.
-4. After 3 iterations still `FIXES_NEEDED` → stop and ask the user how to proceed.
-
----
-
-## Step 7: QA / Test Pyramid
-
-> **Before any `make test-backend` run** (yours or a subagent's): make sure there are no live background pytest processes from developer subagents (`ps aux | grep pytest`); wait for or stop them. Parallel runs break the shared template database — see [Rule: Agent Commons](../../rules/agent-commons.md) > Single Test Run Rule.
-
-After code review passes, launch a `qa` subagent via `Agent` tool with `subagent_type: coder`. Apply the retry policy from Step 1c:
+> **Перед любым запуском `make test-backend`** (твоим или субагентом): убедись, что нет живых фоновых pytest-процессов от developer-субагентов (`ps aux | grep pytest`); дождись или останови их. Параллельные прогоны ломают общую template database — Rule: Agent Commons > Single Test Run Rule.
 
 ```text
 Предварь этот промпт комбинированной преамбулой из Rule: Agent Commons (раздел Full subagent prompt block).
@@ -524,26 +286,22 @@ Read:
 4. PROJECT_CONTEXT.md
 5. docs/backlog.md
 6. docs/blockers.md
-7. `.kimi-code/skills/qa/SKILL.md`
+7. `.agents/agents/qa.md`
 8. [Rule: Golden Path](../../rules/golden-path.md)
 
 Then:
 1. Run backend tests: make -C "$WORKTREE" test-backend
 2. Run frontend unit tests: cd "$WORKTREE/frontend" && npm test
-3. If the feature touches UI or user flows, note that E2E is required — the orchestrator runs the e2e-tester separately in Step 7.5; do NOT launch it yourself.
+3. If the feature touches UI or user flows, note that E2E is required — the orchestrator runs the e2e-tester separately; do NOT launch it yourself.
 4. Verify each Acceptance Criterion from spec.md.
 5. Write results to .agent/runs/<task-id>/review/test-findings.md.
 
 НАПОМИНАНИЕ: ответы и артефакты — на русском; технические токены (код, пути, команды) — в оригинале.
 ```
 
-CI already runs E2E on the test environment (`promelectron-test`) after deploy.
+CI уже прогоняет E2E на тестовом окружении (`promelectron-test`) после деплоя.
 
----
-
-## Step 7.5: E2E Tester (optional, launched by the orchestrator)
-
-If the feature touches UI/user flows and the unit-test results are OK, launch an `e2e-tester` subagent **from the main agent** via `Agent` tool with `subagent_type: coder`. Subagents cannot spawn nested subagents — never launch the e2e-tester from inside the qa subagent.
+#### E2E-tester (только от оркестратора; `Agent`, subagent_type: coder)
 
 ```text
 Предварь этот промпт комбинированной преамбулой из Rule: Agent Commons (раздел Full subagent prompt block).
@@ -570,104 +328,53 @@ Do NOT edit source code.
 НАПОМИНАНИЕ: ответы и артефакты — на русском; технические токены (код, пути, команды) — в оригинале.
 ```
 
-If `test-findings.md` status is `TESTS_FAILED`, show the failures, call the affected developer to fix them, then go back to Step 6 (code changed → re-review). Max 2 QA/E2E iterations, then escalate to the user.
+### Step 4.6: Figma design tokens (optional)
 
----
+MCP-сервер `figma` подключён у Kimi (`.kimi-code/mcp.json`). Если в `spec.md` указан `figma_file_key` (например `figma_file_key: AbC123dEfG`), вытяни design tokens до старта frontend-разработки:
 
-## Step 7.6: Dedicated QA Gate (только с флагом `--qa`)
-
-Если передан флаг `--qa`, перед открытием PR обязательно запусти standalone QA gate:
-
-```
-/skill:qa-gate <task-id>
-```
-
-Он находит coordination plane и worktree задачи и прогоняет полную QA-проверку (pytest + vitest + Playwright) по Acceptance Criteria из spec.md. Если gate падает — исправь найденное и повтори; не открывай PR с красным QA gate.
-
----
-
-## Step 8: Pull Request
-
-Delegate PR creation to `/skill:ship` — it runs `make pre-push`, pushes `feature/<task-id>`, creates the PR via `gh pr create`, posts open `[H-xxx]` items from `$AGENT_DIR/review/findings.md` as PR comments, and moves the board status to `In review`:
-
-```
-/skill:ship <task-id>
+```text
+MCP tools:
+- figma/get_design_tokens — aggregated summary (colors, typography, spacing)
+- figma/get_file — document tree, if screen structure is needed
+- figma/get_components — reusable components
 ```
 
-If ship fails (e.g. pre-push checks are red), stop and report the error — never open a PR with failing checks.
+Сохрани токены как референс для frontend-dev (кратко в `task.md` или отдельным `$AGENT_DIR/design-tokens.md`). Если MCP-сервер недоступен (нет `FIGMA_ACCESS_TOKEN`) — продолжай без него; это не блокер, frontend-dev следует существующим UI-конвенциям проекта.
 
----
+### Worktree setup
 
+Точная команда создания worktree (в общем файле описано нейтрально):
 
-### Пульт: вернуть замок
+```bash
+git -C "$PROJECT_ROOT" fetch origin
+python scripts/implement-pipeline.py create-worktree <task-id>
+```
 
-После открытия PR пункт остаётся 🔵 со своим номером PR — именно это держит замок честным.
-**После мержа** строка уходит из «🔵 В работе», блок с кнопкой удаляется, блок «🔒 Замки»
-пересчитывается. Правится в корне репозитория, не в worktree.
+Создаёт `$WORKTREE` на ветке `feature/<task-id>` от `origin/main`; существующий worktree переиспользуется. `create-worktree` также готовит frontend-зависимости автоматически (`npm ci` + контейнерная установка + chown; отключить — `--skip-frontend-prep`, догнать для существующего worktree — `--prepare-frontend`). Скопируй gitignored локальные файлы для сборки (`.env`, `backend/.env`, `frontend/.env`, `.worktreeinclude`).
 
-⚠️ Если у пункта есть строка в «⏰ Ждут условия» — **смержено ≠ проверено**: строка остаётся,
-пока условие не наступило и проверка реально не проведена. Скажи об этом вслух, а не закрывай
-пункт молча: это ровно тот хвост, который теряется.
+### Команды общего файла у Kimi
 
----
+Команды в общем файле названы нейтрально; у Kimi они вызываются как `/skill:<имя>`:
+- делегирование PR в ship → `/skill:ship <task-id>`
+- dedicated QA gate по флагу `--qa` → `/skill:qa-gate <task-id>`
 
-## Step 8.5: Knowledge Capture
+### Knowledge Capture
 
-Classify the lessons from this task (threshold: only recurring or expensive lessons):
+Классифицируй уроки задачи (порог: только повторяющиеся или дорогие уроки):
 
-- **doc-worthy** (one-off technical lesson) → append it to `.kimi-code/LESSONS_LEARNED.md` right away (format: Ошибка / Причина / Решение / Профилактика).
-- **rule-worthy / skill-worthy** → do NOT edit rules or skills yourself; list them in the final report as "Proposed pipeline improvements".
-- **test-worthy** (no test covers this scenario) → the test must already be part of the implementation (Step 5); if not, it is a blocker for merge.
+- **doc-worthy** (разовый технический урок) → сразу допиши в `.kimi-code/LESSONS_LEARNED.md` (формат: Ошибка / Причина / Решение / Профилактика).
+- **rule-worthy / skill-worthy** → НЕ правь rules/skills сам; перечисли в финальном отчёте как «Proposed pipeline improvements».
+- **test-worthy** (сценарий не покрыт тестом) → тест уже должен быть частью реализации; если нет — это блокер для merge.
 
-If no lessons were identified, say so.
+Если уроков нет — скажи об этом. Trace: `knowledge_captured` (см. таблицу выше).
 
-Log the trace: `python3 scripts/agent_state.py trace <task-id> knowledge_captured --actor orchestrator --data '{"rules": N, "skills": N, "docs": N}'`.
+Также применяй правила AGENTS.md «Обновления после работы»: session-log, backlog, blockers, PROJECT_CONTEXT, пульт.
 
-Also apply the AGENTS.md "Обновления после работы" rules:
-1. Update `docs/journal/session-log.md`.
-2. Update `docs/backlog.md` if the task is from the sprint.
-3. Update `docs/blockers.md` if a new blocker appeared.
-4. Update `PROJECT_CONTEXT.md` if the architecture changed.
+### Финальный отчёт
 
----
-
-## Step 9: Final Report
-
-After all phases:
-
-1. Run `python scripts/implement-pipeline.py record-metrics <task-id>` to collect and save pipeline metrics to `.agent/runs/<task-id>/metrics.json`.
-2. Run `python scripts/implement-pipeline.py check-context <task-id>` to capture final estimated tokens.
-3. Read `docs/journal/session-log.md` and append a summary including estimated tokens and iteration count.
-4. Report to the user:
-   - Task ID
-   - Worktree path: `.worktrees/<task-id>`
-   - Feature branch: `feature/<task-id>`
-   - PR URL (if created)
-   - Changed files
-   - Test results (backend, frontend, e2e)
-   - Review status
-   - Estimated tokens and iteration count
-   - Path to `.agent/runs/<task-id>/metrics.json`
-   - Open findings or H-items (if any)
-   - Proposed pipeline improvements from Step 8.5 (if any)
-5. Ask: **"Merge feature/<task-id> into main and push?"** (do NOT merge or push main without explicit approval).
-6. If the merge is done, move the linked GitHub Issue to **Done**:
-   ```bash
-   python scripts/implement-pipeline.py set-status <task-id> done
-   ```
-
----
-
-## Rules
-
-- NEVER push directly to `main`.
-- NEVER merge automatically — a human reviews and merges.
-- NEVER delete the worktree until the user approves merge or explicitly asks to clean up.
-- ALWAYS link a GitHub Issue before development (Step 4.5) and move the Project board on phase boundaries: spec approved → In progress, PR open → In review, merged → Done.
-- Developer marks findings FIXED; reviewer verifies and marks VERIFIED.
-- Max 3 review iterations, then escalate to user.
-- Max 2 QA iterations, then escalate to user.
-- Update `docs/journal/session-log.md` after every significant phase.
-- Always write transient pipeline files to `.agent/runs/<task-id>/`, never to the committed `docs/` planning dir.
-- **Idempotency:** never create a duplicate issue for the same `task-id`; reuse `github_issue` from `task.md`.
-- **No silent publish:** always ask the user before creating a GitHub Issue.
+1. `python scripts/implement-pipeline.py record-metrics <task-id>` — метрики пайплайна в `.agent/runs/<task-id>/metrics.json`.
+2. `python scripts/implement-pipeline.py check-context <task-id>` — финальная оценка токенов.
+3. Допиши сводку в `docs/journal/session-log.md` (оценка токенов, число итераций).
+4. Отчёт пользователю: Task ID, worktree, ветка, PR URL, изменённые файлы, результаты тестов (backend/frontend/e2e), статус ревью, оценка токенов и итераций, путь к metrics.json, открытые findings/H-items, предложенные улучшения пайплайна.
+5. Спроси: **"Merge feature/<task-id> into main and push?"** — без явного одобрения не мержить и не пушить main.
+6. После мержа переведи связанный GitHub Issue в Done: `python scripts/implement-pipeline.py set-status <task-id> done`.

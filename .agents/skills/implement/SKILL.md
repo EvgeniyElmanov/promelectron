@@ -8,7 +8,8 @@ allowed-tools: Read Write Edit Bash(git *) Bash(gh *) Bash(jq *) Bash(mkdir *) B
 
 # /implement — Full Development Cycle (Spec-Driven)
 
-Pipeline: **fetch task → worktree → Spec (architect) → parallel Dev → parallel Review → QA → PR.**
+Pipeline: **fetch task → worktree → Spec (architect) → parallel Dev (Plan → Approve → Execute)
+→ parallel Review → QA → PR.**
 Each task runs in its **own git worktree** (`.worktrees/<task-id>`) with a durable coordination
 plane in `.agent/runs/<task-id>/` (see the `pipeline-workspace` skill). Read-only phases (research,
 first-pass review) **fan out into parallel sub-agents**.
@@ -30,6 +31,15 @@ architect/review/QA loops never move the card** — only `start → In Progress`
 
 Record the repo root: `PROJECT_ROOT="$(git rev-parse --show-toplevel)"`. Parse flags; the rest is
 the task identifier.
+
+Check GitHub CLI access up front — issue linking and board automation depend on it:
+
+```bash
+gh auth status
+gh project view 1 --owner AutonomaCo
+```
+
+If either fails — stop and ask the user to run `gh auth login` or grant the `project` scope.
 
 **If a GitHub Issue** (input is a number `5`, `#5`, `gh-5`, or an issue URL):
 1. Extract the issue number `<N>`. `task-id` = `gh-<N>`.
@@ -57,7 +67,7 @@ WORKTREE="$PROJECT_ROOT/.worktrees/<task-id>"
 
 ## Step 1b: Occupy the item on the launch board
 
-**Before** the worktree exists — the board is how two agents (Claude and Kimi) avoid taking the
+**Before** the worktree exists — the board is how several agent sessions avoid taking the
 same work. In `ai-launcher/BOARD.md`:
 
 1. Determine the item's **locks** from the files the task will touch — the table lives in
@@ -74,7 +84,7 @@ same work. In `ai-launcher/BOARD.md`:
    buttons and the prompt↔issue cross-links (rules: `ai-launcher/CONVENTIONS.md`).
 
 Free-text task with no issue? Then there is no board item — skip this step, and say once that the
-work is invisible to `/board` and `/sessions` until an issue exists.
+work is invisible to the board and sessions views until an issue exists.
 
 ---
 
@@ -133,28 +143,115 @@ Tell the user **"Spec ready. Start implementation?"** and **wait for confirmatio
 
 ---
 
-## Step 4: Development — PARALLEL by default
+## Step 3.5: GitHub Issue Linking (before development)
+
+Always link a GitHub Issue before development starts and move the Project board on phase
+boundaries: spec approved → In progress, PR open → In review, merged → Done.
+
+1. Check for an existing `github_issue` in `AGENT_DIR/task.md`. If present — **reuse it; never
+   create a duplicate issue for the same task-id** (idempotency).
+2. If missing — draft an issue from the spec/task description, **confirm it with the user first**
+   (no silent publish: always ask before creating a GitHub Issue), then run:
+   ```bash
+   python scripts/implement-pipeline.py create-issue <task-id> --status in-progress
+   ```
+3. Once the spec is approved, make sure the board status is `In progress`:
+   ```bash
+   python scripts/implement-pipeline.py set-status <task-id> in-progress
+   ```
+
+---
+
+## Step 4: Development — Plan → Approve → Execute (PARALLEL by default)
 
 Read `Components Affected` and `Parallelization Plan` from `spec.md`. All code work targets
 `WORKTREE` (use `git -C`, `make -C`, explicit paths — a sub-agent's `cd` does not persist).
 
+Development is split into three phases: **Plan → Approve → Execute**. A developer agent **does not
+write code without an approved plan**.
+
+### Step 4a: Plan — developer writes PLAN.md
+
+Launch the required developer roles with the task to **only write a plan**, without changing code.
+Each role creates `$WORKTREE/PLAN.md` (a single shared one if serial; one per side —
+`PLAN.backend.md` / `PLAN.frontend.md` — if parallel). The plan contains:
+
+1. **Goal** — one sentence.
+2. **Steps** — a numbered list: what changes, in which order, verification after each step.
+3. **Risks / Open questions** — what could go wrong.
+
+No production code, no migrations at this phase. After all roles finish, read the plan(s).
+
+### Step 4b: Approve — auto or human
+
+The orchestrator evaluates the plan(s) against the **auto-approve** criteria. A plan is
+auto-approved if **all** conditions hold:
+
+1. Only one side is affected OR backend and frontend have independent plans without
+   cross-dependencies.
+2. ≤ 5 Must-haves / Acceptance Criteria in the spec.
+3. ≤ 4 major steps in the plan.
+4. No auth / payments / PII / uploads / orders / webhooks (extended security scope).
+5. No external integrations (1C, YooKassa, CDEK, Telegram, external APIs).
+6. All risks are marked LOW or a standard rollback is described.
+
+If the plan is auto-approved → Step 4c. If **any** criterion fails — show the user a brief summary
+of PLAN.md (Goal, Steps, Risks) and ask **«approve the plan / revise?»**. On revision go back to
+Step 4a. On approval proceed to Step 4c.
+
+> **Don't skimp on human approval:** if the plan touches money, security, public API, or critical
+> infrastructure — always show it to the user, even if it formally passes auto-approve.
+
+### Step 4c: Execute — implement the approved plan
+
 **If both sides are affected and independent (and no `--*-only`/`--serial`):** launch `backend-dev`
 and `frontend-dev` **in the same message** so they run concurrently. They edit disjoint trees
 (`backend/` vs `frontend/`) and both build against the spec's **API Contract** (frontend mocks the
-API until the endpoint lands).
+API until the endpoint lands). A `devops` role, if needed, runs after they finish.
 
 Developer prompt:
 ```
 Implement your part of the task.
 AGENT_DIR (absolute): <AGENT_DIR>      WORKTREE (do ALL code work here, absolute): <WORKTREE>
-Read AGENT_DIR/task.md and AGENT_DIR/spec.md. Honor every D-number exactly. Build strictly against
-the API Contract. Backend: model → schema → service → route → tests. Frontend: service → composable
+Read AGENT_DIR/task.md and AGENT_DIR/spec.md. Honor every D-number exactly. Read WORKTREE/PLAN.md —
+the approved plan — and implement strictly per it; if it becomes unworkable mid-flight, stop,
+report, revise the plan, and get re-approval before continuing. Build strictly against the API
+Contract. Backend: model → schema → service → route → tests. Frontend: service → composable
 → component → page → tests. Target WORKTREE with explicit paths (git -C, make -C, uv --directory).
 MANDATORY before done: run lint + tests in WORKTREE, fix all issues, commit to feature/<task-id>.
 ```
 
 **If only one side, or `--serial`/`--backend-only`/`--frontend-only`:** run the relevant
 developer(s); `--serial` runs backend first, then frontend.
+
+---
+
+## Step 4.5: API Contract Validation (backend ↔ frontend)
+
+Skip if the feature touches only backend or only frontend. Otherwise — **before launching reviewer
+sub-agents** the orchestrator personally verifies that backend and frontend converged on the
+contract from `AGENT_DIR/spec.md`:
+
+1. Extract changed/new endpoints from the backend diff:
+   ```bash
+   git -C "$WORKTREE" --no-pager diff origin/main...HEAD -- 'backend/src/app/api/*.py' | grep -E '^\+.*@(router|.*)\.(get|post|put|patch|delete)'
+   ```
+2. Extract API calls from the frontend diff:
+   ```bash
+   git -C "$WORKTREE" --no-pager diff origin/main...HEAD -- 'frontend/src/api/*' | grep -E '^\+.*(get|post|put|patch|delete)\('
+   ```
+3. Check every endpoint from the spec's `API Changes`:
+   - **path** matches, including **trailing slash** (`/items/`, not `/items`)
+   - **HTTP method** matches
+   - **request fields** (body/params/query) match the Pydantic schema
+   - **response fields** the frontend actually reads are present in the response schema
+4. On any mismatch — record it in `AGENT_DIR/review/findings.md` as
+   `[F-xxx] CRITICAL | API Contract` with status `OPEN` and send the respective developer back to
+   fix it **before** Step 5.
+5. No mismatches — proceed to Step 5.
+
+This step catches the "backend and frontend diverged on the contract in parallel" class of bugs,
+which is cheaper to fix before review than after it.
 
 ---
 
@@ -202,46 +299,28 @@ Max 2 QA iterations, then escalate to the user.
 
 Without `--qa`, rely on the developers' own test runs and skip the dedicated gate.
 
+With `--qa` (or to re-run QA for an already-built task), invoke the standalone **`qa-gate`
+command**: it locates the task's coordination plane and worktree and runs the full QA check
+(pytest + vitest + Playwright) against the Acceptance Criteria from `spec.md`. If the gate fails —
+fix and repeat; never open a PR with a red QA gate.
+
 ---
 
 ## Step 7: Create the Pull Request
 
-All git ops target the worktree.
+**Delegate PR creation to the `ship` command** — it is the single copy of the PR logic: it runs
+the pre-push checks, pushes `feature/<task-id>`, creates the PR via `gh pr create`, posts open
+`[H-xxx]` items from `AGENT_DIR/review/findings.md` as PR comments, and moves the Project card to
+`In Review` (the human-review signal; idempotent, never regresses).
 
-1. Push: `git -C "$WORKTREE" push -u origin feature/<task-id>`
-2. Create the PR:
-   ```bash
-   gh pr create --base main --head feature/<task-id> \
-     --title "<concise description>" \
-     --body "$(cat <<'EOF'
-   ## Summary
-   <what was done>
+**Do not set Done** — this pipeline does not merge; leave Done to the human / merge automation.
 
-   ## Spec
-   .agent/runs/<task-id>/spec.md — chosen approach + API contract
+If ship fails (e.g. pre-push checks are red), stop and report the error — never open a PR with
+failing checks.
 
-   ## Changes
-   <changed files/components>
-
-   ## Test Results
-   - Backend: pytest X/Y · Frontend: vitest X/Y
-
-   ## Acceptance Criteria
-   <checked list from test-findings.md>
-
-   Closes #<N>   <!-- only for GitHub Issue tasks -->
-   EOF
-   )"
-   ```
-   For a GitHub Issue task, include `Closes #<N>` so merging closes the issue.
-3. **→ Move the Project card now (GitHub Issue tasks only).** Load the `github-project` skill and
-   set status `pr_opened → In Review` (the human-review signal). Idempotent; never regress.
-   **Do not set Done** — `/implement` does not merge; leave Done to the human / merge automation.
-4. If `review/findings.md` has Human Decisions still open, post each `[H-xxx]` as a PR comment
-   (`gh pr comment`). These are the only review comments posted.
-5. Report to the user: PR URL · worktree path (kept for follow-up) · review iterations · board
-   status now `In Review` (or "board not updated — task is free-text / scope missing") ·
-   "After merge → test deploys via GitHub Actions; prod = manual workflow with environment=prod."
+Report to the user: PR URL · worktree path (kept for follow-up) · review iterations · board status
+now `In Review` (or "board not updated — task is free-text / scope missing") · "After merge → test
+deploys via GitHub Actions; prod = manual workflow with environment=prod."
 
 ---
 
@@ -263,7 +342,15 @@ closing the item quietly — this is exactly the tail that gets lost.
 - **Never push to main** — always via PR.
 - **Agent review never moves the board.** Only `start → In Progress` (Step 2) and
   `PR opened → In Review` (Step 7) move the card. Done is left to merge.
+- **Always link a GitHub Issue before development** (Step 3.5) and move the card on phase
+  boundaries: spec approved → In progress, PR open → In review, merged → Done.
+- **Idempotency:** never create a duplicate issue for the same `task-id`; reuse `github_issue`
+  from `task.md`.
+- **No silent publish:** always ask the user before creating a GitHub Issue.
+- **Don't skimp on human approval:** plans touching money, security, public API, or critical
+  infrastructure always go to the user, even when they formally pass auto-approve.
 - **Spec first:** no developer runs before `spec.md` is `READY` (except `--quick`).
+- **Plan before code:** no developer writes code before its PLAN.md is approved (Step 4b).
 - The architect writes the spec; developers/reviewers/QA never rewrite it (the orchestrator may
   append Human-Decision outcomes).
 - **Parallel by default:** batch independent agents into one message (BE‖FE dev, BE‖FE‖security
