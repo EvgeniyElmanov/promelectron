@@ -89,7 +89,7 @@
 
 | ID | Что делается | Замок | Ветка |
 |---|---|---|---|
-| [#236](https://github.com/AutonomaCo/promelectron/issues/236) | 6 ролевых Kimi-скиллов → обёртки над `.agents/agents/` (волна 2) | `harness` `docs` | `feature/kimi-role-skills-thin-wrappers` |
+| [#236](https://github.com/AutonomaCo/promelectron/issues/236) | 6 ролевых Kimi-скиллов → обёртки над `.agents/agents/` (волна 2), PR [#237](https://github.com/AutonomaCo/promelectron/pull/237) | `harness` `docs` | `feature/kimi-role-skills-thin-wrappers` |
 
 #234 смержен (PR #235, 2026-09-11): 7 Kimi-скиллов — обёртки над `.agents/`, замки `harness`/`docs` освобождены.
 
