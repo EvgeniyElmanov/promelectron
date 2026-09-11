@@ -22,8 +22,11 @@ attribution** in the PR body.
 
 ## Input
 
-**Optional argument:** an issue reference (`5`, `#5`, `gh-5`), or a branch name. If omitted,
-use the **current branch** (`git branch --show-current`).
+**Optional argument:** an issue reference (`5`, `#5`, `gh-5`), a branch name, or a bare
+**task-id**. If omitted, use the **current branch** (`git branch --show-current`).
+
+If the argument is neither an issue reference nor an existing branch, treat it as a **task-id**:
+the branch is expected to be `feature/<task-id>` or `bugfix/<task-id>`.
 
 ---
 
@@ -36,6 +39,15 @@ gh auth status
 ```
 
 If it fails — stop and ask the user to run `gh auth login` (or grant the missing scope).
+
+For GitHub Issue tasks the card must move on the Project board, so check Project access early:
+
+```bash
+gh project view 1 --owner AutonomaCo
+```
+
+If this fails (missing `project` scope) — stop and ask the user to grant the scope before
+shipping, instead of discovering it after the PR is opened.
 
 ---
 
@@ -63,7 +75,11 @@ BRANCH="$(git -C "$ANY_ROOT" branch --show-current)"
 ```
 
 If an issue reference is given, the branch is expected to be `feature/gh-<N>`; if it is a
-branch name, check it out first. Otherwise ship the current branch.
+branch name, check it out first. If it is a bare task-id, check out `feature/<task-id>` or
+`bugfix/<task-id>` (whichever exists). Otherwise ship the current branch.
+
+Before anything else, verify the resolved branch: if it is `main` or HEAD is detached (`BRANCH`
+empty), STOP and ask the user which branch to ship — this is a procedural check, not just a rule.
 
 Derive the **task id** and **issue number** from the branch name:
 

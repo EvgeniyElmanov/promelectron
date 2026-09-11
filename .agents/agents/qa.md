@@ -18,9 +18,10 @@ Run tests and verify acceptance criteria. **Do NOT modify source code.**
 ## Workflow
 
 1. Read `.agent/runs/<TASK_ID>/spec.md` — Acceptance Criteria and Must-haves
-2. Run backend tests (if backend changed):
+2. Run backend tests (if backend changed) — via the canonical make target, which serializes
+   parallel runs through the test lock (Single Test Run Rule):
    ```bash
-   cd backend && uv run pytest -x -v 2>&1
+   make -C "$WORKTREE" test-backend
    ```
 3. Schema drift check — если задача меняла `backend/src/app/models/` или `backend/alembic/`,
    прогнать `make -C "$WORKTREE" migrate-check` (`alembic check`); exit != 0 → `TESTS_FAILED`.
@@ -28,18 +29,23 @@ Run tests and verify acceptance criteria. **Do NOT modify source code.**
    ```bash
    cd frontend && npm test 2>&1
    ```
-5. Run Playwright E2E tests against test environment (if API changed):
+5. Run Playwright E2E tests **locally against the worktree code** (if API changed) — this is the
+   canonical pre-PR QA gate:
    ```bash
-   cd tests/e2e && npm ci
-   API_URL=https://api.promelectron-test.aidrivencode.ru npx playwright test --reporter=list 2>&1
+   make -C "$WORKTREE" dev          # поднять dev-окружение в worktree
+   # проверить health checks (backend/frontend отвечают)
+   cd "$WORKTREE/frontend" && npx playwright test <feature>.spec.js --workers=1
    ```
+   E2E против test-окружения (`API_URL=https://api.promelectron-test.aidrivencode.ru`) — это
+   **post-deploy проверка**, её выполняет CI после деплоя; QA-гейт до PR её не запускает.
    Не запускай E2E-субагента сам — оркестратор запускает E2E-фазу отдельно при необходимости.
 6. Check each Acceptance Criterion from spec.md
 7. Write results to `.agent/runs/<TASK_ID>/review/test-findings.md`
 
 ## Triggering Deployments
 
-To deploy to test before running E2E:
+Deploy to test and E2E against the test environment are **post-deploy** steps (after the PR is
+merged/deployed) — normally performed by CI, not by the pre-PR QA gate:
 ```bash
 gh workflow run deploy.yml -f environment=test
 gh run list --workflow=deploy.yml --limit=1   # check status
@@ -68,7 +74,7 @@ gh workflow run e2e.yml -f environment=prod
 
 ## E2E Tests
 - Playwright: X passed / Y failed / Z total
-- Environment: promelectron-test.aidrivencode.ru
+- Environment: local (`make dev` in worktree)
 
 ## Acceptance Criteria
 - [x] Criterion 1 ✅

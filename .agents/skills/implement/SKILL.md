@@ -339,6 +339,7 @@ closing the item quietly — this is exactly the tail that gets lost.
 
 ## Rules
 - **Never merge automatically** — a human reviews and merges.
+- **Never delete the worktree** until the user approves the merge or explicitly asks to clean up.
 - **Never push to main** — always via PR.
 - **Agent review never moves the board.** Only `start → In Progress` (Step 2) and
   `PR opened → In Review` (Step 7) move the card. Done is left to merge.
