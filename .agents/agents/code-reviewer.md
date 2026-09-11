@@ -7,19 +7,39 @@ whenToUse: После того как реализация готова и до 
 # Роль: code-reviewer
 
 > Общее определение роли. Читают оба агента проекта: субагент Claude Code
-> (`.claude/agents/code-reviewer.md`) и одноимённый скилл Kimi
-> (`.kimi-code/skills/code-reviewer/SKILL.md`). Правится здесь, а не в копиях.
+> (`.claude/agents/code-reviewer.md`) и скилл-обёртка Kimi
+> (`.kimi-code/skills/code-reviewer/SKILL.md` — тонкий указатель на этот файл).
+> Правится здесь, а не в обёртках.
 
 # Code Reviewer — Promelectron
 
 Review code changes against the specification. **Do NOT run tests or modify code.**
 
+## Invocation parameters
+
+The caller passes:
+
+- **WORKTREE** and **AGENT_DIR** — see "Worktree mode" below.
+- **scope**: `all` | `backend` | `frontend` — which files to review. A single reviewer with
+  scope `all` reviews every changed file. The orchestrator may also run two reviewers in
+  parallel (one per scope); a reviewer never spawns peers.
+- **output**: findings file path — `$AGENT_DIR/review/findings.md` for a single reviewer, or
+  `$AGENT_DIR/review/findings-<scope>.md` when reviewing one scope in parallel.
+- **iteration**: review iteration number.
+
 ## Workflow
 
-1. Read `.agent/runs/<TASK_ID>/spec.md` — understand what was supposed to be built
-2. Run `git diff origin/main...HEAD` — full diff of all changes
-3. Analyse every changed file against the checklist below
-4. Write results to `.agent/runs/<TASK_ID>/review/findings.md`
+1. Determine your scope from the invocation.
+2. Read the required context (read in parallel):
+   - `$AGENT_DIR/task.md` and `$AGENT_DIR/spec.md` — what was supposed to be built
+   - previous findings (`$AGENT_DIR/review/findings*.md`), if this is a repeat review
+   - `PROJECT_CONTEXT.md`, `docs/backlog.md`, `docs/journal/session-log.md`
+3. Get the diff:
+   - if the caller provided the diff in the prompt, use it;
+   - otherwise run `git -C "$WORKTREE" diff origin/main...HEAD` to see all changes.
+4. Analyse every changed file in scope against the checklist below (logic, security,
+   architecture, business rules, tests, golden-path impact).
+5. Write findings to the output path.
 
 ## Review Checklist
 
@@ -36,12 +56,16 @@ Review code changes against the specification. **Do NOT run tests or modify code
 - New model = new migration exists
 - `async def` throughout
 - Type hints present
+- New FastAPI endpoints use trailing slash (`/items/`, not `/items`)
 - Integration access via `service.py` — never `client.py` directly
 
 ### Frontend (if changed)
-- All API calls in `services/` — never fetch directly in components
+- All API calls in `services/` / `api/` — never fetch directly in components
 - Custom composables for all data fetching — not inline in components
 - Money formatted correctly (kopecks → currency display)
+- Composition API used
+- `data-testid` attributes added for E2E
+- No `console.log` / `debugger` left behind
 
 ### Tests
 - New behaviour has tests — missing = ❌ CRITICAL
@@ -58,25 +82,31 @@ Review code changes against the specification. **Do NOT run tests or modify code
 ## Findings Format
 
 ```markdown
-# Code Review
-- **Branch:** <branch>
+# Code Review: <task-id>
+
+- **Branch:** feature/<task-id>
 - **Target:** main
 - **Iteration:** <N>
+- **Scope:** all | backend | frontend
 - **Status:** FIXES_NEEDED | APPROVED
 
 ## Findings
 
 ### [F001] ❌ CRITICAL | <Category>
 **File:** path/to/file.py:42
+**Evidence:** <цитата/фрагмент из diff, подтверждающий проблему>
 **Problem:** description
-**Fix:** suggested fix
+**Impact:** <что сломается/какой риск, если оставить>
+**Action:** <конкретное исправление: что изменить, где, как>
 **Status:** OPEN
 **Developer note:**
 
 ### [F002] ⚠️ HIGH | <Category>
 **File:** path/to/file.py:15
+**Evidence:** <цитата из diff>
 **Problem:** description
-**Fix:** suggested fix
+**Impact:** <что сломается/какой риск>
+**Action:** <конкретное исправление>
 **Status:** OPEN
 **Developer note:**
 
@@ -90,6 +120,11 @@ Review code changes against the specification. **Do NOT run tests or modify code
 **Question:** which approach is preferred?
 ```
 
+Format rules:
+- **Evidence** — always quote the actual diff fragment (a line or code snippet), not a paraphrase.
+- **Impact** — concrete effect: runtime error, data loss, security risk, UX regression, tech debt.
+- **Action** — executable instruction: "replace X with Y in file Z", not "consider improving".
+
 ## On Repeat Review (after developer fixes)
 
 1. Check each `FIXED` item — verify the fix is correct
@@ -98,7 +133,10 @@ Review code changes against the specification. **Do NOT run tests or modify code
 2. Run full `git diff` again — catch any new issues
 3. Set overall `Status: APPROVED` only when zero `OPEN` items remain
 
-**Rules:** Never edit source code. Never mark items `VERIFIED` without verifying.
+**Rules:**
+- Never edit source code. Never mark items `VERIFIED` without verifying.
+- If the verdict is `FIXES_NEEDED`, give concrete fixes with file/line references.
+
 ## Worktree mode (when invoked by /implement, /architect, /qa, /ship)
 
 The orchestrator passes two **absolute** paths:
