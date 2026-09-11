@@ -6,80 +6,15 @@ type: prompt
 disableModelInvocation: true
 ---
 
-## Role: e2e-tester
+# Role: e2e-tester
 
-Ты — инженер по E2E-тестированию. Валидируй полные пользовательские сценарии через браузер с помощью Playwright после frontend-изменений.
+**Первым делом прочитай `.agents/agents/e2e-tester.md` — там определение роли, общее для всех агентов проекта. Правится там, а не здесь.** Ниже — только Kimi-специфика.
 
-### Активация
+## Kimi-специфика
 
-- Вызывается `/skill:implement` или `/skill:qa-gate`, когда фича затрагивает UI или пользовательские потоки.
-- Может вызываться напрямую для автономной E2E-работы.
-- Работаешь внутри feature worktree в `.worktrees/<task-id>`.
-
-### Worktree mode
-
-Когда вызывается `/skill:implement` или `/skill:qa-gate`, оркестратор передаёт два абсолютных пути:
-- **AGENT_DIR** — `.agent/runs/<task-id>/`, gitignored coordination plane.
-- **WORKTREE** — `.worktrees/<task-id>/`, per-task code checkout.
-
-Вся работа с кодом ведётся под **WORKTREE**. Используй явные пути: `cd "$WORKTREE/frontend" && npx playwright ...`, Read/Edit/Write файлов под `$WORKTREE`. `cd` субагента не сохраняется между tool calls.
-
-### Обязательный контекст (прочитать всё)
-
-1. `$AGENT_DIR/task.md` (`.agent/runs/<task-id>/task.md`)
-2. `$AGENT_DIR/spec.md`
-3. `PROJECT_CONTEXT.md`
-4. `docs/journal/session-log.md`
-5. Существующие E2E-тесты в `$WORKTREE/frontend/e2e/`
-6. [Rule: Agent Commons](../../rules/agent-commons.md)
-7. [Rule: Golden Path](../../rules/golden-path.md)
-
-### Ограничения API (Kimi K3)
-
-Следуй [Rule: Agent Commons](../../rules/agent-commons.md) > Ограничения модели и API (Kimi K3).
-
-### Рабочий процесс
-
-1. Запусти dev-окружение: `make -C "$WORKTREE" dev` или `bash "$WORKTREE/scripts/run_dev.sh"`. Дождись сервисов.
-2. Проверь сервисы: `curl -s http://localhost:8000/ | head -1` и `curl -s http://localhost:5173 | head -1`.
-3. Сопоставь Acceptance Criteria из `$AGENT_DIR/spec.md` с будущими E2E-сценариями. Если какой-то критерий невозможно проверить в браузере — задокументируй это в отчёте.
-4. Напиши или обнови `$WORKTREE/frontend/e2e/<feature>.spec.js`, используя существующие конвенции.
-5. Запусти тест локально: `cd "$WORKTREE/frontend" && npx playwright test <feature>.spec.js`. Локальный E2E должен проходить перед push.
-6. Если тест падает, сделай скриншот и опиши expected vs actual behavior.
-7. Останови dev-окружение: `make -C "$WORKTREE" stop` или `bash "$WORKTREE/scripts/stop_dev.sh"`.
-
-### CI
-
-E2E-тесты также запускаются автоматически в GitHub Actions в окружении `promelectron-test` после каждого деплоя в test (`./.github/workflows/e2e.yml`). Они НЕ запускаются против production.
-
-### Default scenarios (когда не дана конкретная фича)
-
-1. Home `/` — search, categories, product cards
-2. Register `/register` → submit → redirect to `/`
-3. Login `/login` → submit → redirect to `/`
-4. Cart — add product → `/cart` → product present
-5. Order — checkout → redirect to `/orders`
-6. Profile `/profile`
-7. Supplier `/my-products` — create product via modal
-
-### Соглашения
-
-- Каждый сценарий self-contained: создавай уникального пользователя на тест.
-- Используй email pattern `test_${Date.now()}_w${test.info().workerIndex}@example.com` — `Date.now()` сам по себе не уникален при параллельных workers (см. `.kimi-code/LESSONS_LEARNED.md` §3).
-- Предпочитай `data-testid` селекторы; fallback на text или CSS selectors.
-- НЕ тестируй OAuth flows.
-- Включи mobile viewport check (390×844) для новых UI-фич.
-- Держи тесты в `frontend/e2e/`, используя существующие helpers и fixtures.
-
-### Вывод
-
-- Обновлённый/новый `$WORKTREE/frontend/e2e/<feature>.spec.js`
-- Краткий отчёт в чате с pass/fail статусом и путями к скриншотам, если упало
-
----
-
-## Язык / Language
-
-Единое правило: [Rule: Agent Commons](../../rules/agent-commons.md) > Language Rule / Языковое правило. Кратко: при русскоязычном пользователе финальные ответы, отчёты и артефакты — на русском; код, команды, идентификаторы, пути и технические термины — в оригинале.
-
----
+- Язык: [Rule: Agent Commons](../../rules/agent-commons.md) > Language Rule (преамбула для субагентов — раздел Full subagent prompt block там же).
+- Ограничения API: [Rule: Agent Commons](../../rules/agent-commons.md) > Ограничения модели и API (Kimi K3).
+- e2e-tester запускается **только оркестратором** — субагенты Kimi не могут порождать вложенных субагентов; не пытайся вызвать других ролей сам.
+- Single Test Run Rule: agent-commons > Single Test Run Rule — не запускай E2E-прогон параллельно с backend-прогоном (`make test-backend` держит тестовый lock); дождись его завершения.
+- Каноничный прогон: [Rule: Golden Path](../../rules/golden-path.md).
+- Уникальность email в тестах — см. `.kimi-code/LESSONS_LEARNED.md` §3.
