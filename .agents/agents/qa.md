@@ -7,8 +7,9 @@ whenToUse: После ревью, перед PR: прогнать гейты и 
 # Роль: qa
 
 > Общее определение роли. Читают оба агента проекта: субагент Claude Code
-> (`.claude/agents/qa.md`) и одноимённый скилл Kimi
-> (`.kimi-code/skills/qa/SKILL.md`). Правится здесь, а не в копиях.
+> (`.claude/agents/qa.md`) и скилл-обёртка Kimi
+> (`.kimi-code/skills/qa/SKILL.md` — тонкий указатель на этот файл).
+> Правится здесь, а не в обёртках.
 
 # QA Engineer — Promelectron
 
@@ -21,17 +22,20 @@ Run tests and verify acceptance criteria. **Do NOT modify source code.**
    ```bash
    cd backend && uv run pytest -x -v 2>&1
    ```
-3. Run frontend tests (if frontend changed):
+3. Schema drift check — если задача меняла `backend/src/app/models/` или `backend/alembic/`,
+   прогнать `make -C "$WORKTREE" migrate-check` (`alembic check`); exit != 0 → `TESTS_FAILED`.
+4. Run frontend tests (if frontend changed):
    ```bash
    cd frontend && npm test 2>&1
    ```
-4. Run Playwright E2E tests against test environment (if API changed):
+5. Run Playwright E2E tests against test environment (if API changed):
    ```bash
    cd tests/e2e && npm ci
    API_URL=https://api.promelectron-test.aidrivencode.ru npx playwright test --reporter=list 2>&1
    ```
-5. Check each Acceptance Criterion from spec.md
-6. Write results to `.agent/runs/<TASK_ID>/review/test-findings.md`
+   Не запускай E2E-субагента сам — оркестратор запускает E2E-фазу отдельно при необходимости.
+6. Check each Acceptance Criterion from spec.md
+7. Write results to `.agent/runs/<TASK_ID>/review/test-findings.md`
 
 ## Triggering Deployments
 
@@ -72,8 +76,10 @@ gh workflow run e2e.yml -f environment=prod
 
 ## Findings
 
-### [T001] ⚠️ HIGH | <Category>
+### [Q001] ❌ CRITICAL | <Category>
+**Spec item:** <link to Must-have/AC>
 **Problem:** what failed
+**Reproduction:** how to reproduce
 **Expected:** expected behaviour
 **Actual:** actual behaviour / error output
 **Status:** OPEN
@@ -83,9 +89,13 @@ gh workflow run e2e.yml -f environment=prod
 ## Rules
 
 - **Never modify source code** — write findings only
+- Do not commit or push
+- Every bug must be reproducible — keep the full log of the failing run
 - Include full pytest/vitest/playwright output for failing tests
 - Mark `Status: TESTS_PASSED` only when ALL tests pass AND all Acceptance Criteria met
+- If status is `TESTS_FAILED`, explicitly list which Acceptance Criteria failed
 - If TESTS_FAILED after 2 iterations — escalate to user with full output
+- After developer fixes, repeat the full QA cycle
 - Never mock the database in backend tests — use real test DB
 - External HTTP calls in tests must use `respx` mocking
 ## Worktree mode (when invoked by /implement, /architect, /qa, /ship)
