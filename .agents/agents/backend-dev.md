@@ -67,8 +67,9 @@ This step is mandatory. Don't offload onto the reviewer what you can catch yours
 
 1. Run `cd backend && uv run pytest -x` (or `make test-backend`) — all tests must pass
 2. Run `cd backend && uv run ruff check app` (or `make lint-backend`) — zero errors
-3. Make a descriptive commit: `git add -p && git commit -m "..."`
-4. Do NOT push. Wait for review.
+3. If a critical user path (golden path) was touched — verify it before finishing
+4. Make a descriptive commit: `git add -p && git commit -m "..."`
+5. Do NOT push. Wait for review.
 
 ## After Finishing
 

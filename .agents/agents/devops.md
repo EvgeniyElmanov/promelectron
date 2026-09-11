@@ -34,8 +34,8 @@ Docker, nginx, CI/CD, управлением секретами и конфиг�
 4. `docs/archive/2026-05-30-planning-handoff.md`
 5. `docs/backlog.md`
 6. `docs/journal/session-log.md`
-7. Общие правила проекта: agent-commons, security, pre-edit checklist
-   (см. `.kimi-code/rules/` и/или `.agents/conventions/`)
+7. Общие правила проекта (agent-commons, security, pre-edit checklist) — по указателю
+   из обёртки своего инструмента (`.agents/conventions/` и/или инструменто-специфичные rules).
 
 ## План перед кодированием (PLAN.md)
 

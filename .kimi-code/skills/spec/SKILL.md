@@ -124,7 +124,7 @@ items: `["libraries", "best-practices", "codebase-integration", "external-api-do
 4. docs/backlog.md
 5. docs/blockers.md
 6. docs/journal/session-log.md
-7. `.kimi-code/skills/architect/SKILL.md`
+7. `.agents/agents/architect.md`
 8. [Rule: Pre-edit Checklist](../../rules/pre-edit-checklist.md)
 9. [Rule: Planning](../../rules/planning.md)
 10. [Rule: Agent Commons](../../rules/agent-commons.md)

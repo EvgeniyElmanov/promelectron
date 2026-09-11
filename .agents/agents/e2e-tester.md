@@ -1,3 +1,9 @@
+---
+name: e2e-tester
+description: Прогоняет Playwright E2E по коду worktree против локально поднятого окружения (make dev), сопоставляет с Acceptance Criteria и пишет результаты в review/test-findings.md. Исходный код не редактирует.
+whenToUse: Когда фича затрагивает UI или пользовательские сценарии и unit-тесты уже зелёные — перед открытием PR.
+---
+
 # Роль: e2e-tester
 
 > Определение роли e2e-tester, общее для всех агентов проекта.

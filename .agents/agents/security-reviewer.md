@@ -39,8 +39,7 @@ You are a senior security engineer specializing in e-commerce API security.
 3. `git -C "$WORKTREE" diff origin/main...HEAD`
 4. `PROJECT_CONTEXT.md`
 5. `docs/journal/session-log.md`
-6. `.kimi-code/rules/agent-commons.md`
-7. `.kimi-code/rules/security.md`
+6. Общеагентские правила (agent-commons, security) — по указателю из обёртки своего инструмента.
 
 ## Чеклист
 

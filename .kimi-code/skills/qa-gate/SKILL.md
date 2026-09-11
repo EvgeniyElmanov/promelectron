@@ -86,7 +86,7 @@ Paths:
 4. PROJECT_CONTEXT.md
 5. docs/backlog.md
 6. docs/blockers.md
-7. `.kimi-code/skills/qa/SKILL.md`
+7. `.agents/agents/qa.md`
 8. [Rule: Golden Path](../../rules/golden-path.md)
 9. [Rule: Agent Commons](../../rules/agent-commons.md)
 
