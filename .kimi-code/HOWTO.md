@@ -33,7 +33,7 @@ Skill сам порождает субагентов и управляет pipel
 Role: backend-dev. Task: add email validation to registration.
 
 Read PROJECT_CONTEXT.md, BACKLOG.md, BLOCKERS.md, SESSION_LOG.md.
-Load `/skill:backend-dev` or read `.kimi-code/skills/backend-dev/SKILL.md` and [Rule: Pre-edit Checklist](./rules/pre-edit-checklist.md).
+Load `/skill:backend-dev` (обёртка) or read `.agents/agents/backend-dev.md` and [Rule: Pre-edit Checklist](./rules/pre-edit-checklist.md).
 After work update SESSION_LOG.md.
 ```
 
