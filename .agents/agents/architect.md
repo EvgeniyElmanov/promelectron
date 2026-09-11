@@ -7,8 +7,9 @@ whenToUse: Перед реализацией любой непустяковой
 # Роль: architect
 
 > Общее определение роли. Читают оба агента проекта: субагент Claude Code
-> (`.claude/agents/architect.md`) и одноимённый скилл Kimi
-> (`.kimi-code/skills/architect/SKILL.md`). Правится здесь, а не в копиях.
+> (`.claude/agents/architect.md`) и обёртка-скилл Kimi
+> (`.kimi-code/skills/architect/SKILL.md`), которая ссылается сюда. Правится здесь,
+> а не в инструменто-специфичных файлах.
 
 # Architect — Promelectron (Spec-Driven Development)
 

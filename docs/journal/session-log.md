@@ -465,3 +465,10 @@
 - Дополнительно из onec удалены 7 товаров без актуальной цены «Розница» → каталог 220 SKU (209 активных, все с сайтовой ценой), свежий `onec_seed.sql.gz` перегенерирован.
 - **Итог: run 34363297961 полностью зелёный** — build 19s, deploy-test 44s, migrate-check 7s, seed-test-catalog 9m06s (было ~35 мин), e2e 4m19s: **121 passed, 0 failed, 2 flaky, 1 skipped**. deploy-prod/prod-smoke пропущены по условию workflow (штатно).
 - Долг: `ONEC_SITE_PRICE_TYPE=BASE` в helm test-values маскируется data-патчем; prod-values держат `"site"` — при подключении prod к OData-каталогу понадобится то же решение (владелец + infra).
+
+## 2026-09-11 — kimi-skills-thin-wrappers (#234): 7 Kimi-скиллов → обёртки над .agents/ (PR #235)
+- Миграция thin-wrapper: общее содержание в `.agents/skills/` (команды) и `.agents/agents/` (роли architect/qa); `.kimi-code/skills/{architect,board,deploy,implement,qa,sessions,ship}` — обёртки с оригинальным frontmatter + блок Kimi-специфики (retry, trace, subagent_type, преамбулы). Нетто −675 строк.
+- Слито в общие файлы: PLAN.md-фаза + auto-approve, API Contract Validation, create-issue/идемпотентность, делегирование PR в ship (implement); rollback-политика + smoke (deploy); pre-push + worktree-aware PROJECT_ROOT + bare task-id (ship); migrate-check + [Qxxx] + локальный E2E как QA-гейт до PR (qa.md, решение владельца H-001=A); нейтральная кнопка make ai (board/sessions).
+- Ревью: 2 итерации, 5 findings (F-001 HIGH ship task-id, F-002 HIGH qa команды/E2E — см. LESSONS_LEARNED) исправлены и VERIFIED, APPROVED.
+- Проверки: audit-agents.sh зелёный; grep-критерии приёмки пройдены; make pre-push пропущен с одобрением владельца (harness-only diff + BLK-015).
+- PR #235, issue #234 → In review. Урок записан в .kimi-code/LESSONS_LEARNED.md (pointer-миграция = поведенческий дифф команд).

@@ -1,6 +1,6 @@
 ---
 name: ship
-description: Open a GitHub Pull Request from the current branch using the project template — the standalone version of /implement Step 7, for when the code is already written and committed and you just want to ship the PR. Derives the task-id (and the GitHub Issue, if any) from the branch, pulls Must-haves from the task's spec, builds the PR body, ensures everything is pushed, creates the PR, and moves the GitHub Project card to In Review.
+description: Open a GitHub Pull Request from the current branch using the project template — the standalone version of /implement Step 7, for when the code is already written and committed and you just want to ship the PR. Derives the task-id (and the GitHub Issue, if any) from the branch, pulls Must-haves from the task's spec, builds the PR body, runs pre-push checks, ensures everything is pushed, creates the PR, and moves the GitHub Project card to In Review.
 argument-hint: "[issue#|gh-5|branch] (optional — defaults to the current branch)"
 disable-model-invocation: true
 allowed-tools: Read Write Bash(git *) Bash(gh *) Bash(jq *)
@@ -13,30 +13,73 @@ standalone version of **`/implement` Step 7** — for when the code is already w
 and you just want to open the PR (no spec/dev/review/QA pipeline).
 
 It derives the task context from the branch, gathers the PR body from the task's spec (if present),
-ensures everything is pushed, creates the PR, and — for tasks that came from a **GitHub Issue** —
-moves the card on the **GitHub Project** board to **In Review** (the human-review signal).
+runs the project's pre-push checks, ensures everything is pushed, creates the PR, and — for tasks
+that came from a **GitHub Issue** — moves the card on the **GitHub Project** board to
+**In Review** (the human-review signal).
 
 The PR title and body are written in **Russian** (matches the team's review style). **No AI
 attribution** in the PR body.
 
 ## Input
 
-**Optional argument:** `$1` — an issue reference (`5`, `#5`, `gh-5`), or a branch name. If omitted,
-use the **current branch** (`git branch --show-current`).
+**Optional argument:** an issue reference (`5`, `#5`, `gh-5`), a branch name, or a bare
+**task-id**. If omitted, use the **current branch** (`git branch --show-current`).
+
+If the argument is neither an issue reference nor an existing branch, treat it as a **task-id**:
+the branch is expected to be `feature/<task-id>` or `bugfix/<task-id>`.
+
+---
+
+## Step 0: Preflight
+
+Check GitHub CLI access:
+
+```bash
+gh auth status
+```
+
+If it fails — stop and ask the user to run `gh auth login` (or grant the missing scope).
+
+For GitHub Issue tasks the card must move on the Project board, so check Project access early:
+
+```bash
+gh project view 1 --owner AutonomaCo
+```
+
+If this fails (missing `project` scope) — stop and ask the user to grant the scope before
+shipping, instead of discovering it after the PR is opened.
 
 ---
 
 ## Step 1: Determine context
 
-Record the repo root and current branch:
+The current directory may be the main repo or a git worktree. Always resolve the **main
+repository root**, because `.agent/runs/` lives only there:
 
 ```bash
-PROJECT_ROOT="$(git rev-parse --show-toplevel)"
-BRANCH="$(git -C "$PROJECT_ROOT" branch --show-current)"
+# Inside a worktree, --show-toplevel returns the worktree path; we need the main repo.
+ANY_ROOT="$(git rev-parse --show-toplevel)"
+PROJECT_ROOT="$(git -C "$ANY_ROOT" rev-parse --path-format=absolute --git-common-dir 2>/dev/null | xargs dirname 2>/dev/null || echo "$ANY_ROOT")"
 ```
 
-If `$1` is given as an issue reference, the branch is expected to be `feature/gh-<N>`; if it is a
-branch name, check it out first. Otherwise ship the current branch.
+Fallback for older git versions:
+
+```bash
+PROJECT_ROOT="$(git -C "$ANY_ROOT" rev-parse --show-toplevel 2>/dev/null || echo "$ANY_ROOT")"
+```
+
+Record the current branch:
+
+```bash
+BRANCH="$(git -C "$ANY_ROOT" branch --show-current)"
+```
+
+If an issue reference is given, the branch is expected to be `feature/gh-<N>`; if it is a
+branch name, check it out first. If it is a bare task-id, check out `feature/<task-id>` or
+`bugfix/<task-id>` (whichever exists). Otherwise ship the current branch.
+
+Before anything else, verify the resolved branch: if it is `main` or HEAD is detached (`BRANCH`
+empty), STOP and ask the user which branch to ship — this is a procedural check, not just a rule.
 
 Derive the **task id** and **issue number** from the branch name:
 
@@ -59,32 +102,56 @@ AGENT_DIR="$PROJECT_ROOT/.agent/runs/<task-id>"
 Compute the diff vs `main` so you can describe and sanity-check the PR:
 
 ```bash
-git -C "$PROJECT_ROOT" fetch origin
-git -C "$PROJECT_ROOT" log origin/main..HEAD --oneline
-git -C "$PROJECT_ROOT" diff origin/main...HEAD --stat
+git -C "$ANY_ROOT" fetch origin
+git -C "$ANY_ROOT" log origin/main..HEAD --oneline
+git -C "$ANY_ROOT" diff origin/main...HEAD --stat
 ```
 
 If `origin/main..HEAD` is empty there is nothing to ship — tell the user and stop.
 
 ---
 
-## Step 2: Ensure everything is pushed
+## Step 2: Check the branch is not behind main
+
+```bash
+git -C "$ANY_ROOT" fetch origin main
+git -C "$ANY_ROOT" log HEAD..origin/main --oneline
+```
+
+If `origin/main` has commits missing from the current branch, warn the user and ask whether to
+rebase/merge before shipping.
+
+---
+
+## Step 3: Run pre-push checks
+
+`AGENTS.md` requires `make pre-push` (lint + unit tests + E2E) before pushing a feature branch.
+
+```bash
+make -C "$ANY_ROOT" pre-push
+```
+
+If pre-push fails — stop and report the errors. Do NOT open a PR with failing checks.
+
+---
+
+## Step 4: Ensure everything is pushed
 
 The PR must reflect committed, pushed work.
 
-1. `git -C "$PROJECT_ROOT" status --porcelain` — if there are **uncommitted changes**, STOP and
-   tell the user to commit (or stash) them first. `/ship` does not commit code.
-2. Check for **unpushed commits**: `git -C "$PROJECT_ROOT" log @{u}..HEAD --oneline 2>/dev/null`
+1. `git -C "$ANY_ROOT" status --porcelain` — if there are **uncommitted changes**, STOP and
+   tell the user to commit (or stash) them first. Ship does not commit code.
+2. Check for **unpushed commits**: `git -C "$ANY_ROOT" log @{u}..HEAD --oneline 2>/dev/null`
    (or `origin/<branch>..HEAD` if there is no upstream yet). If there are unpushed commits — or no
    upstream at all — **ask the user whether to push**. On yes:
    ```bash
-   git -C "$PROJECT_ROOT" push -u origin HEAD
+   git -C "$ANY_ROOT" push -u origin HEAD
    ```
    On no, stop (cannot open a PR for an unpushed branch).
 
 ---
 
-## Step 3: Gather the PR body
+## Step 5: Gather the PR body
 
 Read `$AGENT_DIR/spec.md` **if it exists** and pull its **Must-haves** into the PR body. Read
 `$AGENT_DIR/review/test-findings.md` if present for the Test Results / Acceptance Criteria. If
@@ -96,7 +163,7 @@ scenario, edge cases, out-of-scope — even when there is no spec. Infer it from
 
 ---
 
-## Step 4: Create the Pull Request
+## Step 6: Create the Pull Request
 
 Match the body shape of `/implement` Step 7 (Summary / Spec / Changes / Test Results / Acceptance
 Criteria), plus the always-on Testing Notes. Write **in Russian**. For a **GitHub Issue** task,
@@ -136,26 +203,28 @@ EOF
 )"
 ```
 
-Capture the printed PR URL for the report.
+Capture the printed PR URL for the report. If `gh pr create` fails — stop and report the error;
+do not post comments or update the board.
 
 ---
 
-## Step 5: Move the GitHub Project card → In Review
+## Step 7: Move the GitHub Project card → In Review
 
-**GitHub Issue tasks only.** AFTER the PR exists, load the **`github-project`** skill and set the
-card status `pr_opened → In Review` for issue `#<N>`. This is the human-review signal.
+**GitHub Issue tasks only.** AFTER the PR exists, set the card status `pr_opened → In Review`
+for issue `#<N>` — the human-review signal. Use your tool's own mechanism for this (a script, an
+MCP integration, or `gh` commands per the project's github-project conventions).
 
 - **Idempotent / never regress:** read the card's current status first; skip if it is already at
   In Review or further along; never push it backwards.
-- **Do NOT set Done** — `/ship` does not merge. Only set Done if the user **explicitly** asks.
-- If the `project` scope is missing, follow the `github-project` skill: tell the user how to fix it
+- **Do NOT set Done** — ship does not merge. Only set Done if the user **explicitly** asks.
+- If the board cannot be updated (missing scope, mechanism failure), tell the user how to fix it
   and note in the report that the board was not updated. Do not pretend it succeeded.
 
 For **free-text** tasks (no issue) there is no card — skip this step silently.
 
 ---
 
-## Step 6: Post open Human-Decision items as PR comments
+## Step 8: Post open Human-Decision items as PR comments
 
 If `$AGENT_DIR/review/findings.md` exists and has **open** Human-Decision `[H-xxx]` items, post
 each one as a PR comment so the reviewer sees the open questions:
@@ -164,30 +233,34 @@ each one as a PR comment so the reviewer sees the open questions:
 gh pr comment "$BRANCH" --body "[H-xxx] <the open human-decision item>"
 ```
 
-These are the only comments `/ship` posts. If there is no findings.md or no open H-items, skip.
+These are the only comments ship posts. If there is no findings.md or no open H-items, skip.
 
 ---
 
-## Step 7: Report (in Russian)
+## Step 9: Report (in Russian)
 
 Give the user a tight report:
 
 - **PR:** the URL.
+- **Ветка:** shipped branch.
+- **Pre-push:** results of `make pre-push`.
 - **Доска:** статус теперь **In Review** (или «доска не обновлена — задача free-text / нет
-  карточки», or «не удалось — нет project-скоупа»).
+  карточки», or «не удалось — нет project-скоупа / сбой механизма»).
 - **H-items:** how many open `[H-xxx]` items were posted as comments (or none).
 
 ---
 
 ## Rules
 
-- **Never merge.** `/ship` only opens the PR; a human reviews and merges. Don't set Done unless the
+- **Never merge.** Ship only opens the PR; a human reviews and merges. Don't set Done unless the
   user explicitly asks.
 - **Never push to `main`**; never ship from `main`.
 - **Never commit code.** If the tree is dirty, stop and ask the user to commit first.
+- **Always run `make pre-push`** before opening the PR; never open a PR with failing checks.
 - **Russian PR title + body. No AI attribution** in the PR body.
 - **Idempotent board move.** `pr_opened → In Review` only; read current status, never regress.
 - **GitHub Issue tasks only** touch the board and use `Closes #<N>`. Free-text branches get a
   plain PR with no card and no `Closes`.
+- **Handle `gh pr create` errors** — on failure, stop without side effects.
 - Coordination files live in the gitignored `.agent/runs/<task-id>/`; **never** write the committed
   `docs/` planner and never `git add .agent/runs/`.

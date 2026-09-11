@@ -9,13 +9,13 @@
 
 | Роль | Вызов | Файл |
 |------|-------|------|
-| `architect` | `/skill:architect` | `.kimi-code/skills/architect/SKILL.md` |
+| `architect` | `/skill:architect` | `.kimi-code/skills/architect/SKILL.md` — обёртка → `.agents/agents/architect.md` |
 | `backend-dev` | `/skill:backend-dev` | `.kimi-code/skills/backend-dev/SKILL.md` |
 | `frontend-dev` | `/skill:frontend-dev` | `.kimi-code/skills/frontend-dev/SKILL.md` |
 | `code-reviewer` | `/skill:code-reviewer` | `.kimi-code/skills/code-reviewer/SKILL.md` |
 | `security-reviewer` | `/skill:security-reviewer` | `.kimi-code/skills/security-reviewer/SKILL.md` |
 | `e2e-tester` | `/skill:e2e-tester` | `.kimi-code/skills/e2e-tester/SKILL.md` |
-| `qa` | `/skill:qa` | `.kimi-code/skills/qa/SKILL.md` |
+| `qa` | `/skill:qa` | `.kimi-code/skills/qa/SKILL.md` — обёртка → `.agents/agents/qa.md` |
 | `devops` | `/skill:devops` | `.kimi-code/skills/devops/SKILL.md` |
 | `project-manager` | `/skill:project-manager` | `.kimi-code/skills/project-manager/SKILL.md` |
 | `plan-maintainer` | `/skill:plan-maintainer` | `.kimi-code/skills/plan-maintainer/SKILL.md` |
@@ -26,20 +26,20 @@
 
 | Навык | Файл |
 |-------|------|
-| `/implement` | `.kimi-code/skills/implement/SKILL.md` |
+| `/implement` | `.kimi-code/skills/implement/SKILL.md` — обёртка → `.agents/skills/implement/SKILL.md` |
 | `/fix` | `.kimi-code/skills/fix/SKILL.md` |
 | `/review` | `.kimi-code/skills/review/SKILL.md` |
-| `/deploy` | `.kimi-code/skills/deploy/SKILL.md` |
+| `/deploy` | `.kimi-code/skills/deploy/SKILL.md` — обёртка → `.agents/skills/deploy/SKILL.md` |
 | `/context-sync` | `.kimi-code/skills/context-sync/SKILL.md` |
 | `/plan-maintainer` | `.kimi-code/skills/plan-maintainer/SKILL.md` |
 | `/promelectron` | `.kimi-code/skills/promelectron/SKILL.md` |
 | `/spec` | `.kimi-code/skills/spec/SKILL.md` |
 | `/qa-gate` | `.kimi-code/skills/qa-gate/SKILL.md` |
-| `/ship` | `.kimi-code/skills/ship/SKILL.md` |
+| `/ship` | `.kimi-code/skills/ship/SKILL.md` — обёртка → `.agents/skills/ship/SKILL.md` |
 | `/flow-fix` | `.kimi-code/skills/flow-fix/SKILL.md` |
 | `/flow-implement` | `.kimi-code/skills/flow-implement/SKILL.md` |
-| `/board` | `.kimi-code/skills/board/SKILL.md` |
-| `/sessions` | `.kimi-code/skills/sessions/SKILL.md` |
+| `/board` | `.kimi-code/skills/board/SKILL.md` — обёртка → `.agents/skills/board/SKILL.md` |
+| `/sessions` | `.kimi-code/skills/sessions/SKILL.md` — обёртка → `.agents/skills/sessions/SKILL.md` |
 | `/flow-review` | `.kimi-code/skills/flow-review/SKILL.md` |
 
 ## Общие правила
