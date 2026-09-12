@@ -4,7 +4,6 @@
 pytest>=7.0
 pytest-asyncio>=1.0.0,<2.0.0
 httpx>=0.24
-aiosqlite>=0.19
 
 # Linting
 # Пин: версия ruff влияет на набор/поведение правил — docker-образ, venv и CI

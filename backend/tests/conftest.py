@@ -18,11 +18,13 @@ from src.app.utils.auth import create_access_token
 
 # Используем отдельную тестовую БД, чтобы не трогать dev/prod данные
 _env_url = os.getenv("DATABASE_URL", "")
-if "postgresql" in _env_url:
-    # Заменяем имя БД на promelectron_test
-    TEST_DATABASE_URL = _env_url.rsplit("/", 1)[0] + "/promelectron_test"
-else:
-    TEST_DATABASE_URL = "sqlite+aiosqlite:///./test.db"
+if "postgresql" not in _env_url:
+    raise RuntimeError(
+        "Backend-тесты требуют postgresql DATABASE_URL. "
+        "Запускай через `make test-backend` (поднимает docker-PG и задаёт env)."
+    )
+# Заменяем имя БД на promelectron_test
+TEST_DATABASE_URL = _env_url.rsplit("/", 1)[0] + "/promelectron_test"
 
 
 TEMPLATE_DB_NAME = "promelectron_test_template"
@@ -189,10 +191,6 @@ def event_loop():
 @pytest.fixture(scope="session")
 async def _test_template_db():
     """Create a template database with schema for per-test DB cloning."""
-    if "postgresql" not in TEST_DATABASE_URL:
-        yield None
-        return
-
     base_url = _admin_url()
     admin_engine = create_async_engine(
         base_url, isolation_level="AUTOCOMMIT", poolclass=NullPool
@@ -223,14 +221,6 @@ async def _test_template_db():
 @pytest.fixture
 async def test_engine(_test_template_db):
     """Provide an engine connected to a fresh per-test database."""
-    if "postgresql" not in TEST_DATABASE_URL:
-        engine = create_async_engine(TEST_DATABASE_URL, poolclass=NullPool)
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-        yield engine
-        await engine.dispose()
-        return
-
     base_url = _admin_url()
     db_name = f"promelectron_test_{uuid.uuid4().hex[:12]}"
 
