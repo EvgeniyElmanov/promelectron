@@ -8,10 +8,10 @@
         height="18"
         fill="none"
       >
-        <circle cx="11" cy="11" r="6" stroke="#999" stroke-width="2" />
+        <circle cx="11" cy="11" r="6" stroke="currentColor" stroke-width="2" />
         <path
           d="M20 20l-3.5-3.5"
-          stroke="#999"
+          stroke="currentColor"
           stroke-width="2"
           stroke-linecap="round"
         />
@@ -36,10 +36,10 @@
         @click="clearQuery"
       >
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none">
-          <circle cx="12" cy="12" r="10" stroke="#999" stroke-width="1.5" />
+          <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5" />
           <path
             d="M9 9l6 6M15 9l-6 6"
-            stroke="#999"
+            stroke="currentColor"
             stroke-width="1.5"
             stroke-linecap="round"
           />
@@ -80,10 +80,10 @@
             @click="clearQuery"
           >
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none">
-              <circle cx="12" cy="12" r="10" stroke="#999" stroke-width="1.5" />
+              <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5" />
               <path
                 d="M9 9l6 6M15 9l-6 6"
-                stroke="#999"
+                stroke="currentColor"
                 stroke-width="1.5"
                 stroke-linecap="round"
               />
@@ -119,8 +119,8 @@
                 @click="selectQuery(item)"
               >
                 <svg class="search-bar__history-icon" viewBox="0 0 24 24" width="16" height="16" fill="none">
-                  <circle cx="12" cy="12" r="10" stroke="#999" stroke-width="1.5"/>
-                  <polyline points="12 6 12 12 16 14" stroke="#999" stroke-width="1.5" stroke-linecap="round"/>
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5"/>
+                  <polyline points="12 6 12 12 16 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
                 </svg>
                 <span class="search-bar__history-text">{{ item }}</span>
                 <button
@@ -128,7 +128,7 @@
                   @click.stop="removeSearchHistory(item); refreshHistory();"
                 >
                   <svg viewBox="0 0 24 24" width="14" height="14" fill="none">
-                    <path d="M18 6L6 18M6 6l12 12" stroke="#999" stroke-width="2" stroke-linecap="round"/>
+                    <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                   </svg>
                 </button>
               </div>
@@ -231,12 +231,12 @@
                   cx="11"
                   cy="11"
                   r="6"
-                  stroke="#999"
+                  stroke="currentColor"
                   stroke-width="2"
                 />
                 <path
                   d="M20 20l-3.5-3.5"
-                  stroke="#999"
+                  stroke="currentColor"
                   stroke-width="2"
                   stroke-linecap="round"
                 />
@@ -267,7 +267,7 @@
               >
                 <path
                   d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"
-                  stroke="#999"
+                  stroke="currentColor"
                   stroke-width="2"
                 />
               </svg>
@@ -612,14 +612,28 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   background: var(--color-bg);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   padding: 0 12px;
   height: 40px;
+  transition: box-shadow 0.15s;
+}
+
+.search-bar__input-wrapper:focus-within {
+  box-shadow:
+    0 0 0 1px var(--color-primary),
+    0 0 0 3px var(--color-primary-light);
+}
+
+@media (min-width: 768px) {
+  .search-bar__input-wrapper {
+    height: 48px;
+  }
 }
 
 .search-bar__icon {
   flex-shrink: 0;
   margin-right: 8px;
+  color: var(--color-text-muted);
 }
 
 .search-bar__input {
@@ -632,7 +646,7 @@ onUnmounted(() => {
 }
 
 .search-bar__input::placeholder {
-  color: #aaa;
+  color: var(--color-text-muted);
 }
 
 .search-bar__clear-btn {
@@ -644,6 +658,7 @@ onUnmounted(() => {
   padding: 4px;
   margin-left: 4px;
   cursor: pointer;
+  color: var(--color-text-muted);
 }
 
 /* Dropdown */
@@ -653,8 +668,8 @@ onUnmounted(() => {
   left: 12px;
   right: 12px;
   background: var(--color-bg-white);
-  border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-dropdown);
   z-index: 150;
   max-height: 520px;
   overflow: hidden;
@@ -807,6 +822,7 @@ onUnmounted(() => {
 
 .search-bar__suggestion-icon {
   flex-shrink: 0;
+  color: var(--color-text-muted);
 }
 
 .search-bar__suggestion-text {
@@ -858,6 +874,7 @@ onUnmounted(() => {
 
 .search-bar__history-icon {
   flex-shrink: 0;
+  color: var(--color-text-muted);
 }
 
 .search-bar__history-text {
@@ -874,6 +891,7 @@ onUnmounted(() => {
   background: none;
   border: none;
   cursor: pointer;
+  color: var(--color-text-muted);
   opacity: 0;
   transition: opacity 0.15s;
 }
@@ -940,7 +958,7 @@ onUnmounted(() => {
   }
 
   .search-bar__mobile-input::placeholder {
-    color: #aaa;
+    color: var(--color-text-muted);
   }
 
   .search-bar__mobile-close {

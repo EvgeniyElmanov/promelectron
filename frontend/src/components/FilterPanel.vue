@@ -54,14 +54,14 @@
           :max="priceStats.max"
           data-testid="filter-price-max"
         />
-        <button
-          type="button"
+        <AppButton
+          size="sm"
           class="filter-panel__apply-btn"
           data-testid="filter-apply"
           @click="applyPrice"
         >
           OK
-        </button>
+        </AppButton>
       </div>
     </details>
 
@@ -112,31 +112,34 @@
           :max="facet.stats.max"
           :data-testid="`filter-range-max-${facet.code}`"
         />
-        <button
-          type="button"
+        <AppButton
+          size="sm"
           class="filter-panel__apply-btn"
           :data-testid="`filter-range-apply-${facet.code}`"
           @click="applyRange(facet)"
         >
           OK
-        </button>
+        </AppButton>
         <span v-if="facet.unit" class="filter-panel__unit">{{ facet.unit }}</span>
       </div>
     </details>
 
-    <button
-      type="button"
+    <AppButton
+      variant="secondary"
+      size="sm"
+      block
       class="filter-panel__reset"
       data-testid="filter-reset"
       @click="$emit('reset')"
     >
       Сбросить фильтры
-    </button>
+    </AppButton>
   </aside>
 </template>
 
 <script setup>
 import { computed, reactive, ref, watch } from 'vue';
+import AppButton from '@/components/ui/AppButton.vue';
 
 /**
  * FilterPanel — dumb-компонент фасетных фильтров каталога (issue #122, D-04).
@@ -288,15 +291,15 @@ function applyRange(facet) {
 .filter-panel {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 12px;
+  gap: var(--space-1);
+  padding: var(--space-3);
   background: var(--color-bg-white);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
 }
 
 .filter-panel__section {
   border-bottom: 1px solid var(--color-border);
-  padding: 8px 0;
+  padding: var(--space-2) 0;
 }
 
 .filter-panel__section:last-of-type {
@@ -304,8 +307,8 @@ function applyRange(facet) {
 }
 
 .filter-panel__section-title {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-semibold);
   color: var(--color-text);
   cursor: pointer;
   user-select: none;
@@ -351,7 +354,7 @@ function applyRange(facet) {
 
 .filter-panel__category-btn--active {
   color: var(--color-primary);
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
 }
 
 .filter-panel__value {
@@ -372,20 +375,28 @@ function applyRange(facet) {
 .filter-panel__range {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-top: 8px;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
   flex-wrap: wrap;
 }
 
 .filter-panel__range-input {
   flex: 1;
   min-width: 0;
-  padding: 8px 10px;
-  border-radius: 8px;
+  height: 40px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
   background: var(--color-bg-white);
-  font-size: 14px;
+  font-size: var(--font-size-body-sm);
   color: var(--color-text);
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+
+.filter-panel__range-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-light);
 }
 
 .filter-panel__range-sep {
@@ -393,29 +404,15 @@ function applyRange(facet) {
 }
 
 .filter-panel__apply-btn {
-  padding: 8px 14px;
-  border-radius: 8px;
-  background: var(--color-primary);
-  color: var(--color-white);
-  font-size: 14px;
-  font-weight: 500;
-  border: none;
   flex-shrink: 0;
 }
 
 .filter-panel__unit {
-  font-size: 13px;
+  font-size: var(--font-size-body-sm);
   color: var(--color-text-secondary);
 }
 
 .filter-panel__reset {
-  margin-top: 8px;
-  padding: 10px;
-  border-radius: 10px;
-  border: 1px solid var(--color-border);
-  background: var(--color-bg-white);
-  color: var(--color-primary);
-  font-size: 14px;
-  font-weight: 500;
+  margin-top: var(--space-2);
 }
 </style>

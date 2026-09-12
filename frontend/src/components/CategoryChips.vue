@@ -71,8 +71,8 @@ onMounted(async () => {
 .category-chips__chip {
   flex-shrink: 0;
   padding: 6px 14px;
-  border-radius: 20px;
-  font-size: 13px;
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-body-sm);
   background: var(--color-bg);
   color: var(--color-text);
   border: none;

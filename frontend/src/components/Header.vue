@@ -19,7 +19,7 @@
       <!-- Notifications -->
       <div v-if="isAuthenticated" class="header__action-item header__notif-wrap">
         <button class="header__icon header__icon--notif" data-testid="notifications-btn" title="Уведомления" @click="toggleNotif">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
             <path d="M13.73 21a2 2 0 01-3.46 0"/>
           </svg>
@@ -51,7 +51,7 @@
 
       <router-link to="/orders" class="header__action-item">
         <div class="header__icon">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
             <polyline points="14 2 14 8 20 8"/>
           </svg>
@@ -61,7 +61,7 @@
 
       <router-link to="/favorites" class="header__action-item">
         <div class="header__icon">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
           </svg>
           <span v-if="favoritesCount > 0" class="header__notif-badge">{{ favoritesCount > 99 ? '99+' : favoritesCount }}</span>
@@ -71,7 +71,7 @@
 
       <router-link to="/cart" class="header__action-item" data-testid="cart-link">
         <div class="header__icon">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4H6z"/>
             <line x1="3" y1="6" x2="21" y2="6"/>
             <path d="M16 10a4 4 0 01-8 0"/>
@@ -83,7 +83,7 @@
 
       <router-link v-if="isAuthenticated" to="/profile" class="header__action-item" data-testid="profile-link">
         <div class="header__icon">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="8" r="4"/>
             <path d="M4 20c0-4 4-7 8-7s8 3 8 7"/>
           </svg>
@@ -93,7 +93,7 @@
 
       <router-link v-else to="/login" class="header__action-item" data-testid="login-link">
         <div class="header__icon">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="8" r="4"/>
             <path d="M4 20c0-4 4-7 8-7s8 3 8 7"/>
           </svg>
@@ -256,11 +256,11 @@ const vClickOutside = {
   height: 18px;
   padding: 0 5px;
   margin-left: 6px;
-  border-radius: 9px;
+  border-radius: var(--radius-pill);
   background: var(--color-danger);
-  color: #fff;
-  font-size: 11px;
-  font-weight: 600;
+  color: var(--color-white);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
   line-height: 1;
   vertical-align: middle;
 }
@@ -292,12 +292,16 @@ const vClickOutside = {
 
 .header__action-label {
   display: none;
-  font-size: 12px;
-  color: #999;
+  font-size: var(--font-size-caption);
+  color: var(--color-text-muted);
   line-height: 1;
 }
 
 @media (min-width: 768px) {
+  .header {
+    height: 72px;
+    padding: 0 var(--space-4);
+  }
   .header__search-desktop {
     display: block;
     flex: 1;
@@ -339,11 +343,11 @@ const vClickOutside = {
   min-width: 18px;
   height: 18px;
   padding: 0 5px;
-  border-radius: 9px;
+  border-radius: var(--radius-pill);
   background: var(--color-danger);
-  color: #fff;
-  font-size: 11px;
-  font-weight: 600;
+  color: var(--color-white);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -360,8 +364,8 @@ const vClickOutside = {
   width: 320px;
   max-height: 400px;
   background: var(--color-bg-white);
-  border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-dropdown);
   z-index: 150;
   display: flex;
   flex-direction: column;
@@ -415,11 +419,11 @@ const vClickOutside = {
 }
 
 .notif-dropdown__item--unread {
-  background: #f0f7ff;
+  background: var(--color-primary-light);
 }
 
 .notif-dropdown__item--unread:hover {
-  background: #e0efff;
+  background: color-mix(in srgb, var(--color-primary-light) 80%, var(--color-primary));
 }
 
 .notif-dropdown__item-title {

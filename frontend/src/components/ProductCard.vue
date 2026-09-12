@@ -16,11 +16,12 @@
         loading="lazy"
       />
       <span v-else class="product-card__image-letter">{{ product.name.charAt(0) }}</span>
-      <span
+      <AppBadge
         v-if="isOutOfStock"
+        variant="out-of-stock"
         class="product-card__badge"
         data-testid="out-of-stock-badge"
-      >Нет в наличии</span>
+      >Нет в наличии</AppBadge>
       <button
         class="product-card__heart"
         :class="{ 'product-card__heart--active': isFavorite }"
@@ -35,7 +36,9 @@
     <div class="product-card__body">
       <div class="product-card__price" data-testid="product-price">{{ formattedPrice }} ₽</div>
       <div class="product-card__name" data-testid="product-name">{{ product.name }}</div>
-      <button
+      <AppButton
+        size="sm"
+        block
         class="product-card__cart-btn"
         :class="{ 'product-card__cart-btn--in-cart': inCartQty > 0 && !isOutOfStock }"
         data-testid="add-to-cart-button"
@@ -48,7 +51,7 @@
           <path d="M16 10a4 4 0 01-8 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
         </svg>
         <span>{{ isOutOfStock ? 'Нет в наличии' : (isLoading ? '...' : (inCartQty > 0 ? `В корзине · ${inCartQty}` : 'В корзину')) }}</span>
-      </button>
+      </AppButton>
     </div>
   </div>
 </template>
@@ -62,6 +65,8 @@ import { useCart } from '@/composables/useCart';
 import { useToast } from '@/composables/useToast';
 import { getImageUrl } from '@/composables/useImageUrl';
 import { formatPrice } from '@/utils/price';
+import AppButton from '@/components/ui/AppButton.vue';
+import AppBadge from '@/components/ui/AppBadge.vue';
 
 const props = defineProps({
   product: { type: Object, required: true },
@@ -135,17 +140,18 @@ const addToCart = async () => {
 <style scoped>
 .product-card {
   background: var(--color-bg-white);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   overflow: hidden;
   display: flex;
   flex-direction: column;
   cursor: pointer;
+  box-shadow: var(--shadow-card);
   transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .product-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-card-hover);
 }
 
 .product-card__image {
@@ -191,7 +197,7 @@ const addToCart = async () => {
 }
 
 .product-card__heart--active {
-  color: #ff4242;
+  color: var(--color-danger);
 }
 
 .product-card__heart--active svg {
@@ -214,13 +220,6 @@ const addToCart = async () => {
   position: absolute;
   top: 8px;
   left: 8px;
-  padding: 3px 8px;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.92);
-  color: var(--color-danger, #ff4242);
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1.3;
 }
 
 /* Touch target ≥40px без изменения визуального размера (прозрачный хит-бокс) */
@@ -240,14 +239,14 @@ const addToCart = async () => {
 }
 
 .product-card__price {
-  font-size: 17px;
-  font-weight: 700;
+  font-size: var(--font-size-body-lg);
+  font-weight: var(--font-weight-bold);
   color: var(--color-text);
   line-height: 1;
 }
 
 .product-card__name {
-  font-size: 13px;
+  font-size: var(--font-size-body-sm);
   color: var(--color-text-secondary);
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -257,39 +256,18 @@ const addToCart = async () => {
 }
 
 .product-card__cart-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 6px 0;
   margin-top: 4px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  background: var(--color-primary-light);
-  color: var(--color-primary);
-  transition: background 0.15s;
-  cursor: pointer;
 }
 
-.product-card__cart-btn:hover {
-  background: #d4e4ff;
-}
-
-.product-card__cart-btn--in-cart,
-.product-card__cart-btn--in-cart:hover {
+.product-card__cart-btn.product-card__cart-btn--in-cart,
+.product-card__cart-btn.product-card__cart-btn--in-cart:hover {
   background: var(--color-success);
-  color: #fff;
-}
-
-.product-card__cart-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+  color: var(--color-white);
 }
 
 @media (max-width: 767px) {
   .product-card__cart-btn {
-    min-height: 40px;
+    min-height: 44px;
   }
 }
 </style>

@@ -93,7 +93,7 @@ const isActive = (to) => {
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  color: #999;
+  color: var(--color-text-muted);
   transition: color 0.15s;
   padding: 4px 12px;
 }
@@ -110,7 +110,7 @@ const isActive = (to) => {
 }
 
 .bottom-nav__label {
-  font-size: 11px;
+  font-size: var(--font-size-caption);
   line-height: 1;
 }
 
@@ -123,9 +123,9 @@ const isActive = (to) => {
   padding: 0 4px;
   border-radius: 8px;
   background: var(--color-danger);
-  color: #fff;
+  color: var(--color-white);
   font-size: 10px;
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
   display: flex;
   align-items: center;
   justify-content: center;

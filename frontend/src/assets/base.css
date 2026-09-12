@@ -24,6 +24,7 @@
   --color-dark: #111827;
   --color-warning: #f59e0b;
   --color-error: var(--color-danger);
+  --color-surface-overlay: rgba(255, 255, 255, 0.92);
 
   /* Typography (desktop) */
   --font-size-display: 48px;
@@ -62,6 +63,7 @@
   /* Shadows */
   --shadow-card: 0 2px 8px rgba(15, 23, 42, 0.06);
   --shadow-card-hover: 0 8px 24px rgba(15, 23, 42, 0.1);
+  --shadow-dropdown: 0 8px 32px rgba(0, 0, 0, 0.12);
 }
 
 /* Typography (mobile): display/h1/h2/h3 */
