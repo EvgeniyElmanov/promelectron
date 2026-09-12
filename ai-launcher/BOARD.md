@@ -89,7 +89,7 @@
 
 | ID | Что делаем | Замок | Ветка | PR |
 |---|---|---|---|---|
-| [#246](https://github.com/AutonomaCo/promelectron/issues/246) | рестайл страниц по дизайн-системе и макету: Homepage, Catalog, Product, Cart, Checkout | `frontend` | `feature/design-pages-pr209` | — |
+| [#246](https://github.com/AutonomaCo/promelectron/issues/246) | рестайл страниц по дизайн-системе и макету: Homepage, Catalog, Product, Cart, Checkout | `frontend` | `feature/design-pages-pr209` | [#247](https://github.com/AutonomaCo/promelectron/pull/247) |
 
 Пусто. #244 смержен (PR #245, squash `20095d3`, 2026-09-12): рестайл компонентов по дизайн-системе — AppButton/AppBadge, Header 72px, SearchBar 48px, ProductCard на токенах; замок `frontend` свободен.
 

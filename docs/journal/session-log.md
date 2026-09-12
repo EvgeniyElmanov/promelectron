@@ -517,3 +517,9 @@
 - Хвосты подобраны до мержа (решение владельца): F001 — hover unread-уведомлений через color-mix (Header.vue), F002 — токен --color-surface-overlay для AppBadge (коммит 370808f). Ревью итерация 2: VERIFIED, APPROVED.
 - Владелец одобрил мерж: squash 20095d3 в main, issue #244 закрыт с доказательством, статус Done, замок frontend освобождён.
 - Этапы дизайна: 0 ✅ (PR #209) · 1 ✅ (PR #243) · 2 ✅ (PR #245) · 3 ⬜ страницы (Homepage по макету, Catalog, Product, Cart, Checkout).
+
+## 2026-09-13 — design-pages-pr209 (#246): PR #247 открыт, этап 3-A (Homepage) ждёт human-review
+- Реализация Homepage по макету (docs/design/homepage-mockup.png): новые компоненты home/HeroBanner.vue, home/BenefitsStrip.vue, home/PopularCategories.vue, CategoryCard.vue, AppFooter.vue, ui/AppBreadcrumbs.vue, utils/placeholderColors.js; Products.vue — только добавления (+83 строки), роут `/` и data-testid сохранены. Коммиты ea43f52 + 08e1a5c.
+- Проверки: pytest 644 passed, vitest 434/434, lint 0/0, E2E 117 passed + 3 известных предсуществующих падения (auth:72, search-filter:82, checkout:152), visual-smoke 11/11. Ревью: 2 итерации, 6 находок — все исправлены и VERIFIED, APPROVED.
+- Issue #246 → In review. Замок `frontend` остаётся занятым до мержа.
+- Follow-up по спеке: PR-B (Catalog §21 + PDP §20 + интеграция AppBreadcrumbs), PR-C (Cart §23 + Checkout §24 + формы §19), PR-D (Header desktop §11 + мобильный [Menu][Logo][Cart] + миграция кнопок) — issues ещё не заведены, ждут решения владельца.
