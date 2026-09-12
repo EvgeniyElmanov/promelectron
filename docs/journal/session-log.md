@@ -506,3 +506,9 @@
 ## 2026-09-12 — design-tokens-pr209 (#242): PR #243 смержен, этап 1 закрыт
 - Владелец одобрил мерж: squash `513cf10` в main, issue #242 закрыт с доказательством (комментарий с прогонами), статус Done, замок `frontend` освобождён.
 - Разбор 3 предсуществующих падений E2E на main: auth:72 — тест хардкодит product id=1 (seed-товары теперь на id 1646+ после каталога 1С, починка — по SKU); search-filter:82 — сортировка по цене не работает в meilisearch-режиме (прямой API sort_by=price_asc корректен — подозрение на sortable attributes/синк цен в индекс); checkout:152 Mir no-3DS — смоук против живой песочницы ЮKassa, чинить с #210/#224. Issue не заводили (решение владельца отложено).
+
+## 2026-09-12 — design-components-pr209 (#244): PR #245 открыт, этап 2 ждёт human-review
+- Рестайл компонентов по детальной спеке (§9–19): новые примитивы AppButton (§10) и AppBadge (§15) + unit-тесты (13 новых); Header 72px desktop, SearchBar 48px с focus-кольцом, ProductCard на --radius-lg/--shadow-card*, FilterPanel/CategoryChips/BottomNav на токенах; единственный новый токен --shadow-dropdown. Коммит 5ad4f3f, 11 файлов.
+- Проверки: pytest 644 passed, vitest 408/408, lint 0/0, E2E 117 passed + 2 известных предсуществующих падения (auth:72, search-filter:82), visual-smoke 11/11. Ревью APPROVED (1 итерация): 2 LOW неблокирующих (hover unread-уведомлений = base; rgba(255,255,255,.92) в AppBadge — кандидат на токен в этапе 3).
+- Заметная реализационная деталь: AppButton без defineEmits(['click']) — нативный fallthrough сохраняет @click.stop в ProductCard (ревью подтвердило корректность).
+- Issue #244 → In review. Замок frontend занят до мержа.
