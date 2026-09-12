@@ -89,7 +89,7 @@
 
 | ID | Что делаем | Замок | Ветка | PR |
 |---|---|---|---|---|
-| [#242](https://github.com/AutonomaCo/promelectron/issues/242) | дизайн-токены из PR #209: цвета, типографика Inter, spacing/radius/shadows в base.css | `frontend` | `feature/design-tokens-pr209` | — |
+| [#242](https://github.com/AutonomaCo/promelectron/issues/242) | дизайн-токены из PR #209: цвета, типографика Inter, spacing/radius/shadows в base.css | `frontend` | `feature/design-tokens-pr209` | [#243](https://github.com/AutonomaCo/promelectron/pull/243) |
 
 Пусто. #236 смержен (PR #237, 2026-09-11): 6 ролевых скиллов — обёртки над `.agents/agents/`, дублирование Claude↔Kimi закрыто, замки `harness`/`docs` свободны.
 

@@ -496,3 +496,9 @@
 - PR #209 (дизайн-система от Sashagrande, ветка docs) причесан и смержен (squash e69168f): `DESIGN(1).md` → `docs/design/design-system.md`, детальная версия Modern Tech сохранена как `docs/design/design-system-detailed.md` (решение владельца — не дубль, а полная 33-раздельная спека), макет → `docs/design/homepage-mockup.png`, `docs/ai-seo.zip` распакован в `docs/ai-seo/`, metadata.json переехал с обновлёнными путями. Коммит реструктуризации 77344ec.
 - Этап 1 внедрения дизайна: заведён issue #242 «дизайн-токены из PR #209» (цвета/типографика Inter/spacing/radius/shadows в `frontend/src/assets/base.css`), замок `frontend` занят, статус In progress, ветка `feature/design-tokens-pr209`.
 - Пульт: #242 в «🔵 В работе», PR #209 снят из «Ждут решения», check-board.py зелёный.
+
+## 2026-09-12 — design-tokens-pr209 (#242): PR #243 открыт, ждёт human-review
+- Реализация этапа 1 по spec (D-01…D-07): base.css переведён на токены дизайн-системы, Inter self-hosted через @fontsource/inter@5 (static, не variable — иначе family='Inter Variable' ломала AC S-02), кириллица есть, Google Fonts нет. Коммит b9c89af.
+- Проверки: vitest 395/395, lint чист, vite build ок; визуальный прогон 6 страниц Playwright — computed-стили и шрифт соответствуют спеке; ревью APPROVED (1 итерация, 0 находок).
+- pre-push: E2E 117/124 — 3 падения (auth:72 guest-merge 404 продукта, checkout:152 Mir no-3DS timeout, search-filter:82 цена 0) доказанно предсуществующие: воспроизведены на чистом main идентично. PR открыт с одобрением владельца, падения описаны в теле PR. Кандидат на отдельный issue — владелец пока не заводил.
+- Issue #242 → In review. Замок frontend остаётся занятым до мержа.
