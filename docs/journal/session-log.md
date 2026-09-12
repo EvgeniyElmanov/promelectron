@@ -485,3 +485,9 @@
 - Ревью: 1 итерация, APPROVED, 0 находок. Проверки: audit-agents.sh зелёный, grep-чек чист; make pre-push пропущен (markdown-only + BLK-015, прецедент #234/#236).
 - PR #239 смержен (merge commit 7058375), issue #238 закрыт с доказательством, статус done, замок harness освобождён.
 - Вне скоупа (идеи): `[swarm] timeout_ms`, `[secondary_model]` pool, `.agents/agents/` как нативный каталог кастомных субагентов CLI.
+
+## 2026-09-12 — drop-sqlite-test-fallback (#240): убран sqlite-фолбэк из backend conftest (PR #241)
+- Фолбэк `sqlite+aiosqlite:///./test.db` в `backend/tests/conftest.py` не использовался (все пути запуска задают postgresql DATABASE_URL), но плодил мусорные `test.db` при pytest вне make — артефакты от 2026-08-26 в корне и backend/ удалены.
+- Заменён на явный RuntimeError на import-time с указанием `make test-backend`; удалены мёртвые sqlite-ветки в `_test_template_db` и `test_engine`; `aiosqlite` убран из requirements-dev.txt (потребителей нет).
+- Проверки: `make test-backend` — 644 passed, 2 skipped (BLK-015 не воспроизвёлся, template DB пересоздаётся фикстурой); ruff чист; ревью APPROVED, 0 находок.
+- PR #241 смержен (merge commit ef7a12d), issue #240 закрыт с доказательством, статус done, замок backend освобождён.
