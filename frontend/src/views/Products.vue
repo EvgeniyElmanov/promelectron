@@ -1,6 +1,9 @@
 <template>
   <div class="home">
+    <HeroBanner @cta-click="scrollToListing" @show-new="onShowNew" />
+    <BenefitsStrip />
     <SearchBar v-model="searchQuery" class="home__search-bar" @submit="onSearchSubmit" />
+    <PopularCategories @select="onCategoryCardSelect" @view-all="scrollToListing" />
     <CategoryChips @select="handleCategorySelect" />
 
     <div class="home__section">
@@ -87,8 +90,29 @@
         </details>
 
         <div class="home__listing">
+          <div class="home__tabs">
+            <button
+              class="home__tab"
+              :class="{ 'home__tab--active': currentSort === '' }"
+              data-testid="products-tab-hits"
+              :aria-pressed="currentSort === ''"
+              @click="setProductsTab('')"
+            >
+              Хиты продаж
+            </button>
+            <button
+              class="home__tab"
+              :class="{ 'home__tab--active': currentSort === 'newest' }"
+              data-testid="products-tab-new"
+              :aria-pressed="currentSort === 'newest'"
+              @click="setProductsTab('newest')"
+            >
+              Новинки
+            </button>
+          </div>
+
           <div class="home__header-row">
-            <h2 class="home__section-title" data-testid="products-section-title">Популярные товары</h2>
+            <h2 ref="listingTitle" class="home__section-title" data-testid="products-section-title">Популярные товары</h2>
             <span class="home__count" data-testid="products-count">
               <template v-if="displayTotal !== null">{{ displayTotal }} товаров</template>
               <template v-else>&nbsp;</template>
@@ -131,6 +155,8 @@
         </div>
       </div>
     </div>
+
+    <AppFooter />
   </div>
 </template>
 
@@ -142,6 +168,10 @@ import SearchBar from '@/components/SearchBar.vue';
 import CategoryChips from '@/components/CategoryChips.vue';
 import SkeletonProductCard from '@/components/SkeletonProductCard.vue';
 import FilterPanel from '@/components/FilterPanel.vue';
+import HeroBanner from '@/components/home/HeroBanner.vue';
+import BenefitsStrip from '@/components/home/BenefitsStrip.vue';
+import PopularCategories from '@/components/home/PopularCategories.vue';
+import AppFooter from '@/components/AppFooter.vue';
 import { useCatalogSearch } from '@/composables/useCatalogSearch';
 import { useCategories } from '@/composables/useCategories';
 import api from '@/services/api';
@@ -160,6 +190,7 @@ const skip = ref(0);
 const limit = 20;
 const total = ref(null);
 const loadMoreTrigger = ref(null);
+const listingTitle = ref(null);
 
 // Фильтры каталога: на мобилке (<768px) свёрнуты по умолчанию, на десктопе развёрнуты.
 // Только initial-состояние; дальше пользователь управляет <details> сам (@toggle синкает ref,
@@ -268,6 +299,30 @@ const handleCategorySelect = (categoryIdValue) => {
   selectedCategory.value = categoryIdValue;
   skip.value = 0;
   fetchProducts();
+};
+
+const scrollToListing = () => {
+  const el = listingTitle.value;
+  if (el && typeof el.scrollIntoView === 'function') {
+    el.scrollIntoView({ behavior: 'smooth' });
+  }
+};
+
+// Клик по CategoryCard — тот же фильтр, что даёт CategoryChips (S-02),
+// плюс скролл к листингу.
+const onCategoryCardSelect = (categoryIdValue) => {
+  handleCategorySelect(categoryIdValue);
+  scrollToListing();
+};
+
+// Табы «Хиты продаж / Новинки» — UI над currentSort (D-07), без нового fetch-механизма.
+const setProductsTab = (sort) => {
+  currentSort.value = sort;
+};
+
+const onShowNew = () => {
+  setProductsTab('newest');
+  scrollToListing();
 };
 
 const onFilterPrice = ({ min, max }) => catalog.setPrice(min, max);
@@ -638,6 +693,33 @@ onMounted(async () => {
 .home__count {
   font-size: 14px;
   color: var(--color-text-secondary);
+}
+
+.home__tabs {
+  display: flex;
+  gap: var(--space-4);
+  margin-bottom: var(--space-3);
+}
+
+.home__tab {
+  background: none;
+  border: none;
+  padding: var(--space-2) 0;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.home__tab:hover {
+  color: var(--color-text);
+}
+
+.home__tab--active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
 }
 
 .home__load-trigger {

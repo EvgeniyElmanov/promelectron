@@ -260,3 +260,74 @@ describe('Products.vue (search-режим при включённом флаге
     expect(outer.attributes('open')).toBeDefined()
   })
 })
+
+describe('Products.vue (homepage-секции, PR-A design-pages)', () => {
+  it('рендерит hero, benefits, популярные категории и footer', async () => {
+    const wrapper = mountWithWebHistory()
+
+    await vi.waitFor(() => {
+      expect(wrapper.find('[data-testid="hero-banner"]').exists()).toBe(true)
+    })
+    expect(wrapper.find('[data-testid="benefits-strip"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="app-footer"]').exists()).toBe(true)
+    await vi.waitFor(() => {
+      expect(wrapper.find('[data-testid="popular-categories"]').exists()).toBe(true)
+    })
+  })
+
+  it('таб «Новинки» переключает сортировку на newest (legacy-режим)', async () => {
+    const api = (await import('@/services/api')).default
+    api.get.mockClear()
+    const wrapper = mountWithWebHistory()
+
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('Product 1')
+    })
+
+    await wrapper.find('[data-testid="products-tab-new"]').trigger('click')
+
+    await vi.waitFor(() => {
+      const productCalls = api.get.mock.calls.filter(([url]) => url === '/products/')
+      expect(productCalls.some(([, config]) => config.params.sort_by === 'newest')).toBe(true)
+    })
+    expect(wrapper.find('[data-testid="products-tab-new"]').classes()).toContain('home__tab--active')
+    expect(wrapper.find('[data-testid="products-tab-new"]').attributes('aria-pressed')).toBe('true')
+    expect(wrapper.find('[data-testid="products-tab-hits"]').attributes('aria-pressed')).toBe('false')
+  })
+
+  it('таб «Хиты продаж» сбрасывает сортировку на default', async () => {
+    const api = (await import('@/services/api')).default
+    api.get.mockClear()
+    const wrapper = mountWithWebHistory()
+
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('Product 1')
+    })
+
+    await wrapper.find('[data-testid="products-tab-new"]').trigger('click')
+    await wrapper.find('[data-testid="products-tab-hits"]').trigger('click')
+
+    await vi.waitFor(() => {
+      const productCalls = api.get.mock.calls.filter(([url]) => url === '/products/')
+      expect(productCalls.some(([, config]) => !config.params.sort_by)).toBe(true)
+    })
+    expect(wrapper.find('[data-testid="products-tab-hits"]').classes()).toContain('home__tab--active')
+  })
+
+  it('клик по CategoryCard применяет тот же фильтр категории, что и chip (legacy-режим)', async () => {
+    const api = (await import('@/services/api')).default
+    api.get.mockClear()
+    const wrapper = mountWithWebHistory()
+
+    await vi.waitFor(() => {
+      expect(wrapper.find('[data-testid="category-card-1"]').exists()).toBe(true)
+    })
+
+    await wrapper.find('[data-testid="category-card-1"]').trigger('click')
+
+    await vi.waitFor(() => {
+      const productCalls = api.get.mock.calls.filter(([url]) => url === '/products/')
+      expect(productCalls.some(([, config]) => config.params.category_id === 1)).toBe(true)
+    })
+  })
+})
