@@ -66,7 +66,7 @@
 
 ## 🔒 Замки
 
-**Занято:** `backend` — drop-sqlite-test-fallback (убрать sqlite-фолбэк из conftest, вне очереди).
+**Занято:** `backend` — #240 drop-sqlite-test-fallback (PR #241, in-review).
 **Свободны:** `frontend`, `e2e`, `infra`, `docs`, `harness`.
 
 | Замок | Сколько issue | Кто следующий |
