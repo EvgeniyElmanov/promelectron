@@ -66,8 +66,8 @@
 
 ## 🔒 Замки
 
-**Занято:** ничего.
-**Свободны:** `backend`, `frontend`, `e2e`, `infra`, `docs`, `harness`.
+**Занято:** `backend` — drop-sqlite-test-fallback (убрать sqlite-фолбэк из conftest, вне очереди).
+**Свободны:** `frontend`, `e2e`, `infra`, `docs`, `harness`.
 
 | Замок | Сколько issue | Кто следующий |
 |---|---|---|
