@@ -523,3 +523,8 @@
 - Проверки: pytest 644 passed, vitest 434/434, lint 0/0, E2E 117 passed + 3 известных предсуществующих падения (auth:72, search-filter:82, checkout:152), visual-smoke 11/11. Ревью: 2 итерации, 6 находок — все исправлены и VERIFIED, APPROVED.
 - Issue #246 → In review. Замок `frontend` остаётся занятым до мержа.
 - Follow-up по спеке: PR-B (Catalog §21 + PDP §20 + интеграция AppBreadcrumbs), PR-C (Cart §23 + Checkout §24 + формы §19), PR-D (Header desktop §11 + мобильный [Menu][Logo][Cart] + миграция кнопок) — issues ещё не заведены, ждут решения владельца.
+
+## 2026-09-13 — design-pages-pr209 (#246): PR #247 смержен, этап 3-A закрыт
+- Владелец одобрил мерж: squash `5db7ccd` в main, issue #246 закрыт с доказательством (комментарий с прогонами), статус Done.
+- Заведены follow-up issues этапа 3: #248 (PR-B: Catalog §21 + PDP §20 + AppBreadcrumbs), #249 (PR-C: Cart §23 + Checkout §24 + формы §19), #250 (PR-D: Header §11 + мобильная шапка + миграция кнопок). Метка `frontend`, приоритетная очередь на пульте: #248 → #249 → #250 → #225.
+- Замок `frontend` перешёл к #248 — стартует PR-B.
