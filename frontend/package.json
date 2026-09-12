@@ -24,6 +24,7 @@
     "agent:all": "node tests/agent/agent.js --persona=all --report=all"
   },
   "dependencies": {
+    "@fontsource/inter": "^5.3.0",
     "axios": "^1.15.2",
     "jwt-decode": "^4.0.0",
     "vue": "^3.5.32",

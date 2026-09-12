@@ -1,18 +1,77 @@
-/* E-commerce color palette */
+/* Design tokens (дизайн-система, PR #209; docs/design/design-system.md §§3–8).
+   Имена существующих переменных сохранены — от них зависят компоненты;
+   новые токены спеки добавлены под каноническими именами. */
 :root {
-  --color-primary: #005BFF;
-  --color-primary-hover: #0049CC;
-  --color-primary-light: #E8F0FE;
-  --color-danger: #FF3B30;
-  --color-success: #34C759;
+  /* Colors — legacy aliases (значения = токены спеки) */
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-primary-light: #eff6ff;
+  --color-danger: #dc2626;
+  --color-success: #16a34a;
   --color-white: #ffffff;
-  --color-bg: #f2f5f9;
+  --color-bg: #f8fafc;
   --color-bg-white: #ffffff;
-  --color-text: #181818;
-  --color-text-secondary: #6c757d;
-  --color-border: #e5e5e5;
-  --color-star: #FFA800;
+  --color-text: #111827;
+  --color-text-secondary: #6b7280;
+  --color-border: #e5e7eb;
+  --color-star: #ffa800;
   --bottom-nav-height: 56px;
+
+  /* Colors — канонические токены спеки */
+  --color-text-muted: #9ca3af;
+  --color-background: #ffffff;
+  --color-background-secondary: #f8fafc;
+  --color-dark: #111827;
+  --color-warning: #f59e0b;
+  --color-error: var(--color-danger);
+
+  /* Typography (desktop) */
+  --font-size-display: 48px;
+  --font-size-h1: 36px;
+  --font-size-h2: 28px;
+  --font-size-h3: 22px;
+  --font-size-body-lg: 18px;
+  --font-size-body: 16px;
+  --font-size-body-sm: 14px;
+  --font-size-caption: 12px;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* Spacing (8-point grid) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 40px;
+  --space-8: 48px;
+  --space-9: 64px;
+  --space-10: 80px;
+  --space-11: 96px;
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-pill: 999px;
+
+  /* Shadows */
+  --shadow-card: 0 2px 8px rgba(15, 23, 42, 0.06);
+  --shadow-card-hover: 0 8px 24px rgba(15, 23, 42, 0.1);
+}
+
+/* Typography (mobile): display/h1/h2/h3 */
+@media (max-width: 767px) {
+  :root {
+    --font-size-display: 32px;
+    --font-size-h1: 28px;
+    --font-size-h2: 24px;
+    --font-size-h3: 20px;
+  }
 }
 
 html {
@@ -43,6 +102,7 @@ body {
   background: var(--color-bg);
   line-height: 1.4;
   font-family:
+    'Inter',
     -apple-system,
     BlinkMacSystemFont,
     'Segoe UI',
