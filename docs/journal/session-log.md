@@ -491,3 +491,8 @@
 - Заменён на явный RuntimeError на import-time с указанием `make test-backend`; удалены мёртвые sqlite-ветки в `_test_template_db` и `test_engine`; `aiosqlite` убран из requirements-dev.txt (потребителей нет).
 - Проверки: `make test-backend` — 644 passed, 2 skipped (BLK-015 не воспроизвёлся, template DB пересоздаётся фикстурой); ruff чист; ревью APPROVED, 0 находок.
 - PR #241 смержен (merge commit ef7a12d), issue #240 закрыт с доказательством, статус done, замок backend освобождён.
+
+## 2026-09-12 — PR #209 принят + design-tokens-pr209 (#242): внедрение дизайн-системы, этап 0/1
+- PR #209 (дизайн-система от Sashagrande, ветка docs) причесан и смержен (squash e69168f): `DESIGN(1).md` → `docs/design/design-system.md`, детальная версия Modern Tech сохранена как `docs/design/design-system-detailed.md` (решение владельца — не дубль, а полная 33-раздельная спека), макет → `docs/design/homepage-mockup.png`, `docs/ai-seo.zip` распакован в `docs/ai-seo/`, metadata.json переехал с обновлёнными путями. Коммит реструктуризации 77344ec.
+- Этап 1 внедрения дизайна: заведён issue #242 «дизайн-токены из PR #209» (цвета/типографика Inter/spacing/radius/shadows в `frontend/src/assets/base.css`), замок `frontend` занят, статус In progress, ветка `feature/design-tokens-pr209`.
+- Пульт: #242 в «🔵 В работе», PR #209 снят из «Ждут решения», check-board.py зелёный.
