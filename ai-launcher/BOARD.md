@@ -66,8 +66,8 @@
 
 ## 🔒 Замки
 
-**Занято:** ничего.
-**Свободны:** `backend`, `frontend`, `e2e`, `infra`, `docs`, `harness`.
+**Занято:** `frontend` (#244).
+**Свободны:** `backend`, `e2e`, `infra`, `docs`, `harness`.
 
 | Замок | Сколько issue | Кто следующий |
 |---|---|---|
@@ -86,6 +86,10 @@
 ---
 
 # 🔵 В работе
+
+| ID | Что делаем | Замок | Ветка | PR |
+|---|---|---|---|---|
+| [#244](https://github.com/AutonomaCo/promelectron/issues/244) | рестайл компонентов по дизайн-системе: кнопки, Header, поиск, Product/Category Card, бейджи, фильтры | `frontend` | `feature/design-components-pr209` | — |
 
 Пусто. #242 смержен (PR #243, squash `513cf10`, 2026-09-12): дизайн-токены из дизайн-системы PR #209 в `base.css` + self-hosted Inter, замок `frontend` свободен.
 
