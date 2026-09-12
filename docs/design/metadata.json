@@ -1,0 +1,478 @@
+{
+  "project": {
+    "name": "Modern Tech",
+    "page": "Homepage",
+    "type": "ecommerce",
+    "market": "Russia",
+    "language": "ru-RU",
+    "status": "approved",
+    "source": "approved desktop mockup",
+    "source_file": "Главная страница магазина Modern Tech.png",
+    "source_dimensions": {
+      "width": 1536,
+      "height": 1024,
+      "unit": "px"
+    },
+    "purpose": "Technical metadata for recreating the approved homepage in Figma and implementing it in code."
+  },
+
+  "implementation_note": {
+    "type": "raster-derived specification",
+    "accuracy": "Visual structure and content are derived from the approved raster mockup. Coordinates and sizes are reference values and should be converted into reusable Figma components/tokens rather than hard-coded independently.",
+    "important": "This JSON is not native Figma metadata. It is an external structured specification that can be used by a designer, developer or AI tooling."
+  },
+
+  "design_tokens": {
+    "colors": {
+      "primary": "#2563EB",
+      "primary_hover": "#1D4ED8",
+      "primary_light": "#EFF6FF",
+      "text_primary": "#111827",
+      "text_secondary": "#6B7280",
+      "text_muted": "#9CA3AF",
+      "background": "#FFFFFF",
+      "background_secondary": "#F8FAFC",
+      "background_dark": "#111827",
+      "border": "#E5E7EB",
+      "success": "#16A34A",
+      "warning": "#F59E0B",
+      "error": "#DC2626"
+    },
+    "font": {
+      "family": "Inter",
+      "weights": [400, 500, 600, 700]
+    },
+    "spacing": [4, 8, 12, 16, 24, 32, 40, 48, 64, 80, 96],
+    "radii": {
+      "sm": 6,
+      "md": 10,
+      "lg": 16,
+      "xl": 20,
+      "pill": 999
+    },
+    "icons": "Lucide"
+  },
+
+  "layout": {
+    "viewport": {
+      "width": 1536,
+      "height": 1024
+    },
+    "page_side_margin_reference": 30,
+    "content_width_reference": 1476,
+    "section_gap_reference": 24,
+    "desktop_grid": {
+      "columns": 12,
+      "gutter": 24
+    },
+    "alignment": "Sections share the same left and right page edges."
+  },
+
+  "header": {
+    "height_reference": 164,
+    "layers": [
+      {
+        "id": "header.topbar",
+        "type": "topbar",
+        "height": 40,
+        "background": "#FFFFFF",
+        "elements": [
+          {
+            "id": "header.location",
+            "type": "location_selector",
+            "text": "Челябинск",
+            "icon": "map-pin",
+            "interactive": true
+          },
+          {
+            "id": "header.top_links",
+            "type": "link_group",
+            "items": ["О компании", "Доставка и оплата", "Гарантия", "B2B", "Контакты"]
+          },
+          {
+            "id": "header.store_info",
+            "type": "text",
+            "text": "Магазин и склад в центре города"
+          },
+          {
+            "id": "header.hours",
+            "type": "text",
+            "text": "Ежедневно с 9:00 до 19:00"
+          }
+        ]
+      },
+      {
+        "id": "header.main",
+        "type": "main_header",
+        "height": 80,
+        "elements": [
+          {
+            "id": "brand",
+            "type": "logo",
+            "content": "MODERN TECH",
+            "editable_text": true
+          },
+          {
+            "id": "brand.description",
+            "type": "text",
+            "content": "Электроника для бизнеса и жизни с 1997 года"
+          },
+          {
+            "id": "catalog_button",
+            "type": "button",
+            "variant": "primary",
+            "icon": "menu",
+            "text": "Каталог товаров",
+            "interactive": true
+          },
+          {
+            "id": "search",
+            "type": "search",
+            "placeholder": "Поиск по товарам, брендам, категориям...",
+            "icon": "search",
+            "interactive": true
+          },
+          {
+            "id": "phone",
+            "type": "contact",
+            "phone": "+7 (351) 207-07-07",
+            "secondary_text": "Заказать звонок"
+          },
+          {
+            "id": "compare",
+            "type": "header_action",
+            "icon": "scale",
+            "label": "Сравнение",
+            "badge": 2
+          },
+          {
+            "id": "favorites",
+            "type": "header_action",
+            "icon": "heart",
+            "label": "Избранное",
+            "badge": 0
+          },
+          {
+            "id": "account",
+            "type": "header_action",
+            "icon": "user",
+            "label": "Войти"
+          },
+          {
+            "id": "cart",
+            "type": "header_action",
+            "icon": "shopping-cart",
+            "label": "Корзина",
+            "badge": 3
+          }
+        ]
+      },
+      {
+        "id": "header.categories_nav",
+        "type": "category_navigation",
+        "height": 44,
+        "items": [
+          "Компьютеры и ноутбуки",
+          "Комплектующие",
+          "Периферия",
+          "Сетевое оборудование",
+          "Офисная техника",
+          "Кабели и аксессуары",
+          "Инструменты",
+          "Ещё"
+        ],
+        "interactive": true
+      }
+    ]
+  },
+
+  "sections": [
+    {
+      "id": "hero",
+      "order": 1,
+      "type": "hero_banner",
+      "position_reference": {"x": 30, "y": 164, "width": 1476, "height": 271},
+      "radius": 10,
+      "background": "#05070C",
+      "elements": [
+        {
+          "id": "hero.title",
+          "type": "heading",
+          "text": "Техника для работы без компромиссов",
+          "level": "h1"
+        },
+        {
+          "id": "hero.description",
+          "type": "body_text",
+          "text": "Надёжные решения для бизнеса и дома. Всегда в наличии на складе в Челябинске."
+        },
+        {
+          "id": "hero.primary_cta",
+          "type": "button",
+          "variant": "primary",
+          "text": "Перейти в каталог"
+        },
+        {
+          "id": "hero.secondary_cta",
+          "type": "button",
+          "variant": "secondary_on_dark",
+          "text": "Смотреть новинки"
+        },
+        {
+          "id": "hero.side_facts",
+          "type": "stat_panel",
+          "items": [
+            "28 лет на рынке",
+            "Более 15 000 товаров в наличии",
+            "Быстрая доставка по Челябинску и РФ"
+          ]
+        },
+        {
+          "id": "hero.carousel",
+          "type": "carousel_controls",
+          "controls": ["previous", "next", "pagination"]
+        }
+      ]
+    },
+    {
+      "id": "benefits",
+      "order": 2,
+      "type": "benefits_strip",
+      "position_reference": {"x": 30, "y": 451, "width": 1476, "height": 67},
+      "items": [
+        {"title": "Самовывоз сегодня", "description": "из магазина и склада", "icon": "store"},
+        {"title": "Доставка по городу", "description": "от 1 дня", "icon": "truck"},
+        {"title": "Доставка по РФ", "description": "ТК СДЭК, Деловые Линии и др.", "icon": "package"},
+        {"title": "Консультация экспертов", "description": "Поможем с выбором", "icon": "headphones"},
+        {"title": "Официальная гарантия", "description": "на весь ассортимент", "icon": "shield-check"},
+        {"title": "Работаем с юр. лицами", "description": "и малым бизнесом", "icon": "file-text"}
+      ]
+    },
+    {
+      "id": "popular_categories",
+      "order": 3,
+      "type": "category_section",
+      "position_reference": {"x": 30, "y": 540, "width": 1476, "height": 151},
+      "title": "Популярные категории",
+      "view_all": {
+        "text": "Смотреть все категории",
+        "icon": "chevron-right"
+      },
+      "items": [
+        {"title": "Ноутбуки", "image_role": "category_image"},
+        {"title": "Компьютеры", "image_role": "category_image"},
+        {"title": "Комплектующие", "image_role": "category_image"},
+        {"title": "Мониторы", "image_role": "category_image"},
+        {"title": "Офисная техника", "image_role": "category_image"},
+        {"title": "Сетевое оборудование", "image_role": "category_image"},
+        {"title": "Кабели и аксессуары", "image_role": "category_image"},
+        {"title": "Инструменты", "image_role": "category_image"}
+      ],
+      "card_count": 8,
+      "card_layout": "8 equal cards in one horizontal row"
+    },
+    {
+      "id": "popular_products",
+      "order": 4,
+      "type": "product_section",
+      "position_reference": {"x": 30, "y": 706, "width": 1476, "height": 251},
+      "title": "Популярные товары",
+      "tabs": ["Хиты продаж", "Новинки", "Акции"],
+      "active_tab": "Хиты продаж",
+      "view_all": {
+        "text": "Смотреть все товары",
+        "icon": "chevron-right"
+      },
+      "products": [
+        {
+          "id": "product_01",
+          "badge": {"type": "hit", "text": "Хит"},
+          "title": "Ноутбук ASUS VivoBook 15 X1504ZA",
+          "price": "52 990 ₽",
+          "availability": "В наличии",
+          "availability_status": "success",
+          "actions": ["favorite", "compare", "add_to_cart"]
+        },
+        {
+          "id": "product_02",
+          "badge": {"type": "new", "text": "Новинка"},
+          "title": "Видеокарта Palit GeForce RTX 4060 DUAL 8GB",
+          "price": "29 990 ₽",
+          "availability": "В наличии",
+          "availability_status": "success",
+          "actions": ["favorite", "compare", "add_to_cart"]
+        },
+        {
+          "id": "product_03",
+          "badge": {"type": "hit", "text": "Хит"},
+          "title": "SSD накопитель Kingston NV2 1TB NVMe M.2",
+          "price": "6 990 ₽",
+          "availability": "В наличии",
+          "availability_status": "success",
+          "actions": ["favorite", "compare", "add_to_cart"]
+        },
+        {
+          "id": "product_04",
+          "badge": {"type": "sale", "text": "Акция"},
+          "title": "МФУ HP LaserJet Pro MFP M227fdw",
+          "price": "18 990 ₽",
+          "old_price": "21 990 ₽",
+          "discount": "-14%",
+          "availability": "В наличии",
+          "availability_status": "success",
+          "actions": ["favorite", "compare", "add_to_cart"]
+        },
+        {
+          "id": "product_05",
+          "title": "Монитор LG 24MP60G 23.8\" IPS, 75Гц",
+          "price": "10 990 ₽",
+          "availability": "В наличии",
+          "availability_status": "success",
+          "actions": ["favorite", "compare", "add_to_cart"]
+        },
+        {
+          "id": "product_06",
+          "title": "Роутер Keenetic Viva KN-1910",
+          "price": "2 790 ₽",
+          "availability": "В наличии",
+          "availability_status": "success",
+          "actions": ["favorite", "compare", "add_to_cart"]
+        }
+      ],
+      "card_count": 6,
+      "card_layout": "6 equal cards in one horizontal row"
+    },
+    {
+      "id": "consultation_cta",
+      "order": 5,
+      "type": "business_consultation_strip",
+      "position_reference": {"x": 30, "y": 968, "width": 1476, "height": 56},
+      "items": [
+        {
+          "title": "Нужна помощь с выбором?",
+          "description": "Наши специалисты ответят на все вопросы",
+          "icon": "messages"
+        },
+        {
+          "title": "Подберём технику под задачи",
+          "description": "для вашего бизнеса",
+          "icon": "camera"
+        },
+        {
+          "title": "Быстрый расчёт и счёт",
+          "description": "для юр. лиц",
+          "icon": "calendar"
+        }
+      ],
+      "cta": {
+        "text": "Получить консультацию",
+        "variant": "secondary"
+      }
+    }
+  ],
+
+  "component_library": {
+    "buttons": {
+      "variants": ["primary", "secondary", "secondary_on_dark"],
+      "states": ["default", "hover", "pressed", "disabled"]
+    },
+    "product_card": {
+      "variants": ["default", "hover", "sale", "new", "out_of_stock", "added_to_cart", "favorite"],
+      "required_parts": ["image", "badge", "title", "price", "availability", "favorite", "compare", "add_to_cart"]
+    },
+    "category_card": {
+      "required_parts": ["image", "title"],
+      "interactive": true
+    },
+    "search": {
+      "states": ["default", "focus", "filled", "results"]
+    },
+    "header_action": {
+      "supports_badge": true
+    },
+    "tabs": {
+      "states": ["default", "active", "hover"]
+    }
+  },
+
+  "interactions": {
+    "primary_routes": [
+      "search -> product -> cart",
+      "category -> filters -> product",
+      "task/business_need -> products or consultation"
+    ],
+    "header": [
+      "catalog opens product catalog",
+      "search opens/searches product results",
+      "compare opens comparison list",
+      "favorites opens favorites",
+      "account opens authentication/account",
+      "cart opens cart"
+    ],
+    "hero": [
+      "primary CTA -> catalog",
+      "secondary CTA -> new products",
+      "carousel arrows change slide",
+      "pagination changes active slide"
+    ],
+    "products": [
+      "product card -> product page",
+      "favorite -> add/remove favorite",
+      "compare -> add/remove comparison",
+      "add_to_cart -> add product to cart"
+    ]
+  },
+
+  "responsive": {
+    "mobile_target": {
+      "reference_width": 375,
+      "horizontal_padding": 16,
+      "columns": 4,
+      "gutter": 12
+    },
+    "rules": [
+      "Desktop header collapses into mobile header.",
+      "Horizontal category navigation becomes horizontally scrollable or collapsible.",
+      "Hero content stacks vertically and preserves primary CTA visibility.",
+      "Category cards become a horizontal scroll/list or 2-column grid depending on implementation.",
+      "Product cards adapt to 2-column mobile grid.",
+      "Benefits become a horizontal scroll or stacked list.",
+      "Consultation CTA remains visible near the end of the homepage."
+    ]
+  },
+
+  "figma_structure": {
+    "pages": [
+      "00 Cover",
+      "01 Design System",
+      "02 Components",
+      "03 Desktop",
+      "04 Mobile",
+      "05 Dev"
+    ],
+    "desktop_frame": {
+      "name": "Homepage / Desktop / 1536",
+      "width": 1536,
+      "height": 1024
+    },
+    "mobile_frame": {
+      "name": "Homepage / Mobile / 375",
+      "width": 375,
+      "height": "auto"
+    }
+  },
+
+  "developer_handoff": {
+    "visual_source_of_truth": "Figma",
+    "implementation_source_of_truth": "GitHub",
+    "documentation": "docs/design/design-system.md",
+    "metadata": "docs/design/metadata.json",
+    "recommended_github_location": "docs/design/metadata.json",
+    "required_dev_assets": [
+      "Editable Figma design",
+      "DESIGN.md",
+      "metadata.json",
+      "Exported image assets used in the design"
+    ]
+  }
+}
