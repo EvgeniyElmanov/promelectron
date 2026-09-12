@@ -66,8 +66,8 @@
 
 ## 🔒 Замки
 
-**Занято:** `frontend` (#242).
-**Свободны:** `backend`, `e2e`, `infra`, `docs`, `harness`.
+**Занято:** ничего.
+**Свободны:** `backend`, `frontend`, `e2e`, `infra`, `docs`, `harness`.
 
 | Замок | Сколько issue | Кто следующий |
 |---|---|---|
@@ -87,9 +87,7 @@
 
 # 🔵 В работе
 
-| ID | Что делаем | Замок | Ветка | PR |
-|---|---|---|---|---|
-| [#242](https://github.com/AutonomaCo/promelectron/issues/242) | дизайн-токены из PR #209: цвета, типографика Inter, spacing/radius/shadows в base.css | `frontend` | `feature/design-tokens-pr209` | [#243](https://github.com/AutonomaCo/promelectron/pull/243) |
+Пусто. #242 смержен (PR #243, squash `513cf10`, 2026-09-12): дизайн-токены из дизайн-системы PR #209 в `base.css` + self-hosted Inter, замок `frontend` свободен.
 
 Пусто. #236 смержен (PR #237, 2026-09-11): 6 ролевых скиллов — обёртки над `.agents/agents/`, дублирование Claude↔Kimi закрыто, замки `harness`/`docs` свободны.
 
