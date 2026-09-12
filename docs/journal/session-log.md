@@ -512,3 +512,8 @@
 - Проверки: pytest 644 passed, vitest 408/408, lint 0/0, E2E 117 passed + 2 известных предсуществующих падения (auth:72, search-filter:82), visual-smoke 11/11. Ревью APPROVED (1 итерация): 2 LOW неблокирующих (hover unread-уведомлений = base; rgba(255,255,255,.92) в AppBadge — кандидат на токен в этапе 3).
 - Заметная реализационная деталь: AppButton без defineEmits(['click']) — нативный fallthrough сохраняет @click.stop в ProductCard (ревью подтвердило корректность).
 - Issue #244 → In review. Замок frontend занят до мержа.
+
+## 2026-09-12 — design-components-pr209 (#244): PR #245 смержен, этап 2 закрыт
+- Хвосты подобраны до мержа (решение владельца): F001 — hover unread-уведомлений через color-mix (Header.vue), F002 — токен --color-surface-overlay для AppBadge (коммит 370808f). Ревью итерация 2: VERIFIED, APPROVED.
+- Владелец одобрил мерж: squash 20095d3 в main, issue #244 закрыт с доказательством, статус Done, замок frontend освобождён.
+- Этапы дизайна: 0 ✅ (PR #209) · 1 ✅ (PR #243) · 2 ✅ (PR #245) · 3 ⬜ страницы (Homepage по макету, Catalog, Product, Cart, Checkout).
