@@ -14,12 +14,9 @@
 
     <div v-if="error" class="payment-result__error" data-testid="payment-error">
       <p class="payment-result__error-text">{{ error }}</p>
-      <button
-        class="payment-result__btn payment-result__btn--primary"
-        @click="fetchOrder"
-      >
+      <AppButton @click="fetchOrder">
         Повторить
-      </button>
+      </AppButton>
     </div>
 
     <div v-else-if="loading || polling || syncing" class="payment-result__loading">
@@ -51,14 +48,14 @@
       <p>
         Если вы уже оплатили заказ, нажмите кнопку ниже для проверки статуса.
       </p>
-      <button
-        class="payment-result__btn payment-result__btn--primary"
+      <AppButton
+        block
         :disabled="syncing"
         @click="checkPaymentStatus"
       >
         <span v-if="syncing">Проверка...</span>
         <span v-else>Проверить статус оплаты</span>
-      </button>
+      </AppButton>
     </div>
 
     <div class="payment-result__actions">
@@ -79,6 +76,7 @@ import { useAuth } from '@/composables/useAuth';
 import { getOrder, getGuestOrder } from '@/api/orders';
 import { syncPaymentStatusByOrder, confirmMockPayment as confirmMockPaymentApi, confirmGuestMockPayment } from '@/api/payments';
 import { formatPrice } from '@/utils/price';
+import AppButton from '@/components/ui/AppButton.vue';
 
 const route = useRoute();
 const router = useRouter();

@@ -144,14 +144,14 @@
             testid-prefix="edit-profile-"
           />
 
-          <button
+          <AppButton
             type="submit"
-            class="save-btn"
+            block
             :disabled="savingProfile"
             data-testid="edit-profile-save"
           >
             {{ savingProfile ? 'Сохранение...' : 'Сохранить изменения' }}
-          </button>
+          </AppButton>
         </form>
 
         <p v-if="profileSuccess" class="success-msg">Данные успешно обновлены</p>
@@ -237,14 +237,14 @@
             <span v-if="passwordErrors.confirm_password" class="field-error">{{ passwordErrors.confirm_password }}</span>
           </div>
 
-          <button
+          <AppButton
             type="submit"
-            class="save-btn"
+            block
             :disabled="savingPassword"
             data-testid="edit-profile-password-save"
           >
             {{ savingPassword ? 'Смена пароля...' : 'Сменить пароль' }}
-          </button>
+          </AppButton>
         </form>
 
         <p v-if="passwordSuccess" class="success-msg">Пароль успешно изменён</p>
@@ -263,6 +263,7 @@ import { useToast } from '@/composables/useToast';
 import { normalizePhone, PHONE_REGEX, NAME_REGEX } from '@/composables/useGuestCheckout';
 import AddressForm from '@/components/AddressForm.vue';
 import SkeletonProfile from '@/components/SkeletonProfile.vue';
+import AppButton from '@/components/ui/AppButton.vue';
 
 const { add: toast } = useToast();
 
@@ -750,23 +751,6 @@ onMounted(fetchProfile);
 .verify-badge--unverified {
   background: #fff0f0;
   color: var(--color-danger);
-}
-
-.save-btn {
-  width: 100%;
-  padding: 14px;
-  border-radius: 12px;
-  background: var(--color-primary);
-  color: #fff;
-  font-size: 16px;
-  font-weight: 600;
-  margin-top: 4px;
-  transition: opacity 0.15s;
-}
-
-.save-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 
 .success-msg {

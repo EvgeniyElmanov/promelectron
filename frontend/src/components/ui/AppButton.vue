@@ -1,6 +1,6 @@
 <template>
   <button
-    type="button"
+    :type="type"
     class="app-button"
     :class="[
       `app-button--${variant}`,
@@ -18,8 +18,9 @@
  * AppButton — базовая кнопка дизайн-системы (§10, D-02).
  *
  * Props:
- *   - variant: 'primary' | 'secondary' | 'ghost'
+ *   - variant: 'primary' | 'secondary' | 'ghost' | 'danger'
  *   - size: 'md' (48px) | 'sm' (40px, для плотных мест вроде карточки товара)
+ *   - type: нативный type кнопки ('button' по умолчанию; 'submit' для форм)
  *   - loading: блокирует кнопку (вместе с disabled)
  *   - disabled
  *   - block: full-width (mobile CTA)
@@ -31,7 +32,12 @@ defineProps({
   variant: {
     type: String,
     default: 'primary',
-    validator: (v) => ['primary', 'secondary', 'ghost'].includes(v),
+    validator: (v) => ['primary', 'secondary', 'ghost', 'danger'].includes(v),
+  },
+  type: {
+    type: String,
+    default: 'button',
+    validator: (v) => ['button', 'submit', 'reset'].includes(v),
   },
   size: {
     type: String,
@@ -104,6 +110,19 @@ defineProps({
 
 .app-button--ghost:hover:not(:disabled) {
   background: var(--color-primary-light);
+}
+
+.app-button--danger {
+  background: var(--color-danger);
+  color: var(--color-white);
+}
+
+.app-button--danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-danger) 85%, var(--color-text));
+}
+
+.app-button--danger:active:not(:disabled) {
+  background: color-mix(in srgb, var(--color-danger) 85%, var(--color-text));
 }
 
 .app-button:disabled {

@@ -436,7 +436,7 @@ describe('Admin.vue', () => {
 
     await switchSectionTab(wrapper, 'users');
 
-    const buttons = wrapper.findAll('[data-testid="user-row"] .admin__btn--danger');
+    const buttons = wrapper.findAll('[data-testid="user-row"] .app-button--danger');
     expect(buttons.length).toBeGreaterThan(0);
 
     await buttons[0].trigger('click');

@@ -2,13 +2,13 @@
   <div class="supplier-products" data-testid="supplier-products">
     <div class="supplier-products__header">
       <h1 class="supplier-products__title">Мои товары</h1>
-      <button class="supplier-products__add" @click="openCreateModal">
+      <AppButton size="sm" data-testid="supplier-product-add" @click="openCreateModal">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <line x1="12" y1="5" x2="12" y2="19"/>
           <line x1="5" y1="12" x2="19" y2="12"/>
         </svg>
         Добавить
-      </button>
+      </AppButton>
     </div>
 
     <div v-if="loading" class="supplier-products__list">
@@ -19,9 +19,9 @@
 
     <div v-else-if="products.length === 0" class="supplier-products__empty">
       <p>У вас пока нет товаров</p>
-      <button class="supplier-products__add-empty" @click="openCreateModal">
+      <AppButton data-testid="supplier-product-add-empty" @click="openCreateModal">
         Добавить первый товар
-      </button>
+      </AppButton>
     </div>
 
     <div v-else class="supplier-products__list">
@@ -39,18 +39,18 @@
           <span v-if="!product.is_active" class="supplier-product-card__badge">Неактивен</span>
         </div>
         <div class="supplier-product-card__actions">
-          <button class="supplier-product-card__btn supplier-product-card__btn--edit" @click="openEditModal(product)">
+          <AppButton variant="secondary" size="sm" aria-label="Редактировать" :data-testid="`supplier-product-edit-${product.id}`" @click="openEditModal(product)">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
               <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
             </svg>
-          </button>
-          <button class="supplier-product-card__btn supplier-product-card__btn--delete" @click="deleteProduct(product.id)">
+          </AppButton>
+          <AppButton variant="danger" size="sm" aria-label="Удалить" :data-testid="`supplier-product-delete-${product.id}`" @click="deleteProduct(product.id)">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="3 6 5 6 21 6"/>
               <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
             </svg>
-          </button>
+          </AppButton>
         </div>
       </div>
     </div>
@@ -69,6 +69,7 @@ import { ref, onMounted } from 'vue';
 import api from '@/services/api';
 import { useToast } from '@/composables/useToast';
 import ProductFormModal from '@/components/ProductFormModal.vue';
+import AppButton from '@/components/ui/AppButton.vue';
 
 const products = ref([]);
 const loading = ref(false);
@@ -141,19 +142,6 @@ onMounted(fetchProducts);
   color: var(--color-text);
 }
 
-.supplier-products__add {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 16px;
-  border-radius: 12px;
-  background: var(--color-primary);
-  color: #fff;
-  font-size: 14px;
-  font-weight: 500;
-  border: none;
-}
-
 .supplier-products__loading,
 .supplier-products__empty {
   text-align: center;
@@ -161,15 +149,8 @@ onMounted(fetchProducts);
   color: var(--color-text-secondary);
 }
 
-.supplier-products__add-empty {
+.supplier-products__empty .app-button {
   margin-top: 12px;
-  padding: 12px 20px;
-  border-radius: 12px;
-  background: var(--color-primary);
-  color: #fff;
-  font-size: 15px;
-  font-weight: 500;
-  border: none;
 }
 
 .supplier-products__list {
@@ -235,23 +216,7 @@ onMounted(fetchProducts);
   flex-shrink: 0;
 }
 
-.supplier-product-card__btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.supplier-product-card__btn--edit {
-  background: #e8f0fe;
-  color: var(--color-primary);
-}
-
-.supplier-product-card__btn--delete {
-  background: #fff0f0;
-  color: var(--color-danger);
+.supplier-product-card__actions .app-button {
+  padding: 0 var(--space-3);
 }
 </style>

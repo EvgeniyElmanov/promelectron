@@ -120,13 +120,14 @@
                   </td>
                   <td :data-testid="`user-detail-order-date-${order.id}`">{{ formatShortDate(order.created_at) }}</td>
                   <td class="admin__table-actions">
-                    <button
-                      class="admin__btn admin__btn--small"
+                    <AppButton
+                      variant="secondary"
+                      size="sm"
                       :data-testid="`user-detail-order-open-${order.id}`"
                       @click="openOrder(order)"
                     >
                       Открыть
-                    </button>
+                    </AppButton>
                   </td>
                 </tr>
               </tbody>
@@ -144,6 +145,7 @@ import { getAdminUserDetail } from '@/api/admin';
 import { formatPriceCurrency as formatPrice } from '@/utils/price';
 import { formatShortDate, formatDate } from '@/utils/date';
 import { orderStatusLabel } from '@/utils/order';
+import AppButton from '@/components/ui/AppButton.vue';
 
 const props = defineProps({
   userId: {
@@ -446,24 +448,5 @@ const openOrder = (order) => {
 .admin__status-badge--cancelled {
   background: #fce4ec;
   color: #c62828;
-}
-
-.admin__btn {
-  padding: 10px 16px;
-  border-radius: 10px;
-  font-size: 14px;
-  font-weight: 500;
-  border: none;
-  cursor: pointer;
-}
-
-.admin__btn--small {
-  padding: 6px 12px;
-  font-size: 13px;
-}
-
-.admin__btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 </style>

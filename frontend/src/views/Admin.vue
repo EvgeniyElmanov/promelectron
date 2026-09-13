@@ -117,21 +117,21 @@
                   </span>
                 </td>
                 <td class="admin__table-actions">
-                  <button
-                    class="admin__btn admin__btn--small"
-                    :class="u.is_active ? 'admin__btn--danger' : 'admin__btn--success'"
+                  <AppButton
+                    size="sm"
+                    :variant="u.is_active ? 'danger' : 'primary'"
                     @click="toggleUser(u.id)"
                     :disabled="submittingUser === u.id"
                   >
                     {{ u.is_active ? 'Заблокировать' : 'Разблокировать' }}
-                  </button>
-                  <button
-                    class="admin__btn admin__btn--small admin__btn--primary"
+                  </AppButton>
+                  <AppButton
+                    size="sm"
                     :data-testid="`user-detail-btn-${u.id}`"
                     @click="openUserModal(u.id)"
                   >
                     Подробнее
-                  </button>
+                  </AppButton>
                 </td>
               </tr>
             </tbody>
@@ -145,7 +145,7 @@
       <div class="admin__section" data-testid="categories-section">
         <div class="admin__section-header">
           <h2 class="admin__section-title">Категории</h2>
-          <button class="admin__btn admin__btn--primary" @click="openCreateModal" data-testid="add-category-btn">+ Добавить</button>
+          <AppButton size="sm" @click="openCreateModal" data-testid="add-category-btn">+ Добавить</AppButton>
         </div>
 
         <div class="admin__category-tabs">
@@ -222,14 +222,16 @@
             </tbody>
           </table>
 
-          <button
+          <AppButton
             v-if="activeCategoryTab === null && displayedCategories.length < categoryTotal"
-            class="admin__load-more"
+            variant="secondary"
+            block
+            class="admin__load-more-btn"
             data-testid="categories-load-more"
             @click="loadMoreCategories"
           >
             Показать ещё
-          </button>
+          </AppButton>
         </div>
       </div>
     </div>
@@ -239,7 +241,7 @@
       <div class="admin__section">
         <div class="admin__section-header">
           <h2 class="admin__section-title">Способы доставки</h2>
-          <button class="admin__btn admin__btn--primary" @click="openCreateDeliveryModal">+ Добавить</button>
+          <AppButton size="sm" @click="openCreateDeliveryModal">+ Добавить</AppButton>
         </div>
 
         <SkeletonAdminTable v-if="loading.delivery" />
@@ -386,15 +388,15 @@
                 </td>
                 <td>{{ sourceLabel(flag.source) }}</td>
                 <td class="admin__table-actions">
-                  <button
-                    class="admin__btn admin__btn--small"
-                    :class="flag.enabled ? 'admin__btn--danger' : 'admin__btn--success'"
+                  <AppButton
+                    size="sm"
+                    :variant="flag.enabled ? 'danger' : 'primary'"
                     @click="toggleFeatureFlag(flag.name, !flag.enabled)"
                     :disabled="loading.featureFlags"
                     :data-testid="`feature-flag-${flag.name}`"
                   >
                     {{ flag.enabled ? 'Выключить' : 'Включить' }}
-                  </button>
+                  </AppButton>
                 </td>
               </tr>
             </tbody>
@@ -429,9 +431,9 @@
             </select>
           </div>
           <div v-if="error" class="form-error">{{ error }}</div>
-          <button type="submit" class="modal__submit" :disabled="submitting" data-testid="category-submit-btn">
+          <AppButton type="submit" block :disabled="submitting" data-testid="category-submit-btn">
             {{ submitting ? 'Сохранение...' : (isEdit ? 'Сохранить' : 'Создать') }}
-          </button>
+          </AppButton>
         </form>
       </div>
     </div>
@@ -467,9 +469,9 @@
             </label>
           </div>
           <div v-if="deliveryError" class="form-error">{{ deliveryError }}</div>
-          <button type="submit" class="modal__submit" :disabled="submittingDelivery" data-testid="delivery-submit-btn">
+          <AppButton type="submit" block :disabled="submittingDelivery" data-testid="delivery-submit-btn">
             {{ submittingDelivery ? 'Сохранение...' : (isEditDelivery ? 'Сохранить' : 'Создать') }}
-          </button>
+          </AppButton>
         </form>
       </div>
     </div>
@@ -501,6 +503,7 @@ import { orderStatusLabel } from '@/utils/order';
 import SkeletonAdminTable from '@/components/SkeletonAdminTable.vue';
 import UserDetailsModal from '@/components/admin/UserDetailsModal.vue';
 import AdminOrderModal from '@/components/admin/AdminOrderModal.vue';
+import AppButton from '@/components/ui/AppButton.vue';
 
 const { add: toast } = useToast();
 const {
@@ -1318,40 +1321,6 @@ onMounted(() => {
 }
 
 /* Buttons */
-.admin__btn {
-  padding: 10px 16px;
-  border-radius: 10px;
-  font-size: 14px;
-  font-weight: 500;
-  border: none;
-  cursor: pointer;
-}
-
-.admin__btn--primary {
-  background: var(--color-primary);
-  color: #fff;
-}
-
-.admin__btn--small {
-  padding: 6px 12px;
-  font-size: 13px;
-}
-
-.admin__btn--danger {
-  background: #fff0f0;
-  color: var(--color-danger);
-}
-
-.admin__btn--success {
-  background: #e6f5e6;
-  color: #2e7d32;
-}
-
-.admin__btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
 .admin__icon-btn {
   width: 32px;
   height: 32px;
@@ -1502,22 +1471,6 @@ onMounted(() => {
   font-size: 14px;
 }
 
-.modal__submit {
-  width: 100%;
-  padding: 14px;
-  border-radius: 12px;
-  background: var(--color-primary);
-  color: #fff;
-  font-size: 16px;
-  font-weight: 600;
-  border: none;
-  cursor: pointer;
-}
-
-.modal__submit:disabled {
-  opacity: 0.6;
-}
-
 /* Category tabs */
 .admin__category-tabs {
   display: flex;
@@ -1553,23 +1506,8 @@ onMounted(() => {
   max-width: 400px;
 }
 
-.admin__load-more {
-  display: block;
-  width: 100%;
+.admin__load-more-btn {
   margin-top: 12px;
-  padding: 12px;
-  border-radius: 12px;
-  background: var(--color-bg-white);
-  color: var(--color-primary);
-  font-size: 15px;
-  font-weight: 500;
-  border: 1px solid var(--color-border);
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.admin__load-more:hover {
-  background: #e8f0fe;
 }
 
 </style>

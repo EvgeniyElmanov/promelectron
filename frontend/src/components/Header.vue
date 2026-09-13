@@ -1,10 +1,33 @@
 <template>
   <header class="header">
-    <div class="header__left">
+    <div class="header__mobile-top">
+      <button
+        class="header__menu-btn"
+        data-testid="mobile-menu-btn"
+        aria-label="Меню"
+        @click="mobileMenuOpen = true"
+      >
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="6" x2="21" y2="6"/>
+          <line x1="3" y1="12" x2="21" y2="12"/>
+          <line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
       <div class="header__logo" data-testid="header-logo" @click="$router.push('/')">Promelectron</div>
-      
+      <router-link to="/cart" class="header__mobile-cart" data-testid="mobile-cart-link" aria-label="Корзина">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4H6z"/>
+          <line x1="3" y1="6" x2="21" y2="6"/>
+          <path d="M16 10a4 4 0 01-8 0"/>
+        </svg>
+        <span v-if="cartCount > 0" class="header__notif-badge">{{ cartCount > 99 ? '99+' : cartCount }}</span>
+      </router-link>
+    </div>
+
+    <div class="header__left">
       <!-- Desktop Navigation -->
       <nav class="header__nav">
+        <router-link to="/" class="header__nav-link" :class="{ 'header__nav-link--active': $route.path === '/' }">Каталог</router-link>
         <router-link v-if="isSupplier" to="/supplier-dashboard" class="header__nav-link" :class="{ 'header__nav-link--active': $route.path.startsWith('/supplier-dashboard') }">Дашборд</router-link>
         <router-link v-if="isSupplier" to="/my-products" class="header__nav-link" :class="{ 'header__nav-link--active': $route.path.startsWith('/my-products') }">Мои товары</router-link>
         <router-link v-if="isSupplier" to="/supplier-orders" class="header__nav-link" :class="{ 'header__nav-link--active': $route.path.startsWith('/supplier-orders') }">Мои заказы</router-link>
@@ -103,6 +126,12 @@
     </div>
 
     <ToastContainer class="header__toast" />
+
+    <div class="header__mobile-search">
+      <SearchBar v-model="headerSearchQuery" data-testid="header-search-bar-mobile" @submit="onSearchSubmit" />
+    </div>
+
+    <MobileMenuDrawer :open="mobileMenuOpen" @close="mobileMenuOpen = false" />
   </header>
 </template>
 
@@ -115,6 +144,7 @@ import { useNotifications } from '@/composables/useNotifications';
 import { formatDateTime } from '@/utils/date';
 import ToastContainer from '@/components/ToastContainer.vue';
 import SearchBar from '@/components/SearchBar.vue';
+import MobileMenuDrawer from '@/components/MobileMenuDrawer.vue';
 import api from '@/services/api';
 
 const { isAuthenticated, isSupplier } = useAuth();
@@ -139,6 +169,7 @@ watch(isAuthenticated, fetchFavoritesCount);
 const notifOpen = ref(false);
 const router = useRouter();
 const headerSearchQuery = ref('');
+const mobileMenuOpen = ref(false);
 
 const onSearchSubmit = (q) => {
   const query = (q || headerSearchQuery.value).trim();
@@ -195,12 +226,58 @@ const vClickOutside = {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 12px;
+  flex-wrap: wrap;
   background: var(--color-bg-white);
   position: sticky;
   top: 0;
   z-index: 100;
   border-bottom: 1px solid var(--color-border);
+}
+
+.header__mobile-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 56px;
+  padding: 0 16px;
+}
+
+.header__menu-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.header__menu-btn:hover {
+  background: var(--color-bg);
+}
+
+.header__mobile-cart {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  color: var(--color-text);
+}
+
+.header__mobile-cart:hover {
+  background: var(--color-bg);
+}
+
+.header__mobile-search {
+  width: 100%;
+  padding: 0 16px 12px;
 }
 
 .header__left {
@@ -301,6 +378,17 @@ const vClickOutside = {
   .header {
     height: 72px;
     padding: 0 var(--space-4);
+  }
+  .header__mobile-top {
+    display: contents;
+  }
+  .header__menu-btn,
+  .header__mobile-cart,
+  .header__mobile-search {
+    display: none;
+  }
+  .header__left {
+    margin-left: 32px;
   }
   .header__search-desktop {
     display: block;

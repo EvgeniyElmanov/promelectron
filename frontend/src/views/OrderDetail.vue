@@ -19,7 +19,7 @@
     <!-- Error -->
     <div v-else-if="error" class="order-detail__error">
       <p>{{ error }}</p>
-      <button @click="fetchOrder" class="retry-btn">Повторить</button>
+      <AppButton variant="secondary" @click="fetchOrder">Повторить</AppButton>
     </div>
 
     <!-- Content -->
@@ -95,9 +95,9 @@
             <router-link v-if="order.status === 'pending'" :to="`/checkout/${order.id}`" class="order-pay-btn">
               Оплатить {{ formatPrice(order.total_price) }} ₽
             </router-link>
-            <button class="order-cancel-btn" data-testid="order-cancel-btn" @click="handleCancelOrder">
+            <AppButton variant="danger" data-testid="order-cancel-btn" @click="handleCancelOrder">
               Отменить заказ
-            </button>
+            </AppButton>
           </div>
         </div>
       </div>
@@ -183,6 +183,7 @@ import api from '@/services/api';
 import { formatDate } from '@/utils/date';
 import { useToast } from '@/composables/useToast';
 import { cancelOrder } from '@/api/orders';
+import AppButton from '@/components/ui/AppButton.vue';
 
 const route = useRoute();
 const { add: toast } = useToast();
@@ -528,25 +529,6 @@ onMounted(fetchOrder);
   font-weight: 600;
   text-decoration: none;
   text-align: center;
-}
-
-.order-cancel-btn {
-  display: inline-block;
-  padding: 12px 24px;
-  border-radius: 12px;
-  background: transparent;
-  color: var(--color-text-secondary);
-  font-size: 15px;
-  font-weight: 500;
-  border: 1px solid var(--color-border);
-  cursor: pointer;
-  text-align: center;
-}
-
-.order-cancel-btn:hover {
-  background: #fff0f0;
-  color: var(--color-danger);
-  border-color: #ffcdd2;
 }
 
 /* Items */

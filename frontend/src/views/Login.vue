@@ -54,14 +54,14 @@
         </div>
 
         <!-- Submit -->
-        <button
+        <AppButton
           type="submit"
-          class="auth-submit"
+          block
           :disabled="isSubmitting"
           data-testid="login-submit"
         >
           {{ isSubmitting ? 'Вход...' : 'Войти' }}
-        </button>
+        </AppButton>
       </form>
 
       <!-- Global error -->
@@ -99,6 +99,7 @@ import api from '@/services/api';
 import { login as apiLogin } from '@/api/auth';
 import { useAuth } from '@/composables/useAuth';
 import { useCart } from '@/composables/useCart';
+import AppButton from '@/components/ui/AppButton.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -288,23 +289,6 @@ async function loginWithYandex() {
   font-size: 13px;
   color: var(--color-primary);
   text-decoration: none;
-}
-
-.auth-submit {
-  width: 100%;
-  padding: 14px;
-  border-radius: 12px;
-  background: var(--color-primary);
-  color: #fff;
-  font-size: 16px;
-  font-weight: 600;
-  margin-top: 4px;
-  transition: opacity 0.15s;
-}
-
-.auth-submit:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 
 .auth-error {

@@ -10,7 +10,7 @@
 
     <div v-else-if="error" class="supplier-orders__error">
       <p>Ошибка загрузки: {{ error }}</p>
-      <button class="supplier-orders__retry" @click="fetchOrders">Повторить</button>
+      <AppButton variant="secondary" @click="fetchOrders">Повторить</AppButton>
     </div>
 
     <div v-else-if="orders.length === 0" class="supplier-orders__empty">
@@ -77,14 +77,13 @@
         </div>
 
         <div v-if="order.status === 'pending'" class="supplier-order-card__actions">
-          <button
-            class="supplier-order-card__ship-btn"
+          <AppButton
             :disabled="shippingOrderId === order.id"
             @click="shipOrder(order.id)"
             data-testid="ship-order-btn"
           >
             {{ shippingOrderId === order.id ? 'Отправка...' : 'Отметить отправленным' }}
-          </button>
+          </AppButton>
         </div>
       </div>
     </div>
@@ -96,6 +95,7 @@ import { ref, onMounted } from 'vue';
 import api from '@/services/api';
 import { formatDate } from '@/utils/date';
 import { useToast } from '@/composables/useToast';
+import AppButton from '@/components/ui/AppButton.vue';
 
 const orders = ref([]);
 const loading = ref(true);
@@ -189,18 +189,6 @@ onMounted(fetchOrders);
   background-color: #fff5f5;
   border: 1px solid #feb2b2;
   border-radius: 12px;
-}
-
-.supplier-orders__retry {
-  margin-top: 12px;
-  padding: 10px 20px;
-  border-radius: 12px;
-  background: var(--color-primary);
-  color: #fff;
-  font-size: 14px;
-  font-weight: 500;
-  border: none;
-  cursor: pointer;
 }
 
 .supplier-orders__empty {
@@ -378,26 +366,5 @@ onMounted(fetchOrders);
   border-top: 1px solid var(--color-border);
   display: flex;
   justify-content: flex-end;
-}
-
-.supplier-order-card__ship-btn {
-  padding: 10px 20px;
-  border-radius: 12px;
-  background: var(--color-primary);
-  color: #fff;
-  font-size: 14px;
-  font-weight: 600;
-  border: none;
-  cursor: pointer;
-  transition: opacity 0.15s;
-}
-
-.supplier-order-card__ship-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.supplier-order-card__ship-btn:hover:not(:disabled) {
-  opacity: 0.9;
 }
 </style>

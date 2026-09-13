@@ -7,13 +7,14 @@
         </svg>
       </button>
       <h1 class="notifications-page__title">Уведомления</h1>
-      <button
+      <AppButton
         v-if="unreadCount > 0"
-        class="notifications-page__read-all"
+        variant="ghost"
+        size="sm"
         @click="markAllAsRead"
       >
         Прочитать все
-      </button>
+      </AppButton>
     </div>
 
     <div v-if="loading" class="notifications-page__loading">Загрузка...</div>
@@ -56,6 +57,7 @@ import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '@/services/api';
 import { formatDateTime } from '@/utils/date';
+import AppButton from '@/components/ui/AppButton.vue';
 
 const router = useRouter();
 const notifications = ref([]);
@@ -158,17 +160,6 @@ onMounted(fetchNotifications);
   font-weight: 700;
   color: var(--color-text);
   flex: 1;
-}
-
-.notifications-page__read-all {
-  padding: 8px 14px;
-  border-radius: 10px;
-  background: var(--color-primary);
-  color: #fff;
-  font-size: 13px;
-  font-weight: 500;
-  border: none;
-  cursor: pointer;
 }
 
 .notifications-page__loading,

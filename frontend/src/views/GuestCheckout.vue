@@ -142,15 +142,15 @@
     </div>
 
     <!-- Submit -->
-    <button
+    <AppButton
       v-if="items.length > 0"
-      class="guest-checkout__submit"
+      block
       data-testid="guest-checkout-submit"
       :disabled="!canSubmit || submitting"
       @click="submitOrder"
     >
       {{ submitting ? 'Оформление...' : 'Оплатить заказ' }}
-    </button>
+    </AppButton>
   </div>
 </template>
 
@@ -163,6 +163,7 @@ import { useGuestCheckout } from '@/composables/useGuestCheckout';
 import { getSupplierCityCode } from '@/api/cdek';
 import { formatPrice } from '@/utils/price';
 import CdekDeliveryWidget from '@/components/CdekDeliveryWidget.vue';
+import AppButton from '@/components/ui/AppButton.vue';
 
 const GUEST_EMAIL_KEY = 'guest_checkout_email';
 
@@ -541,23 +542,5 @@ onMounted(() => {
   font-size: 18px;
   font-weight: 700;
   color: var(--color-text);
-}
-
-.guest-checkout__submit {
-  width: 100%;
-  padding: 16px;
-  border-radius: 14px;
-  background: var(--color-primary);
-  color: #fff;
-  font-size: 17px;
-  font-weight: 600;
-  border: none;
-  cursor: pointer;
-  margin-bottom: 16px;
-}
-
-.guest-checkout__submit:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 </style>

@@ -54,15 +54,33 @@ for (const vp of viewports) {
 test.describe('Mobile header cleanup', () => {
   test.use({ viewport: { width: 375, height: 667 } });
 
-  test('header shows only logo and hides action icons on mobile', async ({ page }) => {
+  test('mobile header shows [Menu][Logo][Cart] and mobile search, hides desktop actions', async ({ page }) => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 
+    // §11 mobile: компоновка [Menu][Logo][Cart] + строка поиска (issue #250, D-05).
+    await expect(page.locator('[data-testid="mobile-menu-btn"]')).toBeVisible();
     await expect(page.locator('[data-testid="header-logo"]')).toBeVisible();
+    await expect(page.locator('[data-testid="mobile-cart-link"]')).toBeVisible();
+    await expect(page.locator('[data-testid="header-search-bar-mobile"]')).toBeVisible();
+
+    // Desktop-действия скрыты.
     await expect(page.locator('.header__actions')).toBeHidden();
     await expect(page.locator('[data-testid="cart-link"]')).toBeHidden();
     await expect(page.locator('[data-testid="profile-link"]')).toBeHidden();
     await expect(page.locator('[data-testid="login-link"]')).toBeHidden();
+  });
+
+  test('mobile menu drawer opens and closes', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    await page.locator('[data-testid="mobile-menu-btn"]').click();
+    const drawer = page.locator('[data-testid="mobile-menu-drawer"]');
+    await expect(drawer).toBeVisible();
+
+    await page.keyboard.press('Escape');
+    await expect(drawer).toBeHidden();
   });
 
   test('header still shows all action icons on desktop', async ({ page }) => {
@@ -73,6 +91,8 @@ test.describe('Mobile header cleanup', () => {
     await expect(page.locator('.header__actions')).toBeVisible();
     await expect(page.locator('[data-testid="cart-link"]')).toBeVisible();
     await expect(page.locator('[data-testid="login-link"]')).toBeVisible();
+    await expect(page.locator('[data-testid="mobile-menu-btn"]')).toBeHidden();
+    await expect(page.locator('[data-testid="mobile-cart-link"]')).toBeHidden();
   });
 });
 

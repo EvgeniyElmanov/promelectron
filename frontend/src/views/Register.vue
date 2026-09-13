@@ -142,14 +142,14 @@
         </div>
 
         <!-- Submit -->
-        <button
+        <AppButton
           type="submit"
-          class="auth-submit"
+          block
           :disabled="isSubmitting"
           data-testid="register-submit"
         >
           {{ isSubmitting ? 'Регистрация...' : 'Зарегистрироваться' }}
-        </button>
+        </AppButton>
       </form>
 
       <!-- Success message -->
@@ -196,6 +196,7 @@ import api from '@/services/api';
 import { register as apiRegister } from '@/api/auth';
 import { useAuth } from '@/composables/useAuth';
 import { useCart } from '@/composables/useCart';
+import AppButton from '@/components/ui/AppButton.vue';
 
 const router = useRouter();
 const { setAuth } = useAuth();
@@ -437,23 +438,6 @@ async function loginWithYandex() {
 .password-strength__text {
   font-size: 12px;
   font-weight: 500;
-}
-
-.auth-submit {
-  width: 100%;
-  padding: 14px;
-  border-radius: 12px;
-  background: var(--color-primary);
-  color: #fff;
-  font-size: 16px;
-  font-weight: 600;
-  margin-top: 4px;
-  transition: opacity 0.15s;
-}
-
-.auth-submit:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 
 .auth-error {

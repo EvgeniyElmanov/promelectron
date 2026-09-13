@@ -176,29 +176,28 @@
             />
           </div>
 
-          <button type="submit" class="modal__submit" :disabled="submitting" data-testid="order-modal-save-btn">
+          <AppButton type="submit" block :disabled="submitting" data-testid="order-modal-save-btn">
             {{ submitting ? 'Сохранение...' : 'Сохранить' }}
-          </button>
-          <button
+          </AppButton>
+          <AppButton
             v-if="detail.status === 'paid'"
-            type="button"
-            class="admin__btn admin__btn--success"
+            block
             :disabled="submitting"
             :data-testid="`admin-order-ship-btn-${detail.id}`"
             @click="handleShip"
           >
             Подтвердить отправку
-          </button>
-          <button
+          </AppButton>
+          <AppButton
             v-if="detail.status === 'pending' || detail.status === 'paid'"
-            type="button"
-            class="admin__btn admin__btn--danger"
+            variant="danger"
+            block
             :disabled="submitting"
             :data-testid="`admin-order-cancel-btn-${detail.id}`"
             @click="handleCancel"
           >
             Отменить заказ
-          </button>
+          </AppButton>
         </form>
 
         <div v-if="detail.cdek_order" v-show="activeTab === 'cdek'" class="order-modal__cdek" data-testid="order-modal-cdek-tab">
@@ -279,6 +278,7 @@ import { useToast } from '@/composables/useToast';
 import { formatPriceCurrency as formatPrice } from '@/utils/price';
 import { formatShortDate, formatDateTimeShort } from '@/utils/date';
 import { orderStatusLabel } from '@/utils/order';
+import AppButton from '@/components/ui/AppButton.vue';
 
 const props = defineProps({
   orderId: {
@@ -569,46 +569,6 @@ const handleCancel = async () => {
   background: #fff0f0;
   color: var(--color-danger);
   font-size: 14px;
-}
-
-.modal__submit {
-  width: 100%;
-  padding: 14px;
-  border-radius: 12px;
-  background: var(--color-primary);
-  color: #fff;
-  font-size: 16px;
-  font-weight: 600;
-  border: none;
-  cursor: pointer;
-}
-
-.modal__submit:disabled {
-  opacity: 0.6;
-}
-
-.admin__btn {
-  padding: 10px 16px;
-  border-radius: 10px;
-  font-size: 14px;
-  font-weight: 500;
-  border: none;
-  cursor: pointer;
-}
-
-.admin__btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.admin__btn--success {
-  background: #2e7d32;
-  color: #fff;
-}
-
-.admin__btn--danger {
-  background: var(--color-danger);
-  color: #fff;
 }
 
 .admin__status-badge {

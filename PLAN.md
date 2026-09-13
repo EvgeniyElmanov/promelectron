@@ -1,145 +1,84 @@
-# PLAN: design-cart-checkout-pr209 (этап 3-C, issue #249)
+# PLAN.md — design-header-pr209 (frontend-dev)
+
+- **Спека:** `.agent/runs/design-header-pr209/spec.md` — ОДОБРЕНА (включая D-05: responsive.spec.js переписывается под §11 `[Menu][Logo][Cart]`).
+- **Ветка:** `feature/design-header-pr209` · **Замок:** `frontend` · **Issue:** #250.
 
 ## 1. Goal
 
-Перевести `Cart.vue` (§23), `Checkout.vue` (§24) и поля форм (§19) на токены и примитивы
-дизайн-системы (`base.css`, `AppButton`), не меняя логику, API и ни один `data-testid`;
-успех — vitest ≥439 зелёный, lint 0/0, E2E baseline 117 passed + те же 3 известных падения,
-visual-smoke 11/11, ноль хардкод-цветов в изменённых файлах.
+Привести Header к §11 дизайн-системы (desktop 72px + мобильная шапка `[Menu][Logo][Cart]` с drawer-меню и строкой поиска) и завершить миграцию оставшихся текстовых кнопок на `AppButton` (§10), не сломав testid-контракт D-04, sticky/toast-поведение и E2E-baseline.
 
-## 2. Steps
+## 2. Шаги (порядок из спеки §Parallelization Plan)
 
-Порядок по spec Parallelization Plan: base.css формы → Cart.vue → Checkout.vue → тесты.
-После каждого шага: `make -C "$WORKTREE" test-frontend` (соответствующий spec-файл) +
-`make -C "$WORKTREE" lint-frontend`. Полный прогон в конце.
+### Шаг 1. AppButton: prop `type` + variant `danger` (D-07, D-08)
 
-### Шаг 1. `frontend/src/assets/base.css` — глобальные классы форм §19 (D-02)
+Файлы: `frontend/src/components/ui/AppButton.vue`, `frontend/src/__tests__/AppButton.spec.js` (путь уточнить по факту — рядом с Header.spec.js в `src/__tests__/`).
 
-Добавить секцию «Forms (§19)» после существующего контента (в конец файла, после блока #171):
+- Добавить `type: { type: String, default: 'button' }` и `:type="type"` на корневой `<button>` (сейчас захардкожен `type="button"` — AppButton.vue:3).
+- Добавить variant `danger` в validator + стили `.app-button--danger` (`background: var(--color-danger); color: var(--color-white)`; hover через `color-mix`, паттерн как в Header.vue:426).
+- Unit-тесты: `type="submit"` прокидывается; `danger` добавляет класс.
 
-- `.field` — обёртка label + control + error (flex column, gap `var(--space-1)`).
-- `.field__label` — caption-стиль лейбла (`--font-size-caption`/`body-sm`, `--color-text-secondary`).
-- `.field__input` — height 48px, `border-radius: var(--radius-md)`,
-  `padding: 0 var(--space-4)`, `border: 1px solid var(--color-border)`,
-  `font-size: var(--font-size-body)`, `background: var(--color-bg-white)`,
-  `color: var(--color-text)`, `width: 100%`.
-- `.field__input:focus` — `border-color: var(--color-primary)` + focus-ring
-  (`outline: none` + `box-shadow: 0 0 0 3px` на базе `--color-primary-light` / color-mix от primary).
-- `.field__input--error` — `border-color: var(--color-error)`.
-- `.field__input:disabled` — `background: var(--color-bg)`, `color: var(--color-text-secondary)`.
-- `.field__error` — caption, `--color-error`.
-- `.field__required` — `color: var(--color-danger)` (класс уже используется в Cart.vue:209,220,…
-  без определения — заработает глобально).
+**Проверка:** `make -C "$WORKTREE" test-frontend` (AppButton.spec зелёный), `make -C "$WORKTREE" lint-frontend`.
 
-**Инварианты:**
-- Блок `base.css:125-132` (`font-size: 16px !important` на mobile input, issue #171) — НЕ трогать;
-  на mobile он intended-перекроет font-size `.field__input`.
-- Новые стили `.field__input` БЕЗ `!important`.
+### Шаг 2. MobileMenuDrawer.vue + unit-тесты (D-02)
 
-Проверка: `make lint-frontend` (stylelint/css не ломается); визуально классы нигде ещё не применяются
-(select в Cart с `field__input` — no-op до шага 2, внешне не изменится: у него и так высота ~от контента).
+Файлы: новый `frontend/src/components/MobileMenuDrawer.vue`, новый `frontend/src/__tests__/MobileMenuDrawer.spec.js`.
 
-### Шаг 2. `frontend/src/views/Cart.vue` — рестайл (D-03/04/05/07)
+- Props `open`, emits `close`; `data-testid="mobile-menu-drawer"`, `aria-label`, начальный focus на drawer (focus-trap — out of scope, issue #225).
+- Пункты: Каталог (`/`); по `isAuthenticated` — Заказы (`/orders`), Уведомления (`/notifications`), Профиль; гостю — Войти (`/login`); по `isSupplier` — Дашборд/Мои товары/Мои заказы.
+- Overlay-затемнение слева; закрытие по клику вне, Escape, выбору пункта; z-index 300 (выше header 100 и toast 200, D-10); токены `--color-bg-white`, `--shadow-dropdown`, `--radius-lg`. Новых токенов не вводить.
+- Тесты: пункты по auth/supplier/guest; close по Escape и click-outside.
 
-Template:
+**Проверка:** vitest MobileMenuDrawer.spec зелёный, lint чистый.
 
-1. `checkout-button` (строка 278-286): `<button class="cart__checkout-btn">` →
-   `<AppButton variant="primary" block :loading="creatingOrder" :disabled="…" data-testid="checkout-button" @click="createOrder">`.
-   Текст: `creatingOrder ? 'Оформление...' : 'Оформить заказ'` — сохранить в слоте
-   (loading-проп AppButton блокирует кнопку, но не меняет текст — текст остаётся на нашей стороне).
-   AppButton рендерит `<button>`, click-fallthrough нативный (без defineEmits) — @click работает.
-2. `recipient-new-button` (196-204) → `<AppButton variant="secondary" size="sm" data-testid="recipient-new-button" @click="…">`.
-3. Empty-state: `<router-link to="/" class="cart__empty-btn">` →
-   `<AppButton data-testid не нужен (не было) @click="router.push('/')">Перейти в каталог</AppButton>`.
-   Смена тега a→button: проверить, что unit-тесты empty-state не ищут `router-link`
-   (grep по Cart.spec.js — таких тестов нет; убедиться при правке).
-4. Поля получателя (D-05): на все `.cart__recipient-field` input/select добавить класс `field__input`
-   (+ на label — `field__label`, на обёртку — `field` рядом с `cart__recipient-field`, чтобы не
-   ломать grid-раскладку). Select получателя уже имеет `field__input` (строка 182) — заработает сам.
-   `.field__required` на span уже есть.
-5. Шаговые заголовки (D-07): перед секцией CDEK/получателя добавить нумерованные caption/uppercase
-   заголовки («Шаг 1. Получатель» / «Шаг 2. Доставка» — формулировки по §24; маппинг Cart = шаги 1–3).
-   Стиль — как `checkout__section-title`, на токенах. Только визуально, без stepper-компонента.
-6. Степпер количества (SHOULD): привести к PDP-паттерну 3-B (`ProductDetail.vue:79-111`):
-   та же геометрия кнопок, aria-label «Уменьшить количество»/«Увеличить количество» на qty-btn.
-   `data-testid` НЕ добавлять (E2E не завязан; `cart-item`/`cart-item-select` не трогаем).
-   Логика clamp 1..stock уже есть в `:disabled`.
+### Шаг 3. Header.vue — мобильный блок + desktop-доработки (D-01, D-03, D-04, D-09)
 
-Style (scoped):
+Файл: `frontend/src/components/Header.vue`.
 
-- Радиусы: 14px → `var(--radius-lg)`, 10px → `var(--radius-md)`, 12px → `var(--radius-lg)`
-  (cart__count pill-образный — можно `--radius-pill`), 8px → `var(--radius-sm)`.
-- Тень checkout-bar `0 4px 20px rgba(0,0,0,0.08)` → `var(--shadow-card)`.
-- `rgba(0, 0, 0, 0.12)` (placeholder) → `var(--color-text-muted)`.
-- `#fff0f0` (hover remove-desktop) → `color-mix(in srgb, var(--color-danger) 8%, transparent)`.
-- `#cccccc` disabled checkout-btn → удалить (AppButton даёт `opacity: 0.5`); `#fff` → `var(--color-white)`.
-- Типографика: 22px → `var(--font-size-h3)`, 15/14/13/12px → `--font-size-body/body-sm/caption` по месту;
-  font-weight 500/600/700 → `--font-weight-medium/semibold/bold`.
-- Поля получателя: удалить локальные стили `.cart__recipient-field input/select` (1205-1226) и
-  `.cart__recipient-field label` — заменяются глобальными `.field*`; оставить grid-раскладку
-  (`.cart__recipient-fields`, `--wide`).
-- `.cart__recipient-error` — оставить общий блок ошибки, цвет `var(--color-error)` (spec Edge Cases:
-  `.field__input--error` per-field не вводим, логику валидации не меняем).
-- Удалить мёртвый CSS: `.cart__loading` + `@keyframes spin` (757-775; в шаблоне loading = SkeletonCartItem,
-  класса нет), `.cart__summary-free` (1055-1058), `.cart__delivery-*` (1060-1112).
-  **Предварительно проверено:** grep по `frontend/src` — `cart__delivery*` встречается только в
-  Cart.vue, `CdekDeliveryWidget` эти классы НЕ использует.
-- Удалить локальные `.cart__checkout-btn`, `.cart__recipient-new-button`, `.cart__empty-btn` стили
-  (заменены AppButton).
+- Template: добавить `.header__mobile-top` (виден только <768px): `mobile-menu-btn` (burger, aria-label, touch target ≥44px), логотип (существующий `data-testid="header-logo"` — элемент остаётся ОДИН, визуально переносится), `mobile-cart-link` (router-link `/cart` с бейджем `cartCount`, тот же класс `.header__notif-badge`). Ниже `.header__mobile-search` с `SearchBar` и `data-testid="header-search-bar-mobile"`, горизонтальные паддинги 16px. Поведение mobile search overlay (#171) НЕ менять.
+- Подключить `<MobileMenuDrawer :open="mobileMenuOpen" @close="mobileMenuOpen = false" />`; добавить `mobileMenuOpen` ref.
+- Desktop (D-03): добавить ghost nav-link «Каталог» → `/` в `.header__nav`; сверить отступы с §11. Phone/Compare НЕ добавляем.
+- **НЕ удалять и не переименовывать:** классы `.header`, `.header__actions`, `.header__icon`, `.header__toast`, `.header__notif-badge` (Header.spec.js читает исходник строками, `src/__tests__/Header.spec.js:9,79-96`); testid `header-logo`, `header-search-bar`, `cart-link`, `profile-link`, `login-link`, `notifications-btn`; `position: sticky; top: 0` (toast-follow-scroll.spec.js, 4 теста).
+- **testid-контракт D-04 дословно:** сохраняются `header-logo`, `header-search-bar`, `cart-link`, `profile-link`, `login-link`, `notifications-btn`; новые `mobile-menu-btn`, `mobile-cart-link`, `mobile-menu-drawer`, `header-search-bar-mobile`. **НОЛЬ дублей testid** (Playwright strict mode): `cart-link` остаётся ТОЛЬКО в desktop `.header__actions`; мобильная корзина — отдельный `mobile-cart-link`. Desktop search — `header-search-bar`, мобильный — `header-search-bar-mobile`.
+- Style: media 768px — `.header__mobile-top`/`.header__mobile-search` hidden на ≥768px; desktop search/actions hidden <768px (правило `@media (max-width: 767px)` + `.header__actions { display: none; }` сохранить дословно — его проверяет Header.spec.js:79-83). Desktop header 72px остаётся; мобильная высота auto (2 строки).
+- Обновить `src/__tests__/Header.spec.js`: оставить source-string проверки, добавить рендер `mobile-menu-btn`/`mobile-cart-link`, бейдж на mobile cart при `cartCount=2`, открытие/закрытие drawer по клику.
 
-Проверка: `npx vitest run src/__tests__/Cart.spec.js` в worktree + lint. Ручной осмотр diff на
-сохранность всех testid: cart-page, cart-title, cart-select-all, cart-item, cart-item-select,
-recipient-select, recipient-new-button, recipient-first-name/last-name/country-code/patronymic/phone,
-checkout-button.
+**Проверка:** vitest Header/MobileMenuDrawer зелёные; `grep -o 'data-testid="[^"]*"' src/components/Header.vue | sort | uniq -d` — пусто (ноль дублей); lint чистый.
 
-### Шаг 3. `frontend/src/views/Checkout.vue` — рестайл (D-06/07)
+### Шаг 4. Миграция кнопок views на AppButton (D-06) — 4 логические группы
 
-Template:
+Механическая замена `<button class="X__btn">` → `<AppButton variant=... :type=...>`, сохраняя `data-testid`, `@click`, `:disabled`; удаление мёртвого CSS кнопок. `danger` — для logout/cancel/delete; `type="submit"` — в `<form>`; `admin__btn--success` → `primary`; CdekDeliveryWidget «Изменить» → `ghost`/`sm`.
 
-1. `pay-button` (67-75) → `<AppButton variant="primary" block :loading="processing" data-testid="pay-button" @click="processPayment">`
-   со слотом «Оплатить … ₽ / Переход к оплате...» (текст на нашей стороне).
-2. `checkout__cancel` (78-80) → `<AppButton variant="ghost" block :disabled="processing" @click="cancelPayment">Отменить</AppButton>`.
-3. `checkout__retry` (16) → `<AppButton variant="primary" size="sm" @click="fetchOrder">Повторить</AppButton>`.
-4. `checkout__back` — оставить нативной icon-кнопкой, стили на токены (radius `--radius-md`).
-5. Шаговые заголовки (D-07): перед карточками — нумерованные заголовки секций (шаги 4–6 по §24:
-   сводка/доставка/оплата), стиль `checkout__section-title` на токенах.
+- **4a. Auth-страницы:** `Login.vue`, `Register.vue` (submit; OAuth brand-кнопки ОСТАВЛЯЕМ), `ForgotPassword.vue`, `ResetPassword.vue`, `GuestCheckout.vue` (мёртвый код, мигрируем для консистентности).
+- **4b. Профиль/заказы пользователя:** `Profile.vue` (retry + logout→danger; `.action-btn` router-link'и оставляем), `ProfileEdit.vue` (submit), `ProfileRecipients.vue` (add, empty-btn, modal submit), `Orders.vue` (retry + cancel→danger), `OrderDetail.vue` (retry + cancel→danger), `Notifications.vue` (mark-read-all), `PaymentFailed.vue` (2), `PaymentSuccess.vue` (2 `<button>`; `.payment-result__btn` router-link'и — НЕ кнопки, оставляем).
+- **4c. Supplier:** `SupplierOrders.vue` (retry; items-toggle-раскрывашку оставляем), `SupplierProducts.vue` (add ×2, edit/delete карточки), `SupplierDashboard.vue` (1).
+- **4d. Admin + прочее:** `Admin.vue` (add-category, add-delivery, user-action, modal submits), `admin/UserDetailsModal.vue`, `admin/AdminOrderModal.vue` (submit, success/cancel), `ProductFormModal.vue` (submit), `CdekDeliveryWidget.vue` («Изменить» → ghost/sm).
+- **Осознанно оставляем (D-06):** icon-кнопки (back-arrow, `modal__close`, `field-toggle` eye, qty-степперы, `image-thumb__remove`, lightbox close, toast close, header icon-кнопки, SearchBar внутренние), чипы (CategoryChips, CategoryCard, SearchBar-теги, FilterPanel), `admin__icon-btn`, OAuth brand buttons, router-link'и под кнопки.
+- Точечно править spec-файлы, если проверяют CSS-классы мигрированных кнопок.
 
-Style:
+**Проверка после каждой группы:** `make -C "$WORKTREE" test-frontend` зелёный. После всех групп: `grep -rn '<button' frontend/src/views frontend/src/components` — остались только категории «оставляем» из D-06; lint чистый.
 
-- Security-блок: `background: #e8f0fe; color: #1a73e8` → `var(--color-primary-light)` / `var(--color-primary)`.
-- Карточки 16px → `var(--radius-lg)`; payment-method/security 10px → `var(--radius-md)`.
-- Типографика на `--font-size-*` (28px amount → `--font-size-h2`, 13/14/15px → body-sm/caption и т.д.),
-  веса на `--font-weight-*`.
-- `#fff` → `var(--color-white)`; удалить `.checkout__pay-btn`/`.checkout__cancel`/`.checkout__retry` стили.
-- Все `data-testid` сохранить: checkout-page, checkout-recipient, checkout-recipient-phone, pay-button.
+### Шаг 5. E2E responsive.spec.js (D-05)
 
-Проверка: `npx vitest run src/__tests__/Checkout.spec.js` + lint.
+Файл: `frontend/e2e/responsive.spec.js`.
 
-### Шаг 4. Тесты и финальные гейты
+- Переписать тест «header shows only logo and hides action icons on mobile» (строки 57-66): мобильная шапка показывает `mobile-menu-btn`, `header-logo`, `mobile-cart-link`, `header-search-bar-mobile`; `.header__actions` по-прежнему hidden; desktop `cart-link`/`profile-link`/`login-link` hidden (они в `.header__actions`).
+- Desktop-тест (строки 68-76) без изменений. Остальные блоки (horizontal scroll, bottom-nav badge) не трогаем.
+- helpers.js: `goToCart`/`goToProfile` используют `cart-link`/`profile-link` с fallback на bottom-nav через `isVisible()` — на мобильном desktop-ссылки hidden, fallback работает, helpers НЕ правим.
 
-1. `make -C "$WORKTREE" test-frontend` — полный vitest (≥439). Править только упавшее от смены
-   разметки (ожидаемо: ничего или empty-state в Cart.spec.js, если тест ищет `cart__empty-btn`/`router-link` —
-   grep таких не нашёл, но подтвердить прогоном).
-2. `make -C "$WORKTREE" lint-frontend` — 0 errors / 0 warnings.
-3. Grep-аудит изменённых файлов: ни одного `#[0-9a-fA-F]{3,6}` / `rgba(` вне `--color-*` определений
-   (`--shadow-*` в base.css уже существуют — не трогаем).
-4. `pytest` backend (644 passed) — гейт обязателен, затронут быть не должен.
-5. E2E по возможности: `cart-select.spec.js`, `checkout.spec.js`, `checkout-failed-cards.spec.js`,
-   visual-smoke 11/11 — ожидание: 117 passed + те же 3 известных падения (не чинить).
-6. Self-review по ролевому файлу: полный diff vs spec Must-haves, 3–5 потенциальных проблем.
+**Проверка:** `make -C "$WORKTREE" test-e2e` — responsive.spec.js зелёный; baseline 117 passed + известные предсуществующие падения (auth:72, search-filter:82, checkout:152 флаки); toast-follow-scroll 4/4; visual-smoke 11/11.
+
+### Шаг 6. Финальный self-review и отчёт
+
+- `git -C "$WORKTREE" --no-pager diff origin/main...HEAD` — сопоставить каждый Must-have спеки с diff; adversarial audit по ролевому чеклисту (testid, console.log, scope creep).
+- `make -C "$WORKTREE" test-frontend` + `lint-frontend` — зелёные.
+- Коммит в feature-ветку (без push), обновить `docs/journal/session-log.md`.
 
 ## 3. Risks / Open questions
 
-- **AppButton vs unit-тесты на `disabled`:** AppButton ставит `:disabled="disabled || loading"` —
-  тесты `checkout-button`/`pay-button` на `attributes('disabled')` совместимы. Риск низкий.
-- **Смена тега в empty-state (router-link → button):** visual-smoke `/cart` рендерит пустую корзину —
-  проверить 11/11. Если тест ищет `a[href="/"]` — поправить тест (только это место).
-- **Глобальные `.field__input` vs scoped-копии в 11+ компонентах:** scoped CSS имеет приоритет над
-  глобальным — существующие страницы не изменятся. Риск минимален; не рефакторим их (Out of Scope).
-- **`.field__input` на `<select>`:** padding `0 var(--space-4)` + height 48px применимы к select;
-  стрелка браузерная — приемлемо, визуально сверить.
-- **Шаговые заголовки:** точные формулировки шагов (1–3 в Cart, 4–6 в Checkout) сверить с
-  `docs/design/design-system-detailed.md` §24 при имплементации; никакого роутинга/валидации шагов.
-- **color-mix поддержка:** `color-mix(in srgb, …)` для `#fff0f0`-замены — поддержка современных
-  браузеров ок; fallback не нужен (hover-эффект). Если lint ругнётся — заменить на `--color-primary-light`-подобный подход с `--color-danger`-оттенком зафиксировать в PR.
-- Открытых вопросов к пользователю нет: промо-блок (D-08) и error-стиль полей (общий блок) решены в spec.
+- **R-1: Header.spec.js читает исходник строками** (`readFileSync`, Header.spec.js:9) — проверяет `@media (max-width: 767px)`, `.header__actions {`, `display: none;`, `.header__icon {`, `position: relative;`. Эти строки сохранить дословно; новые media-правила добавлять рядом, не переписывая существующие.
+- **R-2: Дубли testid → Playwright strict mode.** Мобильные элементы получают НОВЫЕ testid; `cart-link` только desktop. Проверка `uniq -d` на шаге 3.
+- **R-3: z-index drawer (300) vs toast (200) и модалки** — smoke-проверка вручную на /profile/edit (спека Risks).
+- **R-4: Крупный механический diff (~20 views)** — митигируется группировкой 4a–4d с прогоном тестов после каждой группы и чек-листом D-06 при self-review.
+- **R-5: spec-файлы views могут проверять старые CSS-классы кнопок** — точечные правки в шаге 4, падения всплывут на vitest.
+- **R-6: Drawer при resize до desktop** — скрывается CSS (mobile-блоки hidden ≥768px); состояние `mobileMenuOpen` сбрасывать не обязательно, но проверить визуально.
+- **Open questions:** нет — D-05 подтверждён владельцем, скоуп D-06 исчерпывающий.

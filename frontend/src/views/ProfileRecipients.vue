@@ -7,20 +7,20 @@
         </svg>
       </button>
       <h1 class="profile-recipients__title">Получатели</h1>
-      <button
-        class="profile-recipients__add"
+      <AppButton
+        size="sm"
         data-testid="recipient-add-btn"
         @click="openCreate"
       >
         + Новый
-      </button>
+      </AppButton>
     </div>
 
     <div v-if="loading" class="profile-recipients__loading">Загрузка...</div>
 
     <div v-else-if="recipients.length === 0" class="profile-recipients__empty" data-testid="recipients-empty">
       <p>У вас пока нет сохранённых получателей.</p>
-      <button class="profile-recipients__empty-btn" @click="openCreate">Добавить получателя</button>
+      <AppButton class="profile-recipients__empty-btn" @click="openCreate">Добавить получателя</AppButton>
     </div>
 
     <div v-else class="profile-recipients__list">
@@ -40,30 +40,33 @@
           <div v-if="recipient.is_default" class="recipient-card__badge">По умолчанию</div>
         </div>
         <div class="recipient-card__actions">
-          <button
+          <AppButton
             v-if="!recipient.is_default"
-            class="recipient-card__btn recipient-card__btn--default"
+            variant="ghost"
+            size="sm"
             :data-testid="`recipient-set-default-${recipient.id}`"
             :disabled="loading"
             @click="handleSetDefault(recipient.id)"
           >
             По умолчанию
-          </button>
-          <button
-            class="recipient-card__btn recipient-card__btn--edit"
+          </AppButton>
+          <AppButton
+            variant="secondary"
+            size="sm"
             :data-testid="`recipient-edit-${recipient.id}`"
             @click="openEdit(recipient)"
           >
             Изменить
-          </button>
-          <button
-            class="recipient-card__btn recipient-card__btn--delete"
+          </AppButton>
+          <AppButton
+            variant="danger"
+            size="sm"
             :data-testid="`recipient-delete-${recipient.id}`"
             :disabled="loading"
             @click="handleDelete(recipient.id)"
           >
             Удалить
-          </button>
+          </AppButton>
         </div>
       </div>
     </div>
@@ -142,9 +145,9 @@
             <span>Получатель по умолчанию</span>
           </label>
           <div v-if="formError" class="form-error">{{ formError }}</div>
-          <button type="submit" class="modal__submit" :disabled="loading" data-testid="recipient-form-submit">
+          <AppButton type="submit" block :disabled="loading" data-testid="recipient-form-submit">
             {{ loading ? 'Сохранение...' : (isEdit ? 'Сохранить' : 'Добавить') }}
-          </button>
+          </AppButton>
         </form>
       </div>
     </div>
@@ -157,6 +160,7 @@ import { useRouter } from 'vue-router';
 import { useToast } from '@/composables/useToast';
 import { useRecipients } from '@/composables/useRecipients';
 import { normalizePhone } from '@/composables/useGuestCheckout';
+import AppButton from '@/components/ui/AppButton.vue';
 
 const PHONE_REGEX = /^\+7\d{10}$/;
 const NAME_REGEX = /^[A-Za-zА-Яа-яЁё\- ]+$/;
@@ -345,17 +349,6 @@ onMounted(() => {
   color: var(--color-text);
 }
 
-.profile-recipients__add {
-  padding: 8px 14px;
-  border-radius: 10px;
-  border: none;
-  background: var(--color-primary);
-  color: #fff;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
 .profile-recipients__loading,
 .profile-recipients__empty {
   text-align: center;
@@ -366,12 +359,6 @@ onMounted(() => {
 
 .profile-recipients__empty-btn {
   margin-top: 16px;
-  padding: 12px 20px;
-  border-radius: 12px;
-  background: var(--color-primary);
-  color: #fff;
-  font-size: 15px;
-  font-weight: 500;
 }
 
 .profile-recipients__list {
@@ -426,35 +413,6 @@ onMounted(() => {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-}
-
-.recipient-card__btn {
-  padding: 8px 12px;
-  border-radius: 10px;
-  border: none;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.recipient-card__btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.recipient-card__btn--default {
-  background: #e8f0fe;
-  color: var(--color-primary);
-}
-
-.recipient-card__btn--edit {
-  background: var(--color-bg);
-  color: var(--color-text);
-}
-
-.recipient-card__btn--delete {
-  background: #fff0f0;
-  color: var(--color-danger);
 }
 
 /* Modal */
@@ -590,21 +548,5 @@ onMounted(() => {
   background: #fff0f0;
   color: var(--color-danger);
   font-size: 14px;
-}
-
-.modal__submit {
-  width: 100%;
-  padding: 14px;
-  border-radius: 12px;
-  background: var(--color-primary);
-  color: #fff;
-  font-size: 16px;
-  font-weight: 600;
-  border: none;
-  cursor: pointer;
-}
-
-.modal__submit:disabled {
-  opacity: 0.6;
 }
 </style>

@@ -20,14 +20,14 @@
         </div>
 
         <!-- Submit -->
-        <button
+        <AppButton
           type="submit"
-          class="auth-submit"
+          block
           :disabled="isSubmitting"
           data-testid="forgot-password-submit"
         >
           {{ isSubmitting ? 'Отправка...' : 'Отправить ссылку' }}
-        </button>
+        </AppButton>
       </form>
 
       <div v-else class="auth-success" data-testid="forgot-password-success">
@@ -47,6 +47,7 @@
 <script setup>
 import { ref } from 'vue';
 import api from '@/services/api';
+import AppButton from '@/components/ui/AppButton.vue';
 
 const email = ref('');
 const isSubmitting = ref(false);
@@ -159,24 +160,6 @@ async function handleSubmit() {
 .field-error {
   font-size: 13px;
   color: var(--color-error, #e53935);
-}
-
-.auth-submit {
-  margin-top: 8px;
-  padding: 14px;
-  border: none;
-  border-radius: 10px;
-  background: var(--color-primary);
-  color: #fff;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-
-.auth-submit:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 
 .auth-error {

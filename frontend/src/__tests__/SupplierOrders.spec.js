@@ -165,7 +165,7 @@ describe('SupplierOrders.vue', () => {
       return Promise.resolve({ data: {} });
     });
 
-    await wrapper.find('.supplier-orders__retry').trigger('click');
+    await wrapper.find('.supplier-orders__error .app-button').trigger('click');
     await flushPromises();
 
     expect(mockGet).toHaveBeenCalledTimes(2);

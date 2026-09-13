@@ -19,7 +19,7 @@ test.describe('Supplier Products', () => {
     await expect(page.locator('[data-testid="supplier-products"]')).toBeVisible();
 
     // 3. Click "Add product"
-    await page.click('.supplier-products__add');
+    await page.click('[data-testid="supplier-product-add"]');
 
     // 4. Fill form
     await page.fill('[data-testid="product-name-input"]', productName);
@@ -36,7 +36,7 @@ test.describe('Supplier Products', () => {
     await expect(productCard).toBeVisible({ timeout: 10000 });
 
     // 6. Verify the delete button exists
-    const deleteBtn = productCard.locator('.supplier-product-card__btn--delete');
+    const deleteBtn = productCard.locator('[data-testid^="supplier-product-delete-"]');
     await expect(deleteBtn).toBeVisible();
 
     // 7. Cleanup: delete (deactivate) the test product

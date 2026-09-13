@@ -42,13 +42,13 @@
           placeholder="+7 (999) 000-00-00"
         />
       </div>
-      <button
-        class="supplier-dashboard__save-btn"
+      <AppButton
+        block
         :disabled="savingSupplier"
         @click="saveSupplier"
       >
         {{ savingSupplier ? 'Сохранение...' : 'Сохранить настройки' }}
-      </button>
+      </AppButton>
     </div>
 
     <!-- Quick Links -->
@@ -167,6 +167,7 @@ import { ref, computed, onMounted } from 'vue';
 import api from '@/services/api';
 import { useToast } from '@/composables/useToast';
 import { formatShortDate } from '@/utils/date';
+import AppButton from '@/components/ui/AppButton.vue';
 
 const { add: toast } = useToast();
 
@@ -395,22 +396,6 @@ onMounted(fetchDashboard);
   font-size: 15px;
   color: var(--color-text);
   width: 100%;
-}
-
-.supplier-dashboard__save-btn {
-  width: 100%;
-  padding: 12px;
-  border-radius: 10px;
-  background: var(--color-primary);
-  color: #fff;
-  font-size: 15px;
-  font-weight: 600;
-  border: none;
-  cursor: pointer;
-}
-
-.supplier-dashboard__save-btn:disabled {
-  opacity: 0.5;
 }
 
 /* Charts row */

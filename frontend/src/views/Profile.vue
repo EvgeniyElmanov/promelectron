@@ -11,7 +11,7 @@
     <!-- Error -->
     <div v-else-if="error" class="profile-error">
       <p>{{ error }}</p>
-      <button @click="fetchUserProfile" class="retry-btn">Попробовать снова</button>
+      <AppButton variant="secondary" @click="fetchUserProfile">Попробовать снова</AppButton>
     </div>
 
     <!-- Content -->
@@ -35,14 +35,15 @@
             </p>
           </div>
         </div>
-        <button
-          class="verify-banner__btn"
+        <AppButton
+          size="sm"
+          block
           :disabled="resending"
           data-testid="profile-resend-verification"
           @click="handleResendVerification"
         >
           {{ resending ? 'Отправка...' : 'Отправить повторно' }}
-        </button>
+        </AppButton>
         <p v-if="resendMessage" class="verify-banner__message" data-testid="profile-resend-message">
           {{ resendMessage }}
         </p>
@@ -189,14 +190,14 @@
             </svg>
           </router-link>
 
-          <button class="action-btn action-btn--danger" @click="handleLogout" data-testid="logout-button">
+          <AppButton variant="danger" block @click="handleLogout" data-testid="logout-button">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
               <polyline points="16 17 21 12 16 7"/>
               <line x1="21" y1="12" x2="9" y2="12"/>
             </svg>
             <span>Выйти</span>
-          </button>
+          </AppButton>
         </div>
       </div>
     </div>
@@ -211,6 +212,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import SkeletonProfile from '@/components/SkeletonProfile.vue';
+import AppButton from '@/components/ui/AppButton.vue';
 import api from '@/services/api';
 import { useAuth } from '@/composables/useAuth';
 import { useNotifications } from '@/composables/useNotifications';
@@ -342,14 +344,8 @@ onMounted(fetchUserProfile);
   font-size: 14px;
 }
 
-.retry-btn {
+.profile-error .app-button {
   margin-top: 12px;
-  padding: 10px 20px;
-  border-radius: 10px;
-  background: var(--color-primary);
-  color: #fff;
-  font-size: 14px;
-  font-weight: 500;
 }
 
 .profile-content {
@@ -389,23 +385,6 @@ onMounted(fetchUserProfile);
   font-size: 13px;
   margin-top: 2px;
   opacity: 0.9;
-}
-
-.verify-banner__btn {
-  margin-top: 12px;
-  width: 100%;
-  padding: 10px 14px;
-  border-radius: 10px;
-  background: #b45309;
-  color: #fff;
-  font-size: 14px;
-  font-weight: 500;
-  transition: opacity 0.15s;
-}
-
-.verify-banner__btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 
 .verify-banner__message {
@@ -568,10 +547,6 @@ onMounted(fetchUserProfile);
 
 .action-btn--primary {
   color: var(--color-primary);
-}
-
-.action-btn--danger {
-  color: var(--color-danger);
 }
 
 .action-chevron {

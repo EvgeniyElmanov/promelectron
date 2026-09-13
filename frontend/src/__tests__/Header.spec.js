@@ -111,4 +111,38 @@ describe('Header.vue', () => {
     expect(favBadge.element.closest('.header__icon')).not.toBeNull();
     wrapper.unmount();
   });
+
+  it('рендерит мобильные mobile-menu-btn и mobile-cart-link', async () => {
+    const wrapper = await mountHeader();
+    expect(wrapper.find('[data-testid="mobile-menu-btn"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="mobile-cart-link"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="header-search-bar-mobile"]').exists()).toBe(true);
+    wrapper.unmount();
+  });
+
+  it('показывает бейдж cartCount на мобильной корзине', async () => {
+    mockCartCount.value = 2;
+    const wrapper = await mountHeader();
+    const badge = wrapper.find('[data-testid="mobile-cart-link"] .header__notif-badge');
+    expect(badge.exists()).toBe(true);
+    expect(badge.text()).toBe('2');
+    wrapper.unmount();
+  });
+
+  it('не показывает бейдж на мобильной корзине при cartCount = 0', async () => {
+    const wrapper = await mountHeader();
+    expect(wrapper.find('[data-testid="mobile-cart-link"] .header__notif-badge').exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  it('открывает и закрывает drawer мобильного меню', async () => {
+    const wrapper = await mountHeader();
+    expect(document.body.querySelector('[data-testid="mobile-menu-drawer"]')).toBeNull();
+    await wrapper.find('[data-testid="mobile-menu-btn"]').trigger('click');
+    expect(document.body.querySelector('[data-testid="mobile-menu-drawer"]')).not.toBeNull();
+    document.body.querySelector('.mobile-menu__overlay').click();
+    await wrapper.vm.$nextTick();
+    expect(document.body.querySelector('[data-testid="mobile-menu-drawer"]')).toBeNull();
+    wrapper.unmount();
+  });
 });

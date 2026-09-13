@@ -41,4 +41,15 @@ describe('AppButton.vue', () => {
     await wrapper.trigger('click');
     expect(wrapper.emitted('click')).toHaveLength(1);
   });
+
+  it('type=button по умолчанию и проксирует type=submit', () => {
+    expect(mount(AppButton).attributes('type')).toBe('button');
+    expect(mount(AppButton, { props: { type: 'submit' } }).attributes('type')).toBe('submit');
+  });
+
+  it('применяет variant danger', () => {
+    expect(mount(AppButton, { props: { variant: 'danger' } }).classes()).toContain(
+      'app-button--danger',
+    );
+  });
 });

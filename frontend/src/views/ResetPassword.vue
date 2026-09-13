@@ -68,14 +68,14 @@
         </div>
 
         <!-- Submit -->
-        <button
+        <AppButton
           type="submit"
-          class="auth-submit"
+          block
           :disabled="isSubmitting || !token"
           data-testid="reset-password-submit"
         >
           {{ isSubmitting ? 'Сохранение...' : 'Сохранить пароль' }}
-        </button>
+        </AppButton>
       </form>
 
       <div v-else class="auth-success" data-testid="reset-password-success">
@@ -97,6 +97,7 @@
 import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import api from '@/services/api';
+import AppButton from '@/components/ui/AppButton.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -250,24 +251,6 @@ async function handleSubmit() {
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.auth-submit {
-  margin-top: 8px;
-  padding: 14px;
-  border: none;
-  border-radius: 10px;
-  background: var(--color-primary);
-  color: #fff;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-
-.auth-submit:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 
 .auth-error {

@@ -8,7 +8,7 @@
 
     <div v-else-if="error" class="error">
       <p>Ошибка загрузки: {{ error }}</p>
-      <button @click="fetchOrders">Повторить</button>
+      <AppButton variant="secondary" @click="fetchOrders">Повторить</AppButton>
     </div>
 
     <div v-else-if="orders.length === 0" class="empty">
@@ -41,9 +41,9 @@
             <router-link :to="`/checkout/${order.id}`" class="order-pay-btn">
               Оплатить
             </router-link>
-            <button class="order-cancel-btn" @click.prevent="cancelOrder(order.id)">
+            <AppButton variant="danger" size="sm" @click.prevent="cancelOrder(order.id)">
               Отменить
-            </button>
+            </AppButton>
           </div>
           <div v-if="order.shipping_address" class="order-row">
             <span class="order-label">Адрес</span>
@@ -67,6 +67,7 @@ import { ref, onMounted } from 'vue';
 import api from '@/services/api';
 import { formatDate } from '@/utils/date';
 import SkeletonOrderCard from '@/components/SkeletonOrderCard.vue';
+import AppButton from '@/components/ui/AppButton.vue';
 
 const orders = ref([]);
 const loading = ref(true);
@@ -260,25 +261,6 @@ onMounted(fetchOrders);
   font-weight: 600;
   text-decoration: none;
   text-align: center;
-}
-
-.order-cancel-btn {
-  display: inline-block;
-  padding: 10px 20px;
-  border-radius: 12px;
-  background: transparent;
-  color: var(--color-text-secondary);
-  font-size: 14px;
-  font-weight: 500;
-  border: 1px solid var(--color-border);
-  cursor: pointer;
-  text-align: center;
-}
-
-.order-cancel-btn:hover {
-  background: #fff0f0;
-  color: var(--color-danger);
-  border-color: #ffcdd2;
 }
 
 .order-footer {

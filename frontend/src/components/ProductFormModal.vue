@@ -145,9 +145,9 @@
 
         <div v-if="error" class="form-error">{{ error }}</div>
 
-        <button type="submit" class="modal__submit" :disabled="submitting" data-testid="product-submit-btn">
+        <AppButton type="submit" block :disabled="submitting" data-testid="product-submit-btn">
           {{ submitting ? 'Сохранение...' : (isEdit ? 'Сохранить' : 'Создать') }}
-        </button>
+        </AppButton>
       </form>
     </div>
   </div>
@@ -156,6 +156,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import api from '@/services/api';
+import AppButton from '@/components/ui/AppButton.vue';
 
 const props = defineProps({
   product: { type: Object, default: null },
@@ -395,22 +396,6 @@ const handleSubmit = async () => {
   background: #fff0f0;
   color: var(--color-danger);
   font-size: 14px;
-}
-
-.modal__submit {
-  width: 100%;
-  padding: 14px;
-  border-radius: 12px;
-  background: var(--color-primary);
-  color: #fff;
-  font-size: 16px;
-  font-weight: 600;
-  border: none;
-  margin-top: 4px;
-}
-
-.modal__submit:disabled {
-  opacity: 0.6;
 }
 
 .image-grid {

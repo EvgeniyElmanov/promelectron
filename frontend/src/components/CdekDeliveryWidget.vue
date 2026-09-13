@@ -4,14 +4,14 @@
 
     <div v-if="!selectedDelivery" class="cdek-widget__empty">
       <p class="cdek-widget__hint">Выберите способ получения, чтобы рассчитать стоимость доставки</p>
-      <button
-        class="cdek-widget__btn"
+      <AppButton
+        block
         data-testid="cdek-open-selector"
         :disabled="isLoading"
         @click="openWidget"
       >
         {{ isLoading ? 'Загрузка...' : 'Выбрать доставку СДЭК' }}
-      </button>
+      </AppButton>
     </div>
 
     <div v-else class="cdek-widget__selected" data-testid="cdek-selected-delivery">
@@ -26,7 +26,7 @@
         </p>
       </div>
       <div class="cdek-widget__price">{{ formatPrice(selectedDelivery.price) }} ₽</div>
-      <button class="cdek-widget__change" data-testid="cdek-change-delivery" @click="openWidget">Изменить</button>
+      <AppButton variant="ghost" size="sm" data-testid="cdek-change-delivery" @click="openWidget">Изменить</AppButton>
     </div>
 
     <div v-if="isFallback" class="cdek-widget__fallback-hint" data-testid="cdek-widget-fallback-hint">
@@ -44,6 +44,7 @@
 
 <script setup>
 import { ref, computed, onUnmounted } from 'vue';
+import AppButton from '@/components/ui/AppButton.vue';
 
 const props = defineProps({
   items: { type: Array, required: true },
@@ -256,23 +257,6 @@ onUnmounted(() => {
   margin: 0;
 }
 
-.cdek-widget__btn {
-  padding: 12px 16px;
-  border-radius: 12px;
-  background: var(--color-primary);
-  color: #fff;
-  font-size: 15px;
-  font-weight: 600;
-  border: none;
-  cursor: pointer;
-  width: 100%;
-}
-
-.cdek-widget__btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
 .cdek-widget__selected {
   display: flex;
   flex-direction: column;
@@ -313,15 +297,8 @@ onUnmounted(() => {
   color: var(--color-text);
 }
 
-.cdek-widget__change {
+.cdek-widget__selected .app-button {
   align-self: flex-start;
-  padding: 6px 12px;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--color-primary);
-  border: 1px solid var(--color-primary);
-  font-size: 13px;
-  cursor: pointer;
 }
 
 .cdek-widget__fallback-hint {

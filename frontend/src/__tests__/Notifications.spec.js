@@ -72,8 +72,8 @@ describe('Notifications.vue', () => {
 
   it('прочитать все', async () => {
     const wrapper = await mountComponent();
-    const btn = wrapper.find('.notifications-page__read-all');
-    expect(btn.exists()).toBe(true);
+    const btn = wrapper.findAll('button').find((b) => b.text() === 'Прочитать все');
+    expect(btn).toBeDefined();
     await btn.trigger('click');
     await flushPromises();
     expect(mockPatch).toHaveBeenCalledWith('/notifications/read-all');

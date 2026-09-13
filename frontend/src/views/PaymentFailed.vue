@@ -19,9 +19,9 @@
 
     <div v-else-if="error" class="payment-result__error">
       <p class="payment-result__error-text">{{ error }}</p>
-      <button class="payment-result__btn payment-result__btn--primary" @click="fetchOrder">
+      <AppButton @click="fetchOrder">
         Повторить
-      </button>
+      </AppButton>
     </div>
 
     <div v-else-if="order" class="payment-result__details">
@@ -54,13 +54,13 @@
     </div>
 
     <div class="payment-result__actions">
-      <button
+      <AppButton
         v-if="orderId && !loading"
-        class="payment-result__btn payment-result__btn--primary"
+        block
         @click="retryPayment"
       >
         Попробовать ещё раз
-      </button>
+      </AppButton>
       <router-link v-if="isAuthenticated" to="/orders" class="payment-result__btn payment-result__btn--secondary">
         Мои заказы
       </router-link>
@@ -77,6 +77,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useAuth } from '@/composables/useAuth';
 import { getOrder, getGuestOrder } from '@/api/orders';
 import { formatPrice } from '@/utils/price';
+import AppButton from '@/components/ui/AppButton.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -310,11 +311,6 @@ onMounted(() => {
   text-decoration: none;
   border: none;
   cursor: pointer;
-}
-
-.payment-result__btn--primary {
-  background: var(--color-primary);
-  color: #fff;
 }
 
 .payment-result__btn--secondary {
