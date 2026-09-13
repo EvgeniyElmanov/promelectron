@@ -542,3 +542,7 @@
 - Реализация по одобренным spec+PLAN: глобальные классы форм §19 в base.css (.field/.field__input 48px/radius 10px/focus-ring/error), Cart — кнопки на AppButton, поля получателя на .field, степпер по PDP-образцу, шаговые заголовки, хардкод вычищен, мёртвый CSS удалён; Checkout — pay/cancel/retry на AppButton, security-блок на токенах primary-light/primary, шаги 3–4. Задокументированное отклонение F001: нумерация шагов сжата до фактических блоков (Cart 1–2, Checkout 3–4).
 - Проверки: pytest 644 passed, vitest 439/439, lint 0/0, E2E 117 passed + 2 известных падения (checkout:152 прошёл), visual-smoke 11/11. Ревью: 2 итерации → APPROVED.
 - Коммиты dd49817 + d248252. Issue #249 → In review. Замок frontend занят до мержа.
+
+## 2026-09-13 — design-cart-checkout-pr209 (#249): PR #252 смержен, этап 3-C закрыт
+- Владелец одобрил мерж: squash `eb4a16a` в main, issue #249 закрыт с доказательством, статус Done. Замок `frontend` перешёл к #250 (PR-D: Header §11 + мобильная шапка + миграция кнопок) — финальный срез этапа 3.
+- Этапы дизайна: 0 ✅ (PR #209) · 1 ✅ (#243) · 2 ✅ (#245) · 3-A ✅ (#247) · 3-B ✅ (#251) · 3-C ✅ (#252) · 3-D ⬜ (#250).
