@@ -533,3 +533,7 @@
 - Реализация по одобренным spec+PLAN: Catalog — AppBreadcrumbs (Главная/Каталог[/категория], search-режим), H1 «Каталог» (h2 products-section-title сохранён), кнопки на AppButton, sort-select/empty-state на токенах, #e8f0fe убран. PDP — крошки Главная/Каталог/<название> (без категории: category_name в API нет, D-02), новый quantity-stepper (clamp 1..stock, aria-labels, pdp-qty-*), pdp-add-to-cart/pdp-submit-review на AppButton, хардкод-цвета на токены. По решению владельца (H001) HeroBanner h1→h2 — единственный H1 на `/`.
 - Проверки: pytest 644 passed, vitest 439/439, lint 0/0, E2E 117 passed + 3 известных предсуществующих падения, visual-smoke 11/11. Ревью: 2 итерации (2 LOW + H001), итог APPROVED.
 - Коммиты c3c6d07 + b8b6d1d. Issue #248 → In review. Замок frontend занят до мержа.
+
+## 2026-09-13 — design-catalog-pdp-pr209 (#248): PR #251 смержен, этап 3-B закрыт
+- Владелец одобрил мерж: squash `41c4d06` в main, issue #248 закрыт с доказательством, статус Done. Замок `frontend` перешёл к #249 (PR-C: Cart/Checkout).
+- Этапы дизайна: 0 ✅ (PR #209) · 1 ✅ (#243) · 2 ✅ (#245) · 3-A ✅ (#247) · 3-B ✅ (#251) · 3-C ⬜ (#249) · 3-D ⬜ (#250).
