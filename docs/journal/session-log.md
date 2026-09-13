@@ -562,3 +562,7 @@
 ## 2026-09-13 — хвосты после этапа 3: заведены #254/#255, backlog дополнен
 - #254 (e2e, P2): auth.spec.js:72 хардкодит product id=1 — починка по SKU. #255 (backend, P2): sort by price в meilisearch-режиме (search-filter:82). checkout:152 остаётся с #210/#224.
 - `docs/backlog.md` P2-долг +2: глобальная миграция форм на `.field` (11 компонентов, после PR #252), PDP-фичи §20 (Buy now, Delivery/Warranty, Related, Recently viewed — D-06 этапа 3-B). Пульт: счётчики замков backend 8 / e2e 3, список «заведено без кнопки» дополнен.
+
+## 2026-09-13 — уборка после этапа 3 + попытка деплоя в прод
+- Прод-деплой запущен вручную (`gh workflow run deploy.yml -f environment=prod`, run 34758661936): build зелёный, **deploy-prod упал на RBAC** — job использует test-kubeconfig, SA `promelectron-test-*` без прав на secrets в namespace `promelectron` (harborcred). Заведено #256 (infra, P1) + блокер BLK-016. Дополняет BLK-014 (нет prod-ключей CDEK): в прод сейчас не уехать по двум независимым причинам.
+- Уборка: остановлен dev-стек; удалены 7 worktree (`.worktrees/design-*-pr209`, `pr209-design-docs-cleanup`; root-owned pycache от контейнеров починены chown через docker-контейнер), 7 локальных веток и 7 origin-веток (docs, feature/design-*-pr209 ×6). Ветка `recovery-local` оставлена.
