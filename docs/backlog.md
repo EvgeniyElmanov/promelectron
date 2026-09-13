@@ -55,6 +55,8 @@
 | `console.error` ×5 в проде + lazy loading для 30 статически импортируемых view | `frontend` | `router/index.js:4-31` |
 | Несогласованный trailing slash: 69 путей со слэшем, 46 без | `backend` | `api/cart.py`, `api/admin.py:107,120` |
 | Нет HPA и NetworkPolicy; нет security headers в nginx (только `Cache-Control`) | `infra` | `frontend/nginx.conf:40` |
+| Глобальная миграция форм на `.field`/`.field__input` (§19): классы созданы в PR #252, применены только в Cart; 11 компонентов дублируют scoped-стили (Login, Register, ProfileRecipients, Admin и др.) | `frontend` | `assets/base.css:149-173`, spec 3-C D-02/Option B |
+| PDP-фичи из §20 без данных/логики: Buy now, Delivery/Warranty-секции, Related products, Recently viewed (отложены из этапа 3-B, D-06) | `frontend` | `.agent/runs/design-catalog-pdp-pr209/spec.md` D-06 |
 
 ---
 
