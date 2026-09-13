@@ -91,7 +91,7 @@
 
 | ID | Что делаем | Замок | Ветка | PR |
 |---|---|---|---|---|
-| [#248](https://github.com/AutonomaCo/promelectron/issues/248) | рестайл Catalog и Product (PDP) по дизайн-системе (§21, §20) + AppBreadcrumbs — этап 3, PR-B | `frontend` | `feature/design-catalog-pdp-pr209` | — |
+| [#248](https://github.com/AutonomaCo/promelectron/issues/248) | рестайл Catalog и Product (PDP) по дизайн-системе (§21, §20) + AppBreadcrumbs — этап 3, PR-B | `frontend` | `feature/design-catalog-pdp-pr209` | [#251](https://github.com/AutonomaCo/promelectron/pull/251) |
 
 #246 смержен (PR #247, squash `5db7ccd`, 2026-09-13): Homepage по макету дизайн-системы (этап 3-A) — HeroBanner, BenefitsStrip, PopularCategories, AppFooter, AppBreadcrumbs; замок `frontend` перешёл к #248 (PR-B), дальше в очереди #249 (PR-C) и #250 (PR-D).
 

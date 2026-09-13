@@ -528,3 +528,8 @@
 - Владелец одобрил мерж: squash `5db7ccd` в main, issue #246 закрыт с доказательством (комментарий с прогонами), статус Done.
 - Заведены follow-up issues этапа 3: #248 (PR-B: Catalog §21 + PDP §20 + AppBreadcrumbs), #249 (PR-C: Cart §23 + Checkout §24 + формы §19), #250 (PR-D: Header §11 + мобильная шапка + миграция кнопок). Метка `frontend`, приоритетная очередь на пульте: #248 → #249 → #250 → #225.
 - Замок `frontend` перешёл к #248 — стартует PR-B.
+
+## 2026-09-13 — design-catalog-pdp-pr209 (#248): PR #251 открыт, этап 3-B (Catalog+PDP) ждёт human-review
+- Реализация по одобренным spec+PLAN: Catalog — AppBreadcrumbs (Главная/Каталог[/категория], search-режим), H1 «Каталог» (h2 products-section-title сохранён), кнопки на AppButton, sort-select/empty-state на токенах, #e8f0fe убран. PDP — крошки Главная/Каталог/<название> (без категории: category_name в API нет, D-02), новый quantity-stepper (clamp 1..stock, aria-labels, pdp-qty-*), pdp-add-to-cart/pdp-submit-review на AppButton, хардкод-цвета на токены. По решению владельца (H001) HeroBanner h1→h2 — единственный H1 на `/`.
+- Проверки: pytest 644 passed, vitest 439/439, lint 0/0, E2E 117 passed + 3 известных предсуществующих падения, visual-smoke 11/11. Ревью: 2 итерации (2 LOW + H001), итог APPROVED.
+- Коммиты c3c6d07 + b8b6d1d. Issue #248 → In review. Замок frontend занят до мержа.
