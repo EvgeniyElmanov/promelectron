@@ -13,13 +13,13 @@
 
     <div v-else-if="error" class="checkout__error">
       <p>{{ error }}</p>
-      <button class="checkout__retry" @click="fetchOrder">Повторить</button>
+      <AppButton variant="primary" size="sm" class="checkout__retry" @click="fetchOrder">Повторить</AppButton>
     </div>
 
     <template v-else-if="order">
       <!-- Order Summary -->
       <div class="checkout__card">
-        <div class="checkout__section-title">Сумма к оплате</div>
+        <div class="checkout__section-title">Шаг 3. Сводка заказа</div>
         <div class="checkout__amount">{{ formatPrice(order.total_price) }} ₽</div>
         <div class="checkout__items-count">{{ order.items?.length || 0 }} товаров</div>
         <div v-if="order.delivery_method" class="checkout__delivery-info">
@@ -41,7 +41,7 @@
 
       <!-- Payment Info -->
       <div class="checkout__card">
-        <div class="checkout__section-title">Способ оплаты</div>
+        <div class="checkout__section-title">Шаг 4. Оплата</div>
         <div class="checkout__payment-method">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
@@ -64,20 +64,23 @@
       </div>
 
       <!-- Pay Button -->
-      <button
+      <AppButton
+        variant="primary"
+        block
         class="checkout__pay-btn"
+        :loading="processing"
         :disabled="processing"
         data-testid="pay-button"
         @click="processPayment"
       >
         <span v-if="processing">Переход к оплате...</span>
         <span v-else>Оплатить {{ formatPrice(order.total_price) }} ₽</span>
-      </button>
+      </AppButton>
 
       <!-- Cancel -->
-      <button class="checkout__cancel" @click="cancelPayment" :disabled="processing">
+      <AppButton variant="ghost" block :disabled="processing" @click="cancelPayment">
         Отменить
-      </button>
+      </AppButton>
     </template>
   </div>
 </template>
@@ -90,6 +93,7 @@ import { useToast } from '@/composables/useToast';
 import { getOrder, getGuestOrder } from '@/api/orders';
 import { createPayment, createGuestPayment } from '@/api/payments';
 import { formatPrice } from '@/utils/price';
+import AppButton from '@/components/ui/AppButton.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -197,7 +201,7 @@ onMounted(fetchOrder);
 .checkout__back {
   width: 36px;
   height: 36px;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   border: none;
   background: var(--color-bg-white);
   color: var(--color-text);
@@ -215,48 +219,48 @@ onMounted(fetchOrder);
 }
 
 .checkout__title {
-  font-size: 18px;
-  font-weight: 700;
+  font-size: var(--font-size-body-lg);
+  font-weight: var(--font-weight-bold);
   color: var(--color-text);
 }
 
 .checkout__card {
   background: var(--color-bg-white);
-  border-radius: 16px;
-  padding: 16px;
-  margin-bottom: 12px;
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  margin-bottom: var(--space-3);
 }
 
 .checkout__section-title {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
   color: var(--color-text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.3px;
-  margin-bottom: 10px;
+  margin-bottom: var(--space-2);
 }
 
 .checkout__amount {
-  font-size: 28px;
-  font-weight: 700;
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-bold);
   color: var(--color-text);
   line-height: 1.2;
 }
 
 .checkout__items-count {
-  font-size: 14px;
+  font-size: var(--font-size-body-sm);
   color: var(--color-text-secondary);
-  margin-top: 4px;
+  margin-top: var(--space-1);
 }
 
 .checkout__payment-method {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px;
-  border-radius: 10px;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
   background: var(--color-bg);
-  font-size: 14px;
+  font-size: var(--font-size-body-sm);
   color: var(--color-text);
 }
 
@@ -266,52 +270,26 @@ onMounted(fetchOrder);
 }
 
 .checkout__payment-note {
-  font-size: 13px;
+  font-size: var(--font-size-caption);
   color: var(--color-text-secondary);
-  margin-top: 10px;
+  margin-top: var(--space-2);
   line-height: 1.4;
 }
 
 .checkout__security {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px;
-  border-radius: 10px;
-  background: #e8f0fe;
-  color: #1a73e8;
-  font-size: 13px;
-  margin-bottom: 16px;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  font-size: var(--font-size-caption);
+  margin-bottom: var(--space-4);
 }
 
 .checkout__pay-btn {
-  width: 100%;
-  padding: 16px;
-  border-radius: 14px;
-  background: var(--color-primary);
-  color: #fff;
-  font-size: 17px;
-  font-weight: 600;
-  border: none;
-  cursor: pointer;
-  margin-bottom: 10px;
-}
-
-.checkout__pay-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.checkout__cancel {
-  width: 100%;
-  padding: 14px;
-  border-radius: 14px;
-  background: transparent;
-  color: var(--color-text-secondary);
-  font-size: 15px;
-  font-weight: 500;
-  border: none;
-  cursor: pointer;
+  margin-bottom: var(--space-2);
 }
 
 .checkout__loading,
@@ -326,19 +304,12 @@ onMounted(fetchOrder);
 }
 
 .checkout__retry {
-  margin-top: 12px;
-  padding: 10px 20px;
-  border-radius: 10px;
-  background: var(--color-primary);
-  color: #fff;
-  border: none;
-  font-size: 15px;
-  cursor: pointer;
+  margin-top: var(--space-3);
 }
 
 .checkout__delivery-info {
-  margin-top: 12px;
-  padding-top: 12px;
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
   border-top: 1px solid var(--color-border);
 }
 
@@ -346,36 +317,36 @@ onMounted(fetchOrder);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 14px;
+  font-size: var(--font-size-body-sm);
   color: var(--color-text);
 }
 
 .checkout__delivery-days {
-  font-size: 13px;
+  font-size: var(--font-size-caption);
   color: var(--color-text-secondary);
-  margin-top: 4px;
+  margin-top: var(--space-1);
 }
 
 .checkout__recipient {
-  margin-top: 12px;
-  padding-top: 12px;
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
   border-top: 1px solid var(--color-border);
 }
 
 .checkout__recipient-label {
-  font-size: 13px;
+  font-size: var(--font-size-caption);
   color: var(--color-text-secondary);
   margin-bottom: 2px;
 }
 
 .checkout__recipient-name {
-  font-size: 15px;
-  font-weight: 600;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
   color: var(--color-text);
 }
 
 .checkout__recipient-phone {
-  font-size: 14px;
+  font-size: var(--font-size-body-sm);
   color: var(--color-text);
   margin-top: 2px;
 }

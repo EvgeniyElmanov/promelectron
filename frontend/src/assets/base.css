@@ -132,3 +132,55 @@ body {
     font-size: 16px !important;
   }
 }
+
+/* Forms (§19): глобальные классы полей. font-size здесь БЕЗ !important —
+   на mobile его intended-перекрывает правило #171 выше. */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.field__label {
+  font-size: var(--font-size-caption);
+  color: var(--color-text-secondary);
+}
+
+.field__input {
+  height: 48px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-white);
+  color: var(--color-text);
+  font-size: var(--font-size-body);
+  font-family: inherit;
+  width: 100%;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.field__input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-light);
+}
+
+.field__input--error,
+.field__input--error:focus {
+  border-color: var(--color-error);
+}
+
+.field__input:disabled {
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+  cursor: not-allowed;
+}
+
+.field__error {
+  font-size: var(--font-size-caption);
+  color: var(--color-error);
+}
+
+.field__required {
+  color: var(--color-danger);
+}

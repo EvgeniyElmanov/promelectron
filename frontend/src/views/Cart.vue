@@ -34,7 +34,7 @@
         <path d="M16 10a4 4 0 01-8 0"/>
       </svg>
       <p class="cart__empty-text">Ваша корзина пуста</p>
-      <router-link to="/" class="cart__empty-btn">Перейти в каталог</router-link>
+      <AppButton variant="primary" @click="router.push('/')">Перейти в каталог</AppButton>
     </div>
 
     <!-- Cart Content -->
@@ -102,6 +102,7 @@
                 <div class="cart-item__qty">
                   <button
                     class="cart-item__qty-btn"
+                    aria-label="Уменьшить количество"
                     :disabled="item.quantity <= 1 || updatingId === item.id"
                     @click="updateQuantity(item.id, item.quantity - 1)"
                   >
@@ -110,6 +111,7 @@
                   <span class="cart-item__qty-value">{{ item.quantity }}</span>
                   <button
                     class="cart-item__qty-btn"
+                    aria-label="Увеличить количество"
                     :disabled="item.quantity >= (item.product?.stock || 0) || updatingId === item.id"
                     @click="updateQuantity(item.id, item.quantity + 1)"
                   >
@@ -159,6 +161,7 @@
         </div>
 
         <div v-if="isAuthenticated" class="cart__summary-section">
+          <h4 class="cart__step-title">Шаг 1. Доставка</h4>
           <CdekDeliveryWidget
             v-model="selectedDelivery"
             :items="selectedItems"
@@ -168,7 +171,7 @@
 
           <div class="cart__recipient">
             <div class="cart__recipient-header">
-              <h4 class="cart__recipient-title">Получатель</h4>
+              <h4 class="cart__step-title">Шаг 2. Получатель</h4>
               <router-link to="/profile/recipients" class="cart__recipient-manage">
                 Управлять
               </router-link>
@@ -193,45 +196,49 @@
                   <template v-if="recipient.is_default">(по умолчанию)</template>
                 </option>
               </select>
-              <button
+              <AppButton
                 v-if="isSelectedRecipient"
-                type="button"
+                variant="secondary"
+                size="sm"
                 class="cart__recipient-new-button"
                 data-testid="recipient-new-button"
                 @click="selectedRecipientId = null; applyRecipient(null)"
               >
                 Новый получатель
-              </button>
+              </AppButton>
             </div>
 
             <div class="cart__recipient-fields">
-              <div class="cart__recipient-field">
-                <label for="recipient-first-name">Имя <span class="field__required">*</span></label>
+              <div class="cart__recipient-field field">
+                <label class="field__label" for="recipient-first-name">Имя <span class="field__required">*</span></label>
                 <input
                   id="recipient-first-name"
                   v-model="recipientFirstName"
                   type="text"
+                  class="field__input"
                   placeholder="Иван"
                   :disabled="isSelectedRecipient"
                   data-testid="recipient-first-name"
                 />
               </div>
-              <div class="cart__recipient-field">
-                <label for="recipient-last-name">Фамилия <span class="field__required">*</span></label>
+              <div class="cart__recipient-field field">
+                <label class="field__label" for="recipient-last-name">Фамилия <span class="field__required">*</span></label>
                 <input
                   id="recipient-last-name"
                   v-model="recipientLastName"
                   type="text"
+                  class="field__input"
                   placeholder="Иванов"
                   :disabled="isSelectedRecipient"
                   data-testid="recipient-last-name"
                 />
               </div>
-              <div class="cart__recipient-field">
-                <label for="recipient-country-code">Страна <span class="field__required">*</span></label>
+              <div class="cart__recipient-field field">
+                <label class="field__label" for="recipient-country-code">Страна <span class="field__required">*</span></label>
                 <select
                   id="recipient-country-code"
                   v-model="recipientCountryCode"
+                  class="field__input"
                   :disabled="isSelectedRecipient"
                   data-testid="recipient-country-code"
                 >
@@ -240,23 +247,25 @@
                   <option value="BY">Беларусь</option>
                 </select>
               </div>
-              <div v-if="recipientCountryCode === 'RU'" class="cart__recipient-field">
-                <label for="recipient-patronymic">Отчество</label>
+              <div v-if="recipientCountryCode === 'RU'" class="cart__recipient-field field">
+                <label class="field__label" for="recipient-patronymic">Отчество</label>
                 <input
                   id="recipient-patronymic"
                   v-model="recipientPatronymic"
                   type="text"
+                  class="field__input"
                   placeholder="Иванович"
                   :disabled="isSelectedRecipient"
                   data-testid="recipient-patronymic"
                 />
               </div>
-              <div class="cart__recipient-field cart__recipient-field--wide">
-                <label for="recipient-phone">Телефон <span class="field__required">*</span></label>
+              <div class="cart__recipient-field cart__recipient-field--wide field">
+                <label class="field__label" for="recipient-phone">Телефон <span class="field__required">*</span></label>
                 <input
                   id="recipient-phone"
                   v-model="recipientPhone"
                   type="tel"
+                  class="field__input"
                   placeholder="+7 (999) 000-00-00"
                   :disabled="isSelectedRecipient"
                   data-testid="recipient-phone"
@@ -275,14 +284,17 @@
         <span class="cart__checkout-label">Итого</span>
         <span class="cart__checkout-price">{{ formatPrice(orderTotal) }} ₽</span>
       </div>
-      <button
+      <AppButton
+        variant="primary"
+        block
         class="cart__checkout-btn"
         data-testid="checkout-button"
+        :loading="creatingOrder"
         :disabled="creatingOrder || selectedItems.length === 0 || (isAuthenticated && (!isDeliveryValid || !isRecipientValid))"
         @click="createOrder"
       >
         {{ creatingOrder ? 'Оформление...' : 'Оформить заказ' }}
-      </button>
+      </AppButton>
     </div>
   </div>
 </template>
@@ -301,6 +313,7 @@ import { normalizePhone } from '@/composables/useGuestCheckout';
 import { formatPrice } from '@/utils/price';
 import CdekDeliveryWidget from '@/components/CdekDeliveryWidget.vue';
 import SkeletonCartItem from '@/components/SkeletonCartItem.vue';
+import AppButton from '@/components/ui/AppButton.vue';
 
 const PHONE_REGEX = /^\+7\d{10}$/;
 const NAME_REGEX = /^[A-Za-zА-Яа-яЁё\- ]+$/;
@@ -707,29 +720,29 @@ watch(supplierId, () => {
 }
 
 .cart__title {
-  font-size: 22px;
-  font-weight: 700;
+  font-size: var(--font-size-h3);
+  font-weight: var(--font-weight-bold);
   color: var(--color-text);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .cart__count {
-  font-size: 15px;
-  font-weight: 500;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
   color: var(--color-text-secondary);
   background: var(--color-bg);
   padding: 2px 10px;
-  border-radius: 12px;
+  border-radius: var(--radius-pill);
 }
 
 .cart__select-all {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  margin-top: 8px;
-  font-size: 14px;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  font-size: var(--font-size-body-sm);
   color: var(--color-text);
   cursor: pointer;
 }
@@ -753,27 +766,6 @@ watch(supplierId, () => {
   }
 }
 
-/* Loading */
-.cart__loading {
-  text-align: center;
-  padding: 60px 20px;
-  color: var(--color-text-secondary);
-}
-
-.cart__loading .spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid var(--color-border);
-  border-top-color: var(--color-primary);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  margin: 0 auto 12px;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
 /* Empty */
 .cart__empty {
   text-align: center;
@@ -782,35 +774,25 @@ watch(supplierId, () => {
 
 .cart__empty-icon {
   color: var(--color-border);
-  margin-bottom: 16px;
+  margin-bottom: var(--space-4);
 }
 
 .cart__empty-text {
-  font-size: 16px;
+  font-size: var(--font-size-body);
   color: var(--color-text-secondary);
-  margin-bottom: 20px;
-}
-
-.cart__empty-btn {
-  display: inline-block;
-  padding: 12px 24px;
-  border-radius: 12px;
-  background: var(--color-primary);
-  color: #fff;
-  font-size: 15px;
-  font-weight: 500;
+  margin-bottom: var(--space-5);
 }
 
 /* Items */
 .cart__items {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--space-2);
 }
 
 .cart-item {
   position: relative;
-  border-radius: 14px;
+  border-radius: var(--radius-lg);
   overflow: hidden;
   touch-action: pan-y;
 }
@@ -820,10 +802,10 @@ watch(supplierId, () => {
   z-index: 1;
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  padding: 12px;
+  gap: var(--space-3);
+  padding: var(--space-3);
   background: var(--color-bg-white);
-  border-radius: 14px;
+  border-radius: var(--radius-lg);
   transition: transform 0.2s ease;
 }
 
@@ -851,7 +833,7 @@ watch(supplierId, () => {
 .cart-item__image {
   width: 72px;
   height: 72px;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   overflow: hidden;
   flex-shrink: 0;
   cursor: pointer;
@@ -868,9 +850,9 @@ watch(supplierId, () => {
 }
 
 .cart-item__placeholder {
-  font-size: 24px;
-  font-weight: 700;
-  color: rgba(0, 0, 0, 0.12);
+  font-size: var(--font-size-h3);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-muted);
 }
 
 /* Info */
@@ -879,12 +861,12 @@ watch(supplierId, () => {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .cart-item__name {
-  font-size: 14px;
-  font-weight: 500;
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-medium);
   color: var(--color-text);
   line-height: 1.3;
   cursor: pointer;
@@ -892,7 +874,7 @@ watch(supplierId, () => {
 }
 
 .cart-item__price-per-unit {
-  font-size: 13px;
+  font-size: var(--font-size-caption);
   color: var(--color-text-secondary);
 }
 
@@ -900,7 +882,7 @@ watch(supplierId, () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 4px;
+  margin-top: var(--space-1);
 }
 
 /* Quantity */
@@ -909,7 +891,7 @@ watch(supplierId, () => {
   align-items: center;
   gap: 2px;
   border: 1px solid var(--color-border);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   overflow: hidden;
 }
 
@@ -943,21 +925,21 @@ watch(supplierId, () => {
 .cart-item__qty-value {
   min-width: 32px;
   text-align: center;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-semibold);
   color: var(--color-text);
 }
 
 /* Line Total */
 .cart-item__total {
-  font-size: 16px;
-  font-weight: 700;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
   color: var(--color-text);
 }
 
 /* Stock Warning */
 .cart-item__stock-warning {
-  font-size: 12px;
+  font-size: var(--font-size-caption);
   color: var(--color-danger);
 }
 
@@ -968,7 +950,7 @@ watch(supplierId, () => {
   height: 36px;
   align-items: center;
   justify-content: center;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   color: var(--color-text-secondary);
   background: transparent;
   transition: background 0.15s, color 0.15s;
@@ -976,7 +958,7 @@ watch(supplierId, () => {
 }
 
 .cart-item__remove-desktop:hover {
-  background: #fff0f0;
+  background: color-mix(in srgb, var(--color-danger) 8%, transparent);
   color: var(--color-danger);
 }
 
@@ -997,13 +979,13 @@ watch(supplierId, () => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: var(--space-1);
   background: var(--color-danger);
-  color: #fff;
-  font-size: 12px;
-  font-weight: 500;
+  color: var(--color-white);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
   border: none;
-  border-radius: 0 14px 14px 0;
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
   z-index: 0;
 }
 
@@ -1032,13 +1014,13 @@ watch(supplierId, () => {
 
 .cart__summary-section {
   background: var(--color-bg-white);
-  border-radius: 14px;
-  padding: 16px;
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
 }
 
 .cart__summary-title {
-  font-size: 16px;
-  font-weight: 700;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
   color: var(--color-text);
   margin-bottom: 14px;
 }
@@ -1047,68 +1029,9 @@ watch(supplierId, () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 14px;
+  font-size: var(--font-size-body-sm);
   color: var(--color-text);
   padding: 6px 0;
-}
-
-.cart__summary-free {
-  color: #0d7a3e;
-  font-weight: 500;
-}
-
-/* Delivery selection */
-.cart__delivery-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.cart__delivery-option {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px;
-  border-radius: 10px;
-  border: 2px solid var(--color-border);
-  cursor: pointer;
-  transition: border-color 0.2s;
-}
-
-.cart__delivery-option--active {
-  border-color: var(--color-primary);
-}
-
-.cart__delivery-radio {
-  width: 18px;
-  height: 18px;
-  accent-color: var(--color-primary);
-  flex-shrink: 0;
-}
-
-.cart__delivery-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.cart__delivery-name {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.cart__delivery-days {
-  font-size: 12px;
-  color: var(--color-text-secondary);
-}
-
-.cart__delivery-price {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-text);
-  white-space: nowrap;
 }
 
 .cart__summary-divider {
@@ -1118,15 +1041,15 @@ watch(supplierId, () => {
 }
 
 .cart__summary-row--total {
-  font-size: 18px;
-  font-weight: 700;
+  font-size: var(--font-size-body-lg);
+  font-weight: var(--font-weight-bold);
   color: var(--color-text);
 }
 
 /* Recipient */
 .cart__recipient {
-  margin-top: 16px;
-  padding-top: 16px;
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
   border-top: 1px solid var(--color-border);
 }
 
@@ -1134,51 +1057,42 @@ watch(supplierId, () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 10px;
+  margin-bottom: var(--space-2);
 }
 
-.cart__recipient-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-text);
-  margin: 0;
+.cart__step-title {
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin: 0 0 var(--space-3);
 }
 
 .cart__recipient-manage {
-  font-size: 13px;
+  font-size: var(--font-size-caption);
   color: var(--color-primary);
   text-decoration: none;
 }
 
 .cart__recipient-loading {
-  font-size: 14px;
+  font-size: var(--font-size-body-sm);
   color: var(--color-text-secondary);
-  margin-bottom: 10px;
+  margin-bottom: var(--space-2);
 }
 
 .cart__recipient-select {
-  margin-bottom: 10px;
+  margin-bottom: var(--space-2);
 }
 
 .cart__recipient-new-button {
-  margin-top: 8px;
-  padding: 8px 12px;
-  font-size: 14px;
-  color: var(--color-primary);
-  background: transparent;
-  border: 1px solid var(--color-primary);
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-.cart__recipient-new-button:hover {
-  background: var(--color-primary-light, rgba(0, 123, 255, 0.1));
+  margin-top: var(--space-2);
 }
 
 .cart__recipient-fields {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: var(--space-2);
 }
 
 @media (max-width: 480px) {
@@ -1187,48 +1101,14 @@ watch(supplierId, () => {
   }
 }
 
-.cart__recipient-field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
 .cart__recipient-field--wide {
   grid-column: 1 / -1;
 }
 
-.cart__recipient-field label {
-  font-size: 12px;
-  color: var(--color-text-secondary);
-}
-
-.cart__recipient-field input,
-.cart__recipient-field select {
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid var(--color-border);
-  background: var(--color-bg-white);
-  font-size: 15px;
-  color: var(--color-text);
-  width: 100%;
-}
-
-.cart__recipient-field input:disabled,
-.cart__recipient-field select:disabled {
-  background: var(--color-bg);
-  color: var(--color-text-secondary);
-}
-
-.cart__recipient-field input:focus,
-.cart__recipient-field select:focus {
-  outline: none;
-  border-color: var(--color-primary);
-}
-
 .cart__recipient-error {
-  margin-top: 10px;
-  font-size: 13px;
-  color: var(--color-danger);
+  margin-top: var(--space-2);
+  font-size: var(--font-size-caption);
+  color: var(--color-error);
 }
 
 /* Sticky Checkout Bar */
@@ -1254,10 +1134,10 @@ watch(supplierId, () => {
     position: static;
     transform: none;
     margin-top: 20px;
-    padding: 16px;
-    border-radius: 14px;
+    padding: var(--space-4);
+    border-radius: var(--radius-lg);
     border: none;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    box-shadow: var(--shadow-card);
   }
 }
 
@@ -1268,37 +1148,24 @@ watch(supplierId, () => {
 }
 
 .cart__checkout-label {
-  font-size: 13px;
+  font-size: var(--font-size-caption);
   color: var(--color-text-secondary);
 }
 
 .cart__checkout-price {
-  font-size: 20px;
-  font-weight: 700;
+  font-size: var(--font-size-h3);
+  font-weight: var(--font-weight-bold);
   color: var(--color-text);
 }
 
 .cart__checkout-btn {
   flex: 1;
   max-width: 220px;
-  padding: 14px 20px;
-  border-radius: 12px;
-  background: var(--color-primary);
-  color: #fff;
-  font-size: 15px;
-  font-weight: 600;
-  transition: opacity 0.15s;
-}
-
-.cart__checkout-btn:disabled {
-  background: #cccccc;
-  cursor: not-allowed;
 }
 
 @media (min-width: 768px) {
   .cart__checkout-btn {
     max-width: 240px;
-    font-size: 16px;
   }
 }
 </style>

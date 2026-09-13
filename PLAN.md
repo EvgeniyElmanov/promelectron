@@ -1,75 +1,145 @@
-# PLAN: design-catalog-pdp-pr209 (issue #248)
-
-**Роль:** frontend-dev · **Ветка:** `feature/design-catalog-pdp-pr209` · **Дата:** 2026-09-13
+# PLAN: design-cart-checkout-pr209 (этап 3-C, issue #249)
 
 ## 1. Goal
 
-Рестайл страниц каталога (`Products.vue`, §21) и PDP (`ProductDetail.vue`, §20) на токенах и примитивах этапов 1–3A (AppBreadcrumbs, AppButton, токены `base.css`) без изменения бизнес-логики, API и существующих `data-testid`; критерий успеха — `make test-frontend` и `make lint-frontend` зелёные, E2E-baseline не хуже (117 passed + ≤3 известных падения).
+Перевести `Cart.vue` (§23), `Checkout.vue` (§24) и поля форм (§19) на токены и примитивы
+дизайн-системы (`base.css`, `AppButton`), не меняя логику, API и ни один `data-testid`;
+успех — vitest ≥439 зелёный, lint 0/0, E2E baseline 117 passed + те же 3 известных падения,
+visual-smoke 11/11, ноль хардкод-цветов в изменённых файлах.
 
-## 2. Решённые открытые вопросы спеки (проверено до плана)
+## 2. Steps
 
-- **`category_name` в `/products/{id}/detail` — НЕТ.** `backend/src/app/schemas/product.py:69-75` (`ProductDetailOut`) содержит только `category_id` (строка 22). Значит по D-02 крошки PDP = `Главная / Каталог / <product.name>`, звено категории **не добавляем**, API не трогаем.
-- **Catalog-крошки:** звено категории возможно только в search-режиме — `allCategories` грузится (`fetchAllCategories` вызывается только при `searchAvailable`, `Products.vue:379-381`) и даёт имя по `categoryId`. В legacy-режиме имени категории нет (`selectedCategory` — только id) → крошки всегда `Главная / Каталог`, звено категории добавляется только если имя найдено в `allCategories`.
-- **AppButton** (`components/ui/AppButton.vue`) — `click` не объявлен в emits, нативный fallthrough работает (D-07); `data-testid`/`class`/`disabled` тоже проваливаются на `<button>`. Есть props `variant` (primary/secondary/ghost), `size` (md=48px/sm=40px), `loading`, `block`. Менять компонент не нужно.
-- **Правило #171** — живёт в `base.css:128-133` (`@media (max-width:767px) { input,select,textarea { font-size: 16px !important } }`). Не трогаем; scoped-стили price-input (`font-size: 14px`) на мобилке ему проигрывают — при рестайле **не поднимать** font-size инпутов и не добавлять `!important`.
-- **Токены на месте:** `--color-primary-light` (#e8f0fe-замена), `--color-danger` (#ff4242-замена), `--color-star` (#ffa800-замена для звёзд), `--color-success`, `--radius-lg/md`, `--space-*`. Новых токенов не потребуется.
-- **`addToCart(productId, quantity = 1, product = null)`** (`useCart.js:56`) — сигнатура уже принимает qty; менять composable не нужно.
-- **FilterPanel.vue** — уже на токенах, хардкод-цветов нет (проверено грепом); точечный рестайл не требуется, файл вне правок.
+Порядок по spec Parallelization Plan: base.css формы → Cart.vue → Checkout.vue → тесты.
+После каждого шага: `make -C "$WORKTREE" test-frontend` (соответствующий spec-файл) +
+`make -C "$WORKTREE" lint-frontend`. Полный прогон в конце.
 
-## 3. Steps
+### Шаг 1. `frontend/src/assets/base.css` — глобальные классы форм §19 (D-02)
 
-### Шаг 0. Подготовка
-Проверить `git -C $WORKTREE status` — чисто; ветка `feature/design-catalog-pdp-pr209` актуальна от `origin/main` (merge/rebase при расхождении).
+Добавить секцию «Forms (§19)» после существующего контента (в конец файла, после блока #171):
 
-### Шаг 1. Products.vue — крошки + H1 (структура)
-1. Импорт `AppBreadcrumbs` из `@/components/ui/AppBreadcrumbs.vue`.
-2. `<AppBreadcrumbs :items="catalogCrumbs" />` в начало `.home__section` (над фильтрами).
-3. `computed catalogCrumbs`: базово `[{label:'Главная',to:'/'},{label:'Каталог'}]`; если `searchAvailable` и `categoryId` и имя найдено в `allCategories` (плоский поиск по дереву, учесть вложенность `children`) — вставить `{label: <имя>}` перед последним элементом.
-4. H1 «Каталог»: добавить `<h1 class="home__title">Каталог</h1>` рядом с крошками (визуально по §21). `h2[data-testid="products-section-title"]` **не трогаем** (D-04).
-5. **Проверка:** `make -C $WORKTREE test-frontend` — Products.spec.js зелёный (дописать тест на крошки/H1, см. шаг 5).
+- `.field` — обёртка label + control + error (flex column, gap `var(--space-1)`).
+- `.field__label` — caption-стиль лейбла (`--font-size-caption`/`body-sm`, `--color-text-secondary`).
+- `.field__input` — height 48px, `border-radius: var(--radius-md)`,
+  `padding: 0 var(--space-4)`, `border: 1px solid var(--color-border)`,
+  `font-size: var(--font-size-body)`, `background: var(--color-bg-white)`,
+  `color: var(--color-text)`, `width: 100%`.
+- `.field__input:focus` — `border-color: var(--color-primary)` + focus-ring
+  (`outline: none` + `box-shadow: 0 0 0 3px` на базе `--color-primary-light` / color-mix от primary).
+- `.field__input--error` — `border-color: var(--color-error)`.
+- `.field__input:disabled` — `background: var(--color-bg)`, `color: var(--color-text-secondary)`.
+- `.field__error` — caption, `--color-error`.
+- `.field__required` — `color: var(--color-danger)` (класс уже используется в Cart.vue:209,220,…
+  без определения — заработает глобально).
 
-### Шаг 2. Products.vue — рестайл фильтров/сортировки/состояний на токены
-1. `sort-select`: высота 48px (§19), radius `var(--radius-md)`, border `var(--color-border)` — уже близко, привести; стрелку-шеврон в SVG-фоне перекрасить на `--color-text-secondary`-совместимый hex (SVG data-uri не читает var() — оставить hex, это не «хардкод-цвет UI», либо зафиксировать в PR).
-2. `home__price-btn` → `AppButton` variant primary, size md (48px) или sm; `@click="applyFilters"` — нативный fallthrough (D-07). `data-testid="apply-price-btn"` сохранить дословно.
-3. `home__load-more` → `AppButton` variant secondary, block; `:hover` с хардкодом `#e8f0fe` (Products.vue:634-636) удалить — hover уже в AppButton. `data-testid="load-more-btn"` сохранить.
-4. Rating-кнопки: `--active` — `color: #fff` → `var(--color-white)`; border/pill-радиус 20px → `var(--radius-pill)` или оставить — по макету §21.
-5. Empty-state `products-empty`: карточка `var(--color-bg-white)` + `var(--radius-lg)` + padding по токенам `--space-*`.
-6. Сетка/grid, tabs, count — стили уже на токенах/нейтральны; только вычистить оставшиеся хардкоды в файле.
-7. **Проверка:** `make -C $WORKTREE test-frontend` + `make -C $WORKTREE lint-frontend`.
+**Инварианты:**
+- Блок `base.css:125-132` (`font-size: 16px !important` на mobile input, issue #171) — НЕ трогать;
+  на mobile он intended-перекроет font-size `.field__input`.
+- Новые стили `.field__input` БЕЗ `!important`.
 
-### Шаг 3. ProductDetail.vue — крошки + AppButton + рестайл
-1. Импорт `AppBreadcrumbs`; рендер первым элементом внутри `.product-detail` (над sticky-хедером — хедер sticky `top:0`, крошки над ним в потоке). Items: `[{label:'Главная',to:'/'},{label:'Каталог',to:'/'},{label: product.name}]` (категории нет — см. §2; «Каталог» ведёт на `/`, т.к. маршрута /catalog нет — D-01; допустимо сделать «Каталог» нелinkованным span, решить при реализации: AppBreadcrumbs делает ссылкой только не-последние items с `to`, последний всегда span).
-2. `pdp-add-to-cart` → `AppButton` block, `:loading="cartLoading"`, `:disabled="isOutOfStock"`, `@click="addToCart"`; класс `--in-cart` сохранить (зелёное состояние `var(--color-success)`): AppButton принимает внешний class через fallthrough — либо оставить кастомный класс поверх, либо вариант через CSS. Текст/логика состояний (`В корзине · N`) без изменений. `data-testid="pdp-add-to-cart"` дословно.
-3. `pdp-submit-review` → `AppButton` variant primary size md/sm. `data-testid="pdp-submit-review"` дословно.
-4. Рестайл: `--fav-btn--active` `#ff4242` → `var(--color-danger)`; `--stock--out-of-stock` fallback убрать (`--color-danger` есть); звёзды `#FFB800`/`#ccc` → `var(--color-star)` / `var(--color-border)` (в SVG-атрибутах `fill`/`stroke` var() работает); радиусы 12px → `var(--radius-lg)` на галерее/секциях по §20; цена — размеры по §4 (28/32px уже близко).
-5. Back-кнопка `pdp-back-button` и sticky-хедер — сохранить (D-08).
-6. **Проверка:** vitest + lint; существующий тест на `--in-cart` класс должен пройти (класс сохранён).
+Проверка: `make lint-frontend` (stylelint/css не ломается); визуально классы нигде ещё не применяются
+(select в Cart с `field__input` — no-op до шага 2, внешне не изменится: у него и так высота ~от контента).
 
-### Шаг 4. ProductDetail.vue — quantity-stepper (D-05)
-1. Инлайн-блок в `.product-detail__actions` рядом с кнопкой (без отдельного компонента — используется один раз): `ref qty = ref(1)`, кнопки `−`/`+` + `<input type="number">`, clamp `1..product.stock`; показывать только когда `!isOutOfStock && inCartQty === 0` (при in-cart кнопка ведёт в корзину — stepper бессмысленен).
-2. `addToCart` → `addToCartStore(productId.value, qty.value, product.value)` (composable сам валидирует stock, `useCart.js:57`).
-3. Новые testid (добавление не ломает E2E): `pdp-qty-decrease`, `pdp-qty-input`, `pdp-qty-increase`.
-4. Input: font-size 16px на десктопе НЕ обязателен, но на мобилке сработает правило #171 из base.css — scoped-стиль не должен его перебивать `!important`.
-5. **Проверка:** vitest + lint.
+### Шаг 2. `frontend/src/views/Cart.vue` — рестайл (D-03/04/05/07)
 
-### Шаг 5. Unit-тесты
-1. `Products.spec.js`: тест крошек (`app-breadcrumbs` виден, содержит «Каталог») и H1.
-2. `ProductDetail.spec.js`: тест крошек (`Главная / Каталог / Test Product`); тесты quantity-stepper: дефолт 1, `+` до stock и не выше, `−` не ниже 1, add передаёт qty в корзину (`getQuantityInCart(1)` === qty после двух «+»).
-3. Обновить существующие тесты, если обёртка AppButton меняет селекторы (селекторы по `data-testid` — не должны; тест на класс `--in-cart` проверить).
-4. **Проверка:** `make -C $WORKTREE test-frontend` — весь suite зелёный (baseline 434 + новые).
+Template:
 
-### Шаг 6. Финальные прогоны и self-review
-1. `make -C $WORKTREE lint-frontend` — 0 warnings/errors.
-2. `make -C $WORKTREE test-frontend` — зелёный.
-3. Adversarial self-review по `git diff origin/main...HEAD`: все testid дословно, нет `console.log`, нет прямых axios-вызовов, нет новых хардкод-цветов, правило #171 не нарушено, каждый Must-have спеки покрыт diff'ом.
-4. E2E (`make test-e2e`) — фаза QA после dev; visual-smoke baseline-обновление при необходимости зафиксировать в отчёте.
+1. `checkout-button` (строка 278-286): `<button class="cart__checkout-btn">` →
+   `<AppButton variant="primary" block :loading="creatingOrder" :disabled="…" data-testid="checkout-button" @click="createOrder">`.
+   Текст: `creatingOrder ? 'Оформление...' : 'Оформить заказ'` — сохранить в слоте
+   (loading-проп AppButton блокирует кнопку, но не меняет текст — текст остаётся на нашей стороне).
+   AppButton рендерит `<button>`, click-fallthrough нативный (без defineEmits) — @click работает.
+2. `recipient-new-button` (196-204) → `<AppButton variant="secondary" size="sm" data-testid="recipient-new-button" @click="…">`.
+3. Empty-state: `<router-link to="/" class="cart__empty-btn">` →
+   `<AppButton data-testid не нужен (не было) @click="router.push('/')">Перейти в каталог</AppButton>`.
+   Смена тега a→button: проверить, что unit-тесты empty-state не ищут `router-link`
+   (grep по Cart.spec.js — таких тестов нет; убедиться при правке).
+4. Поля получателя (D-05): на все `.cart__recipient-field` input/select добавить класс `field__input`
+   (+ на label — `field__label`, на обёртку — `field` рядом с `cart__recipient-field`, чтобы не
+   ломать grid-раскладку). Select получателя уже имеет `field__input` (строка 182) — заработает сам.
+   `.field__required` на span уже есть.
+5. Шаговые заголовки (D-07): перед секцией CDEK/получателя добавить нумерованные caption/uppercase
+   заголовки («Шаг 1. Получатель» / «Шаг 2. Доставка» — формулировки по §24; маппинг Cart = шаги 1–3).
+   Стиль — как `checkout__section-title`, на токенах. Только визуально, без stepper-компонента.
+6. Степпер количества (SHOULD): привести к PDP-паттерну 3-B (`ProductDetail.vue:79-111`):
+   та же геометрия кнопок, aria-label «Уменьшить количество»/«Увеличить количество» на qty-btn.
+   `data-testid` НЕ добавлять (E2E не завязан; `cart-item`/`cart-item-select` не трогаем).
+   Логика clamp 1..stock уже есть в `:disabled`.
 
-## 4. Risks / Open questions
+Style (scoped):
 
-- **AppButton + внешние классы/стили:** `--in-cart` зелёный фон придётся давать поверх `app-button--primary` (специфичность scoped-стилей view vs ui-компонента — проверить, может понадобиться `:deep()` или класс-модификатор в самом AppButton; предпочесть внешний класс без правки AppButton).
-- **Крошка «Каталог» на PDP ведёт на `/`** — тот же маршрут, что «Главная». Визуально корректно, но два звена на один маршрут; альтернатива — «Каталог» без `to` (span). Решение при реализации: сделать link на `/` (совпадает с поведением каталога на главной), отметить в отчёте.
-- **Крошки в search-режиме каталога:** поиск имени категории по дереву `allCategories` (вложенность) — если структура плоская/древовидная, нужен рекурсивный поиск; при промахе крошки деградируют до `Главная / Каталог` без падений.
-- **Stepper vs «В корзине · N»:** при скрытии stepper'а в in-cart состоянии layout прыгает — зарезервировать ширину или принять (минор).
-- **SVG-шеврон sort-select** — data-uri не читает CSS-переменные; оставить hex `#666` (фиксирую в отчёте как осознанное исключение) либо заменить на inline-SVG. Решение: оставить data-uri, зафиксировать.
-- **visual-smoke (11 страниц)** почти наверняка потребует обновления скриншот-базлайна — ожидаемо, фиксируется в PR (AC-4).
-- **Известные падения E2E** (auth:72, search-filter:82, checkout:152) не чиним — baseline 117 passed.
+- Радиусы: 14px → `var(--radius-lg)`, 10px → `var(--radius-md)`, 12px → `var(--radius-lg)`
+  (cart__count pill-образный — можно `--radius-pill`), 8px → `var(--radius-sm)`.
+- Тень checkout-bar `0 4px 20px rgba(0,0,0,0.08)` → `var(--shadow-card)`.
+- `rgba(0, 0, 0, 0.12)` (placeholder) → `var(--color-text-muted)`.
+- `#fff0f0` (hover remove-desktop) → `color-mix(in srgb, var(--color-danger) 8%, transparent)`.
+- `#cccccc` disabled checkout-btn → удалить (AppButton даёт `opacity: 0.5`); `#fff` → `var(--color-white)`.
+- Типографика: 22px → `var(--font-size-h3)`, 15/14/13/12px → `--font-size-body/body-sm/caption` по месту;
+  font-weight 500/600/700 → `--font-weight-medium/semibold/bold`.
+- Поля получателя: удалить локальные стили `.cart__recipient-field input/select` (1205-1226) и
+  `.cart__recipient-field label` — заменяются глобальными `.field*`; оставить grid-раскладку
+  (`.cart__recipient-fields`, `--wide`).
+- `.cart__recipient-error` — оставить общий блок ошибки, цвет `var(--color-error)` (spec Edge Cases:
+  `.field__input--error` per-field не вводим, логику валидации не меняем).
+- Удалить мёртвый CSS: `.cart__loading` + `@keyframes spin` (757-775; в шаблоне loading = SkeletonCartItem,
+  класса нет), `.cart__summary-free` (1055-1058), `.cart__delivery-*` (1060-1112).
+  **Предварительно проверено:** grep по `frontend/src` — `cart__delivery*` встречается только в
+  Cart.vue, `CdekDeliveryWidget` эти классы НЕ использует.
+- Удалить локальные `.cart__checkout-btn`, `.cart__recipient-new-button`, `.cart__empty-btn` стили
+  (заменены AppButton).
+
+Проверка: `npx vitest run src/__tests__/Cart.spec.js` в worktree + lint. Ручной осмотр diff на
+сохранность всех testid: cart-page, cart-title, cart-select-all, cart-item, cart-item-select,
+recipient-select, recipient-new-button, recipient-first-name/last-name/country-code/patronymic/phone,
+checkout-button.
+
+### Шаг 3. `frontend/src/views/Checkout.vue` — рестайл (D-06/07)
+
+Template:
+
+1. `pay-button` (67-75) → `<AppButton variant="primary" block :loading="processing" data-testid="pay-button" @click="processPayment">`
+   со слотом «Оплатить … ₽ / Переход к оплате...» (текст на нашей стороне).
+2. `checkout__cancel` (78-80) → `<AppButton variant="ghost" block :disabled="processing" @click="cancelPayment">Отменить</AppButton>`.
+3. `checkout__retry` (16) → `<AppButton variant="primary" size="sm" @click="fetchOrder">Повторить</AppButton>`.
+4. `checkout__back` — оставить нативной icon-кнопкой, стили на токены (radius `--radius-md`).
+5. Шаговые заголовки (D-07): перед карточками — нумерованные заголовки секций (шаги 4–6 по §24:
+   сводка/доставка/оплата), стиль `checkout__section-title` на токенах.
+
+Style:
+
+- Security-блок: `background: #e8f0fe; color: #1a73e8` → `var(--color-primary-light)` / `var(--color-primary)`.
+- Карточки 16px → `var(--radius-lg)`; payment-method/security 10px → `var(--radius-md)`.
+- Типографика на `--font-size-*` (28px amount → `--font-size-h2`, 13/14/15px → body-sm/caption и т.д.),
+  веса на `--font-weight-*`.
+- `#fff` → `var(--color-white)`; удалить `.checkout__pay-btn`/`.checkout__cancel`/`.checkout__retry` стили.
+- Все `data-testid` сохранить: checkout-page, checkout-recipient, checkout-recipient-phone, pay-button.
+
+Проверка: `npx vitest run src/__tests__/Checkout.spec.js` + lint.
+
+### Шаг 4. Тесты и финальные гейты
+
+1. `make -C "$WORKTREE" test-frontend` — полный vitest (≥439). Править только упавшее от смены
+   разметки (ожидаемо: ничего или empty-state в Cart.spec.js, если тест ищет `cart__empty-btn`/`router-link` —
+   grep таких не нашёл, но подтвердить прогоном).
+2. `make -C "$WORKTREE" lint-frontend` — 0 errors / 0 warnings.
+3. Grep-аудит изменённых файлов: ни одного `#[0-9a-fA-F]{3,6}` / `rgba(` вне `--color-*` определений
+   (`--shadow-*` в base.css уже существуют — не трогаем).
+4. `pytest` backend (644 passed) — гейт обязателен, затронут быть не должен.
+5. E2E по возможности: `cart-select.spec.js`, `checkout.spec.js`, `checkout-failed-cards.spec.js`,
+   visual-smoke 11/11 — ожидание: 117 passed + те же 3 известных падения (не чинить).
+6. Self-review по ролевому файлу: полный diff vs spec Must-haves, 3–5 потенциальных проблем.
+
+## 3. Risks / Open questions
+
+- **AppButton vs unit-тесты на `disabled`:** AppButton ставит `:disabled="disabled || loading"` —
+  тесты `checkout-button`/`pay-button` на `attributes('disabled')` совместимы. Риск низкий.
+- **Смена тега в empty-state (router-link → button):** visual-smoke `/cart` рендерит пустую корзину —
+  проверить 11/11. Если тест ищет `a[href="/"]` — поправить тест (только это место).
+- **Глобальные `.field__input` vs scoped-копии в 11+ компонентах:** scoped CSS имеет приоритет над
+  глобальным — существующие страницы не изменятся. Риск минимален; не рефакторим их (Out of Scope).
+- **`.field__input` на `<select>`:** padding `0 var(--space-4)` + height 48px применимы к select;
+  стрелка браузерная — приемлемо, визуально сверить.
+- **Шаговые заголовки:** точные формулировки шагов (1–3 в Cart, 4–6 в Checkout) сверить с
+  `docs/design/design-system-detailed.md` §24 при имплементации; никакого роутинга/валидации шагов.
+- **color-mix поддержка:** `color-mix(in srgb, …)` для `#fff0f0`-замены — поддержка современных
+  браузеров ок; fallback не нужен (hover-эффект). Если lint ругнётся — заменить на `--color-primary-light`-подобный подход с `--color-danger`-оттенком зафиксировать в PR.
+- Открытых вопросов к пользователю нет: промо-блок (D-08) и error-стиль полей (общий блок) решены в spec.
