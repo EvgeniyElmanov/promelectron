@@ -546,3 +546,9 @@
 ## 2026-09-13 — design-cart-checkout-pr209 (#249): PR #252 смержен, этап 3-C закрыт
 - Владелец одобрил мерж: squash `eb4a16a` в main, issue #249 закрыт с доказательством, статус Done. Замок `frontend` перешёл к #250 (PR-D: Header §11 + мобильная шапка + миграция кнопок) — финальный срез этапа 3.
 - Этапы дизайна: 0 ✅ (PR #209) · 1 ✅ (#243) · 2 ✅ (#245) · 3-A ✅ (#247) · 3-B ✅ (#251) · 3-C ✅ (#252) · 3-D ⬜ (#250).
+
+## 2026-09-13 — design-header-pr209 (#250): PR #253 открыт, этап 3-D (Header + кнопки) ждёт human-review
+- Реализация по одобренным spec+PLAN: мобильная шапка [Menu][Logo][Cart] + новый MobileMenuDrawer (auth/supplier ветки, Escape/click-outside, z-300), desktop «Каталог» ghost-link, AppButton +prop type/+variant danger (задокументированное отклонение от §10), миграция ~20 views на AppButton (оставлены: icon-кнопки, чипы, OAuth, router-link'и), responsive.spec.js переписан (D-05, отмена правила #171 «только логотип» — подтверждено владельцем).
+- Ревью поймал 2 CRITICAL до QA: supplier E2E сидел на удалённых CSS-классах → testid-селекторы (supplier-product-add, supplier-product-delete-${id}); verify-banner мигрирован. Итерация 2: APPROVED.
+- Проверки: pytest 644, vitest 452/452 (+13 новых), lint 0/0, E2E 118 passed + 3 известных падения (новых нет — responsive/supplier/toast-follow-scroll зелёные), visual-smoke 11/11.
+- Коммиты 7519195 + a0acafe. Issue #250 → In review. Замок frontend занят до мержа. Этап 3 этим PR завершается.

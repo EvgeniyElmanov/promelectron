@@ -89,7 +89,7 @@
 
 | ID | Что делаем | Замок | Ветка | PR |
 |---|---|---|---|---|
-| [#250](https://github.com/AutonomaCo/promelectron/issues/250) | рестайл Header (§11, мобильный [Menu][Logo][Cart]) + миграция кнопок — этап 3, PR-D | `frontend` | `feature/design-header-pr209` | — |
+| [#250](https://github.com/AutonomaCo/promelectron/issues/250) | рестайл Header (§11, мобильный [Menu][Logo][Cart]) + миграция кнопок — этап 3, PR-D | `frontend` | `feature/design-header-pr209` | [#253](https://github.com/AutonomaCo/promelectron/pull/253) |
 
 #249 смержен (PR #252, squash `eb4a16a`, 2026-09-13): рестайл Cart/Checkout + формы §19 (этап 3-C) — глобальные `.field__input` в base.css, кнопки на AppButton, хардкод на токены; замок `frontend` перешёл к #250 (PR-D, финальный срез этапа 3).
 
