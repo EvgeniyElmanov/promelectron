@@ -1,5 +1,6 @@
 <template>
   <div class="product-detail">
+    <AppBreadcrumbs v-if="!loading" :items="pdpCrumbs" class="product-detail__breadcrumbs" />
     <div class="product-detail__header">
       <button class="product-detail__back" data-testid="pdp-back-button" @click="$router.back()">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
@@ -59,7 +60,7 @@
 
         <div class="product-detail__rating" v-if="product.reviews_count > 0" data-testid="pdp-rating">
           <span class="product-detail__stars">
-            <svg v-for="n in 5" :key="n" width="16" height="16" viewBox="0 0 24 24" :fill="n <= Math.round(product.average_rating) ? '#FFB800' : 'none'" :stroke="n <= Math.round(product.average_rating) ? '#FFB800' : '#ccc'" stroke-width="2">
+            <svg v-for="n in 5" :key="n" width="16" height="16" viewBox="0 0 24 24" :fill="n <= Math.round(product.average_rating) ? 'var(--color-star)' : 'none'" :stroke="n <= Math.round(product.average_rating) ? 'var(--color-star)' : 'var(--color-border)'" stroke-width="2">
               <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
             </svg>
           </span>
@@ -75,15 +76,51 @@
         </div>
 
         <div class="product-detail__actions">
-          <button
+          <div
+            v-if="!isOutOfStock && inCartQty === 0"
+            class="product-detail__qty"
+            data-testid="pdp-qty-stepper"
+          >
+            <button
+              class="product-detail__qty-btn"
+              data-testid="pdp-qty-decrease"
+              aria-label="Уменьшить количество"
+              :disabled="qty <= 1"
+              @click="qty = Math.max(1, qty - 1)"
+            >
+              −
+            </button>
+            <input
+              v-model.number="qty"
+              type="number"
+              class="product-detail__qty-input"
+              data-testid="pdp-qty-input"
+              aria-label="Количество товара"
+              min="1"
+              :max="product.stock"
+              @change="clampQty"
+            />
+            <button
+              class="product-detail__qty-btn"
+              data-testid="pdp-qty-increase"
+              aria-label="Увеличить количество"
+              :disabled="qty >= product.stock"
+              @click="qty = Math.min(product.stock, qty + 1)"
+            >
+              +
+            </button>
+          </div>
+          <AppButton
+            block
+            :loading="cartLoading"
+            :disabled="isOutOfStock"
             class="product-detail__cart-btn"
             :class="{ 'product-detail__cart-btn--in-cart': inCartQty > 0 && !isOutOfStock }"
             data-testid="pdp-add-to-cart"
-            :disabled="cartLoading || isOutOfStock"
             @click="addToCart"
           >
             {{ isOutOfStock ? 'Нет в наличии' : (cartLoading ? '...' : (inCartQty > 0 ? `В корзине · ${inCartQty}` : 'В корзину')) }}
-          </button>
+          </AppButton>
         </div>
 
         <div class="product-detail__section" v-if="product.description" data-testid="pdp-description">
@@ -122,7 +159,7 @@
               :class="{ 'product-detail__star-btn--active': n <= newRating }"
               @click="newRating = n"
             >
-              <svg width="24" height="24" viewBox="0 0 24 24" :fill="n <= newRating ? '#FFB800' : 'none'" stroke="#ccc" stroke-width="2">
+              <svg width="24" height="24" viewBox="0 0 24 24" :fill="n <= newRating ? 'var(--color-star)' : 'none'" stroke="var(--color-border)" stroke-width="2">
                 <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
               </svg>
             </button>
@@ -133,14 +170,16 @@
             placeholder="Поделитесь впечатлениями..."
             rows="3"
           />
-          <button
+          <AppButton
+            size="sm"
+            :loading="reviewLoading"
+            :disabled="newRating === 0"
             class="product-detail__review-submit"
-            :disabled="reviewLoading || newRating === 0"
             data-testid="pdp-submit-review"
             @click="submitReview"
           >
             {{ reviewLoading ? '...' : 'Оставить отзыв' }}
-          </button>
+          </AppButton>
         </div>
 
         <div v-if="reviews.length === 0" class="product-detail__empty" data-testid="pdp-no-reviews">
@@ -156,7 +195,7 @@
           >
             <div class="product-detail__review-header">
               <span class="product-detail__review-stars">
-                <svg v-for="n in 5" :key="n" width="14" height="14" viewBox="0 0 24 24" :fill="n <= review.rating ? '#FFB800' : 'none'" :stroke="n <= review.rating ? '#FFB800' : '#ccc'" stroke-width="2">
+                <svg v-for="n in 5" :key="n" width="14" height="14" viewBox="0 0 24 24" :fill="n <= review.rating ? 'var(--color-star)' : 'none'" :stroke="n <= review.rating ? 'var(--color-star)' : 'var(--color-border)'" stroke-width="2">
                   <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
                 </svg>
               </span>
@@ -178,6 +217,8 @@ import { useAuth } from '@/composables/useAuth';
 import { useCart } from '@/composables/useCart';
 import { useToast } from '@/composables/useToast';
 import SkeletonProductDetail from '@/components/SkeletonProductDetail.vue';
+import AppBreadcrumbs from '@/components/ui/AppBreadcrumbs.vue';
+import AppButton from '@/components/ui/AppButton.vue';
 import { getImageUrl } from '@/composables/useImageUrl';
 import { formatDate } from '@/utils/date';
 
@@ -196,9 +237,25 @@ const reviewLoading = ref(false);
 const newRating = ref(0);
 const newReviewText = ref('');
 const selectedImage = ref(0);
+const qty = ref(1);
 
 const productId = computed(() => Number(route.params.id));
 const inCartQty = computed(() => getQuantityInCart(productId.value));
+
+// Крошки PDP (§20): Главная / Каталог / <товар>. Имени категории в ответе
+// /products/{id}/detail нет (только category_id) — звено категории не добавляем (D-02).
+const pdpCrumbs = computed(() => [
+  { label: 'Главная', to: '/' },
+  { label: 'Каталог', to: '/' },
+  { label: product.value.name || '…' },
+]);
+
+// Счётчик количества (D-05): clamp 1..stock.
+const clampQty = () => {
+  const max = product.value.stock || 1;
+  const value = Number(qty.value);
+  qty.value = Number.isFinite(value) ? Math.min(Math.max(Math.round(value), 1), max) : 1;
+};
 
 const placeholderColors = [
   '#E3F2FD', '#FCE4EC', '#E8F5E9', '#FFF3E0',
@@ -269,7 +326,8 @@ const addToCart = async () => {
   if (cartLoading.value) return;
   cartLoading.value = true;
   try {
-    await addToCartStore(productId.value, 1, product.value);
+    clampQty();
+    await addToCartStore(productId.value, qty.value, product.value);
   } catch {
     toast('Не удалось добавить в корзину', 'error');
   } finally {
@@ -308,6 +366,10 @@ onMounted(fetchProduct);
   background: var(--color-bg);
   min-height: 100vh;
   padding-bottom: 20px;
+}
+
+.product-detail__breadcrumbs {
+  padding: 10px 12px 0;
 }
 
 .product-detail__header {
@@ -369,7 +431,7 @@ onMounted(fetchProduct);
 }
 
 .product-detail__fav-btn--active {
-  color: #ff4242;
+  color: var(--color-danger);
 }
 
 .product-detail__fav-btn--active svg {
@@ -400,7 +462,7 @@ onMounted(fetchProduct);
 
 .product-detail__image {
   aspect-ratio: 1;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -410,7 +472,7 @@ onMounted(fetchProduct);
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
 }
 
 .product-detail__thumbs {
@@ -423,7 +485,7 @@ onMounted(fetchProduct);
 .product-detail__thumb {
   width: 56px;
   height: 56px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
   border: 2px solid transparent;
   flex-shrink: 0;
@@ -494,7 +556,7 @@ onMounted(fetchProduct);
 }
 
 .product-detail__stock--out-of-stock {
-  color: var(--color-danger, #ff4242);
+  color: var(--color-danger);
 }
 
 .product-detail__attrs {
@@ -526,31 +588,63 @@ onMounted(fetchProduct);
 .product-detail__actions {
   display: flex;
   gap: 10px;
+  align-items: stretch;
+}
+
+.product-detail__qty {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-white);
+  overflow: hidden;
+}
+
+.product-detail__qty-btn {
+  width: 40px;
+  align-self: stretch;
+  font-size: 18px;
+  color: var(--color-text);
+  transition: background 0.15s;
+}
+
+.product-detail__qty-btn:hover:not(:disabled) {
+  background: var(--color-bg);
+}
+
+.product-detail__qty-btn:disabled {
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+
+.product-detail__qty-input {
+  width: 44px;
+  border: none;
+  text-align: center;
+  font-size: 15px;
+  color: var(--color-text);
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.product-detail__qty-input::-webkit-outer-spin-button,
+.product-detail__qty-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .product-detail__cart-btn {
   flex: 1;
-  padding: 14px;
-  border-radius: 12px;
-  background: var(--color-primary);
-  color: #fff;
-  font-size: 16px;
-  font-weight: 600;
-  transition: opacity 0.15s;
 }
 
-.product-detail__cart-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.product-detail__cart-btn--in-cart {
+.product-detail__cart-btn.product-detail__cart-btn--in-cart {
   background: var(--color-success);
 }
 
 .product-detail__section {
   background: var(--color-bg-white);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   padding: 14px;
 }
 
@@ -600,7 +694,7 @@ onMounted(fetchProduct);
 .product-detail__review-textarea {
   width: 100%;
   padding: 10px 12px;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
   font-size: 14px;
   resize: vertical;
@@ -614,17 +708,6 @@ onMounted(fetchProduct);
 
 .product-detail__review-submit {
   align-self: flex-start;
-  padding: 10px 20px;
-  border-radius: 10px;
-  background: var(--color-primary);
-  color: #fff;
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.product-detail__review-submit:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 .product-detail__empty {
@@ -643,7 +726,7 @@ onMounted(fetchProduct);
 .product-detail__review {
   padding: 10px;
   background: var(--color-bg);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
 }
 
 .product-detail__review-header {
@@ -681,7 +764,7 @@ onMounted(fetchProduct);
     flex: 0 0 45%;
     max-width: 500px;
     padding: 24px;
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
   }
   
   .product-detail__image {

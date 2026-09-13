@@ -6,7 +6,8 @@ describe('HeroBanner', () => {
   it('renders title, description, CTAs and facts', () => {
     const wrapper = mount(HeroBanner);
     expect(wrapper.find('[data-testid="hero-banner"]').exists()).toBe(true);
-    expect(wrapper.find('h1').text()).toBeTruthy();
+    // h2, а не h1: единственный H1 на маршруте `/` — «Каталог» (review H001, решение владельца)
+    expect(wrapper.find('h2.hero-banner__title').text()).toBeTruthy();
     expect(wrapper.find('[data-testid="hero-cta-catalog"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="hero-cta-new"]').exists()).toBe(true);
     expect(wrapper.findAll('.hero-banner__fact').length).toBeGreaterThan(0);

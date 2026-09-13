@@ -7,6 +7,9 @@
     <CategoryChips @select="handleCategorySelect" />
 
     <div class="home__section">
+      <AppBreadcrumbs :items="catalogCrumbs" class="home__breadcrumbs" />
+      <h1 class="home__title">Каталог</h1>
+
       <div class="home__filters">
         <select
           v-model="currentSort"
@@ -39,9 +42,9 @@
             data-testid="max-price-input"
             min="0"
           />
-          <button class="home__price-btn" data-testid="apply-price-btn" @click="applyFilters">
+          <AppButton size="sm" data-testid="apply-price-btn" class="home__price-btn" @click="applyFilters">
             OK
-          </button>
+          </AppButton>
         </div>
       </div>
 
@@ -144,14 +147,16 @@
           <!-- Intersection Observer target for infinite scroll -->
           <div ref="loadMoreTrigger" class="home__load-trigger" />
 
-          <button
+          <AppButton
             v-if="displayHasMore && !displayLoading && displayProducts.length > 0"
+            variant="secondary"
+            block
             class="home__load-more"
             data-testid="load-more-btn"
             @click="onLoadMore"
           >
             Показать ещё
-          </button>
+          </AppButton>
         </div>
       </div>
     </div>
@@ -172,6 +177,8 @@ import HeroBanner from '@/components/home/HeroBanner.vue';
 import BenefitsStrip from '@/components/home/BenefitsStrip.vue';
 import PopularCategories from '@/components/home/PopularCategories.vue';
 import AppFooter from '@/components/AppFooter.vue';
+import AppBreadcrumbs from '@/components/ui/AppBreadcrumbs.vue';
+import AppButton from '@/components/ui/AppButton.vue';
 import { useCatalogSearch } from '@/composables/useCatalogSearch';
 import { useCategories } from '@/composables/useCategories';
 import api from '@/services/api';
@@ -213,6 +220,21 @@ const { searchAvailable, facets, categoryId } = catalog;
 const { allCategories, fetchAllCategories } = useCategories();
 
 const hasMore = computed(() => total.value === null || products.value.length < total.value);
+
+// Крошки каталога (§21): Главная / Каталог [ / <категория> ].
+// Имя категории доступно только в search-режиме (allCategories грузится при probe,
+// legacy-режим знает только id) — без имени звено не добавляем (D-02).
+const catalogCrumbs = computed(() => {
+  const crumbs = [{ label: 'Главная', to: '/' }];
+  let categoryName = null;
+  if (searchAvailable.value && categoryId.value) {
+    const category = allCategories.value.find((c) => c.id === categoryId.value);
+    if (category) categoryName = category.name;
+  }
+  crumbs.push(categoryName ? { label: 'Каталог', to: '/' } : { label: 'Каталог' });
+  if (categoryName) crumbs.push({ label: categoryName });
+  return crumbs;
+});
 
 // Унифицированные значения для шаблона: активный источник (search или legacy).
 const displayProducts = computed(() => (searchAvailable.value ? catalog.items.value : products.value));
@@ -425,7 +447,7 @@ onMounted(async () => {
   font-weight: 600;
   padding: 10px 12px;
   background: var(--color-bg-white);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   cursor: pointer;
   user-select: none;
   list-style: none;
@@ -472,6 +494,17 @@ onMounted(async () => {
   }
 }
 
+.home__breadcrumbs {
+  margin-bottom: var(--space-2);
+}
+
+.home__title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0 0 var(--space-3);
+}
+
 .home__filters {
   display: flex;
   flex-direction: column;
@@ -481,14 +514,15 @@ onMounted(async () => {
 
 .home__sort-select {
   width: 100%;
-  padding: 10px 12px;
-  border-radius: 10px;
+  height: 48px;
+  padding: 0 36px 0 12px;
+  border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
   background: var(--color-bg-white);
   font-size: 14px;
   color: var(--color-text);
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 12px center;
 }
@@ -503,7 +537,7 @@ onMounted(async () => {
   flex: 1;
   min-width: 0;
   padding: 10px 12px;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
   background: var(--color-bg-white);
   font-size: 14px;
@@ -520,13 +554,6 @@ onMounted(async () => {
 }
 
 .home__price-btn {
-  padding: 10px 16px;
-  border-radius: 10px;
-  background: var(--color-primary);
-  color: var(--color-white);
-  font-size: 14px;
-  font-weight: 500;
-  border: none;
   flex-shrink: 0;
 }
 
@@ -613,26 +640,15 @@ onMounted(async () => {
 
 .home__empty {
   text-align: center;
-  padding: 40px 20px;
+  padding: var(--space-6, 40px) var(--space-5, 20px);
   color: var(--color-text-secondary);
   font-size: 15px;
+  background: var(--color-bg-white);
+  border-radius: var(--radius-lg);
 }
 
 .home__load-more {
-  display: block;
-  width: 100%;
   margin-top: 12px;
-  padding: 12px;
-  border-radius: 12px;
-  background: var(--color-bg-white);
-  color: var(--color-primary);
-  font-size: 15px;
-  font-weight: 500;
-  transition: background 0.15s;
-}
-
-.home__load-more:hover {
-  background: #e8f0fe;
 }
 
 .home__rating-filter {
@@ -651,7 +667,7 @@ onMounted(async () => {
 
 .home__rating-btn {
   padding: 6px 12px;
-  border-radius: 20px;
+  border-radius: var(--radius-pill);
   border: 1px solid var(--color-border);
   background: var(--color-bg-white);
   font-size: 13px;
@@ -661,13 +677,13 @@ onMounted(async () => {
 
 .home__rating-btn--active {
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-white);
   border-color: var(--color-primary);
 }
 
 .home__rating-clear {
   padding: 6px 10px;
-  border-radius: 20px;
+  border-radius: var(--radius-pill);
   border: 1px solid var(--color-border);
   background: var(--color-bg-white);
   font-size: 13px;

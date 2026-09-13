@@ -331,3 +331,42 @@ describe('Products.vue (homepage-секции, PR-A design-pages)', () => {
     })
   })
 })
+
+describe('Products.vue (крошки и H1, §21)', () => {
+  it('показывает крошки «Главная / Каталог» и H1 «Каталог» в legacy-режиме', async () => {
+    const wrapper = mountWithWebHistory()
+
+    const crumbs = wrapper.find('[data-testid="app-breadcrumbs"]')
+    expect(crumbs.exists()).toBe(true)
+    expect(crumbs.text()).toContain('Главная')
+    expect(crumbs.text()).toContain('Каталог')
+
+    const h1 = wrapper.find('h1.home__title')
+    expect(h1.exists()).toBe(true)
+    expect(h1.text()).toBe('Каталог')
+    // h2 с data-testid="products-section-title" сохранён (D-04)
+    expect(wrapper.find('[data-testid="products-section-title"]').exists()).toBe(true)
+  })
+
+  it('добавляет звено категории в крошки при выбранной категории (search-режим)', async () => {
+    mocks.searchEnabled = true
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: '/', component: Products }],
+    })
+    await router.push('/?category_id=1')
+    await router.isReady()
+    const wrapper = mount(Products, { global: { plugins: [router] } })
+
+    await vi.waitFor(() => {
+      expect(wrapper.find('[data-testid="filter-panel"]').exists()).toBe(true)
+    })
+    await vi.waitFor(() => {
+      const crumbs = wrapper.find('[data-testid="app-breadcrumbs"]')
+      expect(crumbs.text()).toContain('Электроника')
+    })
+    const crumbs = wrapper.find('[data-testid="app-breadcrumbs"]')
+    expect(crumbs.text()).toContain('Главная')
+    expect(crumbs.text()).toContain('Каталог')
+  })
+})

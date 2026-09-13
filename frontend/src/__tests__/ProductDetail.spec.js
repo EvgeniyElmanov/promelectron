@@ -240,6 +240,65 @@ describe('ProductDetail.vue', () => {
     })
     expect(wrapper.find('[data-testid="pdp-attributes"]').exists()).toBe(false)
   })
+
+  it('показывает крошки «Главная / Каталог / <товар>» без звена категории (D-02)', async () => {
+    const wrapper = await mountProductDetail()
+
+    await vi.waitFor(() => {
+      expect(wrapper.find('[data-testid="pdp-stock"]').exists()).toBe(true)
+    })
+    const crumbs = wrapper.find('[data-testid="app-breadcrumbs"]')
+    expect(crumbs.exists()).toBe(true)
+    expect(crumbs.text()).toContain('Главная')
+    expect(crumbs.text()).toContain('Каталог')
+    expect(crumbs.text()).toContain('Test Product')
+    // back-кнопка сохранена (D-08)
+    expect(wrapper.find('[data-testid="pdp-back-button"]').exists()).toBe(true)
+  })
+
+  it('quantity-stepper: дефолт 1, +/− с clamp 1..stock, addToCart передаёт qty', async () => {
+    localStorage.clear()
+    const { clearGuestCart, getQuantityInCart } = useCart()
+    clearGuestCart()
+    const wrapper = await mountProductDetail()
+
+    await vi.waitFor(() => {
+      expect(wrapper.find('[data-testid="pdp-qty-stepper"]').exists()).toBe(true)
+    })
+    const input = wrapper.find('[data-testid="pdp-qty-input"]')
+    expect(input.element.value).toBe('1')
+    expect(wrapper.find('[data-testid="pdp-qty-decrease"]').element.disabled).toBe(true)
+
+    await wrapper.find('[data-testid="pdp-qty-increase"]').trigger('click')
+    await wrapper.find('[data-testid="pdp-qty-increase"]').trigger('click')
+    expect(wrapper.find('[data-testid="pdp-qty-input"]').element.value).toBe('3')
+
+    await wrapper.find('[data-testid="pdp-qty-decrease"]').trigger('click')
+    expect(wrapper.find('[data-testid="pdp-qty-input"]').element.value).toBe('2')
+
+    // clamp сверху: stock = 5
+    for (let i = 0; i < 10; i++) {
+      await wrapper.find('[data-testid="pdp-qty-increase"]').trigger('click')
+    }
+    expect(wrapper.find('[data-testid="pdp-qty-input"]').element.value).toBe('5')
+    expect(wrapper.find('[data-testid="pdp-qty-increase"]').element.disabled).toBe(true)
+
+    await wrapper.find('[data-testid="pdp-add-to-cart"]').trigger('click')
+    await flushPromises()
+    expect(getQuantityInCart(1)).toBe(5)
+    // stepper скрывается в in-cart состоянии
+    expect(wrapper.find('[data-testid="pdp-qty-stepper"]').exists()).toBe(false)
+  })
+
+  it('quantity-stepper скрыт при stock = 0', async () => {
+    api.get.mockResolvedValueOnce({ data: { ...mockProduct, stock: 0 } })
+    const wrapper = await mountProductDetail()
+
+    await vi.waitFor(() => {
+      expect(wrapper.find('[data-testid="pdp-stock"]').text()).toContain('Нет в наличии')
+    })
+    expect(wrapper.find('[data-testid="pdp-qty-stepper"]').exists()).toBe(false)
+  })
 })
 
 const mockToast = vi.hoisted(() => vi.fn())

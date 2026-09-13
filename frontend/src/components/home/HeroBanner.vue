@@ -1,7 +1,7 @@
 <template>
   <section class="hero-banner" data-testid="hero-banner">
     <div class="hero-banner__content">
-      <h1 class="hero-banner__title">Техника для работы без компромиссов</h1>
+      <h2 class="hero-banner__title">Техника для работы без компромиссов</h2>
       <p class="hero-banner__description">
         Надёжные решения для бизнеса и дома. Всегда в наличии на складе.
       </p>
