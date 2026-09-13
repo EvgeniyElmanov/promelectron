@@ -552,3 +552,9 @@
 - Ревью поймал 2 CRITICAL до QA: supplier E2E сидел на удалённых CSS-классах → testid-селекторы (supplier-product-add, supplier-product-delete-${id}); verify-banner мигрирован. Итерация 2: APPROVED.
 - Проверки: pytest 644, vitest 452/452 (+13 новых), lint 0/0, E2E 118 passed + 3 известных падения (новых нет — responsive/supplier/toast-follow-scroll зелёные), visual-smoke 11/11.
 - Коммиты 7519195 + a0acafe. Issue #250 → In review. Замок frontend занят до мержа. Этап 3 этим PR завершается.
+
+## 2026-09-13 — design-header-pr209 (#250): PR #253 смержен — этап 3 и внедрение дизайн-системы завершены
+- Владелец одобрил мерж: squash `51f2b8f` в main, issue #250 закрыт с доказательством, статус Done. Замок `frontend` освобождён, следующий в очереди — #225 (accessibility).
+- Деплой-расследование по просьбе владельца: CI-деплой PR #252 упал на smoke (транзиент во время rollout; логи истекли). Повторный прогон run 34748057338 — полностью зелёный (build/deploy-test/migrate/seed/smoke/e2e ✅). deploy-prod всегда на ручном гейте: вся дизайн-система (этапы 1–3) живёт на test-контуре, в прод ещё не уходила.
+- ИТОГ внедрения PR #209: 0 ✅ (реструктуризация, e69168f) · 1 ✅ токены (#243, 513cf10) · 2 ✅ компоненты (#245, 20095d3) · 3-A ✅ Homepage (#247, 5db7ccd) · 3-B ✅ Catalog/PDP (#251, 41c4d06) · 3-C ✅ Cart/Checkout (#252, eb4a16a) · 3-D ✅ Header/кнопки (#253, 51f2b8f).
+- Урок (trace knowledge_captured): миграция CSS-классов кнопок требует grep по e2e-селекторам (ревью поймало 2 CRITICAL до QA) — кандидат в pre-edit правило.
