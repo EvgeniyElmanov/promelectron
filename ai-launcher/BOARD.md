@@ -90,7 +90,7 @@
 
 | ID | Что делаем | Замок | Ветка | PR |
 |---|---|---|---|---|
-| [#249](https://github.com/AutonomaCo/promelectron/issues/249) | рестайл Cart и Checkout по дизайн-системе (§23, §24) + формы §19 — этап 3, PR-C | `frontend` | `feature/design-cart-checkout-pr209` | — |
+| [#249](https://github.com/AutonomaCo/promelectron/issues/249) | рестайл Cart и Checkout по дизайн-системе (§23, §24) + формы §19 — этап 3, PR-C | `frontend` | `feature/design-cart-checkout-pr209` | [#252](https://github.com/AutonomaCo/promelectron/pull/252) |
 
 #248 смержен (PR #251, squash `41c4d06`, 2026-09-13): рестайл Catalog/PDP по дизайн-системе (этап 3-B) — AppBreadcrumbs, H1 «Каталог», quantity-stepper на PDP, кнопки на AppButton; замок `frontend` перешёл к #249 (PR-C), дальше в очереди #250 (PR-D).
 
