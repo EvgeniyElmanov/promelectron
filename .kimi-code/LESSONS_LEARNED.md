@@ -492,3 +492,27 @@ Backend-под уходил в CrashLoopBackOff при деплое в `promelec
 **Решение:** восстановление через `gh pr view <N> --json headRefOid` → `git branch docs <sha>` → `git push origin docs`. Tip ветки точно совпал с состоянием на момент мержа.
 
 **Профилактика:** (1) перед удалением ЛЮБОЙ ветки проверять авторство (`git log -1 --format='%an'`) и связь с чужим PR (`gh pr list --head <branch> --state all`); чужие ветки не удалять никогда — только свои `feature/<task-id>` из текущего пайплайна; (2) ветки, смерженные squash, формально «unmerged» — это не повод считать их мусором, если автор не ты; (3) при сомнении — спросить владельца, удаление из origin необратимо без точного SHA.
+
+---
+
+## 2026-09-14 | worktree: root-owned `node_modules`/`.npm` ломают `make pre-push` на `npm ci` (EACCES)
+
+**Ошибка:** `make pre-push` в worktree gh-225 дважды падал на `lint-frontend`: контейнерный `npm ci` не мог удалить/создать файлы в примонтированных `/app/node_modules` и `/app/.npm` (EACCES, root-owned после прежних контейнерных прогонов). `create-worktree --prepare-frontend` тоже падал на первом шаге `npm ci` и молча откатывался с WARNING.
+
+**Причина:** контейнерные прогоны (Playwright-образ, frontend-test) пишут в bind-mounted `frontend/node_modules` и `frontend/.npm` от root; последующие `--user 1000:1000` запуски не могут их трогать.
+
+**Решение:** сначала chown через docker: `docker run --rm -v <worktree>/frontend:/app node:20-slim sh -c "chown -R $(id -u):$(id -g) /app/node_modules /app/.npm"`, затем `python scripts/implement-pipeline.py create-worktree <task-id> --prepare-frontend`. После этого `make pre-push` прошёл.
+
+**Профилактика:** (1) при EACCES в `npm ci` внутри контейнера сразу проверять владельца `node_modules` И `.npm` (вторая — кэш, про неё забывают); (2) `--prepare-frontend` делает chown только ПОСЛЕ успешного `npm ci` — при битых правах chown нужно делать вручную до него.
+
+---
+
+## 2026-09-14 | сдвиг брейкпоинта без полного grep: MobileMenuDrawer остался на 768 (gh-258)
+
+**Ошибка:** при поднятии брейкпоинта шапки 768→1024 разработчик синхронизировал `Header.vue`, `BottomNav.vue`, `main.css`, но пропустил `MobileMenuDrawer.vue` — на 768–1023 бургер был виден, а drawer открывался в `display: none`. Ревью поймало как CRITICAL (F001) до QA.
+
+**Причина:** список файлов для синхронизации строился по «известным участникам брейкпоинта», а не полным поиском литерала по кодовой базе; e2e проверял видимость кнопки бургера, но не открытие меню.
+
+**Решение:** брейкпоинт поднят и в `MobileMenuDrawer.vue`; в e2e добавлена проверка «клик по бургеру → drawer виден» на 768px.
+
+**Профилактика:** (1) при сдвиге/введении брейкпоинта обязателен `grep -rn '768px\|767px\|min-width: 768\|innerWidth < 768'` по всему `src/` — список файлов из грепа, а не из памяти; (2) e2e на мобильный режим должен проверять не только видимость триггера, но и то, что он открывает (drawer/меню реально отображается).
