@@ -132,7 +132,7 @@ const isActive = (to) => {
 }
 
 /* Hide on desktop */
-@media (min-width: 768px) {
+@media (min-width: 1024px) {
   .bottom-nav {
     display: none;
   }

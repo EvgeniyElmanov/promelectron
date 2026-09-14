@@ -607,7 +607,7 @@ onMounted(async () => {
 
 @media (min-width: 1280px) {
   .home__grid {
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
     gap: 16px;
   }
 }

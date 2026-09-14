@@ -106,7 +106,7 @@ watch(
   background: var(--color-primary-light);
 }
 
-@media (min-width: 768px) {
+@media (min-width: 1024px) {
   .mobile-menu {
     display: none;
   }

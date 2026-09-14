@@ -47,8 +47,20 @@ input {
   }
 }
 
+@media (min-width: 1600px) {
+  .desktop-container {
+    max-width: 1440px;
+  }
+}
+
+@media (min-width: 1920px) {
+  .desktop-container {
+    max-width: 1680px;
+  }
+}
+
 /* Hide bottom nav on desktop */
-@media (min-width: 768px) {
+@media (min-width: 1024px) {
   body {
     padding-bottom: 0;
   }

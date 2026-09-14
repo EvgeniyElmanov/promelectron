@@ -76,8 +76,8 @@ describe('Header.vue', () => {
     wrapper.unmount();
   });
 
-  it('содержит CSS-правило для скрытия иконок на мобильном (< 768px)', () => {
-    expect(headerSource).toContain('@media (max-width: 767px)');
+  it('содержит CSS-правило для скрытия иконок на мобильном и планшете (< 1024px)', () => {
+    expect(headerSource).toContain('@media (max-width: 1023px)');
     expect(headerSource).toContain('.header__actions {');
     expect(headerSource).toContain('display: none;');
   });

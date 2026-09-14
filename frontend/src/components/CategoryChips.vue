@@ -68,6 +68,13 @@ onMounted(async () => {
   display: none;
 }
 
+@media (min-width: 768px) {
+  .category-chips {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
+}
+
 .category-chips__chip {
   flex-shrink: 0;
   padding: 6px 14px;

@@ -96,6 +96,65 @@ test.describe('Mobile header cleanup', () => {
   });
 });
 
+// gh-258: регрессионные проверки адаптивных дефектов.
+test.describe('Adaptive layout gh-258', () => {
+  const contentPages = ['/', '/product/1', '/cart', '/login'];
+
+  test.describe('360px: bottom nav не перекрывает контент в конце скролла', () => {
+    test.use({ viewport: { width: 360, height: 800 } });
+    for (const path of contentPages) {
+      test(path, async ({ page }) => {
+        await page.goto(path);
+        await page.waitForLoadState('networkidle');
+        const gap = await page.evaluate(() => {
+          window.scrollTo(0, document.body.scrollHeight);
+          const app = document.querySelector('.desktop-container');
+          const nav = document.querySelector('.bottom-nav');
+          if (!app || !nav || getComputedStyle(nav).display === 'none') return Infinity;
+          return nav.getBoundingClientRect().top - app.getBoundingClientRect().bottom;
+        });
+        // Допуск 1px на субпиксельное округление getBoundingClientRect.
+        expect(gap, `контент ${path} перекрыт bottom nav в конце скролла`).toBeGreaterThanOrEqual(-1);
+      });
+    }
+  });
+
+  test('768px: шапка в мобильном режиме, bottom nav виден', async ({ page }) => {
+    await page.setViewportSize({ width: 768, height: 1024 });
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    await expect(page.locator('[data-testid="mobile-menu-btn"]')).toBeVisible();
+    await expect(page.locator('.header__actions')).toBeHidden();
+    await expect(page.locator('.bottom-nav')).toBeVisible();
+
+    // gh-258 F001: на планшете бургер должен открывать видимый drawer.
+    await page.locator('[data-testid="mobile-menu-btn"]').click();
+    await expect(page.locator('[data-testid="mobile-menu-drawer"]')).toBeVisible();
+    await page.keyboard.press('Escape');
+  });
+
+  test('1024px: шапка десктопная и в одной строке', async ({ page }) => {
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    await expect(page.locator('.header__actions')).toBeVisible();
+    await expect(page.locator('[data-testid="mobile-menu-btn"]')).toBeHidden();
+    await expect(page.locator('.bottom-nav')).toBeHidden();
+    const headerHeight = await page.locator('.header').evaluate((el) => el.getBoundingClientRect().height);
+    expect(headerHeight).toBeLessThanOrEqual(73);
+  });
+
+  test('1920px: сетка каталога использует ширину (> 5 колонок)', async ({ page }) => {
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    const cols = await page.locator('.home__grid').evaluate(
+      (el) => getComputedStyle(el).gridTemplateColumns.split(' ').length,
+    );
+    expect(cols).toBeGreaterThan(5);
+  });
+});
+
 test.describe('Mobile bottom navigation cart badge', () => {
   test.use({ viewport: { width: 375, height: 667 } });
 

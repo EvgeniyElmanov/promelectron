@@ -299,7 +299,7 @@ const vClickOutside = {
   display: none;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 1024px) {
   .header__nav {
     display: flex;
     align-items: center;
@@ -348,7 +348,7 @@ const vClickOutside = {
   gap: 12px;
 }
 
-@media (max-width: 767px) {
+@media (max-width: 1023px) {
   .header__actions {
     display: none;
   }
@@ -374,7 +374,7 @@ const vClickOutside = {
   line-height: 1;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 1024px) {
   .header {
     height: 72px;
     padding: 0 var(--space-4);
