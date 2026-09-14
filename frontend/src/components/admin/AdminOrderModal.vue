@@ -1,9 +1,17 @@
 <template>
   <div v-if="visible" class="modal-overlay" data-testid="order-modal-overlay" @click.self="close">
-    <div class="modal order-modal" data-testid="order-modal">
+    <div
+      ref="dialogRef"
+      class="modal order-modal"
+      data-testid="order-modal"
+      role="dialog"
+      aria-modal="true"
+      :aria-labelledby="titleId"
+      tabindex="-1"
+    >
       <div class="modal__header">
-        <h3>Заказ №{{ orderId }}</h3>
-        <button class="modal__close" data-testid="order-modal-close" @click="close">&times;</button>
+        <h3 :id="titleId">Заказ №{{ orderId }}</h3>
+        <button class="modal__close" data-testid="order-modal-close" aria-label="Закрыть" @click="close">&times;</button>
       </div>
 
       <div v-if="loading" class="order-modal__loading">Загрузка...</div>
@@ -263,7 +271,7 @@
         data-testid="order-image-lightbox"
         @click.self="closeLightbox"
       >
-        <button class="order-modal__lightbox-close" data-testid="order-image-lightbox-close" @click="closeLightbox">&times;</button>
+        <button class="order-modal__lightbox-close" data-testid="order-image-lightbox-close" aria-label="Закрыть фото" @click="closeLightbox">&times;</button>
         <img :src="lightboxUrl" alt="Фото товара" class="order-modal__lightbox-img" />
       </div>
     </div>
@@ -275,6 +283,7 @@ import { ref, watch, computed, onUnmounted } from 'vue';
 import { getAdminOrder, updateAdminOrder } from '@/api/admin';
 import { shipOrderAdmin, cancelOrderAdmin } from '@/api/orders';
 import { useToast } from '@/composables/useToast';
+import { useModal } from '@/composables/useModal';
 import { formatPriceCurrency as formatPrice } from '@/utils/price';
 import { formatShortDate, formatDateTimeShort } from '@/utils/date';
 import { orderStatusLabel } from '@/utils/order';
@@ -314,6 +323,13 @@ const reset = () => {
 const close = () => {
   emit('update:visible', false);
 };
+
+// При открытом лайтбоксе Escape закрывает только лайтбокс (его лисенер ниже), не модалку.
+const { dialogRef, titleId } = useModal({
+  isOpen: () => props.visible,
+  onClose: close,
+  closeOnEscape: () => !lightboxUrl.value,
+});
 
 const fetchDetail = async () => {
   if (props.orderId === null || props.orderId === undefined) return;

@@ -376,4 +376,70 @@ describe('AdminOrderModal.vue', () => {
 
     expect(wrapper.find('[data-testid="order-modal-error"]').text()).toBe('Not found');
   });
+
+  describe('доступность (a11y)', () => {
+    it('диалог имеет role="dialog", aria-modal и aria-labelledby на заголовок', async () => {
+      const wrapper = mountModal();
+      await flushPromises();
+
+      const dialog = wrapper.find('[data-testid="order-modal"]');
+      expect(dialog.attributes('role')).toBe('dialog');
+      expect(dialog.attributes('aria-modal')).toBe('true');
+      const titleId = dialog.attributes('aria-labelledby');
+      expect(titleId).toBeTruthy();
+      const title = dialog.find(`#${titleId}`);
+      expect(title.exists()).toBe(true);
+      expect(title.text()).toContain('Заказ №101');
+    });
+
+    it('у кнопок закрытия модалки и лайтбокса есть aria-label', async () => {
+      const wrapper = mountModal();
+      await flushPromises();
+
+      expect(wrapper.find('[data-testid="order-modal-close"]').attributes('aria-label')).toBe('Закрыть');
+
+      await wrapper.find('[data-testid="order-modal-item-thumb-1"]').trigger('click');
+      expect(wrapper.find('[data-testid="order-image-lightbox-close"]').attributes('aria-label')).toBe('Закрыть фото');
+    });
+
+    it('переводит фокус внутрь диалога при открытии', async () => {
+      const wrapper = mount(AdminOrderModal, {
+        props: { visible: true, orderId: 101 },
+        attachTo: document.body,
+      });
+      await flushPromises();
+      await wrapper.vm.$nextTick();
+
+      const dialog = wrapper.find('[data-testid="order-modal"]').element;
+      expect(dialog.contains(document.activeElement)).toBe(true);
+      wrapper.unmount();
+    });
+
+    it('Escape закрывает модалку и эмитит update:visible', async () => {
+      const wrapper = mountModal();
+      await flushPromises();
+
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+      await wrapper.vm.$nextTick();
+
+      expect(wrapper.emitted('update:visible')).toEqual([[false]]);
+    });
+
+    it('Escape при открытом лайтбоксе закрывает только лайтбокс, повторный — модалку', async () => {
+      const wrapper = mountModal();
+      await flushPromises();
+
+      await wrapper.find('[data-testid="order-modal-item-thumb-1"]').trigger('click');
+      expect(wrapper.find('[data-testid="order-image-lightbox"]').exists()).toBe(true);
+
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+      await wrapper.vm.$nextTick();
+      expect(wrapper.find('[data-testid="order-image-lightbox"]').exists()).toBe(false);
+      expect(wrapper.emitted('update:visible')).toBeUndefined();
+
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+      await wrapper.vm.$nextTick();
+      expect(wrapper.emitted('update:visible')).toEqual([[false]]);
+    });
+  });
 });

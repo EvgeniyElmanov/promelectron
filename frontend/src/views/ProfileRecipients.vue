@@ -73,10 +73,17 @@
 
     <!-- Recipient Modal -->
     <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
-      <div class="modal">
+      <div
+        ref="dialogRef"
+        class="modal"
+        role="dialog"
+        aria-modal="true"
+        :aria-labelledby="titleId"
+        tabindex="-1"
+      >
         <div class="modal__header">
-          <h3>{{ isEdit ? 'Редактировать получателя' : 'Новый получатель' }}</h3>
-          <button class="modal__close" @click="closeModal">&times;</button>
+          <h3 :id="titleId">{{ isEdit ? 'Редактировать получателя' : 'Новый получатель' }}</h3>
+          <button class="modal__close" aria-label="Закрыть" @click="closeModal">&times;</button>
         </div>
         <form class="modal__form" @submit.prevent="handleSubmit">
           <div class="field">
@@ -159,6 +166,7 @@ import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useToast } from '@/composables/useToast';
 import { useRecipients } from '@/composables/useRecipients';
+import { useModal } from '@/composables/useModal';
 import { normalizePhone } from '@/composables/useGuestCheckout';
 import AppButton from '@/components/ui/AppButton.vue';
 
@@ -226,6 +234,11 @@ const openEdit = (recipient) => {
 const closeModal = () => {
   showModal.value = false;
 };
+
+const { dialogRef, titleId } = useModal({
+  isOpen: showModal,
+  onClose: closeModal,
+});
 
 const validateForm = () => {
   const errors = {};

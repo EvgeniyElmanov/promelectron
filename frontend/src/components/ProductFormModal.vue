@@ -1,9 +1,16 @@
 <template>
   <div class="modal-overlay" @click.self="$emit('close')">
-    <div class="modal">
+    <div
+      ref="dialogRef"
+      class="modal"
+      role="dialog"
+      aria-modal="true"
+      :aria-labelledby="titleId"
+      tabindex="-1"
+    >
       <div class="modal__header">
-        <h3 class="modal__title">{{ isEdit ? 'Редактировать товар' : 'Новый товар' }}</h3>
-        <button class="modal__close" @click="$emit('close')">&times;</button>
+        <h3 :id="titleId" class="modal__title">{{ isEdit ? 'Редактировать товар' : 'Новый товар' }}</h3>
+        <button class="modal__close" aria-label="Закрыть" @click="$emit('close')">&times;</button>
       </div>
 
       <form class="modal__form" @submit.prevent="handleSubmit">
@@ -120,7 +127,7 @@
           <div class="image-grid">
             <div v-for="img in localImages" :key="img" class="image-thumb">
               <img :src="img" alt="" />
-              <button type="button" class="image-thumb__remove" @click="removeImage(img)">&times;</button>
+              <button type="button" class="image-thumb__remove" aria-label="Удалить изображение" @click="removeImage(img)">&times;</button>
             </div>
             <label class="image-upload" v-if="localImages.length < 5 && !uploading">
               <input type="file" accept="image/*" @change="onFileChange" hidden />
@@ -157,12 +164,19 @@
 import { ref, onMounted } from 'vue';
 import api from '@/services/api';
 import AppButton from '@/components/ui/AppButton.vue';
+import { useModal } from '@/composables/useModal';
 
 const props = defineProps({
   product: { type: Object, default: null },
 });
 
 const emit = defineEmits(['close', 'saved']);
+
+// Компонент монтируется родителем через v-if — модалка «открыта» всё время жизни.
+const { dialogRef, titleId } = useModal({
+  isOpen: ref(true),
+  onClose: () => emit('close'),
+});
 
 const isEdit = !!props.product;
 

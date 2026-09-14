@@ -1,9 +1,17 @@
 <template>
   <div v-if="visible" class="modal-overlay" data-testid="user-detail-modal-overlay" @click.self="close">
-    <div class="modal user-detail-modal" data-testid="user-detail-modal">
+    <div
+      ref="dialogRef"
+      class="modal user-detail-modal"
+      data-testid="user-detail-modal"
+      role="dialog"
+      aria-modal="true"
+      :aria-labelledby="titleId"
+      tabindex="-1"
+    >
       <div class="modal__header">
-        <h3>{{ isGuest ? 'Гостевой заказ' : 'Детали пользователя' }}</h3>
-        <button class="modal__close" data-testid="user-detail-modal-close" @click="close">&times;</button>
+        <h3 :id="titleId">{{ isGuest ? 'Гостевой заказ' : 'Детали пользователя' }}</h3>
+        <button class="modal__close" data-testid="user-detail-modal-close" aria-label="Закрыть" @click="close">&times;</button>
       </div>
 
       <div v-if="isGuest" class="user-detail-modal__content">
@@ -145,6 +153,7 @@ import { getAdminUserDetail } from '@/api/admin';
 import { formatPriceCurrency as formatPrice } from '@/utils/price';
 import { formatShortDate, formatDate } from '@/utils/date';
 import { orderStatusLabel } from '@/utils/order';
+import { useModal } from '@/composables/useModal';
 import AppButton from '@/components/ui/AppButton.vue';
 
 const props = defineProps({
@@ -180,6 +189,11 @@ const reset = () => {
 const close = () => {
   emit('update:visible', false);
 };
+
+const { dialogRef, titleId } = useModal({
+  isOpen: () => props.visible,
+  onClose: close,
+});
 
 const fetchDetail = async () => {
   if (isGuest.value) return;

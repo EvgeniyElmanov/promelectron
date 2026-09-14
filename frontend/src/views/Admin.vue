@@ -205,13 +205,13 @@
                 <td>{{ cat.description || '—' }}</td>
                 <td>{{ cat.product_count ?? 0 }}</td>
                 <td class="admin__table-actions">
-                  <button class="admin__icon-btn admin__icon-btn--edit" @click="openEditModal(cat)">
+                  <button class="admin__icon-btn admin__icon-btn--edit" aria-label="Редактировать" @click="openEditModal(cat)">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
                       <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
                     </svg>
                   </button>
-                  <button class="admin__icon-btn admin__icon-btn--delete" @click="deleteCategory(cat.id)">
+                  <button class="admin__icon-btn admin__icon-btn--delete" aria-label="Удалить" @click="deleteCategory(cat.id)">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <polyline points="3 6 5 6 21 6"/>
                       <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
@@ -272,13 +272,13 @@
                   </span>
                 </td>
                 <td class="admin__table-actions">
-                  <button class="admin__icon-btn admin__icon-btn--edit" @click="openEditDeliveryModal(method)">
+                  <button class="admin__icon-btn admin__icon-btn--edit" aria-label="Редактировать" @click="openEditDeliveryModal(method)">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
                       <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
                     </svg>
                   </button>
-                  <button class="admin__icon-btn admin__icon-btn--delete" @click="deleteDeliveryMethod(method.id)">
+                  <button class="admin__icon-btn admin__icon-btn--delete" aria-label="Удалить" @click="deleteDeliveryMethod(method.id)">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <polyline points="3 6 5 6 21 6"/>
                       <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
@@ -344,6 +344,7 @@
                 <td class="admin__table-actions">
                   <button
                     class="admin__icon-btn admin__icon-btn--edit"
+                    aria-label="Редактировать"
                     :data-testid="`admin-order-open-btn-${order.id}`"
                     @click="openEditOrderModal(order)"
                   >
@@ -407,10 +408,17 @@
 
     <!-- Category Modal -->
     <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
-      <div class="modal">
+      <div
+        ref="categoryDialogRef"
+        class="modal"
+        role="dialog"
+        aria-modal="true"
+        :aria-labelledby="categoryTitleId"
+        tabindex="-1"
+      >
         <div class="modal__header">
-          <h3>{{ isEdit ? 'Редактировать категорию' : 'Новая категория' }}</h3>
-          <button class="modal__close" @click="closeModal">&times;</button>
+          <h3 :id="categoryTitleId">{{ isEdit ? 'Редактировать категорию' : 'Новая категория' }}</h3>
+          <button class="modal__close" aria-label="Закрыть" @click="closeModal">&times;</button>
         </div>
         <form class="modal__form" @submit.prevent="handleSubmit">
           <div class="field">
@@ -440,10 +448,17 @@
 
     <!-- Delivery Modal -->
     <div v-if="showDeliveryModal" class="modal-overlay" @click.self="closeDeliveryModal">
-      <div class="modal">
+      <div
+        ref="deliveryDialogRef"
+        class="modal"
+        role="dialog"
+        aria-modal="true"
+        :aria-labelledby="deliveryTitleId"
+        tabindex="-1"
+      >
         <div class="modal__header">
-          <h3>{{ isEditDelivery ? 'Редактировать доставку' : 'Новый способ доставки' }}</h3>
-          <button class="modal__close" @click="closeDeliveryModal">&times;</button>
+          <h3 :id="deliveryTitleId">{{ isEditDelivery ? 'Редактировать доставку' : 'Новый способ доставки' }}</h3>
+          <button class="modal__close" aria-label="Закрыть" @click="closeDeliveryModal">&times;</button>
         </div>
         <form class="modal__form" @submit.prevent="handleDeliverySubmit">
           <div class="field">
@@ -497,6 +512,7 @@ import { ref, onMounted, onUnmounted, computed } from 'vue';
 import api from '@/services/api';
 import { useToast } from '@/composables/useToast';
 import { useCategories } from '@/composables/useCategories';
+import { useModal } from '@/composables/useModal';
 import { formatPriceCurrency as formatPrice } from '@/utils/price';
 import { formatShortDate, formatDateTimeShort } from '@/utils/date';
 import { orderStatusLabel } from '@/utils/order';
@@ -780,6 +796,11 @@ const closeModal = () => {
   showModal.value = false;
 };
 
+const { dialogRef: categoryDialogRef, titleId: categoryTitleId } = useModal({
+  isOpen: showModal,
+  onClose: closeModal,
+});
+
 const handleSubmit = async () => {
   error.value = '';
   submitting.value = true;
@@ -856,6 +877,11 @@ const openEditDeliveryModal = (method) => {
 const closeDeliveryModal = () => {
   showDeliveryModal.value = false;
 };
+
+const { dialogRef: deliveryDialogRef, titleId: deliveryTitleId } = useModal({
+  isOpen: showDeliveryModal,
+  onClose: closeDeliveryModal,
+});
 
 const handleDeliverySubmit = async () => {
   deliveryError.value = '';
