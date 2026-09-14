@@ -1,6 +1,6 @@
 # ▶ Пульт запуска Promelectron
 
-`main = 41fbada` · **2026-09-03** · бэклог = открытые issue на `AutonomaCo/promelectron`, борд — их витрина.
+`main = 0cfb415` · **2026-09-14** · бэклог = открытые issue на `AutonomaCo/promelectron`, борд — их витрина.
 🟢 можно · 🟡 можно, но сначала твой ответ · 🔵 занято · 🔴 нельзя, причина указана · 💤 припарковано.
 
 Кнопка у всех одна — `make ai PROMPT=…`; чем она запускается (claude, kimi или следующий),
@@ -44,8 +44,7 @@
 | ID | Что запускаем | Замок | Статус | Issue |
 |---|---|---|---|---|
 | [#224](#i-224) | спека оплаты зеленеет, ничего не проверив | `e2e` | 🟢 **можно, замок свободен** | [↗](https://github.com/AutonomaCo/promelectron/issues/224) |
-| [#225](#i-225) | доступность: модалки без `role`, фокус-трапа и Escape | `frontend` | 🔵 в работе (ветка `feature/gh-225`) | [↗](https://github.com/AutonomaCo/promelectron/issues/225) |
-| [#258](#i-258) | адаптивная вёрстка: нижняя навигация перекрывает контент, шапка на 768px, wide-экраны | `frontend` | 🟢 в очереди за #225 | [↗](https://github.com/AutonomaCo/promelectron/issues/258) |
+| [#258](#i-258) | адаптивная вёрстка: нижняя навигация перекрывает контент, шапка на 768px, wide-экраны | `frontend` | 🟢 **можно, замок свободен** | [↗](https://github.com/AutonomaCo/promelectron/issues/258) |
 | [#186](#i-186) | флаки `cart-select.spec.js` — протечка состояния корзины | `e2e` | 🟢 в очереди за #224 | [↗](https://github.com/AutonomaCo/promelectron/issues/186) |
 | #216 | смена статуса заказа админом всегда 404 | `backend` | 🟢 в очереди на `backend` | [↗](https://github.com/AutonomaCo/promelectron/issues/216) |
 | #217 | миграции применяются дважды, падение глушится | `backend` | 🟢 в очереди | [↗](https://github.com/AutonomaCo/promelectron/issues/217) |
@@ -69,19 +68,19 @@
 
 ## 🔒 Замки
 
-**Занято:** `frontend` (#225, ветка `feature/gh-225`).
-**Свободны:** `backend`, `e2e`, `infra`, `docs`, `harness`.
+**Занято:** —.
+**Свободны:** `backend`, `frontend`, `e2e`, `infra`, `docs`, `harness`.
 
 | Замок | Сколько issue | Кто следующий |
 |---|---|---|
 | `backend` | 8 | **#210** (P0), дальше #211 |
 | `infra` | 8 | **#213** (P0, нужен твой ответ), дальше #212 |
 | `e2e` | 3 | **#224**, дальше #186 |
-| `frontend` | 2 | 🔵 #225 в работе, дальше #258 |
+| `frontend` | 1 | **#258** |
 
 **Волна прямо сейчас — четыре терминала, замки не пересекаются:**
 **#210** (`backend`, P0) · **#213** (`infra`, P0 — но сначала ответь про 1С) ·
-**#224** (`e2e`) · ~~#225~~ (`frontend` — занят, ветка `feature/gh-225`).
+**#224** (`e2e`) · **#258** (`frontend`).
 
 ⚠️ `make test-backend` и `make test-onec-mock` сериализованы через `flock`: параллельные
 сессии не сломаются, но вторая будет **ждать** первую. Это не параллельность, это очередь.
@@ -92,7 +91,7 @@
 
 | ID | Что делаем | Замок | Ветка | PR |
 |---|---|---|---|---|
-| #225 | доступность модалок: `role="dialog"`, фокус-трап, Escape | `frontend` | `feature/gh-225` | [#259](https://github.com/AutonomaCo/promelectron/pull/259) |
+Пусто. #225 смержен (PR #259, squash `0cfb415`, 2026-09-14): доступность модалок — композабл `useModal` (role=dialog, фокус-трап, Escape, возврат фокуса) во всех пяти модалках + aria-label иконочным кнопкам; vitest 469/469, ручная клавиатурная проверка 38/38; замок `frontend` свободен, следующий — #258.
 
 Пусто. #250 смержен (PR #253, squash `51f2b8f`, 2026-09-13): Header по §11 — мобильная шапка [Menu][Logo][Cart] + MobileMenuDrawer, AppButton +type/+danger, миграция ~20 views на AppButton; **этап 3 дизайн-системы завершён целиком**, замок `frontend` свободен.
 
@@ -231,24 +230,7 @@ make ai PROMPT=ai-launcher/prompts/e2e_186-cart-select-flaky.prompt.txt
 
 ---
 
-> <a id="i-225"></a>🔵 **[#225](https://github.com/AutonomaCo/promelectron/issues/225)** · доступность: модалки без `role`, фокус-трапа и Escape — `lock: frontend` · **P1** · **в работе, ветка `feature/gh-225`**
-
-```bash
-make ai PROMPT=ai-launcher/prompts/frontend_225-modal-accessibility.prompt.txt
-```
-
-На весь `src/` — два атрибута `aria-*` и ноль `role=`. Пять модальных окон без
-`role="dialog"`, без фокус-трапа и без Escape; Escape ловится ровно в одном месте, для
-лайтбокса в `AdminOrderModal.vue:409`.
-
-Пользователь клавиатуры не может закрыть диалог: уйти табом «за» него можно, вернуться — нет.
-Иконочные кнопки без доступного имени читаются скринридером просто как «кнопка».
-
-Замок `frontend` не делится ни с чем — идёт параллельно всему остальному.
-
----
-
-> <a id="i-258"></a>🟢 **[#258](https://github.com/AutonomaCo/promelectron/issues/258)** · адаптивная вёрстка: нижняя навигация перекрывает контент, шапка ломается на 768px, wide-экраны не используются — `lock: frontend` · **P1** · **в очереди за #225**
+> <a id="i-258"></a>🟢 **[#258](https://github.com/AutonomaCo/promelectron/issues/258)** · адаптивная вёрстка: нижняя навигация перекрывает контент, шапка ломается на 768px, wide-экраны не используются — `lock: frontend` · **P1** · **свободен**
 
 ```bash
 make ai PROMPT=ai-launcher/prompts/frontend_258-adaptive-layout.prompt.txt
@@ -259,5 +241,4 @@ make ai PROMPT=ai-launcher/prompts/frontend_258-adaptive-layout.prompt.txt
 второй строкой, на 1920 контент зажат в ~1200px при пустых полях, чипы категорий обрезаны
 без индикатора прокрутки.
 
-Берётся строго после #225 — тот же замок `frontend`. Промпт сам проверит, что #225 закрыт,
-и остановится, если замок ещё занят.
+#225 смержен, замок `frontend` свободен — можно брать.
