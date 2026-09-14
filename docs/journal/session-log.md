@@ -581,3 +581,7 @@
 - Проверки: vitest 469/469, oxlint 0/0, responsive.spec.js 75/75, QA gate TESTS_PASSED (все 6 AC). `make pre-push`: lint+unit зелёные, e2e 124 passed / 4 failed — все четыре известны на main (auth:72 → #254, search-filter:82 → #255, checkout:152 → #210/#224, cart-select:115 → #186), новых нет (viewport e2e-проекта 390px, зона 768–1023 не затрагивается).
 - Скриншоты до/после: `.playwright-mcp/audit-*.png` → `fixed-*.png` (16). Коммиты e9b6fa5 + 852bf74. Issue #258 → In review, PR #260 с `Closes #258`. Оценка контекста: 4698 токенов (координационная плоскость).
 - Follow-up (не блокер, F003): на 768–1023 dropdown поиска десктопный вместо fullscreen (SearchBar `innerWidth < 768`); влезает во viewport, косметика — кандидат в отдельный issue при желании.
+
+## 2026-09-14 — fix: responsive-1920-columns-test (#261, PR #262)
+
+- CI main красный после #258: тест `responsive.spec.js:147` ждал >5 колонок на 1920, но сайдбар оставляет сетке 1376px → ровно 5 треков. Тест переписан на метрику «сетка использует ширину»: grid > 1200px, карточка > 220px (1fr-растяжение). Прогон спеки 75/75 против test-контура. PR открыт, ждёт одобрения мержа.
