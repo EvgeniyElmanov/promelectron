@@ -92,7 +92,7 @@
 
 | ID | Что делаем | Замок | Ветка | PR |
 |---|---|---|---|---|
-| #225 | доступность модалок: `role="dialog"`, фокус-трап, Escape | `frontend` | `feature/gh-225` | — |
+| #225 | доступность модалок: `role="dialog"`, фокус-трап, Escape | `frontend` | `feature/gh-225` | [#259](https://github.com/AutonomaCo/promelectron/pull/259) |
 
 Пусто. #250 смержен (PR #253, squash `51f2b8f`, 2026-09-13): Header по §11 — мобильная шапка [Menu][Logo][Cart] + MobileMenuDrawer, AppButton +type/+danger, миграция ~20 views на AppButton; **этап 3 дизайн-системы завершён целиком**, замок `frontend` свободен.
 
