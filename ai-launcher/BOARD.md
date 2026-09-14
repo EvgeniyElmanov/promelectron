@@ -44,7 +44,7 @@
 | ID | Что запускаем | Замок | Статус | Issue |
 |---|---|---|---|---|
 | [#224](#i-224) | спека оплаты зеленеет, ничего не проверив | `e2e` | 🟢 **можно, замок свободен** | [↗](https://github.com/AutonomaCo/promelectron/issues/224) |
-| [#225](#i-225) | доступность: модалки без `role`, фокус-трапа и Escape | `frontend` | 🟢 **можно, замок свободен** | [↗](https://github.com/AutonomaCo/promelectron/issues/225) |
+| [#225](#i-225) | доступность: модалки без `role`, фокус-трапа и Escape | `frontend` | 🔵 в работе (ветка `feature/gh-225`) | [↗](https://github.com/AutonomaCo/promelectron/issues/225) |
 | [#186](#i-186) | флаки `cart-select.spec.js` — протечка состояния корзины | `e2e` | 🟢 в очереди за #224 | [↗](https://github.com/AutonomaCo/promelectron/issues/186) |
 | #216 | смена статуса заказа админом всегда 404 | `backend` | 🟢 в очереди на `backend` | [↗](https://github.com/AutonomaCo/promelectron/issues/216) |
 | #217 | миграции применяются дважды, падение глушится | `backend` | 🟢 в очереди | [↗](https://github.com/AutonomaCo/promelectron/issues/217) |
@@ -56,7 +56,7 @@
 | #222 | наблюдаемости нет: ни Sentry, ни метрик, ни логов | `infra` | 🟡 выбор приёмника за владельцем | [↗](https://github.com/AutonomaCo/promelectron/issues/222) |
 
 **Заведено, но кнопки нет:** #211 · #212 · #214 · #215 · #216 · #217 · #218 · #219 · #220 ·
-#221 · #222 · #223 · #254 · #255 · #256 · #257. Промпт пишется, когда пункт попадает в волну (`CONVENTIONS.md` §7).
+#221 · #222 · #223 · #254 · #255 · #256 · #257 · #258. Промпт пишется, когда пункт попадает в волну (`CONVENTIONS.md` §7).
 Скажи, для какого нужен — напишу.
 
 **P2-долг** (11 пунктов в `docs/backlog.md` «Не заведено: P2-долг» + заведённые P2-issue:
@@ -68,19 +68,19 @@
 
 ## 🔒 Замки
 
-**Занято:** —.
-**Свободны:** `backend`, `frontend`, `e2e`, `infra`, `docs`, `harness`.
+**Занято:** `frontend` (#225, ветка `feature/gh-225`).
+**Свободны:** `backend`, `e2e`, `infra`, `docs`, `harness`.
 
 | Замок | Сколько issue | Кто следующий |
 |---|---|---|
 | `backend` | 8 | **#210** (P0), дальше #211 |
 | `infra` | 8 | **#213** (P0, нужен твой ответ), дальше #212 |
 | `e2e` | 3 | **#224**, дальше #186 |
-| `frontend` | 1 | **#225** |
+| `frontend` | 2 | 🔵 #225 в работе, дальше #258 |
 
 **Волна прямо сейчас — четыре терминала, замки не пересекаются:**
 **#210** (`backend`, P0) · **#213** (`infra`, P0 — но сначала ответь про 1С) ·
-**#224** (`e2e`) · **#225** (`frontend`).
+**#224** (`e2e`) · ~~#225~~ (`frontend` — занят, ветка `feature/gh-225`).
 
 ⚠️ `make test-backend` и `make test-onec-mock` сериализованы через `flock`: параллельные
 сессии не сломаются, но вторая будет **ждать** первую. Это не параллельность, это очередь.
@@ -91,6 +91,7 @@
 
 | ID | Что делаем | Замок | Ветка | PR |
 |---|---|---|---|---|
+| #225 | доступность модалок: `role="dialog"`, фокус-трап, Escape | `frontend` | `feature/gh-225` | — |
 
 Пусто. #250 смержен (PR #253, squash `51f2b8f`, 2026-09-13): Header по §11 — мобильная шапка [Menu][Logo][Cart] + MobileMenuDrawer, AppButton +type/+danger, миграция ~20 views на AppButton; **этап 3 дизайн-системы завершён целиком**, замок `frontend` свободен.
 
@@ -229,7 +230,7 @@ make ai PROMPT=ai-launcher/prompts/e2e_186-cart-select-flaky.prompt.txt
 
 ---
 
-> <a id="i-225"></a>🟢 **[#225](https://github.com/AutonomaCo/promelectron/issues/225)** · доступность: модалки без `role`, фокус-трапа и Escape — `lock: frontend` · **P1** · **свободен**
+> <a id="i-225"></a>🔵 **[#225](https://github.com/AutonomaCo/promelectron/issues/225)** · доступность: модалки без `role`, фокус-трапа и Escape — `lock: frontend` · **P1** · **в работе, ветка `feature/gh-225`**
 
 ```bash
 make ai PROMPT=ai-launcher/prompts/frontend_225-modal-accessibility.prompt.txt
