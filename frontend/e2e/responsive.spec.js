@@ -144,14 +144,20 @@ test.describe('Adaptive layout gh-258', () => {
     expect(headerHeight).toBeLessThanOrEqual(73);
   });
 
-  test('1920px: сетка каталога использует ширину (> 5 колонок)', async ({ page }) => {
+  test('1920px: сетка каталога использует ширину (wide-контейнер, резиновые карточки)', async ({ page }) => {
     await page.setViewportSize({ width: 1920, height: 1080 });
     await page.goto('/');
     await page.waitForLoadState('networkidle');
-    const cols = await page.locator('.home__grid').evaluate(
-      (el) => getComputedStyle(el).gridTemplateColumns.split(' ').length,
+    // До фикса #258 контейнер был ~1200px, сетка ~900px. Число колонок не проверяем:
+    // оно зависит от сайдбара фильтров и gap, ширина используется через 1fr-растяжение.
+    const gridWidth = await page.locator('.home__grid').evaluate(
+      (el) => el.getBoundingClientRect().width,
     );
-    expect(cols).toBeGreaterThan(5);
+    expect(gridWidth, 'сетка на 1920 должна быть заметно шире доковой (~900px)').toBeGreaterThan(1200);
+    const cardWidth = await page.locator('.home__grid > :first-child').evaluate(
+      (el) => el.getBoundingClientRect().width,
+    );
+    expect(cardWidth, 'карточки должны растягиваться за пределы минимума minmax (220px)').toBeGreaterThan(220);
   });
 });
 
