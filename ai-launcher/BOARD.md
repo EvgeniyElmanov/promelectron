@@ -44,7 +44,7 @@
 | ID | Что запускаем | Замок | Статус | Issue |
 |---|---|---|---|---|
 | [#224](#i-224) | спека оплаты зеленеет, ничего не проверив | `e2e` | 🟢 **можно, замок свободен** | [↗](https://github.com/AutonomaCo/promelectron/issues/224) |
-| [#258](#i-258) | адаптивная вёрстка: нижняя навигация перекрывает контент, шапка на 768px, wide-экраны | `frontend` | 🟢 **можно, замок свободен** | [↗](https://github.com/AutonomaCo/promelectron/issues/258) |
+| [#258](#i-258) | адаптивная вёрстка: нижняя навигация перекрывает контент, шапка на 768px, wide-экраны | `frontend` | 🔵 **в работе (Kimi)** | [↗](https://github.com/AutonomaCo/promelectron/issues/258) |
 | [#186](#i-186) | флаки `cart-select.spec.js` — протечка состояния корзины | `e2e` | 🟢 в очереди за #224 | [↗](https://github.com/AutonomaCo/promelectron/issues/186) |
 | #216 | смена статуса заказа админом всегда 404 | `backend` | 🟢 в очереди на `backend` | [↗](https://github.com/AutonomaCo/promelectron/issues/216) |
 | #217 | миграции применяются дважды, падение глушится | `backend` | 🟢 в очереди | [↗](https://github.com/AutonomaCo/promelectron/issues/217) |
@@ -68,8 +68,8 @@
 
 ## 🔒 Замки
 
-**Занято:** —.
-**Свободны:** `backend`, `frontend`, `e2e`, `infra`, `docs`, `harness`.
+**Занято:** `frontend` (#258, Kimi).
+**Свободны:** `backend`, `e2e`, `infra`, `docs`, `harness`.
 
 | Замок | Сколько issue | Кто следующий |
 |---|---|---|
@@ -91,7 +91,9 @@
 
 | ID | Что делаем | Замок | Ветка | PR |
 |---|---|---|---|---|
-Пусто. #225 смержен (PR #259, squash `0cfb415`, 2026-09-14): доступность модалок — композабл `useModal` (role=dialog, фокус-трап, Escape, возврат фокуса) во всех пяти модалках + aria-label иконочным кнопкам; vitest 469/469, ручная клавиатурная проверка 38/38; замок `frontend` свободен, следующий — #258.
+| [#258](#i-258) | адаптивная вёрстка: нижняя навигация, шапка 768px, wide-экраны, чипы | `frontend` | `feature/258-adaptive-layout` (Kimi) | — |
+
+#225 смержен (PR #259, squash `0cfb415`, 2026-09-14): доступность модалок — композабл `useModal` (role=dialog, фокус-трап, Escape, возврат фокуса) во всех пяти модалках + aria-label иконочным кнопкам; vitest 469/469, ручная клавиатурная проверка 38/38; замок `frontend` свободен, следующий — #258.
 
 Пусто. #250 смержен (PR #253, squash `51f2b8f`, 2026-09-13): Header по §11 — мобильная шапка [Menu][Logo][Cart] + MobileMenuDrawer, AppButton +type/+danger, миграция ~20 views на AppButton; **этап 3 дизайн-системы завершён целиком**, замок `frontend` свободен.
 
@@ -230,7 +232,7 @@ make ai PROMPT=ai-launcher/prompts/e2e_186-cart-select-flaky.prompt.txt
 
 ---
 
-> <a id="i-258"></a>🟢 **[#258](https://github.com/AutonomaCo/promelectron/issues/258)** · адаптивная вёрстка: нижняя навигация перекрывает контент, шапка ломается на 768px, wide-экраны не используются — `lock: frontend` · **P1** · **свободен**
+> <a id="i-258"></a>🔵 **[#258](https://github.com/AutonomaCo/promelectron/issues/258)** · адаптивная вёрстка: нижняя навигация перекрывает контент, шапка ломается на 768px, wide-экраны не используются — `lock: frontend` · **P1** · **в работе (Kimi)**
 
 ```bash
 make ai PROMPT=ai-launcher/prompts/frontend_258-adaptive-layout.prompt.txt
