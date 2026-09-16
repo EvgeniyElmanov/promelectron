@@ -117,9 +117,13 @@ body {
   font-size: 16px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
   overflow-x: hidden; /* fallback для Safari < 16 */
   overflow-x: clip;
+}
+
+/* Отступ снизу под BottomNav — только на страницах, где он рендерится (на витрине `/` его нет). */
+body.has-bottom-nav {
+  padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
 }
 
 /* iOS Safari зумит страницу при фокусе на input с font-size < 16px (issue #171).

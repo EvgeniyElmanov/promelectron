@@ -26,7 +26,7 @@ const router = createRouter({
 describe('BottomNav.vue', () => {
   beforeEach(async () => {
     mockCartCount.value = 0;
-    await router.push('/');
+    await router.push('/cart');
     await router.isReady();
   });
 
@@ -87,5 +87,19 @@ describe('BottomNav.vue', () => {
       'height: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));'
     );
     expect(bottomNavSource).toContain('padding-bottom: env(safe-area-inset-bottom);');
+  });
+
+  it('не рендерится на витрине (роут /)', async () => {
+    await router.push('/');
+    await router.isReady();
+    const wrapper = await mountNav();
+    expect(wrapper.find('.bottom-nav').exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  it('рендерится на других роутах', async () => {
+    const wrapper = await mountNav();
+    expect(wrapper.find('.bottom-nav').exists()).toBe(true);
+    wrapper.unmount();
   });
 });

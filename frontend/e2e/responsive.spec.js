@@ -69,6 +69,9 @@ test.describe('Mobile header cleanup', () => {
     await expect(page.locator('[data-testid="cart-link"]')).toBeHidden();
     await expect(page.locator('[data-testid="profile-link"]')).toBeHidden();
     await expect(page.locator('[data-testid="login-link"]')).toBeHidden();
+
+    // issue #265: на витрине нижняя навигация не рендерится.
+    await expect(page.locator('.bottom-nav')).toBeHidden();
   });
 
   test('mobile menu drawer opens and closes', async ({ page }) => {
@@ -121,7 +124,8 @@ test.describe('Adaptive layout gh-258', () => {
 
   test('768px: шапка в мобильном режиме, bottom nav виден', async ({ page }) => {
     await page.setViewportSize({ width: 768, height: 1024 });
-    await page.goto('/');
+    // BottomNav на витрине (/) не рендерится (issue #265) — проверяем на /cart.
+    await page.goto('/cart');
     await page.waitForLoadState('networkidle');
     await expect(page.locator('[data-testid="mobile-menu-btn"]')).toBeVisible();
     await expect(page.locator('.header__actions')).toBeHidden();
@@ -165,7 +169,8 @@ test.describe('Mobile bottom navigation cart badge', () => {
   test.use({ viewport: { width: 375, height: 667 } });
 
   test('cart badge is positioned at the top-right of the cart icon', async ({ page }) => {
-    await page.goto('/');
+    // BottomNav на витрине (/) не рендерится (issue #265) — проверяем на /cart.
+    await page.goto('/cart');
     await page.evaluate((item) => {
       localStorage.setItem('guest_cart', JSON.stringify([item]));
     }, GUEST_CART_ITEM);

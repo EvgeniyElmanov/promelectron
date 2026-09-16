@@ -211,6 +211,31 @@ class TestBuildProductDocuments:
         assert docs[0]["brand"] is None
         assert docs[0]["created_at"] is not None
 
+    async def test_document_guid_brand_excluded(self, test_session, catalog):
+        """GUID-подобное значение «Бренд» (мусор из 1С) → brand=None в документе."""
+        brand_attr = Attribute(
+            code="brand-guid-like",
+            name="Бренд",
+            value_type=AttributeValueType.string,
+            is_filterable=False,
+        )
+        test_session.add(brand_attr)
+        await test_session.flush()
+        test_session.add(
+            ProductAttributeValue(
+                product_id=catalog.product.id,
+                attribute_id=brand_attr.id,
+                value_text="844f1c1e-3f12-11ed-9a1c-0242ac120002",
+            )
+        )
+        await test_session.commit()
+
+        docs, _ = await search_indexing.build_product_documents(
+            test_session, [catalog.product.id]
+        )
+        assert len(docs) == 1
+        assert docs[0]["brand"] is None
+
     async def test_empty_input(self, test_session):
         docs, deleted = await search_indexing.build_product_documents(test_session, [])
         assert docs == [] and deleted == []

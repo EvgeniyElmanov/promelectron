@@ -709,6 +709,56 @@ class TestProductListCardAggregates:
         assert item["brand"] == "Legrand"
 
     @pytest.mark.asyncio
+    async def test_list_products_guid_brand_treated_as_missing(
+        self, client, test_session, test_product
+    ):
+        """GUID-подобное значение «Бренд» (мусор из 1С) → brand: null."""
+        from src.app.models.attribute import Attribute, AttributeValueType, ProductAttributeValue
+
+        attribute = Attribute(
+            code="brand-guid-like", name="Бренд", value_type=AttributeValueType.string
+        )
+        test_session.add(attribute)
+        await test_session.flush()
+        test_session.add(
+            ProductAttributeValue(
+                product_id=test_product.id,
+                attribute_id=attribute.id,
+                value_text="844f1c1e-3f12-11ed-9a1c-0242ac120002",
+            )
+        )
+        await test_session.commit()
+
+        response = await client.get("/api/v1/products/")
+        item = next(i for i in response.json()["items"] if i["id"] == test_product.id)
+        assert item["brand"] is None
+
+    @pytest.mark.asyncio
+    async def test_list_products_blank_brand_treated_as_missing(
+        self, client, test_session, test_product
+    ):
+        """Пустое/пробельное значение «Бренд» → brand: null."""
+        from src.app.models.attribute import Attribute, AttributeValueType, ProductAttributeValue
+
+        attribute = Attribute(
+            code="brand-guid-like", name="Бренд", value_type=AttributeValueType.string
+        )
+        test_session.add(attribute)
+        await test_session.flush()
+        test_session.add(
+            ProductAttributeValue(
+                product_id=test_product.id,
+                attribute_id=attribute.id,
+                value_text="   ",
+            )
+        )
+        await test_session.commit()
+
+        response = await client.get("/api/v1/products/")
+        item = next(i for i in response.json()["items"] if i["id"] == test_product.id)
+        assert item["brand"] is None
+
+    @pytest.mark.asyncio
     async def test_list_products_is_new_boundary(self, client, test_session, test_product):
         """is_new: created_at ≤ 30 дней → true, 31 день → false."""
         from datetime import datetime, timedelta, timezone

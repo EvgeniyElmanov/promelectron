@@ -1,5 +1,5 @@
 <template>
-  <nav class="bottom-nav">
+  <nav v-if="route.path !== '/'" class="bottom-nav">
     <router-link
       v-for="item in navItems"
       :key="item.to"

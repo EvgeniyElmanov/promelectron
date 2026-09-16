@@ -25,7 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.app.models.attribute import Attribute, ProductAttributeValue
 from src.app.models.category import Category
 from src.app.models.product import Product
-from src.app.services.product_aggregates import BRAND_ATTRIBUTE_NAME
+from src.app.services.product_aggregates import BRAND_ATTRIBUTE_NAME, normalize_brand_value
 from src.app.services.search_service import (
     PRODUCTS_INDEX,
     PRODUCTS_INDEX_NEW,
@@ -117,7 +117,11 @@ async def _load_brand_values(
             ProductAttributeValue.value_text.isnot(None),
         )
     )
-    return {product_id: value_text for product_id, value_text in result.all()}
+    return {
+        product_id: brand
+        for product_id, value_text in result.all()
+        if (brand := normalize_brand_value(value_text)) is not None
+    }
 
 
 def _product_document(

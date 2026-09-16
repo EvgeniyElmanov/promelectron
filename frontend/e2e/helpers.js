@@ -12,8 +12,11 @@ export async function goToCart(page) {
   const bottomNavItem = page.locator('[data-testid="nav-Корзина"]');
   if (await headerLink.isVisible().catch(() => false)) {
     await headerLink.click();
-  } else {
+  } else if (await bottomNavItem.isVisible().catch(() => false)) {
     await bottomNavItem.click();
+  } else {
+    // На витрине (/) BottomNav не рендерится (issue #265).
+    await page.goto('/cart');
   }
 }
 
@@ -22,8 +25,11 @@ export async function goToProfile(page) {
   const bottomNavItem = page.locator('[data-testid="nav-Профиль"]');
   if (await headerLink.isVisible().catch(() => false)) {
     await headerLink.click();
-  } else {
+  } else if (await bottomNavItem.isVisible().catch(() => false)) {
     await bottomNavItem.click();
+  } else {
+    // На витрине (/) BottomNav не рендерится (issue #265).
+    await page.goto('/profile');
   }
 }
 

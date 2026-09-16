@@ -24,7 +24,8 @@ test.describe('Favorites', () => {
     await favButton.click();
     await expect(favButton).toHaveClass(/product-card__heart--active/);
 
-    // Go to favorites
+    // Go to favorites (на витрине BottomNav не рендерится, поэтому уходим на /catalog)
+    await page.goto('/catalog');
     await page.click('[data-testid="nav-Избранное"]');
     await expect(page).toHaveURL('/favorites');
     await expect(page.locator('[data-testid="favorite-item"]').first()).toBeVisible({ timeout: 5000 });

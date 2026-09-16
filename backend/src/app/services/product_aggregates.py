@@ -13,6 +13,7 @@
   (``Order.status == "paid"``) за последние 90 дней.
 """
 
+import re
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -25,6 +26,25 @@ from src.app.models.review import Review
 
 BRAND_ATTRIBUTE_NAME = "Бренд"
 HIT_WINDOW_DAYS = 90
+
+_BRAND_GUID_RE = re.compile(
+    r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+)
+
+
+def normalize_brand_value(value: str | None) -> str | None:
+    """Нормализовать значение атрибута «Бренд».
+
+    GUID-подобные значения (в данных 1С у части товаров «Бренд» содержит
+    GUID-строку) и пустые/пробельные значения считаются отсутствующими
+    → ``None``. Читаемые бренды возвращаются без изменений.
+    """
+    if value is None:
+        return None
+    stripped = value.strip()
+    if not stripped or _BRAND_GUID_RE.match(stripped):
+        return None
+    return stripped
 
 
 async def load_product_list_aggregates(
@@ -75,7 +95,9 @@ async def load_product_list_aggregates(
             )
         )
         for product_id, value_text in brand_result.all():
-            aggregates.setdefault(product_id, {})["brand"] = value_text
+            brand = normalize_brand_value(value_text)
+            if brand is not None:
+                aggregates.setdefault(product_id, {})["brand"] = brand
 
     hit_threshold = datetime.now(timezone.utc) - timedelta(days=HIT_WINDOW_DAYS)
     hit_result = await db.execute(
