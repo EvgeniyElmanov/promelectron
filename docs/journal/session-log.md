@@ -585,3 +585,14 @@
 ## 2026-09-14 — fix: responsive-1920-columns-test (#261, PR #262)
 
 - CI main красный после #258: тест `responsive.spec.js:147` ждал >5 колонок на 1920, но сайдбар оставляет сетке 1376px → ровно 5 треков. Тест переписан на метрику «сетка использует ширину»: grid > 1200px, карточка > 220px (1fr-растяжение). Прогон спеки 75/75 против test-контура. PR открыт, ждёт одобрения мержа.
+
+## 2026-09-16 — pixel-perfect-homepage (#263): PR #264 открыт, витрина главной по утверждённому макету ждёт human-review
+
+- Источник дизайна: ветка `docs` (загрузки Nina, d43b6fa…c0d0916), смержена в main как `docs/design/*` (PR #209); файла/ветки «dccs» не существовало — выяснено уточнением у владельца. `modern-tech-approved-mockup.png` = `docs/design/homepage-mockup.png`.
+- Полный пайплайн: architect (plan) → spec READY с решениями владельца («Сравнение» показываем неактивным, B2B-блок делаем по §22, search расширяем) → PLAN.backend + PLAN.frontend (human-approved) → параллельные dev-стримы → 3 итерации ревью (APPROVED, 7 findings VERIFIED) → QA gate TESTS_PASSED → ship.
+- Сделано: `/` — витрина HomeView по макету (hero «Новый уровень производительности» + промо-колонка, 4 benefits, 6 категорий с фото/счётчиками, «Популярные товары» с табами Хиты/Новинки/Скидки, Consultation/B2B, футер); листинг переехал на `/catalog` (перенос Products.vue со всеми testid, редирект `/?q=`); шапка §11 + CategoryNav с красной «Распродажа»; ProductCard по §13 (бренд/рейтинг/бейджи — только из API). Backend: `CategoryOut.image_url`, `ProductOut`/`SearchItemOut` += brand/average_rating/reviews_count/is_new/is_hit (батч-агрегаты без N+1, гибрид для Meilisearch: brand/created_at в индексе, волатильные поля — из БД). Миграций и новых эндпоинтов нет.
+- Проверки: pytest 658 passed, vitest 501/501, lint чистый, migrate-check зелёный; e2e полный 135 passed / 3 failed — ровно известные baseline (auth:72 → #254, checkout:153 → #210/#224, search-filter:82 → #255), новых нет. QA: AC-1…AC-7 ✅, визуальная сверка 1440/375 с макетом (скриншоты qa-home-*.png в корне).
+- Коммиты: 826bade (backend) + c1ecf6f (frontend) + b2d1b8d, e2ed8b2, 5facf78 (review-фиксы). Issue #263 → In review, PR #264 с `Closes #263`. Замки `frontend`+`backend`+`e2e` заняты до мержа. Оценка контекста задачи: ~10.6K токенов.
+- Деплой-заметка: после выката backend на test нужен однократный full reindex поиска (`POST /api/v1/admin/search/reindex/`), до него поиск отдаёт brand=null/is_new=false (graceful).
+- Повторный инфра-урок (3-й раз за задачу): root-owned `node_modules/.vite` в worktree ломает `npm ci` в pre-push — лечение chown через root-контейнер (см. запись 2026-09-14). Кандидат в правило: create-worktree должен chown'ить .vite/vitest в --prepare-frontend.
+- Tech-debt кандидат (pre-existing на main, подтверждён ревью): дубль fetch на смену `q` в legacy-режиме каталога (Products.vue:363-394 → CatalogView.vue).
