@@ -596,3 +596,7 @@
 - Деплой-заметка: после выката backend на test нужен однократный full reindex поиска (`POST /api/v1/admin/search/reindex/`), до него поиск отдаёт brand=null/is_new=false (graceful).
 - Повторный инфра-урок (3-й раз за задачу): root-owned `node_modules/.vite` в worktree ломает `npm ci` в pre-push — лечение chown через root-контейнер (см. запись 2026-09-14). Кандидат в правило: create-worktree должен chown'ить .vite/vitest в --prepare-frontend.
 - Tech-debt кандидат (pre-existing на main, подтверждён ревью): дубль fetch на смену `q` в legacy-режиме каталога (Products.vue:363-394 → CatalogView.vue).
+
+## 2026-09-16 — хвост #263: reindex поиска на test выполнен автоматически
+- CI-деплой мержа PR #264 (run 35097140469) полностью зелёный (build/deploy-test/seed/migrate-check/smoke/e2e); job `seed-test-catalog` сам выполнил full swap-reindex (шаг 8/10, job SEARCH_REINDEX_FULL completed) — ручной вызов не понадобился.
+- Факт-чек поиска на test: все 5 новых полей в ответе `/api/v1/search/`; brand заполнен у 14/20 по «кабель», is_new работает. Замечено: часть значений brand — GUID-строки (известная аномалия данных 1С-мока, отдаём как есть — это данные, не код; зафиксировано в PLAN.backend риск №3).
