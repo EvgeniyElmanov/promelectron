@@ -600,3 +600,12 @@
 ## 2026-09-16 — хвост #263: reindex поиска на test выполнен автоматически
 - CI-деплой мержа PR #264 (run 35097140469) полностью зелёный (build/deploy-test/seed/migrate-check/smoke/e2e); job `seed-test-catalog` сам выполнил full swap-reindex (шаг 8/10, job SEARCH_REINDEX_FULL completed) — ручной вызов не понадобился.
 - Факт-чек поиска на test: все 5 новых полей в ответе `/api/v1/search/`; brand заполнен у 14/20 по «кабель», is_new работает. Замечено: часть значений brand — GUID-строки (известная аномалия данных 1С-мока, отдаём как есть — это данные, не код; зафиксировано в PLAN.backend риск №3).
+
+## 2026-09-17 — mobile-home-polish (#265): PR #266 смержен, GUID-бренд → null, BottomNav скрыт на витрине
+
+- Follow-up к #263 по скриншоту мобильной главной с test-контура: два расхождения с макетом. Режим --quick, параллельные dev-стримы (backend-dev упал на OAuth-таймауте auth.kimi.com — успешно возобновлён resume'ом), ревью APPROVED с 1-й итерации.
+- Сделано: backend — хелпер `normalize_brand_value` (GUID/UUID-regex + пустые → None) в `product_aggregates.py`, переиспользован в `search_indexing.py` (`_load_brand_values`); GUID-бренд → `brand: null` в `/products/` и в документе индекса, читаемые бренды не тронуты. Frontend — `BottomNav.vue` `v-if="route.path !== '/'"`; глобальный `padding-bottom` body под нав перенесён в `body.has-bottom-nav` (класс toggle'ится в App.vue по роуту) — на витрине не остаётся пустой полосы ~56px (minor-находка ревью, зафикшено до PR). E2E-спеки поправлены: responsive (bottom-nav тесты на /cart + проверка скрытия на /), helpers (fallback goto для goToCart/goToProfile), favorites (переход на /catalog перед кликом нав).
+- Проверки: pytest 661 passed / 2 skipped, vitest 503/503, lint 0; e2e pre-push 135 passed / 3 failed — ровно baseline (auth:72 → #254, checkout:153 → #210/#224, search-filter:82 → #255), новых нет.
+- Коммиты: fcb4449 (frontend) + edb970b (backend) + e786f9c (отступ body). PR #266 squash `5263cb5`, issue закрыт с доказательством, карточка проекта Done (карточки не было на доске — добавлена при закрытии). Замки `frontend`+`backend`+`e2e` свободны.
+- Деплой-хвост: GUID-бренды пропадут из поисковой выдачи после reindex — CI-job `seed-test-catalog` делает его автоматически (проверено на #264).
+- Вне скоупа (осознанно): чистка GUID-значений в данных 1С-мока — отдельная задача на наполнение справочника, не заведена.

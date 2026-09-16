@@ -1,6 +1,6 @@
 # ▶ Пульт запуска Promelectron
 
-`main = dbd9203` · **2026-09-16** · бэклог = открытые issue на `AutonomaCo/promelectron`, борд — их витрина.
+`main = 5263cb5` · **2026-09-17** · бэклог = открытые issue на `AutonomaCo/promelectron`, борд — их витрина.
 🟢 можно · 🟡 можно, но сначала твой ответ · 🔵 занято · 🔴 нельзя, причина указана · 💤 припарковано.
 
 Кнопка у всех одна — `make ai PROMPT=…`; чем она запускается (claude, kimi или следующий),
@@ -32,7 +32,7 @@
 
 | ID | Что запускаем | Замок | Статус | Issue |
 |---|---|---|---|---|
-| [#210](#i-210) | вебхук ЮKassa принимает неподписанные запросы и не сверяет сумму | `backend` | 🔵 замок занят #265 | [↗](https://github.com/AutonomaCo/promelectron/issues/210) |
+| [#210](#i-210) | вебхук ЮKassa принимает неподписанные запросы и не сверяет сумму | `backend` | 🟢 **берём первым** | [↗](https://github.com/AutonomaCo/promelectron/issues/210) |
 | [#213](#i-213) | боевой `ONEC_WEBHOOK_API_KEY` в git и совпадает с тестовым | `infra` | 🟡 ротация требует согласования с 1С | [↗](https://github.com/AutonomaCo/promelectron/issues/213) |
 | #212 | резервного копирования БД нет вообще | `infra` | 🟢 после #213 | [↗](https://github.com/AutonomaCo/promelectron/issues/212) |
 | #215 | на pull request не гоняется ни одна проверка | `infra` | 🟢 в очереди на `infra` | [↗](https://github.com/AutonomaCo/promelectron/issues/215) |
@@ -43,7 +43,7 @@
 
 | ID | Что запускаем | Замок | Статус | Issue |
 |---|---|---|---|---|
-| [#224](#i-224) | спека оплаты зеленеет, ничего не проверив | `e2e` | 🔵 замок занят #265 | [↗](https://github.com/AutonomaCo/promelectron/issues/224) |
+| [#224](#i-224) | спека оплаты зеленеет, ничего не проверив | `e2e` | 🟢 **можно, замок свободен** | [↗](https://github.com/AutonomaCo/promelectron/issues/224) |
 | [#186](#i-186) | флаки `cart-select.spec.js` — протечка состояния корзины | `e2e` | 🟢 в очереди за #224 | [↗](https://github.com/AutonomaCo/promelectron/issues/186) |
 | #216 | смена статуса заказа админом всегда 404 | `backend` | 🟢 в очереди на `backend` | [↗](https://github.com/AutonomaCo/promelectron/issues/216) |
 | #217 | миграции применяются дважды, падение глушится | `backend` | 🟢 в очереди | [↗](https://github.com/AutonomaCo/promelectron/issues/217) |
@@ -67,18 +67,19 @@
 
 ## 🔒 Замки
 
-**Занято:** `backend` + `frontend` + `e2e` → #265 (мобильная витрина: GUID-бренд → null, BottomNav скрыт на `/`), ветка `feature/mobile-home-polish`.
-**Свободны:** `infra`, `docs`, `harness`.
+**Занято:** —.
+**Свободны:** `backend`, `frontend`, `e2e`, `infra`, `docs`, `harness`.
 
 | Замок | Сколько issue | Кто следующий |
 |---|---|---|
-| `backend` | 8 | занят #265, дальше **#210** (P0) |
+| `backend` | 8 | **#210** (P0), дальше #211 |
 | `infra` | 8 | **#213** (P0, нужен твой ответ), дальше #212 |
-| `e2e` | 3 | занят #265, дальше **#224** |
-| `frontend` | 0 | занят #265 |
+| `e2e` | 3 | **#224**, дальше #186 |
+| `frontend` | 0 | — |
 
-**Волна прямо сейчас:** `backend`/`frontend`/`e2e` заняты #265 до мержа.
-**#213** (`infra`, P0 — но сначала ответь про 1С) — свободен и ждёт.
+**Волна прямо сейчас — четыре терминала, замки не пересекаются:**
+**#210** (`backend`, P0) · **#213** (`infra`, P0 — но сначала ответь про 1С) ·
+**#224** (`e2e`). `frontend` пуст — бэклога по нему нет.
 
 ⚠️ `make test-backend` и `make test-onec-mock` сериализованы через `flock`: параллельные
 сессии не сломаются, но вторая будет **ждать** первую. Это не параллельность, это очередь.
@@ -87,9 +88,7 @@
 
 # 🔵 В работе
 
-| ID | Что делаем | Замок | Ветка | PR |
-|---|---|---|---|---|
-| [#265](https://github.com/AutonomaCo/promelectron/issues/265) | мобильная витрина: GUID-бренд → null на backend, BottomNav скрыт на `/` | `frontend`+`backend`+`e2e` | `feature/mobile-home-polish` | [#266](https://github.com/AutonomaCo/promelectron/pull/266) |
+Пусто. #265 смержен (PR #266, squash `5263cb5`, 2026-09-17): мобильная витрина — GUID/пустые значения атрибута 1С «Бренд» → `brand: null` в `/products/` и поисковом индексе (хелпер `normalize_brand_value`), BottomNav скрыт на `/` + отступ body под нав только вне витрины; pytest 661, vitest 503/503, e2e без новых падений; замки `frontend`+`backend`+`e2e` свободны. **Деплой-хвост: GUID-бренды пропадут из поисковой выдачи после reindex (CI-job seed-test-catalog).**
 
 #263 смержен (PR #264, squash `5044c4e`, 2026-09-16): pixel-perfect главной — витрина `/` по утверждённому макету (hero + промо, 4 benefits, 6 категорий, табы Хиты/Новинки/Скидки, B2B, футер), листинг на `/catalog`, шапка §11 + CategoryNav, карточка §13; backend +6 полей (image_url/brand/rating/is_new/is_hit) без миграций; pytest 658, vitest 501/501, e2e без новых падений; замки `frontend`+`backend`+`e2e` свободны. **Деплой-хвост: после выката на test — однократный `POST /api/v1/admin/search/reindex/`.**
 
@@ -153,7 +152,7 @@
 
 ---
 
-> <a id="i-210"></a>🔵 **[#210](https://github.com/AutonomaCo/promelectron/issues/210)** · вебхук ЮKassa: подпись пропускается, сумма не сверяется — `lock: backend` · **P0** · **замок занят #265**
+> <a id="i-210"></a>🟢 **[#210](https://github.com/AutonomaCo/promelectron/issues/210)** · вебхук ЮKassa: подпись пропускается, сумма не сверяется — `lock: backend` · **P0** · **свободен**
 
 ```bash
 make ai PROMPT=ai-launcher/prompts/backend_210-yookassa-webhook-signature.prompt.txt
@@ -199,7 +198,7 @@ make ai PROMPT=ai-launcher/prompts/infra_213-onec-key-rotation.prompt.txt
 
 ---
 
-> <a id="i-224"></a>🔵 **[#224](https://github.com/AutonomaCo/promelectron/issues/224)** · спека оплаты зеленеет, ничего не проверив — `lock: e2e` · **P1** · **замок занят #265**
+> <a id="i-224"></a>🟢 **[#224](https://github.com/AutonomaCo/promelectron/issues/224)** · спека оплаты зеленеет, ничего не проверив — `lock: e2e` · **P1** · **свободен**
 
 ```bash
 make ai PROMPT=ai-launcher/prompts/e2e_224-checkout-spec-green-nothing.prompt.txt
