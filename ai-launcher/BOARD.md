@@ -89,7 +89,7 @@
 
 | ID | Что делаем | Замок | Ветка | PR |
 |---|---|---|---|---|
-| [#265](https://github.com/AutonomaCo/promelectron/issues/265) | мобильная витрина: GUID-бренд → null на backend, BottomNav скрыт на `/` | `frontend`+`backend`+`e2e` | `feature/mobile-home-polish` | — |
+| [#265](https://github.com/AutonomaCo/promelectron/issues/265) | мобильная витрина: GUID-бренд → null на backend, BottomNav скрыт на `/` | `frontend`+`backend`+`e2e` | `feature/mobile-home-polish` | [#266](https://github.com/AutonomaCo/promelectron/pull/266) |
 
 #263 смержен (PR #264, squash `5044c4e`, 2026-09-16): pixel-perfect главной — витрина `/` по утверждённому макету (hero + промо, 4 benefits, 6 категорий, табы Хиты/Новинки/Скидки, B2B, футер), листинг на `/catalog`, шапка §11 + CategoryNav, карточка §13; backend +6 полей (image_url/brand/rating/is_new/is_hit) без миграций; pytest 658, vitest 501/501, e2e без новых падений; замки `frontend`+`backend`+`e2e` свободны. **Деплой-хвост: после выката на test — однократный `POST /api/v1/admin/search/reindex/`.**
 
