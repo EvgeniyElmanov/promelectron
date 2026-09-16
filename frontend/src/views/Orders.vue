@@ -13,7 +13,7 @@
 
     <div v-else-if="orders.length === 0" class="empty">
       <p>У вас пока нет заказов.</p>
-      <router-link to="/">Перейти в каталог</router-link>
+      <router-link to="/catalog">Перейти в каталог</router-link>
     </div>
 
     <div v-else class="orders-list">

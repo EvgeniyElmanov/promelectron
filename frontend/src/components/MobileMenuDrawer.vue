@@ -9,7 +9,8 @@
         tabindex="-1"
         @keydown.esc="$emit('close')"
       >
-        <router-link to="/" class="mobile-menu__link" @click="$emit('close')">Каталог</router-link>
+        <router-link to="/" class="mobile-menu__link" @click="$emit('close')">Главная</router-link>
+        <router-link to="/catalog" class="mobile-menu__link" @click="$emit('close')">Каталог</router-link>
         <template v-if="isAuthenticated">
           <router-link to="/orders" class="mobile-menu__link" @click="$emit('close')">Заказы</router-link>
           <router-link to="/notifications" class="mobile-menu__link" @click="$emit('close')">Уведомления</router-link>

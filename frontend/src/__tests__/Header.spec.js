@@ -146,3 +146,48 @@ describe('Header.vue', () => {
     wrapper.unmount();
   });
 });
+
+describe('Header.vue (§11, D-09)', () => {
+  const mountHeader = async () => {
+    const wrapper = mount(Header, {
+      global: { plugins: [router] },
+      attachTo: document.body,
+    });
+    await flushPromises();
+    return wrapper;
+  };
+
+  it('логотип «Пром Электрон» с иконкой', async () => {
+    const wrapper = await mountHeader();
+    const logo = wrapper.find('[data-testid="header-logo"]');
+    expect(logo.text()).toContain('Пром');
+    expect(logo.text()).toContain('Электрон');
+    expect(logo.find('svg').exists()).toBe(true);
+    wrapper.unmount();
+  });
+
+  it('синяя кнопка «Каталог» ведёт на /catalog', async () => {
+    const wrapper = await mountHeader();
+    const btn = wrapper.find('[data-testid="catalog-btn"]');
+    expect(btn.exists()).toBe(true);
+    expect(btn.attributes('href')).toBe('/catalog');
+    wrapper.unmount();
+  });
+
+  it('телефон и часы работы — статический текст', async () => {
+    const wrapper = await mountHeader();
+    expect(wrapper.text()).toContain('8 (800) 500-45-85');
+    expect(wrapper.text()).toContain('Ежедневно 9:00–21:00');
+    wrapper.unmount();
+  });
+
+  it('«Сравнение» неактивно: aria-disabled, tooltip, не ссылка (D-09)', async () => {
+    const wrapper = await mountHeader();
+    const compare = wrapper.find('[data-testid="compare-link"]');
+    expect(compare.exists()).toBe(true);
+    expect(compare.element.tagName).not.toBe('A');
+    expect(compare.attributes('aria-disabled')).toBe('true');
+    expect(compare.attributes('title')).toBe('Сравнение скоро появится');
+    wrapper.unmount();
+  });
+});

@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+
 from fastapi import HTTPException
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,7 +14,10 @@ from src.app.models.user import User
 from src.app.schemas.product import ProductCreate, ProductUpdate
 from src.app.services.favorite_service import FavoriteService
 from src.app.services.price_service import upsert_product_price
+from src.app.services.product_aggregates import load_product_list_aggregates
 from src.app.services.review_service import ReviewService
+
+NEW_PRODUCT_DAYS = 30
 
 
 class ProductService:
@@ -95,7 +100,22 @@ class ProductService:
                 query = query.order_by(Product.id.desc())
 
         result = await db.execute(query.offset(skip).limit(limit))
-        return list(result.scalars().all()), total
+        products = list(result.scalars().all())
+
+        # Агрегаты карточки (D-03): батч-запросы по ids страницы, без N+1
+        aggregates = await load_product_list_aggregates(
+            db, [p.id for p in products]
+        )
+        new_threshold = datetime.now(timezone.utc) - timedelta(days=NEW_PRODUCT_DAYS)
+        for product in products:
+            entry = aggregates.get(product.id, {})
+            product.average_rating = entry.get("average_rating", 0.0)
+            product.reviews_count = entry.get("reviews_count", 0)
+            product.brand = entry.get("brand")
+            product.is_hit = entry.get("is_hit", False)
+            product.is_new = product.created_at >= new_threshold
+
+        return products, total
 
     @staticmethod
     async def read_products_by_supplier(

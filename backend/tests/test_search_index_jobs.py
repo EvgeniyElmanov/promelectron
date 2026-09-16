@@ -175,6 +175,42 @@ class TestBuildProductDocuments:
         )
         assert docs[0]["images"] == []
 
+    async def test_document_contains_brand_and_created_at(self, test_session, catalog):
+        """Документ несёт brand (атрибут «Бренд» по name, резолв как в detail)
+        и created_at (ISO) для вычисления is_new на запросе (D-03)."""
+        brand_attr = Attribute(
+            code="brand-guid-like",
+            name="Бренд",
+            value_type=AttributeValueType.string,
+            is_filterable=False,
+        )
+        test_session.add(brand_attr)
+        await test_session.flush()
+        test_session.add(
+            ProductAttributeValue(
+                product_id=catalog.product.id,
+                attribute_id=brand_attr.id,
+                value_text="Legrand",
+            )
+        )
+        await test_session.commit()
+
+        docs, _ = await search_indexing.build_product_documents(
+            test_session, [catalog.product.id, catalog.deleted.id]
+        )
+        assert len(docs) == 1
+        doc = docs[0]
+        assert doc["brand"] == "Legrand"
+        assert doc["created_at"] == catalog.product.created_at.isoformat()
+
+    async def test_document_brand_none_without_attribute(self, test_session, catalog):
+        """Без атрибута «Бренд» → brand=None в документе."""
+        docs, _ = await search_indexing.build_product_documents(
+            test_session, [catalog.product.id]
+        )
+        assert docs[0]["brand"] is None
+        assert docs[0]["created_at"] is not None
+
     async def test_empty_input(self, test_session):
         docs, deleted = await search_indexing.build_product_documents(test_session, [])
         assert docs == [] and deleted == []

@@ -25,7 +25,7 @@
     <div class="guest-checkout__card">
       <div class="guest-checkout__section-title">Товары</div>
       <div v-if="items.length === 0" class="guest-checkout__empty">
-        Корзина пуста. <router-link to="/">В каталог</router-link>
+        Корзина пуста. <router-link to="/catalog">В каталог</router-link>
       </div>
       <div v-else class="guest-checkout__items">
         <div v-for="item in items" :key="item.product_id" class="guest-checkout__item">

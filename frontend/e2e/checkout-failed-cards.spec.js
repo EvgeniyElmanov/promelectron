@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { goToCart, setYooKassaPaymentStatus, getInStockProductCard } from './helpers.js';
+import { goToCart, setYooKassaPaymentStatus, getInStockProductCard, goToCatalog } from './helpers.js';
 import { FAILED_CARDS } from './yookassa-test-cards.js';
 
 function uniqueEmail() {
@@ -54,7 +54,7 @@ async function fillRecipientPhone(page, phone = '+79990001122') {
 }
 
 async function addFirstProductToCart(page) {
-  await page.goto('/');
+  await goToCatalog(page);
   const firstProduct = await getInStockProductCard(page);
   await firstProduct.locator('[data-testid="add-to-cart-button"]').click();
   await expect(firstProduct.locator('[data-testid="add-to-cart-button"]')).toContainText('В корзине', { timeout: 5000 });

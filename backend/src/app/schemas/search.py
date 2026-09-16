@@ -22,6 +22,15 @@ class SearchItemOut(BaseModel):
     categories: dict[str, str] = {}
     attrs: dict[str, Any] = {}
     images: list[str] = []
+    # Card aggregates (pixel-perfect-homepage, D-03): brand comes from the
+    # indexed document; rating/reviews/is_hit are enriched from the DB at
+    # query time; is_new is derived from the indexed ``created_at`` (the raw
+    # field itself stays on the server).
+    average_rating: float = 0.0
+    reviews_count: int = 0
+    brand: str | None = None
+    is_new: bool = False
+    is_hit: bool = False
 
 
 class SuggestionProduct(BaseModel):

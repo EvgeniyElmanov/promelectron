@@ -1,7 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { jwtDecode } from 'jwt-decode';
 import { useAuth } from '@/composables/useAuth';
-import Products from '../views/Products.vue';
+import HomeView from '../views/HomeView.vue';
+import CatalogView from '../views/CatalogView.vue';
 import Login from '../views/Login.vue';
 import Cart from '../views/Cart.vue';
 import Orders from '../views/Orders.vue';
@@ -30,7 +31,25 @@ import VerifyEmailSuccess from '../views/VerifyEmailSuccess.vue';
 import VerifyEmailError from '../views/VerifyEmailError.vue';
 
 const routes = [
-  { path: '/', component: Products },
+  {
+    path: '/',
+    component: HomeView,
+    // D-02: внешние ссылки с catalog-query (/?q=…, /?category_id=…, фильтры)
+    // редиректят на /catalog с сохранением параметров; чистая «/» — витрина.
+    // ?tab=sale — якорь витрины (таб «Скидки», D-06/D-10), не редиректится.
+    beforeEnter: (to, from, next) => {
+      const catalogKeys = Object.keys(to.query).filter(
+        (key) => key !== 'tab' && (['q', 'category_id', 'sort', 'price_min', 'price_max', 'min_rating'].includes(key)
+          || key.startsWith('attr.')),
+      );
+      if (catalogKeys.length > 0) {
+        next({ path: '/catalog', query: to.query });
+      } else {
+        next();
+      }
+    },
+  },
+  { path: '/catalog', component: CatalogView },
   { path: '/login', component: Login },
   { path: '/register', component: Register },
   { path: '/forgot-password', component: ForgotPassword },

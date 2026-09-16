@@ -146,7 +146,7 @@ test.describe('Adaptive layout gh-258', () => {
 
   test('1920px: сетка каталога использует ширину (wide-контейнер, резиновые карточки)', async ({ page }) => {
     await page.setViewportSize({ width: 1920, height: 1080 });
-    await page.goto('/');
+    await page.goto('/catalog');
     await page.waitForLoadState('networkidle');
     // До фикса #258 контейнер был ~1200px, сетка ~900px. Число колонок не проверяем:
     // оно зависит от сайдбара фильтров и gap, ширина используется через 1fr-растяжение.

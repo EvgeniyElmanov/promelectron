@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { goToCart, getInStockProductCard } from './helpers.js';
+import { goToCart, getInStockProductCard, goToCatalog } from './helpers.js';
 
 function uniqueEmail() {
   return `test_${Date.now()}_w${test.info().workerIndex}@example.com`;
@@ -7,7 +7,7 @@ function uniqueEmail() {
 
 test.describe('Product Detail Page', () => {
   test('can navigate to product detail from catalog', async ({ page }) => {
-    await page.goto('/');
+    await goToCatalog(page);
     const firstCard = page.locator('[data-testid="product-card"]').first();
     await expect(firstCard).toBeVisible();
     await firstCard.click();
@@ -46,7 +46,7 @@ test.describe('Product Detail Page', () => {
   });
 
   test('shows reviews section on PDP', async ({ page }) => {
-    await page.goto('/');
+    await goToCatalog(page);
     const firstCard = page.locator('[data-testid="product-card"]').first();
     await firstCard.click();
     await expect(page.locator('[data-testid="pdp-reviews-section"]')).toBeVisible();

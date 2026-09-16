@@ -643,3 +643,157 @@ class TestProductDetailAttributes:
         assert response.status_code == 200
         codes = [a["code"] for a in response.json()["attributes"]]
         assert codes == ["filled_attr"]
+
+
+class TestProductListCardAggregates:
+    """Агрегаты карточки товара в list-ответе /api/v1/products/ (D-03)."""
+
+    @pytest.mark.asyncio
+    async def test_list_products_card_fields_defaults(self, client, test_product):
+        """Без отзывов/бренда/заказов поля присутствуют с дефолтами."""
+        response = await client.get("/api/v1/products/")
+        assert response.status_code == 200
+        item = next(i for i in response.json()["items"] if i["id"] == test_product.id)
+        assert item["average_rating"] == 0.0
+        assert item["reviews_count"] == 0
+        assert item["brand"] is None
+        assert item["is_new"] is True  # created_at только что
+        assert item["is_hit"] is False
+
+    @pytest.mark.asyncio
+    async def test_list_products_rating_aggregates(self, client, test_session, test_product, test_user):
+        """average_rating/reviews_count — только одобренные отзывы, округление до 1 знака."""
+        from src.app.models.review import Review
+
+        test_session.add_all(
+            [
+                Review(product_id=test_product.id, user_id=test_user.id, rating=5, text="Great"),
+                Review(product_id=test_product.id, user_id=test_user.id, rating=4, text="Good"),
+                Review(
+                    product_id=test_product.id,
+                    user_id=test_user.id,
+                    rating=1,
+                    text="Hidden",
+                    is_approved=False,
+                ),
+            ]
+        )
+        await test_session.commit()
+
+        response = await client.get("/api/v1/products/")
+        item = next(i for i in response.json()["items"] if i["id"] == test_product.id)
+        assert item["average_rating"] == 4.5
+        assert item["reviews_count"] == 2
+
+    @pytest.mark.asyncio
+    async def test_list_products_brand_from_attribute(self, client, test_session, test_product):
+        """brand — value_text атрибута с именем «Бренд» (резолв по name, как в detail)."""
+        from src.app.models.attribute import Attribute, AttributeValueType, ProductAttributeValue
+
+        attribute = Attribute(
+            code="brand-guid-like", name="Бренд", value_type=AttributeValueType.string
+        )
+        test_session.add(attribute)
+        await test_session.flush()
+        test_session.add(
+            ProductAttributeValue(
+                product_id=test_product.id,
+                attribute_id=attribute.id,
+                value_text="Legrand",
+            )
+        )
+        await test_session.commit()
+
+        response = await client.get("/api/v1/products/")
+        item = next(i for i in response.json()["items"] if i["id"] == test_product.id)
+        assert item["brand"] == "Legrand"
+
+    @pytest.mark.asyncio
+    async def test_list_products_is_new_boundary(self, client, test_session, test_product):
+        """is_new: created_at ≤ 30 дней → true, 31 день → false."""
+        from datetime import datetime, timedelta, timezone
+
+        response = await client.get("/api/v1/products/")
+        item = next(i for i in response.json()["items"] if i["id"] == test_product.id)
+        assert item["is_new"] is True
+
+        test_product.created_at = datetime.now(timezone.utc) - timedelta(days=31)
+        test_session.add(test_product)
+        await test_session.commit()
+
+        # Другой query-параметр — другой cache key (ответ /products/ кэшируется)
+        response = await client.get("/api/v1/products/?sort_by=newest")
+        item = next(i for i in response.json()["items"] if i["id"] == test_product.id)
+        assert item["is_new"] is False
+
+    @pytest.mark.asyncio
+    async def test_list_products_is_hit_paid_order(self, client, test_session, test_product, test_user):
+        """is_hit: ≥1 позиция в оплаченном заказе за 90 дней → true."""
+        from decimal import Decimal
+
+        from src.app.models.order import Order, OrderItem
+
+        order = Order(user_id=test_user.id, total_price=Decimal("99.99"), status="paid")
+        test_session.add(order)
+        await test_session.flush()
+        test_session.add(
+            OrderItem(
+                order_id=order.id,
+                product_id=test_product.id,
+                quantity=1,
+                price_at_time=Decimal("99.99"),
+            )
+        )
+        await test_session.commit()
+
+        response = await client.get("/api/v1/products/")
+        item = next(i for i in response.json()["items"] if i["id"] == test_product.id)
+        assert item["is_hit"] is True
+
+    @pytest.mark.asyncio
+    async def test_list_products_is_hit_excludes_pending_and_old(self, client, test_session, test_product, test_user):
+        """is_hit=False: заказ pending; оплаченный заказ старше 90 дней."""
+        from datetime import datetime, timedelta, timezone
+        from decimal import Decimal
+
+        from src.app.models.order import Order, OrderItem
+
+        pending_order = Order(user_id=test_user.id, total_price=Decimal("99.99"), status="pending")
+        test_session.add(pending_order)
+        await test_session.flush()
+        test_session.add(
+            OrderItem(
+                order_id=pending_order.id,
+                product_id=test_product.id,
+                quantity=1,
+                price_at_time=Decimal("99.99"),
+            )
+        )
+        await test_session.commit()
+
+        response = await client.get("/api/v1/products/")
+        item = next(i for i in response.json()["items"] if i["id"] == test_product.id)
+        assert item["is_hit"] is False
+
+        old_paid = Order(
+            user_id=test_user.id,
+            total_price=Decimal("99.99"),
+            status="paid",
+            created_at=datetime.now(timezone.utc) - timedelta(days=91),
+        )
+        test_session.add(old_paid)
+        await test_session.flush()
+        test_session.add(
+            OrderItem(
+                order_id=old_paid.id,
+                product_id=test_product.id,
+                quantity=1,
+                price_at_time=Decimal("99.99"),
+            )
+        )
+        await test_session.commit()
+
+        # Другой query-параметр — другой cache key (ответ /products/ кэшируется)
+        response = await client.get("/api/v1/products/?sort_by=newest")
+        item = next(i for i in response.json()["items"] if i["id"] == test_product.id)
+        assert item["is_hit"] is False

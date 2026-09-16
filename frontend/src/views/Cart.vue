@@ -34,7 +34,7 @@
         <path d="M16 10a4 4 0 01-8 0"/>
       </svg>
       <p class="cart__empty-text">Ваша корзина пуста</p>
-      <AppButton variant="primary" @click="router.push('/')">Перейти в каталог</AppButton>
+      <AppButton variant="primary" @click="router.push('/catalog')">Перейти в каталог</AppButton>
     </div>
 
     <!-- Cart Content -->

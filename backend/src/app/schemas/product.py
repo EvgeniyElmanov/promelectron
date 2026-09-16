@@ -62,6 +62,13 @@ class ProductOut(ProductBase):
     supplier_id: int
     created_at: datetime
     updated_at: datetime
+    # Агрегаты карточки товара: заполняются в list-эндпоинте (ProductService),
+    # в остальных ответах остаются дефолты (обратная совместимость)
+    average_rating: float = 0.0
+    reviews_count: int = 0
+    brand: Optional[str] = None
+    is_new: bool = False
+    is_hit: bool = False
 
     model_config = ConfigDict(from_attributes=True)
 

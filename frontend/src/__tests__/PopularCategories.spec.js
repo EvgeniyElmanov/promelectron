@@ -1,10 +1,12 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { mount, flushPromises } from '@vue/test-utils';
+import { describe, it, expect, vi } from 'vitest';
+import { mount } from '@vue/test-utils';
 import PopularCategories from '@/components/home/PopularCategories.vue';
-import api from '@/services/api';
 
-vi.mock('@/services/api', () => ({
-  default: { get: vi.fn() },
+const pushMock = vi.hoisted(() => vi.fn());
+
+vi.mock('vue-router', () => ({
+  useRouter: () => ({ push: pushMock }),
+  RouterLink: { template: '<a><slot /></a>' },
 }));
 
 const makeCategories = (n) =>
@@ -15,62 +17,44 @@ const makeCategories = (n) =>
     product_count: 10 + i,
   }));
 
-beforeEach(() => {
-  vi.clearAllMocks();
-});
-
-describe('PopularCategories', () => {
-  it('renders root categories after fetch', async () => {
-    api.get.mockResolvedValue({ data: { items: makeCategories(3), total: 3 } });
-    const wrapper = mount(PopularCategories);
-    await flushPromises();
+describe('PopularCategories (D-07)', () => {
+  it('рендерит корневые категории из props', () => {
+    const wrapper = mount(PopularCategories, {
+      props: { categories: makeCategories(3) },
+    });
     expect(wrapper.find('[data-testid="popular-categories"]').exists()).toBe(true);
     expect(wrapper.findAll('[data-testid^="category-card-"]')).toHaveLength(3);
   });
 
-  it('filters out non-root categories and limits to 8', async () => {
-    const items = [...makeCategories(10), { id: 99, name: 'Дочерняя', parent_id: 1, product_count: 5 }];
-    api.get.mockResolvedValue({ data: { items, total: items.length } });
-    const wrapper = mount(PopularCategories);
-    await flushPromises();
-    expect(wrapper.findAll('[data-testid^="category-card-"]')).toHaveLength(8);
+  it('отсекает дочерние категории и ограничивает 6 карточками', () => {
+    const items = [...makeCategories(8), { id: 99, name: 'Дочерняя', parent_id: 1, product_count: 5 }];
+    const wrapper = mount(PopularCategories, { props: { categories: items } });
+    expect(wrapper.findAll('[data-testid^="category-card-"]')).toHaveLength(6);
     expect(wrapper.find('[data-testid="category-card-99"]').exists()).toBe(false);
   });
 
-  it('emits select with category id on card click', async () => {
-    api.get.mockResolvedValue({ data: { items: makeCategories(2), total: 2 } });
-    const wrapper = mount(PopularCategories);
-    await flushPromises();
+  it('передаёт image_url в карточку (через getImageUrl medium, F-06)', () => {
+    const categories = [{ id: 1, name: 'Ноутбуки', parent_id: null, product_count: 5, image_url: '/uploads/cat.png' }];
+    const wrapper = mount(PopularCategories, { props: { categories } });
+    expect(wrapper.find('.category-card__img').attributes('src')).toBe('/uploads/cat.png?size=medium');
+  });
+
+  it('клик по карточке ведёт на /catalog?category_id=<id>', async () => {
+    const wrapper = mount(PopularCategories, { props: { categories: makeCategories(2) } });
     await wrapper.find('[data-testid="category-card-2"]').trigger('click');
-    expect(wrapper.emitted('select')).toEqual([[2]]);
+    expect(pushMock).toHaveBeenCalledWith({ path: '/catalog', query: { category_id: '2' } });
   });
 
-  it('hides section when fetch fails', async () => {
-    api.get.mockRejectedValue(new Error('network'));
-    const wrapper = mount(PopularCategories);
-    await flushPromises();
-    expect(wrapper.find('[data-testid="popular-categories"]').exists()).toBe(false);
+  it('показывает skeleton при loading и скрывает секцию при пустом списке', () => {
+    const loading = mount(PopularCategories, { props: { loading: true } });
+    expect(loading.findAll('.popular-categories__skeleton').length).toBeGreaterThan(0);
+
+    const empty = mount(PopularCategories, { props: { categories: [] } });
+    expect(empty.find('[data-testid="popular-categories"]').exists()).toBe(false);
   });
 
-  it('hides section when categories list is empty', async () => {
-    api.get.mockResolvedValue({ data: { items: [], total: 0 } });
-    const wrapper = mount(PopularCategories);
-    await flushPromises();
-    expect(wrapper.find('[data-testid="popular-categories"]').exists()).toBe(false);
-  });
-
-  it('emits view-all on header button click when categories exceed 8', async () => {
-    api.get.mockResolvedValue({ data: { items: makeCategories(10), total: 10 } });
-    const wrapper = mount(PopularCategories);
-    await flushPromises();
-    await wrapper.find('[data-testid="categories-view-all"]').trigger('click');
-    expect(wrapper.emitted('view-all')).toBeTruthy();
-  });
-
-  it('hides view-all button when all root categories fit', async () => {
-    api.get.mockResolvedValue({ data: { items: makeCategories(3), total: 3 } });
-    const wrapper = mount(PopularCategories);
-    await flushPromises();
-    expect(wrapper.find('[data-testid="categories-view-all"]').exists()).toBe(false);
+  it('ссылка «Все категории» ведёт на /catalog', () => {
+    const wrapper = mount(PopularCategories, { props: { categories: makeCategories(2) } });
+    expect(wrapper.find('[data-testid="categories-view-all"]').exists()).toBe(true);
   });
 });

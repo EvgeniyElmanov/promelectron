@@ -62,7 +62,7 @@
       <router-link v-if="isAuthenticated" to="/orders" class="payment-result__btn payment-result__btn--primary">
         Мои заказы
       </router-link>
-      <router-link to="/" class="payment-result__btn payment-result__btn--secondary">
+      <router-link to="/catalog" class="payment-result__btn payment-result__btn--secondary">
         В каталог
       </router-link>
     </div>

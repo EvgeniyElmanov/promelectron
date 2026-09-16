@@ -10,7 +10,7 @@
 
     <div v-else-if="favorites.length === 0" class="favorites__empty" data-testid="favorites-empty">
       <p>У вас пока нет избранных товаров</p>
-      <router-link to="/" class="favorites__link">Перейти к покупкам</router-link>
+      <router-link to="/catalog" class="favorites__link">Перейти к покупкам</router-link>
     </div>
 
     <div v-else class="favorites__grid">

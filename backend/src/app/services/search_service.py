@@ -32,8 +32,9 @@ PRODUCTS_INDEX = "products"
 PRODUCTS_INDEX_NEW = "products_new"
 PRIMARY_KEY = "id"
 
-# Base (non-EAV) fields. NB: ``brand`` is intentionally absent — the Product
-# model has no brand column yet (PLAN.md R5 / open question Q2).
+# Base (non-EAV) fields. NB: ``brand`` is a document field built from the EAV
+# attribute «Бренд» (search_indexing._product_document) — it is retrieved for
+# product cards but intentionally NOT searchable/filterable/sortable.
 SEARCHABLE_ATTRIBUTES = ["name", "sku", "description"]
 BASE_FILTERABLE_ATTRIBUTES = [
     "price",

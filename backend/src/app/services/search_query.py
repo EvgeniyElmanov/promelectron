@@ -13,6 +13,7 @@ input is never interpolated into a filter expression.
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from fastapi import HTTPException
@@ -22,6 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.app.models.attribute import Attribute, AttributeValueType
 from src.app.models.category import Category
+from src.app.services.product_aggregates import load_product_list_aggregates
 from src.app.services.search_service import (
     PRODUCTS_INDEX,
     SearchUnavailableError,
@@ -62,7 +64,11 @@ SEARCH_HIT_ATTRIBUTES = [
     "categories",
     "attrs",
     "images",
+    "brand",
+    "created_at",
 ]
+
+NEW_PRODUCT_DAYS = 30
 
 
 class SearchQueryError(ValueError):
@@ -340,13 +346,68 @@ async def search_products(
     distribution, stats = merge_facet_results(main, sub_results)
 
     total = main.get("totalHits", 0)
+    items = await _enrich_hits(db, main.get("hits", []))
     return {
-        "items": main.get("hits", []),
+        "items": items,
         "total": total,
         "page": page,
         "pages": main.get("totalPages", 0),
         "facets": build_facets_response(attributes, distribution, stats),
     }
+
+
+def _parse_created_at(raw: Any) -> datetime | None:
+    """Parse the indexed ``created_at`` ISO string (None-safe)."""
+    if not raw:
+        return None
+    try:
+        return datetime.fromisoformat(str(raw))
+    except ValueError:
+        return None
+
+
+async def _enrich_hits(db: AsyncSession, hits: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Merge card aggregates into search hits (pixel-perfect-homepage, D-03).
+
+    ``brand``/``created_at`` come from the document (indexed, stable); the DB
+    brand query runs only for hits missing ``brand`` (pre-reindex indexes,
+    review F-02). ``average_rating``/``reviews_count``/``is_hit`` are loaded
+    from the DB in batched ``IN (ids)`` queries (no N+1) because reviews and
+    paid orders never touch the products row — indexing them would serve
+    stale data.
+    ``is_new`` is computed at query time from the indexed ``created_at`` and
+    the raw ``created_at`` field is dropped from the public items.
+    Documents indexed before this change simply miss ``brand``/``created_at``
+    → graceful defaults until the next full reindex.
+    """
+    ids = [hit.get("id") for hit in hits if hit.get("id") is not None]
+    # Brand уже приходит из документа Meilisearch после reindex — грузим из БД
+    # только для hits без brand (старый индекс до переиндексации, review F-02)
+    ids_without_brand = [
+        hit["id"] for hit in hits if hit.get("id") is not None and not hit.get("brand")
+    ]
+    if ids:
+        aggregates = await load_product_list_aggregates(db, ids, brand_ids=ids_without_brand)
+    else:
+        aggregates = {}
+    new_threshold = datetime.now(timezone.utc) - timedelta(days=NEW_PRODUCT_DAYS)
+    items: list[dict[str, Any]] = []
+    for hit in hits:
+        item = dict(hit)
+        entry = aggregates.get(item.get("id"), {})
+        item["average_rating"] = entry.get("average_rating", 0.0)
+        item["reviews_count"] = entry.get("reviews_count", 0)
+        item["brand"] = item.get("brand") or entry.get("brand")
+        item["is_hit"] = entry.get("is_hit", False)
+        created_at = _parse_created_at(item.pop("created_at", None))
+        if created_at is not None:
+            if created_at.tzinfo is None:
+                created_at = created_at.replace(tzinfo=timezone.utc)
+            item["is_new"] = created_at >= new_threshold
+        else:
+            item["is_new"] = False
+        items.append(item)
+    return items
 
 
 async def search_suggestions(

@@ -151,6 +151,77 @@ class TestCategoriesAPI:
         category = next(c for c in data["items"] if c["id"] == test_category.id)
         assert category["product_count"] == 1
 
+    @pytest.mark.asyncio
+    async def test_list_categories_image_url(self, client, test_session, test_category, test_supplier):
+        """image_url — первое изображение активного товара категории (D-03)."""
+        from tests.conftest import make_product
+
+        await make_product(
+            test_session,
+            name="Cat Image Product",
+            price=10.0,
+            stock=5,
+            supplier_id=test_supplier.id,
+            category_id=test_category.id,
+            is_active=True,
+            images=["uploads/first.jpg", "uploads/second.jpg"],
+        )
+        await test_session.commit()
+
+        response = await client.get("/api/v1/categories/")
+        assert response.status_code == 200
+        data = response.json()
+        category = next(c for c in data["items"] if c["id"] == test_category.id)
+        assert category["image_url"] == "uploads/first.jpg"
+
+    @pytest.mark.asyncio
+    async def test_list_categories_image_url_fallbacks(self, client, test_session, test_category, test_supplier):
+        """image_url=None: нет товаров, пустые images, неактивный товар (D-03)."""
+        from tests.conftest import make_product
+
+        # Категория без товаров → None
+        empty = Category(name="Empty Category")
+        test_session.add(empty)
+        await test_session.commit()
+        await test_session.refresh(empty)
+
+        # Неактивный товар с картинкой не даёт image_url
+        inactive_cat = Category(name="Inactive Category")
+        test_session.add(inactive_cat)
+        await test_session.flush()
+        await make_product(
+            test_session,
+            name="Inactive Product",
+            price=10.0,
+            stock=5,
+            supplier_id=test_supplier.id,
+            category_id=inactive_cat.id,
+            is_active=False,
+            images=["uploads/hidden.jpg"],
+        )
+        # Активный товар с пустым images тоже не даёт image_url
+        no_images_cat = Category(name="No Images Category")
+        test_session.add(no_images_cat)
+        await test_session.flush()
+        await make_product(
+            test_session,
+            name="No Images Product",
+            price=10.0,
+            stock=5,
+            supplier_id=test_supplier.id,
+            category_id=no_images_cat.id,
+            is_active=True,
+            images=[],
+        )
+        await test_session.commit()
+
+        response = await client.get("/api/v1/categories/")
+        assert response.status_code == 200
+        by_id = {c["id"]: c for c in response.json()["items"]}
+        assert by_id[empty.id]["image_url"] is None
+        assert by_id[inactive_cat.id]["image_url"] is None
+        assert by_id[no_images_cat.id]["image_url"] is None
+
     @pytest.mark.usefixtures("test_admin")
     @pytest.mark.asyncio
     async def test_create_category_invalid_parent_as_admin(self, client, admin_token):

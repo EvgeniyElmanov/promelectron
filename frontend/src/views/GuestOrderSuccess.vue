@@ -26,7 +26,7 @@
       Вы можете отслеживать статус заказа по ссылке из письма.
     </p>
 
-    <router-link to="/" class="guest-success__btn">
+    <router-link to="/catalog" class="guest-success__btn">
       Вернуться в каталог
     </router-link>
   </div>

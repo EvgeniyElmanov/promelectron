@@ -1,9 +1,6 @@
 <template>
   <div class="home">
-    <HeroBanner @cta-click="scrollToListing" @show-new="onShowNew" />
-    <BenefitsStrip />
     <SearchBar v-model="searchQuery" class="home__search-bar" @submit="onSearchSubmit" />
-    <PopularCategories @select="onCategoryCardSelect" @view-all="scrollToListing" />
     <CategoryChips @select="handleCategorySelect" />
 
     <div class="home__section">
@@ -115,7 +112,7 @@
           </div>
 
           <div class="home__header-row">
-            <h2 ref="listingTitle" class="home__section-title" data-testid="products-section-title">Популярные товары</h2>
+            <h2 class="home__section-title" data-testid="products-section-title">Популярные товары</h2>
             <span class="home__count" data-testid="products-count">
               <template v-if="displayTotal !== null">{{ displayTotal }} товаров</template>
               <template v-else>&nbsp;</template>
@@ -173,9 +170,6 @@ import SearchBar from '@/components/SearchBar.vue';
 import CategoryChips from '@/components/CategoryChips.vue';
 import SkeletonProductCard from '@/components/SkeletonProductCard.vue';
 import FilterPanel from '@/components/FilterPanel.vue';
-import HeroBanner from '@/components/home/HeroBanner.vue';
-import BenefitsStrip from '@/components/home/BenefitsStrip.vue';
-import PopularCategories from '@/components/home/PopularCategories.vue';
 import AppFooter from '@/components/AppFooter.vue';
 import AppBreadcrumbs from '@/components/ui/AppBreadcrumbs.vue';
 import AppButton from '@/components/ui/AppButton.vue';
@@ -197,7 +191,6 @@ const skip = ref(0);
 const limit = 20;
 const total = ref(null);
 const loadMoreTrigger = ref(null);
-const listingTitle = ref(null);
 
 // Фильтры каталога: на мобилке (<768px) свёрнуты по умолчанию, на десктопе развёрнуты.
 // Только initial-состояние; дальше пользователь управляет <details> сам (@toggle синкает ref,
@@ -231,7 +224,7 @@ const catalogCrumbs = computed(() => {
     const category = allCategories.value.find((c) => c.id === categoryId.value);
     if (category) categoryName = category.name;
   }
-  crumbs.push(categoryName ? { label: 'Каталог', to: '/' } : { label: 'Каталог' });
+  crumbs.push(categoryName ? { label: 'Каталог', to: '/catalog' } : { label: 'Каталог' });
   if (categoryName) crumbs.push({ label: categoryName });
   return crumbs;
 });
@@ -323,28 +316,9 @@ const handleCategorySelect = (categoryIdValue) => {
   fetchProducts();
 };
 
-const scrollToListing = () => {
-  const el = listingTitle.value;
-  if (el && typeof el.scrollIntoView === 'function') {
-    el.scrollIntoView({ behavior: 'smooth' });
-  }
-};
-
-// Клик по CategoryCard — тот же фильтр, что даёт CategoryChips (S-02),
-// плюс скролл к листингу.
-const onCategoryCardSelect = (categoryIdValue) => {
-  handleCategorySelect(categoryIdValue);
-  scrollToListing();
-};
-
 // Табы «Хиты продаж / Новинки» — UI над currentSort (D-07), без нового fetch-механизма.
 const setProductsTab = (sort) => {
   currentSort.value = sort;
-};
-
-const onShowNew = () => {
-  setProductsTab('newest');
-  scrollToListing();
 };
 
 const onFilterPrice = ({ min, max }) => catalog.setPrice(min, max);
@@ -374,7 +348,7 @@ watch(searchQuery, () => {
 
 const onSearchSubmit = (q) => {
   clearTimeout(searchTimeout);
-  router.push({ path: '/', query: q ? { q } : undefined });
+  router.push({ path: '/catalog', query: q ? { q } : undefined });
 };
 
 // React to URL query changes (e.g. from header search)
@@ -393,6 +367,85 @@ watch(
   }
 );
 
+// F-07: смена фильтров в URL у смонтированного /catalog (CategoryNav глобальна,
+// back/forward) — реакция в обоих режимах. `q` обрабатывает watch выше, здесь —
+// category_id/sort/price_*/min_rating. Перед применением значения сравниваются
+// с текущим состоянием: UI-действия сами меняют URL (search-режим — syncUrl),
+// и без сравнения watch зациклился бы на повторный fetch.
+const parseNumParam = (raw) => {
+  if (raw === undefined || raw === null) return null;
+  const value = Number(Array.isArray(raw) ? raw[0] : raw);
+  return Number.isNaN(value) ? null : value;
+};
+
+watch(
+  () => [
+    route.query.category_id,
+    route.query.sort,
+    route.query.price_min,
+    route.query.price_max,
+    route.query.min_rating,
+  ],
+  () => {
+    const nextCategoryId = parseNumParam(route.query.category_id);
+    const nextSort = route.query.sort ? String(route.query.sort) : '';
+    const nextMinPrice = parseNumParam(route.query.price_min);
+    const nextMaxPrice = parseNumParam(route.query.price_max);
+    const nextMinRating = parseNumParam(route.query.min_rating);
+
+    if (searchAvailable.value) {
+      let changed = false;
+      if (nextCategoryId !== catalog.categoryId.value) {
+        catalog.categoryId.value = nextCategoryId;
+        changed = true;
+      }
+      if (nextSort !== catalog.sort.value) {
+        catalog.sort.value = nextSort;
+        changed = true;
+      }
+      if (
+        nextMinPrice !== catalog.priceRange.min ||
+        nextMaxPrice !== catalog.priceRange.max
+      ) {
+        catalog.priceRange.min = nextMinPrice;
+        catalog.priceRange.max = nextMaxPrice;
+        changed = true;
+      }
+      if (changed) {
+        catalog.page.value = 1;
+        catalog.load();
+      }
+      return;
+    }
+
+    let changed = false;
+    if (nextCategoryId !== selectedCategory.value) {
+      selectedCategory.value = nextCategoryId;
+      changed = true;
+    }
+    if (nextSort !== selectedSort.value) {
+      selectedSort.value = nextSort;
+      changed = true;
+    }
+    if (nextMinPrice !== minPrice.value) {
+      minPrice.value = nextMinPrice;
+      changed = true;
+    }
+    if (nextMaxPrice !== maxPrice.value) {
+      maxPrice.value = nextMaxPrice;
+      changed = true;
+    }
+    if (nextMinRating !== minRating.value) {
+      minRating.value = nextMinRating;
+      changed = true;
+    }
+    if (changed) {
+      skip.value = 0;
+      fetchProducts();
+    }
+  }
+);
+
 onMounted(async () => {
   if (route.query.q) {
     searchQuery.value = String(route.query.q);
@@ -405,6 +458,28 @@ onMounted(async () => {
     catalog.q.value = searchQuery.value;
     await catalog.load();
   } else {
+    // Legacy-режим: восстанавливаем фильтры из URL query (F-03, AC-2) —
+    // входы витрины (hero-CTA, промо, категории, CategoryNav) ведут на
+    // /catalog?category_id=N, параметр не должен теряться.
+    const queryCategoryId = Number(route.query.category_id);
+    if (!Number.isNaN(queryCategoryId) && route.query.category_id !== undefined) {
+      selectedCategory.value = queryCategoryId;
+    }
+    if (route.query.sort) {
+      selectedSort.value = String(route.query.sort);
+    }
+    const queryMinPrice = Number(route.query.price_min);
+    if (!Number.isNaN(queryMinPrice) && route.query.price_min !== undefined) {
+      minPrice.value = queryMinPrice;
+    }
+    const queryMaxPrice = Number(route.query.price_max);
+    if (!Number.isNaN(queryMaxPrice) && route.query.price_max !== undefined) {
+      maxPrice.value = queryMaxPrice;
+    }
+    const queryMinRating = Number(route.query.min_rating);
+    if (!Number.isNaN(queryMinRating) && route.query.min_rating !== undefined) {
+      minRating.value = queryMinRating;
+    }
     await fetchProducts();
   }
 

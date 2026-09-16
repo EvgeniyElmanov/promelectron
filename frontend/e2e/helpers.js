@@ -428,3 +428,11 @@ export async function openFiltersPanel(page) {
     );
   }
 }
+
+// Каталог переехал с `/` на `/catalog` (D-02, #263): helper открывает листинг
+// и ждёт первую карточку. Использовать вместо goto('/') в спеках, которым
+// нужен листинг (поиск/фильтры/добавление в корзину).
+export async function goToCatalog(page) {
+  await page.goto('/catalog');
+  await expect(page.locator('[data-testid="product-card"]').first()).toBeVisible();
+}

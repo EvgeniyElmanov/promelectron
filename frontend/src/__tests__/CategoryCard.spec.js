@@ -20,12 +20,12 @@ describe('CategoryCard', () => {
     expect(wrapper.find('.category-card__count').exists()).toBe(false);
   });
 
-  it('renders placeholder letter when no imageUrl', () => {
+  it('renders neutral placeholder when no imageUrl', () => {
     const wrapper = mount(CategoryCard, {
       props: { id: 1, name: 'Мониторы' },
     });
     expect(wrapper.find('.category-card__img').exists()).toBe(false);
-    expect(wrapper.find('.category-card__image-letter').text()).toBe('М');
+    expect(wrapper.find('.category-card__image-placeholder').exists()).toBe(true);
   });
 
   it('renders lazy image when imageUrl is provided', () => {
@@ -35,7 +35,7 @@ describe('CategoryCard', () => {
     const img = wrapper.find('.category-card__img');
     expect(img.exists()).toBe(true);
     expect(img.attributes('loading')).toBe('lazy');
-    expect(wrapper.find('.category-card__image-letter').exists()).toBe(false);
+    expect(wrapper.find('.category-card__image-placeholder').exists()).toBe(false);
   });
 
   it('emits select with id on click', async () => {

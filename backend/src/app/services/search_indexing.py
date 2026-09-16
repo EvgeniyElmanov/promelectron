@@ -25,6 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.app.models.attribute import Attribute, ProductAttributeValue
 from src.app.models.category import Category
 from src.app.models.product import Product
+from src.app.services.product_aggregates import BRAND_ATTRIBUTE_NAME
 from src.app.services.search_service import (
     PRODUCTS_INDEX,
     PRODUCTS_INDEX_NEW,
@@ -96,10 +97,34 @@ async def _load_attribute_values(
     return values
 
 
+async def _load_brand_values(
+    db: AsyncSession, product_ids: list[int]
+) -> dict[int, str]:
+    """Brand attribute values (``value_text`` of attribute named «Бренд»).
+
+    Separate from ``_load_attribute_values``: the brand is matched by NAME
+    (in real 1C data the attribute code is a GUID), the same resolution as
+    the product detail endpoint.
+    """
+    if not product_ids:
+        return {}
+    result = await db.execute(
+        select(ProductAttributeValue.product_id, ProductAttributeValue.value_text)
+        .join(Attribute, ProductAttributeValue.attribute_id == Attribute.id)
+        .where(
+            ProductAttributeValue.product_id.in_(product_ids),
+            Attribute.name == BRAND_ATTRIBUTE_NAME,
+            ProductAttributeValue.value_text.isnot(None),
+        )
+    )
+    return {product_id: value_text for product_id, value_text in result.all()}
+
+
 def _product_document(
     product: Product,
     category_paths: dict[int, tuple[Category, Category | None]],
     attr_values: dict[str, Any],
+    brand: str | None = None,
 ) -> dict[str, Any]:
     """Build one Meilisearch document (stable field names, D-11)."""
     categories: dict[str, str] = {}
@@ -122,6 +147,14 @@ def _product_document(
         "categories": categories,
         "attrs": attr_values,
         "images": product.images or [],
+        # Card fields (pixel-perfect-homepage): brand is stable (changes only
+        # via product writes / 1C intake), created_at is immutable — the API
+        # derives ``is_new`` from it at query time, so it never goes stale.
+        # Volatile aggregates (rating/reviews/is_hit) are NOT indexed: reviews
+        # and paid orders don't touch the products row, so partial updates
+        # would miss them — they are enriched from the DB at query time.
+        "brand": brand,
+        "created_at": product.created_at.isoformat() if product.created_at else None,
     }
 
 
@@ -146,9 +179,13 @@ async def build_product_documents(
 
     category_paths = await _load_category_paths(db, [p.category_id for p in active])
     attr_values = await _load_attribute_values(db, [p.id for p in active])
+    brand_values = await _load_brand_values(db, [p.id for p in active])
 
     documents = [
-        _product_document(p, category_paths, attr_values.get(p.id, {})) for p in active
+        _product_document(
+            p, category_paths, attr_values.get(p.id, {}), brand_values.get(p.id)
+        )
+        for p in active
     ]
     return documents, deleted_ids
 

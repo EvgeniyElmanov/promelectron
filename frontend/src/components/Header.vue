@@ -13,7 +13,13 @@
           <line x1="3" y1="18" x2="21" y2="18"/>
         </svg>
       </button>
-      <div class="header__logo" data-testid="header-logo" @click="$router.push('/')">Promelectron</div>
+      <div class="header__logo" data-testid="header-logo" @click="$router.push('/')">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+          <rect width="28" height="28" rx="6" fill="var(--color-primary)"/>
+          <path d="M15.5 5L8 15h5l-1.5 8L19 12h-5l1.5-7z" fill="#fff"/>
+        </svg>
+        <span class="header__logo-text">Пром<br />Электрон</span>
+      </div>
       <router-link to="/cart" class="header__mobile-cart" data-testid="mobile-cart-link" aria-label="Корзина">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4H6z"/>
@@ -25,12 +31,19 @@
     </div>
 
     <div class="header__left">
-      <!-- Desktop Navigation -->
-      <nav class="header__nav">
-        <router-link to="/" class="header__nav-link" :class="{ 'header__nav-link--active': $route.path === '/' }">Каталог</router-link>
-        <router-link v-if="isSupplier" to="/supplier-dashboard" class="header__nav-link" :class="{ 'header__nav-link--active': $route.path.startsWith('/supplier-dashboard') }">Дашборд</router-link>
-        <router-link v-if="isSupplier" to="/my-products" class="header__nav-link" :class="{ 'header__nav-link--active': $route.path.startsWith('/my-products') }">Мои товары</router-link>
-        <router-link v-if="isSupplier" to="/supplier-orders" class="header__nav-link" :class="{ 'header__nav-link--active': $route.path.startsWith('/supplier-orders') }">Мои заказы</router-link>
+      <!-- Desktop: логотип + синяя кнопка «Каталог» (§11, D-09) -->
+      <router-link to="/catalog" class="header__catalog-btn" data-testid="catalog-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <line x1="3" y1="6" x2="21" y2="6"/>
+          <line x1="3" y1="12" x2="21" y2="12"/>
+          <line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+        Каталог
+      </router-link>
+      <nav v-if="isSupplier" class="header__nav">
+        <router-link to="/supplier-dashboard" class="header__nav-link" :class="{ 'header__nav-link--active': $route.path.startsWith('/supplier-dashboard') }">Дашборд</router-link>
+        <router-link to="/my-products" class="header__nav-link" :class="{ 'header__nav-link--active': $route.path.startsWith('/my-products') }">Мои товары</router-link>
+        <router-link to="/supplier-orders" class="header__nav-link" :class="{ 'header__nav-link--active': $route.path.startsWith('/supplier-orders') }">Мои заказы</router-link>
       </nav>
     </div>
 
@@ -38,7 +51,29 @@
       <SearchBar v-model="headerSearchQuery" data-testid="header-search-bar" @submit="onSearchSubmit" />
     </div>
 
+    <div class="header__phone">
+      <a class="header__phone-number" href="tel:88005004585">8 (800) 500-45-85</a>
+      <span class="header__phone-hours">Ежедневно 9:00–21:00</span>
+    </div>
+
     <div class="header__actions">
+      <!-- Сравнение: функции нет — неактивный элемент с tooltip (D-09) -->
+      <span
+        class="header__action-item header__action-item--disabled"
+        data-testid="compare-link"
+        title="Сравнение скоро появится"
+        aria-disabled="true"
+      >
+        <div class="header__icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10 3H4a1 1 0 00-1 1v16a1 1 0 001 1h6"/>
+            <path d="M14 21h6a1 1 0 001-1V4a1 1 0 00-1-1h-6"/>
+            <line x1="12" y1="3" x2="12" y2="21"/>
+          </svg>
+        </div>
+        <span class="header__action-label">Сравнение</span>
+      </span>
+
       <!-- Notifications -->
       <div v-if="isAuthenticated" class="header__action-item header__notif-wrap">
         <button class="header__icon header__icon--notif" data-testid="notifications-btn" title="Уведомления" @click="toggleNotif">
@@ -173,7 +208,7 @@ const mobileMenuOpen = ref(false);
 
 const onSearchSubmit = (q) => {
   const query = (q || headerSearchQuery.value).trim();
-  router.push({ path: '/', query: query ? { q: query } : undefined });
+  router.push({ path: '/catalog', query: query ? { q: query } : undefined });
 };
 
 // Always call useNotifications — it handles auth internally
@@ -287,12 +322,35 @@ const vClickOutside = {
 }
 
 .header__logo {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   cursor: pointer;
-  letter-spacing: -0.5px;
   flex-shrink: 0;
+}
+
+.header__logo-text {
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+  line-height: 1.1;
+}
+
+.header__catalog-btn {
+  display: none;
+}
+
+.header__phone {
+  display: none;
+}
+
+.header__action-item--disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.header__action-item--disabled .header__icon:hover {
+  background: transparent;
 }
 
 .header__nav {
@@ -389,6 +447,24 @@ const vClickOutside = {
   }
   .header__left {
     margin-left: 32px;
+    gap: var(--space-4);
+  }
+  .header__catalog-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    height: 48px;
+    padding: 0 var(--space-4);
+    border-radius: var(--radius-md);
+    background: var(--color-primary);
+    color: var(--color-white);
+    font-size: var(--font-size-body-sm);
+    font-weight: var(--font-weight-medium);
+    text-decoration: none;
+    transition: background 0.15s;
+  }
+  .header__catalog-btn:hover {
+    background: var(--color-primary-hover);
   }
   .header__search-desktop {
     display: block;
@@ -401,6 +477,27 @@ const vClickOutside = {
   }
   .header__action-label {
     display: block;
+  }
+}
+
+@media (min-width: 1280px) {
+  .header__phone {
+    display: flex;
+    flex-direction: column;
+    margin-right: var(--space-4);
+    flex-shrink: 0;
+  }
+  .header__phone-number {
+    font-size: var(--font-size-body-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .header__phone-hours {
+    font-size: var(--font-size-caption);
+    color: var(--color-text-secondary);
+    white-space: nowrap;
   }
 }
 

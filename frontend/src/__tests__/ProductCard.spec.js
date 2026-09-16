@@ -308,3 +308,60 @@ describe('ProductCard.vue — состояние кнопки корзины', (
     expect(mockToast).toHaveBeenCalledWith('Не удалось обновить избранное', 'error')
   })
 })
+
+describe('ProductCard.vue (§13, D-03/D-04/D-09)', () => {
+  function mountCard2(product) {
+    const router = createRouter({
+      history: createWebHistory(),
+      routes: [{ path: '/', component: ProductCard }],
+    })
+    return mount(ProductCard, {
+      global: { plugins: [router] },
+      props: { product },
+    })
+  }
+
+  it('рендерит бренд, рейтинг и «В наличии» только при наличии данных', () => {
+    const full = mountCard2({ id: 1, name: 'P', price: 1000, stock: 3, brand: 'Samsung', average_rating: 4.7, reviews_count: 128 })
+    expect(full.find('[data-testid="product-brand"]').text()).toBe('Samsung')
+    expect(full.find('[data-testid="product-rating"]').text()).toContain('4.7')
+    expect(full.find('[data-testid="product-rating"]').text()).toContain('(128)')
+    expect(full.find('[data-testid="stock-status"]').text()).toBe('В наличии')
+
+    const bare = mountCard2({ id: 2, name: 'P2', price: 1000, stock: 3 })
+    expect(bare.find('[data-testid="product-brand"]').exists()).toBe(false)
+    expect(bare.find('[data-testid="product-rating"]').exists()).toBe(false)
+    expect(bare.find('[data-testid="stock-status"]').text()).toBe('В наличии')
+  })
+
+  it('бейджи ХИТ/НОВИНКА/−N% — только по данным (макс. приоритет: sale, hit, new)', () => {
+    const hit = mountCard2({ id: 1, name: 'P', price: 1000, stock: 3, is_hit: true })
+    expect(hit.find('[data-testid="hit-badge"]').text()).toBe('ХИТ')
+
+    const isNew = mountCard2({ id: 2, name: 'P', price: 1000, stock: 3, is_new: true })
+    expect(isNew.find('[data-testid="new-badge"]').text()).toBe('НОВИНКА')
+
+    const sale = mountCard2({ id: 3, name: 'P', price: 1000, old_price: 1250, stock: 3 })
+    expect(sale.find('[data-testid="sale-badge"]').text()).toBe('−20%')
+    expect(sale.find('[data-testid="product-old-price"]').exists()).toBe(true)
+
+    const bare = mountCard2({ id: 4, name: 'P', price: 1000, stock: 3 })
+    expect(bare.find('[data-testid="hit-badge"]').exists()).toBe(false)
+    expect(bare.find('[data-testid="new-badge"]').exists()).toBe(false)
+    expect(bare.find('[data-testid="sale-badge"]').exists()).toBe(false)
+    expect(bare.find('[data-testid="product-old-price"]').exists()).toBe(false)
+  })
+
+  it('«Нет в наличии» текстом при stock=0', () => {
+    const wrapper = mountCard2({ id: 1, name: 'P', price: 1000, stock: 0 })
+    expect(wrapper.find('[data-testid="stock-status"]').text()).toBe('Нет в наличии')
+  })
+
+  it('иконка сравнения неактивна (aria-disabled + tooltip, D-09)', () => {
+    const wrapper = mountCard2({ id: 1, name: 'P', price: 1000, stock: 3 })
+    const btn = wrapper.find('[data-testid="compare-button"]')
+    expect(btn.exists()).toBe(true)
+    expect(btn.attributes('aria-disabled')).toBe('true')
+    expect(btn.attributes('title')).toBe('Сравнение скоро появится')
+  })
+})

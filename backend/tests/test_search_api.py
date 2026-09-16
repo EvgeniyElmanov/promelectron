@@ -122,7 +122,7 @@ class TestSearchEndpoint:
         # F003: only product-card fields are retrieved from Meilisearch
         assert queries[0]["attributesToRetrieve"] == [
             "id", "sku", "name", "price", "stock", "category_id",
-            "categories", "attrs", "images",
+            "categories", "attrs", "images", "brand", "created_at",
         ]
 
     async def test_images_returned_when_present(
@@ -146,7 +146,6 @@ class TestSearchEndpoint:
         response = await client.get("/api/v1/search/", params={"q": "кабель"})
         assert response.status_code == 200
         assert response.json()["items"][0]["images"] == []
-
     async def test_raw_document_fields_stay_on_server(
         self, client, search_attributes, flag_on, monkeypatch
     ):
@@ -162,9 +161,12 @@ class TestSearchEndpoint:
         assert item["name"] == "Кабель USB-C 1м"
         assert "description" not in item
         assert "onec_id" not in item
+        # created_at индексируется для вычисления is_new, но наружу не отдаётся
+        assert "created_at" not in item
         assert set(item) == {
             "id", "sku", "name", "price", "stock", "category_id",
             "categories", "attrs", "images",
+            "average_rating", "reviews_count", "brand", "is_new", "is_hit",
         }
 
     async def test_numeric_attr_filter_unquoted(
@@ -468,3 +470,171 @@ class TestAdminEndpoints:
             headers={"Authorization": f"Bearer {user_token}"},
         )
         assert response.status_code == 403
+
+
+class TestSearchCardAggregates:
+    """Поля карточки товара в items /api/v1/search/ (pixel-perfect-homepage, D-03).
+
+    ``brand``/``created_at`` приходят из Meilisearch-документа; рейтинг,
+    число отзывов и ``is_hit`` обогащаются из БД по ids hits; ``is_new``
+    вычисляется от ``created_at`` в момент запроса.
+    """
+
+    async def test_items_include_card_fields(
+        self,
+        client,
+        test_session,
+        search_attributes,
+        flag_on,
+        monkeypatch,
+        test_category,
+        test_supplier,
+        test_user,
+    ):
+        """Hit с brand/created_at в документе + реальные отзывы и оплаченный
+        заказ в БД → все 5 полей с корректными значениями."""
+        from datetime import datetime, timezone
+        from decimal import Decimal
+
+        from src.app.models.order import Order, OrderItem
+        from src.app.models.review import Review
+        from tests.conftest import make_product
+
+        product = await make_product(
+            test_session,
+            name="Search Card Product",
+            price=100.0,
+            stock=5,
+            supplier_id=test_supplier.id,
+            category_id=test_category.id,
+            is_active=True,
+        )
+        await test_session.flush()
+        test_session.add_all(
+            [
+                Review(product_id=product.id, user_id=test_user.id, rating=5, text="Great"),
+                Review(product_id=product.id, user_id=test_user.id, rating=3, text="Ok"),
+            ]
+        )
+        order = Order(user_id=test_user.id, total_price=Decimal("100.0"), status="paid")
+        test_session.add(order)
+        await test_session.flush()
+        test_session.add(
+            OrderItem(
+                order_id=order.id,
+                product_id=product.id,
+                quantity=1,
+                price_at_time=Decimal("100.0"),
+            )
+        )
+        await test_session.commit()
+
+        payload = _multi_search_payload()
+        payload["results"][0]["hits"][0].update(
+            {
+                "id": product.id,
+                "brand": "Legrand",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }
+        )
+        _mock_multi_search(monkeypatch, payload)
+
+        response = await client.get("/api/v1/search/", params={"q": "кабель"})
+        assert response.status_code == 200
+        item = response.json()["items"][0]
+        assert item["brand"] == "Legrand"
+        assert item["average_rating"] == 4.0
+        assert item["reviews_count"] == 2
+        assert item["is_hit"] is True
+        assert item["is_new"] is True
+        assert "created_at" not in item
+
+    async def test_items_graceful_defaults_before_reindex(
+        self, client, search_attributes, flag_on, monkeypatch
+    ):
+        """Документ старого индекса без brand/created_at → дефолты, ответ валиден."""
+        _mock_multi_search(monkeypatch, _multi_search_payload())
+        response = await client.get("/api/v1/search/", params={"q": "кабель"})
+        assert response.status_code == 200
+        item = response.json()["items"][0]
+        assert item["brand"] is None
+        assert item["average_rating"] == 0.0
+        assert item["reviews_count"] == 0
+        assert item["is_new"] is False
+        assert item["is_hit"] is False
+
+    async def test_is_new_computed_from_created_at(
+        self, client, search_attributes, flag_on, monkeypatch
+    ):
+        """is_new: свежий created_at → true, 31-дневной давности → false."""
+        from datetime import datetime, timedelta, timezone
+
+        now = datetime.now(timezone.utc)
+        payload = _multi_search_payload()
+        payload["results"][0]["hits"] = [
+            {"id": 900001, "name": "Fresh", "created_at": now.isoformat()},
+            {
+                "id": 900002,
+                "name": "Stale",
+                "created_at": (now - timedelta(days=31)).isoformat(),
+            },
+        ]
+        _mock_multi_search(monkeypatch, payload)
+
+        response = await client.get("/api/v1/search/", params={"q": "кабель"})
+        assert response.status_code == 200
+        by_id = {i["id"]: i for i in response.json()["items"]}
+        assert by_id[900001]["is_new"] is True
+        assert by_id[900002]["is_new"] is False
+
+    async def test_brand_fallback_from_db_for_hit_without_document_brand(
+        self,
+        client,
+        test_session,
+        search_attributes,
+        flag_on,
+        monkeypatch,
+        test_category,
+        test_supplier,
+    ):
+        """Hit без brand в документе (старый индекс) → brand подтягивается из БД;
+        hit с brand в документе → значение документа побеждает (review F-02)."""
+        from src.app.models.attribute import Attribute, AttributeValueType, ProductAttributeValue
+        from tests.conftest import make_product
+
+        product = await make_product(
+            test_session,
+            name="Brand Fallback Product",
+            price=10.0,
+            stock=5,
+            supplier_id=test_supplier.id,
+            category_id=test_category.id,
+            is_active=True,
+        )
+        await test_session.flush()
+        attribute = Attribute(
+            code="brand-attr", name="Бренд", value_type=AttributeValueType.string
+        )
+        test_session.add(attribute)
+        await test_session.flush()
+        test_session.add(
+            ProductAttributeValue(
+                product_id=product.id,
+                attribute_id=attribute.id,
+                value_text="DB Brand",
+            )
+        )
+        await test_session.commit()
+
+        payload = _multi_search_payload()
+        payload["results"][0]["hits"] = [
+            {"id": product.id, "name": "No Doc Brand"},
+            {"id": 900003, "name": "Doc Brand Wins", "brand": "Doc Brand"},
+        ]
+        _mock_multi_search(monkeypatch, payload)
+
+        response = await client.get("/api/v1/search/", params={"q": "кабель"})
+        assert response.status_code == 200
+        by_id = {i["id"]: i for i in response.json()["items"]}
+        assert by_id[product.id]["brand"] == "DB Brand"
+        assert by_id[900003]["brand"] == "Doc Brand"

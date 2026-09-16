@@ -4,7 +4,7 @@
     :data-testid="'category-card-' + id"
     @click="$emit('select', id)"
   >
-    <span class="category-card__image" :style="imageUrl ? {} : { background: placeholderBg }">
+    <span class="category-card__image">
       <img
         v-if="imageUrl"
         :src="imageUrl"
@@ -13,7 +13,11 @@
         loading="lazy"
         decoding="async"
       />
-      <span v-else class="category-card__image-letter" aria-hidden="true">{{ name.charAt(0) }}</span>
+      <svg v-else class="category-card__image-placeholder" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="3" y="3" width="18" height="18" rx="2"/>
+        <circle cx="9" cy="9" r="2"/>
+        <path d="M21 15l-4.5-4.5L6 21"/>
+      </svg>
     </span>
     <span class="category-card__name">{{ name }}</span>
     <span v-if="productCount != null" class="category-card__count">{{ productCount }} товаров</span>
@@ -21,10 +25,9 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
-import { getPlaceholderBg } from '@/utils/placeholderColors';
-
-const props = defineProps({
+// CategoryCard (§14, D-07): фото из CategoryOut.image_url; без изображения —
+// нейтральный placeholder (иконка на --color-bg), не буква-заглушка (edge case spec).
+defineProps({
   id: { type: [Number, String], required: true },
   name: { type: String, required: true },
   productCount: { type: Number, default: null },
@@ -32,8 +35,6 @@ const props = defineProps({
 });
 
 defineEmits(['select']);
-
-const placeholderBg = computed(() => getPlaceholderBg(props.id));
 </script>
 
 <style scoped>
@@ -64,6 +65,7 @@ const placeholderBg = computed(() => getPlaceholderBg(props.id));
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  background: var(--color-bg);
   transition: transform 0.2s;
 }
 
@@ -78,11 +80,9 @@ const placeholderBg = computed(() => getPlaceholderBg(props.id));
   display: block;
 }
 
-.category-card__image-letter {
-  font-size: 32px;
-  font-weight: var(--font-weight-bold);
-  color: rgba(0, 0, 0, 0.12);
-  user-select: none;
+.category-card__image-placeholder {
+  color: var(--color-text-muted);
+  opacity: 0.5;
 }
 
 .category-card__name {

@@ -246,7 +246,7 @@ const inCartQty = computed(() => getQuantityInCart(productId.value));
 // /products/{id}/detail нет (только category_id) — звено категории не добавляем (D-02).
 const pdpCrumbs = computed(() => [
   { label: 'Главная', to: '/' },
-  { label: 'Каталог', to: '/' },
+  { label: 'Каталог', to: '/catalog' },
   { label: product.value.name || '…' },
 ]);
 

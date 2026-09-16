@@ -1,12 +1,12 @@
 import { test, expect } from '@playwright/test';
-import { goToCart, getInStockProductCard } from './helpers.js';
+import { goToCart, getInStockProductCard, goToCatalog } from './helpers.js';
 
 function uniqueEmail() {
   return `test_${Date.now()}_w${test.info().workerIndex}@example.com`;
 }
 
 async function addFirstProductToCart(page) {
-  await page.goto('/');
+  await goToCatalog(page);
   const firstProduct = await getInStockProductCard(page);
   await firstProduct.locator('[data-testid="add-to-cart-button"]').click();
   await expect(firstProduct.locator('[data-testid="add-to-cart-button"]')).toContainText('В корзине', { timeout: 5000 });

@@ -114,6 +114,35 @@ class CategoryService:
             category.product_count = product_count or 0
             items.append(category)
 
+        # image_url: первое изображение активного товара категории — один
+        # батч-запрос (min(id) товара с непустыми images на категорию), без N+1
+        category_ids = [c.id for c in items]
+        images_by_category: dict[int, str] = {}
+        if category_ids:
+            first_product_sq = (
+                select(
+                    Product.category_id.label("category_id"),
+                    func.min(Product.id).label("product_id"),
+                )
+                .where(
+                    Product.category_id.in_(category_ids),
+                    Product.is_active.is_(True),
+                    func.json_array_length(Product.images) > 0,
+                )
+                .group_by(Product.category_id)
+                .subquery()
+            )
+            img_result = await db.execute(
+                select(first_product_sq.c.category_id, Product.images).join(
+                    Product, Product.id == first_product_sq.c.product_id
+                )
+            )
+            for category_id, images in img_result.all():
+                if images:
+                    images_by_category[category_id] = images[0]
+        for category in items:
+            category.image_url = images_by_category.get(category.id)
+
         return items, total
 
     @staticmethod

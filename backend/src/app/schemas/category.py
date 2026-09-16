@@ -24,6 +24,8 @@ class CategoryOut(CategoryBase):
     is_active: bool
     created_at: datetime
     product_count: int = 0
+    # Первое изображение активного товара категории (заполняется в list-эндпоинте)
+    image_url: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

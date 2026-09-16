@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openFiltersPanel } from './helpers.js';
+import { openFiltersPanel, goToCatalog } from './helpers.js';
 
 function uniqueEmail() {
   return `test_${Date.now()}_w${test.info().workerIndex}@example.com`;
@@ -23,7 +23,7 @@ test.describe('Search & Filters', () => {
   });
 
   test('search filters products by name', async ({ page }) => {
-    await page.goto('/');
+    await goToCatalog(page);
     await expect(page.locator('[data-testid="search-bar"]')).toBeVisible();
 
     // Wait for products to load
@@ -47,7 +47,7 @@ test.describe('Search & Filters', () => {
   });
 
   test('category filter shows only products from selected category', async ({ page }) => {
-    await page.goto('/');
+    await goToCatalog(page);
     await expect(page.locator('[data-testid="category-chips"]')).toBeVisible();
 
     // Wait for categories and products to load
@@ -80,7 +80,7 @@ test.describe('Search & Filters', () => {
   });
 
   test('sort by price ascending', async ({ page }) => {
-    await page.goto('/');
+    await goToCatalog(page);
     await expect(page.locator('[data-testid="product-card"]').first()).toBeVisible();
 
     // Select price ascending
@@ -99,7 +99,7 @@ test.describe('Search & Filters', () => {
   });
 
   test('price range filter', async ({ page }) => {
-    await page.goto('/');
+    await goToCatalog(page);
     await expect(page.locator('[data-testid="product-card"]').first()).toBeVisible();
 
     // Set price range 500 - 5000 (диапазон цен электрокаталога, issue #147)

@@ -27,6 +27,12 @@ test.describe('Visual Smoke — Key Pages', () => {
     await screenshot(page, '01-homepage');
   });
 
+  test('01b-catalog', async ({ page }) => {
+    await page.goto('/catalog');
+    await page.waitForTimeout(1000);
+    await screenshot(page, '01b-catalog');
+  });
+
   test('02-product-detail', async ({ page }) => {
     await page.goto('/product/1');
     await page.waitForTimeout(1000);

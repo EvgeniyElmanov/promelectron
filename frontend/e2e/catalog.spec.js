@@ -1,16 +1,24 @@
 import { test, expect } from '@playwright/test';
-import { goToCart, getInStockProductCard, openFiltersPanel } from './helpers.js';
+import { goToCart, getInStockProductCard, openFiltersPanel, goToCatalog } from './helpers.js';
 
 function uniqueEmail() {
   return `test_${Date.now()}_w${test.info().workerIndex}@example.com`;
 }
 
 test.describe('Catalog & Cart', () => {
-  test('homepage shows products and categories', async ({ page }) => {
+  test('homepage renders storefront sections (D-02)', async ({ page }) => {
     await page.goto('/');
-    await expect(page.locator('[data-testid="search-bar"]')).toBeVisible();
-    await expect(page.locator('[data-testid="category-chips"]')).toBeVisible();
+    await expect(page.locator('[data-testid="hero-banner"]')).toBeVisible();
+    await expect(page.locator('[data-testid="benefits-strip"]')).toBeVisible();
+    await expect(page.locator('[data-testid="popular-categories"]')).toBeVisible();
     await expect(page.locator('[data-testid="product-card"]').first()).toBeVisible();
+    // Инлайн-каталога на главной нет
+    await expect(page.locator('[data-testid="sort-select"]')).toHaveCount(0);
+  });
+
+  test('catalog page shows search, chips and products', async ({ page }) => {
+    await goToCatalog(page);
+    await expect(page.locator('[data-testid="category-chips"]')).toBeVisible();
   });
 
   test('product can be added to cart', async ({ page }) => {
@@ -55,7 +63,7 @@ test.describe('Facet filters (feature flag catalog_search_meilisearch)', () => {
   });
 
   test('выбор значения фасета фильтрует выдачу, URL отражает фильтр, counts не обнуляются', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/catalog');
     await openFiltersPanel(page);
     await expect(page.locator('[data-testid="filter-panel"]')).toBeVisible();
 
@@ -75,7 +83,7 @@ test.describe('Facet filters (feature flag catalog_search_meilisearch)', () => {
   });
 
   test('перезагрузка по URL восстанавливает состояние фильтров', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/catalog');
     await openFiltersPanel(page);
     await expect(page.locator('[data-testid="filter-panel"]')).toBeVisible();
 
@@ -91,7 +99,7 @@ test.describe('Facet filters (feature flag catalog_search_meilisearch)', () => {
   });
 
   test('фильтр цены шлёт price_min/price_max в URL', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/catalog');
     await openFiltersPanel(page);
     await expect(page.locator('[data-testid="filter-price-min"]')).toBeVisible();
 
@@ -104,7 +112,7 @@ test.describe('Facet filters (feature flag catalog_search_meilisearch)', () => {
   });
 
   test('filter-reset сбрасывает фильтры и URL', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/catalog');
     await openFiltersPanel(page);
     await expect(page.locator('[data-testid="filter-panel"]')).toBeVisible();
 
@@ -123,8 +131,7 @@ test.describe('Catalog listing без feature flag', () => {
     });
     test.skip(probe.status() !== 404, 'feature flag включён — legacy-режим не проверяем');
 
-    await page.goto('/');
-    await expect(page.locator('[data-testid="product-card"]').first()).toBeVisible();
+    await goToCatalog(page);
     await expect(page.locator('[data-testid="filter-panel"]')).toHaveCount(0);
     // legacy-фильтры на месте
     await expect(page.locator('[data-testid="rating-filter-1"]')).toBeVisible();

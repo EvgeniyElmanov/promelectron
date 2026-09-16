@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { goToCatalog } from './helpers.js';
 
 function uniqueEmail() {
   return `test_${Date.now()}_w${test.info().workerIndex}@example.com`;
@@ -23,7 +24,7 @@ async function scrollDeeply(page) {
 }
 
 async function expectHeaderStickyAfterScroll(page) {
-  await page.goto('/');
+  await goToCatalog(page);
   await expect(page.locator('[data-testid="product-card"]').first()).toBeVisible();
   await scrollDeeply(page);
   const headerTop = await page.locator('header.header').evaluate((el) => el.getBoundingClientRect().top);

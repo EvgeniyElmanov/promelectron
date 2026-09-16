@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createRouter, createWebHistory, createMemoryHistory } from 'vue-router'
-import Products from '@/views/Products.vue'
+import CatalogView from '@/views/CatalogView.vue'
 import { __resetSearchProbeForTests } from '@/composables/useCatalogSearch'
 
 const mockProducts = [
@@ -69,17 +69,17 @@ beforeEach(() => {
 function mountWithWebHistory() {
   const router = createRouter({
     history: createWebHistory(),
-    routes: [{ path: '/', component: Products }],
+    routes: [{ path: '/', component: CatalogView }],
   })
 
-  return mount(Products, {
+  return mount(CatalogView, {
     global: {
       plugins: [router],
     },
   })
 }
 
-describe('Products.vue (legacy /products/ при выключенном флаге)', () => {
+describe('CatalogView.vue (legacy /products/ при выключенном флаге)', () => {
   it('отображает заголовок "Популярные товары"', async () => {
     const wrapper = mountWithWebHistory()
 
@@ -147,7 +147,7 @@ describe('Products.vue (legacy /products/ при выключенном флаг
   })
 })
 
-describe('Products.vue (search-режим при включённом флаге)', () => {
+describe('CatalogView.vue (search-режим при включённом флаге)', () => {
   const originalMatchMedia = window.matchMedia
 
   beforeEach(() => {
@@ -172,11 +172,11 @@ describe('Products.vue (search-режим при включённом флаге
   async function mountSearchMode(url = '/') {
     const router = createRouter({
       history: createMemoryHistory(),
-      routes: [{ path: '/', component: Products }],
+      routes: [{ path: '/', component: CatalogView }],
     })
     await router.push(url)
     await router.isReady()
-    return mount(Products, {
+    return mount(CatalogView, {
       global: {
         plugins: [router],
       },
@@ -261,18 +261,17 @@ describe('Products.vue (search-режим при включённом флаге
   })
 })
 
-describe('Products.vue (homepage-секции, PR-A design-pages)', () => {
-  it('рендерит hero, benefits, популярные категории и footer', async () => {
+describe('CatalogView.vue (структура каталога, D-02)', () => {
+  it('рендерит листинг и footer без витринных секций главной', async () => {
     const wrapper = mountWithWebHistory()
 
     await vi.waitFor(() => {
-      expect(wrapper.find('[data-testid="hero-banner"]').exists()).toBe(true)
+      expect(wrapper.text()).toContain('Product 1')
     })
-    expect(wrapper.find('[data-testid="benefits-strip"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="app-footer"]').exists()).toBe(true)
-    await vi.waitFor(() => {
-      expect(wrapper.find('[data-testid="popular-categories"]').exists()).toBe(true)
-    })
+    expect(wrapper.find('[data-testid="hero-banner"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="benefits-strip"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="popular-categories"]').exists()).toBe(false)
   })
 
   it('таб «Новинки» переключает сортировку на newest (legacy-режим)', async () => {
@@ -314,16 +313,15 @@ describe('Products.vue (homepage-секции, PR-A design-pages)', () => {
     expect(wrapper.find('[data-testid="products-tab-hits"]').classes()).toContain('home__tab--active')
   })
 
-  it('клик по CategoryCard применяет тот же фильтр категории, что и chip (legacy-режим)', async () => {
+  it('клик по chip категории применяет фильтр (legacy-режим)', async () => {
     const api = (await import('@/services/api')).default
     api.get.mockClear()
     const wrapper = mountWithWebHistory()
 
     await vi.waitFor(() => {
-      expect(wrapper.find('[data-testid="category-card-1"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="category-chip-1"]').exists()).toBe(true)
     })
-
-    await wrapper.find('[data-testid="category-card-1"]').trigger('click')
+    await wrapper.find('[data-testid="category-chip-1"]').trigger('click')
 
     await vi.waitFor(() => {
       const productCalls = api.get.mock.calls.filter(([url]) => url === '/products/')
@@ -332,7 +330,7 @@ describe('Products.vue (homepage-секции, PR-A design-pages)', () => {
   })
 })
 
-describe('Products.vue (крошки и H1, §21)', () => {
+describe('CatalogView.vue (крошки и H1, §21)', () => {
   it('показывает крошки «Главная / Каталог» и H1 «Каталог» в legacy-режиме', async () => {
     const wrapper = mountWithWebHistory()
 
@@ -352,11 +350,11 @@ describe('Products.vue (крошки и H1, §21)', () => {
     mocks.searchEnabled = true
     const router = createRouter({
       history: createMemoryHistory(),
-      routes: [{ path: '/', component: Products }],
+      routes: [{ path: '/', component: CatalogView }],
     })
     await router.push('/?category_id=1')
     await router.isReady()
-    const wrapper = mount(Products, { global: { plugins: [router] } })
+    const wrapper = mount(CatalogView, { global: { plugins: [router] } })
 
     await vi.waitFor(() => {
       expect(wrapper.find('[data-testid="filter-panel"]').exists()).toBe(true)
@@ -368,5 +366,113 @@ describe('Products.vue (крошки и H1, §21)', () => {
     const crumbs = wrapper.find('[data-testid="app-breadcrumbs"]')
     expect(crumbs.text()).toContain('Главная')
     expect(crumbs.text()).toContain('Каталог')
+  })
+})
+
+describe('CatalogView.vue (legacy: фильтры из URL query, F-03)', () => {
+  it('восстанавливает category_id/sort/price_* из query в legacy-режиме', async () => {
+    const api = (await import('@/services/api')).default
+    api.get.mockClear()
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: '/catalog', component: CatalogView }],
+    })
+    await router.push('/catalog?category_id=2&sort=price_asc&price_min=1000&price_max=5000&min_rating=4')
+    await router.isReady()
+    const wrapper = mount(CatalogView, { global: { plugins: [router] } })
+
+    await vi.waitFor(() => {
+      const productCalls = api.get.mock.calls.filter(([url]) => url === '/products/')
+      expect(productCalls.length).toBeGreaterThan(0)
+      const params = productCalls[0][1].params
+      expect(params.category_id).toBe(2)
+      expect(params.sort_by).toBe('price_asc')
+      expect(params.min_price).toBe(1000)
+      expect(params.max_price).toBe(5000)
+      expect(params.min_rating).toBe(4)
+    })
+    expect(wrapper.find('[data-testid="sort-select"]').element.value).toBe('price_asc')
+  })
+})
+
+describe('CatalogView.vue (смена query у смонтированного компонента, F-07)', () => {
+  it('legacy-режим: смена category_id в URL применяет фильтр без remount', async () => {
+    const api = (await import('@/services/api')).default
+    api.get.mockClear()
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: '/catalog', component: CatalogView }],
+    })
+    await router.push('/catalog?category_id=2')
+    await router.isReady()
+    mount(CatalogView, { global: { plugins: [router] } })
+
+    await vi.waitFor(() => {
+      const calls = api.get.mock.calls.filter(([url]) => url === '/products/')
+      expect(calls.some(([, config]) => config.params.category_id === 2)).toBe(true)
+    })
+
+    api.get.mockClear()
+    await router.push('/catalog?category_id=3')
+
+    await vi.waitFor(() => {
+      const calls = api.get.mock.calls.filter(([url]) => url === '/products/')
+      expect(calls.some(([, config]) => config.params.category_id === 3)).toBe(true)
+    })
+  })
+
+  it('legacy-режим: смена price_min даёт ровно один fetch, идентичный query — ни одного', async () => {
+    const api = (await import('@/services/api')).default
+    api.get.mockClear()
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: '/catalog', component: CatalogView }],
+    })
+    await router.push('/catalog?category_id=2')
+    await router.isReady()
+    mount(CatalogView, { global: { plugins: [router] } })
+
+    await vi.waitFor(() => {
+      expect(api.get.mock.calls.filter(([url]) => url === '/products/').length).toBeGreaterThan(0)
+    })
+
+    api.get.mockClear()
+    await router.push('/catalog?category_id=2&price_min=100')
+    await vi.waitFor(() => {
+      const calls = api.get.mock.calls.filter(([url]) => url === '/products/')
+      expect(calls.length).toBe(1)
+      expect(calls[0][1].params.min_price).toBe(100)
+    })
+
+    api.get.mockClear()
+    await router.replace('/catalog?category_id=2&price_min=100')
+    await new Promise((r) => setTimeout(r, 350))
+    expect(api.get.mock.calls.filter(([url]) => url === '/products/').length).toBe(0)
+  })
+
+  it('search-режим: смена category_id в URL перезагружает выдачу', async () => {
+    mocks.searchEnabled = true
+    const api = (await import('@/services/api')).default
+    api.get.mockClear()
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: '/catalog', component: CatalogView }],
+    })
+    await router.push('/catalog?category_id=1')
+    await router.isReady()
+    mount(CatalogView, { global: { plugins: [router] } })
+
+    await vi.waitFor(() => {
+      const calls = api.get.mock.calls.filter(([url]) => url === '/search/')
+      expect(calls.some(([, config]) => config.params?.category_id === 1)).toBe(true)
+    })
+
+    api.get.mockClear()
+    await router.push('/catalog?category_id=3')
+
+    await vi.waitFor(() => {
+      const calls = api.get.mock.calls.filter(([url]) => url === '/search/')
+      expect(calls.some(([, config]) => config.params?.category_id === 3)).toBe(true)
+    })
   })
 })
