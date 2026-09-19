@@ -624,3 +624,9 @@
 - Коммиты: 00b9bc0 (фикс) + a9eb139 (review-фиксы), ветка `feature/gh-210`, PR #267 с `Closes #210`. Issue → In review, замок `backend` занят до мержа. Оценка контекста задачи: ~8.8K токенов. Metrics: `.agent/runs/gh-210/metrics.json`.
 - Деплой-хвост (выражено строкой в issue #210): на test/prod задать `YOOKASSA_WEBHOOK_SECRET` — на prod без него backend не стартует, на test вебхуки начнут отклоняться 403. BLK-010 (URL в ЛК ЮKassa) остаётся шагом владельца.
 - Out of scope / follow-up кандидаты: IP-allowlist для вебхука (defence-in-depth); 500 на невалидный JSON при валидном UTF-8 в webhook-эндпоинте (pre-existing, без security-эффекта).
+
+## 2026-09-19 — хвост #210: PR #267 смержен
+
+- Мерж одобрен владельцем, squash `e68e73a` в main. Issue #210 закрыт с доказательством (комментарий с PR/SHA). Замок `backend` свободен, следующий — #211.
+- Хозяйство: ветка `feature/gh-210` удалена локально и в origin, промпт `backend_210-...` снят, `check-board.py` зелёный. Worktree `.worktrees/gh-210` не удалён: `frontend/node_modules/.vite/deps` root-owned (docker), `git worktree remove` падает с «Отказано в доступе» — нужен sudo/chown (тот же урок, что 2026-09-14).
+- Деплой-хвост в силе: задать `YOOKASSA_WEBHOOK_SECRET` на test/prod до выката; BLK-010 (URL вебхука в ЛК ЮKassa) остаётся на владельце.
