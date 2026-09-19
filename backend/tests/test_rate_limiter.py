@@ -18,6 +18,7 @@ def test_users_router_imports_in_production():
     env.pop("CI", None)
     env["SECRET_KEY"] = "a" * 64  # достаточно длинный ключ для production-валидации
     env["ONEC_WEBHOOK_API_KEY"] = "b" * 32  # production fail-fast требует не-placeholder
+    env["YOOKASSA_WEBHOOK_SECRET"] = "c" * 32  # production fail-fast (#210)
     env["FRONTEND_URL"] = "https://example.com"
 
     result = subprocess.run(
@@ -45,6 +46,7 @@ def test_production_limiter_storage_options_types():
     env.pop("CI", None)
     env["SECRET_KEY"] = "a" * 64
     env["ONEC_WEBHOOK_API_KEY"] = "b" * 32
+    env["YOOKASSA_WEBHOOK_SECRET"] = "c" * 32  # production fail-fast (#210)
     env["FRONTEND_URL"] = "https://example.com"
 
     result = subprocess.run(

@@ -308,6 +308,397 @@ class TestPaymentsAPI:
         assert cancel_resp.json()["status"] == "cancelled"
 
     @pytest.mark.asyncio
+    async def test_webhook_without_signature_rejected(
+        self,
+        client,
+        test_user,
+        user_token,
+        test_product,
+        test_session,
+        cdek_delivery_payload,
+        signed_webhook,
+    ):
+        """Webhook без заголовка X-YooKassa-Signature отклоняется (403), заказ не меняется.
+
+        Фикстура signed_webhook здесь ради monkeypatch секрета: проверяется ветка
+        «missing signature», а не «secret not configured» (F006).
+        """
+        await client.post(
+            "/api/v1/cart/add",
+            json={"product_id": test_product.id, "quantity": 1},
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        order_resp = await client.post(
+            "/api/v1/orders/create/",
+            json={
+                "cdek_delivery": cdek_delivery_payload,
+                "recipient_first_name": "Тест",
+                "recipient_last_name": "Пользователь",
+                "recipient_phone": "+79990001122",
+            },
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        order_id = order_resp.json()["id"]
+
+        mock_yookassa = AsyncMock(
+            return_value={
+                "yookassa_payment_id": "test-yookassa-id",
+                "status": "pending",
+                "confirmation_url": "https://yoomoney.ru/checkout/test",
+                "amount": Decimal(str(test_product.price)),
+                "created_at": "2026-06-02T12:00:00.000Z",
+            }
+        )
+
+        with (
+            patch(
+                "src.app.services.payment_service.YooKassaService.is_configured",
+                return_value=True,
+            ),
+            patch(
+                "src.app.services.payment_service.YooKassaService.create_payment",
+                mock_yookassa,
+            ),
+        ):
+            await client.post(
+                f"/api/v1/payments/{order_id}/",
+                headers={"Authorization": f"Bearer {user_token}"},
+            )
+
+        webhook_payload = {
+            "event": "payment.succeeded",
+            "object": {
+                "id": "test-yookassa-id",
+                "status": "succeeded",
+                "amount": {"value": str(test_product.price), "currency": "RUB"},
+            },
+        }
+
+        resp = await client.post(
+            "/api/v1/payments/yookassa/webhook/", json=webhook_payload
+        )
+        assert resp.status_code == 403
+
+        order_get = await client.get(
+            f"/api/v1/orders/{order_id}/",
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert order_get.json()["status"] == "pending"
+
+    @pytest.mark.asyncio
+    async def test_webhook_invalid_signature_rejected(
+        self,
+        client,
+        test_user,
+        user_token,
+        test_product,
+        test_session,
+        cdek_delivery_payload,
+        signed_webhook,
+    ):
+        """Webhook с неверной подписью отклоняется (403), заказ остаётся pending."""
+        await client.post(
+            "/api/v1/cart/add",
+            json={"product_id": test_product.id, "quantity": 1},
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        order_resp = await client.post(
+            "/api/v1/orders/create/",
+            json={
+                "cdek_delivery": cdek_delivery_payload,
+                "recipient_first_name": "Тест",
+                "recipient_last_name": "Пользователь",
+                "recipient_phone": "+79990001122",
+            },
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        order_id = order_resp.json()["id"]
+
+        mock_yookassa = AsyncMock(
+            return_value={
+                "yookassa_payment_id": "test-yookassa-id",
+                "status": "pending",
+                "confirmation_url": "https://yoomoney.ru/checkout/test",
+                "amount": Decimal(str(test_product.price)),
+                "created_at": "2026-06-02T12:00:00.000Z",
+            }
+        )
+
+        with (
+            patch(
+                "src.app.services.payment_service.YooKassaService.is_configured",
+                return_value=True,
+            ),
+            patch(
+                "src.app.services.payment_service.YooKassaService.create_payment",
+                mock_yookassa,
+            ),
+        ):
+            await client.post(
+                f"/api/v1/payments/{order_id}/",
+                headers={"Authorization": f"Bearer {user_token}"},
+            )
+
+        webhook_payload = {
+            "event": "payment.succeeded",
+            "object": {
+                "id": "test-yookassa-id",
+                "status": "succeeded",
+                "amount": {"value": str(test_product.price), "currency": "RUB"},
+            },
+        }
+
+        resp = await signed_webhook(client, webhook_payload, signature="0" * 64)
+        assert resp.status_code == 403
+
+        order_get = await client.get(
+            f"/api/v1/orders/{order_id}/",
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert order_get.json()["status"] == "pending"
+
+    @pytest.mark.asyncio
+    async def test_webhook_secret_not_configured_rejected(
+        self,
+        client,
+        test_user,
+        user_token,
+        test_product,
+        test_session,
+        cdek_delivery_payload,
+        monkeypatch,
+    ):
+        """Без YOOKASSA_WEBHOOK_SECRET вебхук отклоняется, даже с заголовком подписи."""
+        monkeypatch.setattr(
+            "src.app.services.payment_service.settings",
+            dataclass_replace(settings, yookassa_webhook_secret=None),
+        )
+
+        await client.post(
+            "/api/v1/cart/add",
+            json={"product_id": test_product.id, "quantity": 1},
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        order_resp = await client.post(
+            "/api/v1/orders/create/",
+            json={
+                "cdek_delivery": cdek_delivery_payload,
+                "recipient_first_name": "Тест",
+                "recipient_last_name": "Пользователь",
+                "recipient_phone": "+79990001122",
+            },
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        order_id = order_resp.json()["id"]
+
+        mock_yookassa = AsyncMock(
+            return_value={
+                "yookassa_payment_id": "test-yookassa-id",
+                "status": "pending",
+                "confirmation_url": "https://yoomoney.ru/checkout/test",
+                "amount": Decimal(str(test_product.price)),
+                "created_at": "2026-06-02T12:00:00.000Z",
+            }
+        )
+
+        with (
+            patch(
+                "src.app.services.payment_service.YooKassaService.is_configured",
+                return_value=True,
+            ),
+            patch(
+                "src.app.services.payment_service.YooKassaService.create_payment",
+                mock_yookassa,
+            ),
+        ):
+            await client.post(
+                f"/api/v1/payments/{order_id}/",
+                headers={"Authorization": f"Bearer {user_token}"},
+            )
+
+        webhook_payload = {
+            "event": "payment.succeeded",
+            "object": {
+                "id": "test-yookassa-id",
+                "status": "succeeded",
+                "amount": {"value": str(test_product.price), "currency": "RUB"},
+            },
+        }
+
+        resp = await client.post(
+            "/api/v1/payments/yookassa/webhook/",
+            json=webhook_payload,
+            headers={"X-YooKassa-Signature": "any-signature"},
+        )
+        assert resp.status_code == 403
+
+        order_get = await client.get(
+            f"/api/v1/orders/{order_id}/",
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert order_get.json()["status"] == "pending"
+
+    @pytest.mark.asyncio
+    async def test_webhook_amount_mismatch_rejected(
+        self,
+        client,
+        test_user,
+        user_token,
+        test_product,
+        test_session,
+        cdek_delivery_payload,
+        signed_webhook,
+        caplog,
+    ):
+        """Webhook с валидной подписью, но чужой суммой отклоняется (403) + error-лог."""
+        await client.post(
+            "/api/v1/cart/add",
+            json={"product_id": test_product.id, "quantity": 1},
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        order_resp = await client.post(
+            "/api/v1/orders/create/",
+            json={
+                "cdek_delivery": cdek_delivery_payload,
+                "recipient_first_name": "Тест",
+                "recipient_last_name": "Пользователь",
+                "recipient_phone": "+79990001122",
+            },
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        order_id = order_resp.json()["id"]
+
+        mock_yookassa = AsyncMock(
+            return_value={
+                "yookassa_payment_id": "test-yookassa-id",
+                "status": "pending",
+                "confirmation_url": "https://yoomoney.ru/checkout/test",
+                "amount": Decimal(str(test_product.price)),
+                "created_at": "2026-06-02T12:00:00.000Z",
+            }
+        )
+
+        with (
+            patch(
+                "src.app.services.payment_service.YooKassaService.is_configured",
+                return_value=True,
+            ),
+            patch(
+                "src.app.services.payment_service.YooKassaService.create_payment",
+                mock_yookassa,
+            ),
+        ):
+            await client.post(
+                f"/api/v1/payments/{order_id}/",
+                headers={"Authorization": f"Bearer {user_token}"},
+            )
+
+        webhook_payload = {
+            "event": "payment.succeeded",
+            "object": {
+                "id": "test-yookassa-id",
+                "status": "succeeded",
+                "amount": {
+                    "value": str(Decimal(str(test_product.price)) + Decimal("1")),
+                    "currency": "RUB",
+                },
+            },
+        }
+
+        with caplog.at_level("ERROR", logger="src.app.services.payment_service"):
+            resp = await signed_webhook(client, webhook_payload)
+        assert resp.status_code == 403
+        assert "amount mismatch" in caplog.text
+
+        order_get = await client.get(
+            f"/api/v1/orders/{order_id}/",
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert order_get.json()["status"] == "pending"
+
+    @pytest.mark.asyncio
+    async def test_webhook_unsigned_without_payment_id_rejected(self, client, signed_webhook):
+        """Неподписанный вебхук без object.id тоже отклоняется 403 — подпись проверяется первой (F001)."""
+        resp = await client.post(
+            "/api/v1/payments/yookassa/webhook/",
+            json={"event": "payment.succeeded", "object": {}},
+        )
+        assert resp.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_webhook_missing_amount_rejected(
+        self,
+        client,
+        test_user,
+        user_token,
+        test_product,
+        test_session,
+        cdek_delivery_payload,
+        signed_webhook,
+    ):
+        """Подписанный succeeded-вебхук без amount.value отклоняется fail-closed (F005)."""
+        await client.post(
+            "/api/v1/cart/add",
+            json={"product_id": test_product.id, "quantity": 1},
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        order_resp = await client.post(
+            "/api/v1/orders/create/",
+            json={
+                "cdek_delivery": cdek_delivery_payload,
+                "recipient_first_name": "Тест",
+                "recipient_last_name": "Пользователь",
+                "recipient_phone": "+79990001122",
+            },
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        order_id = order_resp.json()["id"]
+
+        mock_yookassa = AsyncMock(
+            return_value={
+                "yookassa_payment_id": "test-yookassa-id",
+                "status": "pending",
+                "confirmation_url": "https://yoomoney.ru/checkout/test",
+                "amount": Decimal(str(test_product.price)),
+                "created_at": "2026-06-02T12:00:00.000Z",
+            }
+        )
+
+        with (
+            patch(
+                "src.app.services.payment_service.YooKassaService.is_configured",
+                return_value=True,
+            ),
+            patch(
+                "src.app.services.payment_service.YooKassaService.create_payment",
+                mock_yookassa,
+            ),
+        ):
+            await client.post(
+                f"/api/v1/payments/{order_id}/",
+                headers={"Authorization": f"Bearer {user_token}"},
+            )
+
+        for broken_object in (
+            {"id": "test-yookassa-id", "status": "succeeded"},
+            {
+                "id": "test-yookassa-id",
+                "status": "succeeded",
+                "amount": {"value": "not-a-number", "currency": "RUB"},
+            },
+        ):
+            resp = await signed_webhook(
+                client, {"event": "payment.succeeded", "object": broken_object}
+            )
+            assert resp.status_code == 403
+
+        order_get = await client.get(
+            f"/api/v1/orders/{order_id}/",
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert order_get.json()["status"] == "pending"
+
+    @pytest.mark.asyncio
     async def test_webhook_payment_succeeded(
         self,
         client,
@@ -316,6 +707,7 @@ class TestPaymentsAPI:
         test_product,
         test_session,
         cdek_delivery_payload,
+        signed_webhook,
     ):
         """Webhook payment.succeeded обновляет статус заказа."""
         await client.post(
@@ -366,13 +758,11 @@ class TestPaymentsAPI:
             "object": {
                 "id": "test-yookassa-id",
                 "status": "succeeded",
-                "amount": {"value": str(test_product.price), "currency": "RUB"},
+                "amount": {"value": str(order_resp.json()["total_price"]), "currency": "RUB"},
             },
         }
 
-        resp = await client.post(
-            "/api/v1/payments/yookassa/webhook/", json=webhook_payload
-        )
+        resp = await signed_webhook(client, webhook_payload)
         assert resp.status_code == 200
 
         # Проверяем статус заказа
@@ -391,6 +781,7 @@ class TestPaymentsAPI:
         test_product,
         test_session,
         cdek_delivery_payload,
+        signed_webhook,
     ):
         """Webhook payment.canceled сохраняет cancellation_details в yookassa_metadata."""
         from src.app.models.payment import Payment
@@ -449,9 +840,7 @@ class TestPaymentsAPI:
             },
         }
 
-        resp = await client.post(
-            "/api/v1/payments/yookassa/webhook/", json=webhook_payload
-        )
+        resp = await signed_webhook(client, webhook_payload)
         assert resp.status_code == 200
 
         payment_result = await test_session.execute(
@@ -479,6 +868,7 @@ class TestPaymentsAPI:
         test_product,
         test_session,
         cdek_delivery_payload,
+        signed_webhook,
     ):
         """Webhook payment.canceled с reason=invalid_csc корректно сохраняется."""
         from src.app.models.payment import Payment
@@ -537,9 +927,7 @@ class TestPaymentsAPI:
             },
         }
 
-        resp = await client.post(
-            "/api/v1/payments/yookassa/webhook/", json=webhook_payload
-        )
+        resp = await signed_webhook(client, webhook_payload)
         assert resp.status_code == 200
 
         payment_result = await test_session.execute(
@@ -565,6 +953,7 @@ class TestPaymentsAPI:
         test_product,
         test_session,
         cdek_delivery_payload,
+        signed_webhook,
     ):
         """Webhook payment.canceled с reason=insufficient_funds корректно сохраняется."""
         from src.app.models.payment import Payment
@@ -623,9 +1012,7 @@ class TestPaymentsAPI:
             },
         }
 
-        resp = await client.post(
-            "/api/v1/payments/yookassa/webhook/", json=webhook_payload
-        )
+        resp = await signed_webhook(client, webhook_payload)
         assert resp.status_code == 200
 
         payment_result = await test_session.execute(
@@ -646,6 +1033,7 @@ class TestPaymentsAPI:
         test_product,
         test_session,
         cdek_delivery_payload,
+        signed_webhook,
     ):
         """Webhook payment.waiting_for_capture автоматически делает capture и оплачивает заказ."""
         await client.post(
@@ -695,7 +1083,7 @@ class TestPaymentsAPI:
             "object": {
                 "id": "test-yookassa-id",
                 "status": "waiting_for_capture",
-                "amount": {"value": str(test_product.price), "currency": "RUB"},
+                "amount": {"value": str(order_resp.json()["total_price"]), "currency": "RUB"},
             },
         }
 
@@ -710,9 +1098,7 @@ class TestPaymentsAPI:
                 AsyncMock(),
             ),
         ):
-            resp = await client.post(
-                "/api/v1/payments/yookassa/webhook/", json=webhook_payload
-            )
+            resp = await signed_webhook(client, webhook_payload)
 
         assert resp.status_code == 200
         mock_capture.assert_awaited_once_with("test-yookassa-id")
@@ -832,6 +1218,7 @@ class TestPaymentsAPI:
         test_product,
         test_session,
         cdek_delivery_payload,
+        signed_webhook,
     ):
         """Повторная обработка payment.succeeded не приводит к дублированию side-effects."""
         await client.post(
@@ -881,7 +1268,7 @@ class TestPaymentsAPI:
             "object": {
                 "id": "test-yookassa-id",
                 "status": "succeeded",
-                "amount": {"value": str(test_product.price), "currency": "RUB"},
+                "amount": {"value": str(order_resp.json()["total_price"]), "currency": "RUB"},
             },
         }
 
@@ -896,14 +1283,10 @@ class TestPaymentsAPI:
                 AsyncMock(),
             ),
         ):
-            first = await client.post(
-                "/api/v1/payments/yookassa/webhook/", json=webhook_payload
-            )
+            first = await signed_webhook(client, webhook_payload)
             assert first.status_code == 200
 
-            second = await client.post(
-                "/api/v1/payments/yookassa/webhook/", json=webhook_payload
-            )
+            second = await signed_webhook(client, webhook_payload)
             assert second.status_code == 200
 
         mock_notification.assert_awaited_once()
@@ -923,6 +1306,7 @@ class TestPaymentsAPI:
         test_product,
         test_session,
         cdek_delivery_payload,
+        signed_webhook,
     ):
         """Полный цикл create+pay: ровно одно письмо «оформлен» и одно «оплачен» (без дубля)."""
         await client.post(
@@ -984,12 +1368,10 @@ class TestPaymentsAPI:
                 "object": {
                     "id": "test-yookassa-id",
                     "status": "succeeded",
-                    "amount": {"value": str(test_product.price), "currency": "RUB"},
+                    "amount": {"value": str(order_resp.json()["total_price"]), "currency": "RUB"},
                 },
             }
-            resp = await client.post(
-                "/api/v1/payments/yookassa/webhook/", json=webhook_payload
-            )
+            resp = await signed_webhook(client, webhook_payload)
             assert resp.status_code == 200
 
         mock_confirmation.assert_awaited_once()
@@ -1010,6 +1392,7 @@ class TestPaymentsAPI:
         test_product,
         cdek_delivery_payload,
         test_session,
+        signed_webhook,
     ):
         """При отмене оплаченного заказа вызывается YooKassa refund и обновляется Payment."""
         from src.app.models.payment import Payment
@@ -1061,10 +1444,10 @@ class TestPaymentsAPI:
             "object": {
                 "id": "test-yookassa-id",
                 "status": "succeeded",
-                "amount": {"value": str(test_product.price), "currency": "RUB"},
+                "amount": {"value": str(order_resp.json()["total_price"]), "currency": "RUB"},
             },
         }
-        await client.post("/api/v1/payments/yookassa/webhook/", json=webhook_payload)
+        await signed_webhook(client, webhook_payload)
 
         mock_refund = AsyncMock(
             return_value={

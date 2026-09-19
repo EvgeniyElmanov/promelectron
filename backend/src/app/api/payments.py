@@ -27,7 +27,7 @@ from src.app.schemas.payment import (
     PaymentDebugSetStatusRequest,
     PaymentOut,
 )
-from src.app.services.payment_service import PaymentService
+from src.app.services.payment_service import PaymentService, WebhookRejectedError
 from src.app.services.yookassa_service import YooKassaService
 from src.app.utils.auth import get_current_active_user
 
@@ -294,12 +294,20 @@ async def yookassa_webhook(
     Считываем raw_body ДО json(), чтобы корректно проверять подпись webhook.
     """
     raw_body = await request.body()
+    try:
+        raw_text = raw_body.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        # Невалидное тело априори не может иметь валидную подпись — 403, не 500 (F003)
+        raise HTTPException(status_code=403, detail="Webhook rejected") from exc
     payload = await request.json()
     signature = request.headers.get("X-YooKassa-Signature")
-    await PaymentService.handle_webhook(
-        payload=payload,
-        raw_body=raw_body.decode("utf-8"),
-        signature=signature,
-        db=db,
-    )
+    try:
+        await PaymentService.handle_webhook(
+            payload=payload,
+            raw_body=raw_text,
+            signature=signature,
+            db=db,
+        )
+    except WebhookRejectedError as exc:
+        raise HTTPException(status_code=403, detail="Webhook rejected") from exc
     return {"status": "ok"}

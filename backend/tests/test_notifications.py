@@ -28,7 +28,7 @@ class TestNotificationsAPI:
         assert "Заказ оформлен" in data["items"][0]["title"]
 
     @pytest.mark.asyncio
-    async def test_payment_generates_notification(self, client, test_user, user_token, test_product, cdek_delivery_payload):
+    async def test_payment_generates_notification(self, client, test_user, user_token, test_product, cdek_delivery_payload, signed_webhook):
         """Оплата генерирует уведомление."""
         from unittest.mock import AsyncMock, patch
         from decimal import Decimal
@@ -66,10 +66,10 @@ class TestNotificationsAPI:
             "object": {
                 "id": "test-yookassa-id",
                 "status": "succeeded",
-                "amount": {"value": str(test_product.price), "currency": "RUB"},
+                "amount": {"value": str(order_resp.json()["total_price"]), "currency": "RUB"},
             },
         }
-        await client.post("/api/v1/payments/yookassa/webhook/", json=webhook_payload)
+        await signed_webhook(client, webhook_payload)
 
         response = await client.get("/api/v1/notifications/", headers={"Authorization": f"Bearer {user_token}"})
         assert response.status_code == 200

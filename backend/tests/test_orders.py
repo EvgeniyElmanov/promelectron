@@ -35,7 +35,7 @@ class TestOrdersAPI:
         assert prod_resp.json()["stock"] == test_product.stock
 
     @pytest.mark.asyncio
-    async def test_cancel_paid_order(self, client, test_user, user_token, test_product, cdek_delivery_payload):
+    async def test_cancel_paid_order(self, client, test_user, user_token, test_product, cdek_delivery_payload, signed_webhook):
         """Отмена оплаченного заказа с автоматическим YooKassa refund."""
         await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
         order_resp = await client.post(
@@ -70,10 +70,10 @@ class TestOrdersAPI:
             "object": {
                 "id": "test-yookassa-id",
                 "status": "succeeded",
-                "amount": {"value": str(test_product.price), "currency": "RUB"},
+                "amount": {"value": str(order_resp.json()["total_price"]), "currency": "RUB"},
             },
         }
-        await client.post("/api/v1/payments/yookassa/webhook/", json=webhook_payload)
+        await signed_webhook(client, webhook_payload)
 
         mock_refund = AsyncMock(return_value={
             "refund_id": "test-refund-id",
@@ -96,7 +96,7 @@ class TestOrdersAPI:
         assert prod_resp.json()["stock"] == test_product.stock
 
     @pytest.mark.asyncio
-    async def test_cancel_shipped_order(self, client, test_user, user_token, test_product, cdek_delivery_payload, admin_token):
+    async def test_cancel_shipped_order(self, client, test_user, user_token, test_product, cdek_delivery_payload, admin_token, signed_webhook):
         """Отмена отправленного заказа — 400."""
         await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
         order_resp = await client.post(
@@ -130,10 +130,10 @@ class TestOrdersAPI:
             "object": {
                 "id": "test-yookassa-id",
                 "status": "succeeded",
-                "amount": {"value": str(test_product.price), "currency": "RUB"},
+                "amount": {"value": str(order_resp.json()["total_price"]), "currency": "RUB"},
             },
         }
-        await client.post("/api/v1/payments/yookassa/webhook/", json=webhook_payload)
+        await signed_webhook(client, webhook_payload)
 
         # Переводим заказ в shipped через админку
         await client.post(f"/api/v1/admin/orders/{order_id}/ship/", headers={"Authorization": f"Bearer {admin_token}"})

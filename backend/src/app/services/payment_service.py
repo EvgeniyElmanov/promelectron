@@ -3,6 +3,7 @@ import hmac
 import logging
 import uuid
 from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation
 
 from fastapi import HTTPException
 from sqlalchemy import delete, func, select
@@ -23,6 +24,17 @@ from src.app.services.user_service import UserService
 from src.app.services.yookassa_service import YooKassaService
 
 logger = logging.getLogger(__name__)
+
+
+class WebhookRejectedError(Exception):
+    """Вебхук ЮKassa отклонён: подпись/секрет/сумма не прошли проверку.
+
+    Эндпоинт маппит это исключение в HTTP 403; reason не утекает в ответ.
+    """
+
+    def __init__(self, reason: str) -> None:
+        super().__init__(reason)
+        self.reason = reason
 
 
 class PaymentService:
@@ -203,6 +215,36 @@ class PaymentService:
         reason = (details or {}).get("reason")
         if reason and payment.order is not None:
             payment.order.cancellation_reason = reason
+
+    @staticmethod
+    def _validate_webhook_amount(obj: dict, payment: Payment) -> None:
+        """Сверить amount из вебхука с суммой платежа в БД (#210).
+
+        Точное равенство Decimal, без float. Отсутствие/невалидность или
+        расхождение суммы — отказ (fail-closed) + error-лог без PII.
+        """
+        raw_value = (obj.get("amount") or {}).get("value")
+        try:
+            webhook_amount = Decimal(str(raw_value))
+        except (InvalidOperation, ValueError):
+            webhook_amount = None
+        if raw_value is None or webhook_amount is None:
+            logger.error(
+                "Webhook amount missing/invalid for payment %s (YooKassa %s)",
+                payment.id,
+                payment.yookassa_payment_id,
+            )
+            raise WebhookRejectedError("invalid amount")
+        if webhook_amount != payment.amount:
+            logger.error(
+                "Webhook amount mismatch for payment %s (YooKassa %s): "
+                "expected %s, got %s",
+                payment.id,
+                payment.yookassa_payment_id,
+                payment.amount,
+                webhook_amount,
+            )
+            raise WebhookRejectedError("amount mismatch")
 
     @staticmethod
     async def _process_successful_payment(payment: Payment, db: AsyncSession) -> None:
@@ -405,24 +447,35 @@ class PaymentService:
         db: AsyncSession,
     ) -> None:
         """Обработать входящий webhook от ЮKassa."""
+        # Подпись проверяется ПЕРВОЙ — до разбора payload и любых ранних return (#210, F001)
+        secret = settings.yookassa_webhook_secret
+        if not secret:
+            logger.error("YOOKASSA_WEBHOOK_SECRET is not configured, rejecting webhook")
+            raise WebhookRejectedError("webhook secret not configured")
+        if not signature or not raw_body:
+            logger.warning("Webhook without signature rejected")
+            raise WebhookRejectedError("missing signature")
+        expected = hmac.new(
+            secret.encode(),
+            raw_body.encode(),
+            hashlib.sha256,
+        ).hexdigest()
+        if not hmac.compare_digest(expected, signature):
+            logger.warning("Webhook with invalid signature rejected")
+            raise WebhookRejectedError("invalid signature")
+
         event = payload.get("event", "")
         obj = payload.get("object", {})
         yookassa_payment_id = obj.get("id")
 
         if not yookassa_payment_id:
-            logger.warning("Webhook missing payment id: %s", payload)
+            # Логируем только метаданные, не attacker-controlled тело целиком (F004)
+            logger.warning(
+                "Webhook missing payment id: event=%s payload_keys=%s",
+                event,
+                sorted(payload.keys()),
+            )
             return
-
-        # Validate signature if configured
-        if settings.yookassa_webhook_secret and signature and raw_body:
-            expected = hmac.new(
-                settings.yookassa_webhook_secret.encode(),
-                raw_body.encode(),
-                hashlib.sha256,
-            ).hexdigest()
-            if not hmac.compare_digest(expected, signature):
-                logger.warning("Invalid webhook signature for payment %s", yookassa_payment_id)
-                return
 
         # Find payment in DB
         result = await db.execute(
@@ -441,8 +494,10 @@ class PaymentService:
         payment.updated_at = datetime.now(timezone.utc)
 
         if event == "payment.succeeded" or yookassa_status == "succeeded":
+            PaymentService._validate_webhook_amount(obj, payment)
             await PaymentService._process_successful_payment(payment, db)
         elif event == "payment.waiting_for_capture" or yookassa_status == "waiting_for_capture":
+            PaymentService._validate_webhook_amount(obj, payment)
             # Auto-capture for test shop (self-employed merchant requires manual capture)
             try:
                 await YooKassaService.capture_payment(payment.yookassa_payment_id)

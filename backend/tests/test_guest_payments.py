@@ -96,7 +96,7 @@ class TestGuestPaymentsAPI:
 
     @pytest.mark.asyncio
     async def test_webhook_creates_user_from_guest(
-        self, client, test_product, cdek_delivery_payload, test_session
+        self, client, test_product, cdek_delivery_payload, test_session, signed_webhook
     ):
         """После успешной оплаты гостевого заказа создаётся пользователь."""
         guest_email = "newuser@example.com"
@@ -116,7 +116,7 @@ class TestGuestPaymentsAPI:
             "object": {
                 "id": "guest-yookassa-id",
                 "status": "succeeded",
-                "amount": {"value": str(test_product.price), "currency": "RUB"},
+                "amount": {"value": str(order.total_price), "currency": "RUB"},
             },
         }
 
@@ -131,9 +131,7 @@ class TestGuestPaymentsAPI:
                 mock_send_welcome,
             ),
         ):
-            resp = await client.post(
-                "/api/v1/payments/yookassa/webhook/", json=webhook_payload
-            )
+            resp = await signed_webhook(client, webhook_payload)
         assert resp.status_code == 200
 
         # Проверяем, что welcome email отправлен с временным паролем и токеном
@@ -187,7 +185,7 @@ class TestGuestPaymentsAPI:
 
     @pytest.mark.asyncio
     async def test_webhook_links_guest_order_to_existing_user(
-        self, client, test_product, cdek_delivery_payload, test_session, test_user
+        self, client, test_product, cdek_delivery_payload, test_session, test_user, signed_webhook
     ):
         """Если пользователь с таким email уже есть, заказ привязывается к нему."""
         order = await _create_guest_order(
@@ -205,6 +203,7 @@ class TestGuestPaymentsAPI:
             "object": {
                 "id": "guest-yookassa-id",
                 "status": "succeeded",
+                "amount": {"value": str(order.total_price), "currency": "RUB"},
             },
         }
 
@@ -212,9 +211,7 @@ class TestGuestPaymentsAPI:
             "src.app.services.payment_service.YooKassaService.capture_payment",
             AsyncMock(),
         ):
-            resp = await client.post(
-                "/api/v1/payments/yookassa/webhook/", json=webhook_payload
-            )
+            resp = await signed_webhook(client, webhook_payload)
         assert resp.status_code == 200
 
         result = await test_session.execute(select(Order).where(Order.id == order.id))
@@ -230,7 +227,7 @@ class TestGuestPaymentsAPI:
 
     @pytest.mark.asyncio
     async def test_webhook_does_not_save_address_without_flag(
-        self, client, test_product, cdek_delivery_payload, test_session
+        self, client, test_product, cdek_delivery_payload, test_session, signed_webhook
     ):
         """Адрес не сохраняется без флага save_address."""
         guest_email = "nosave@example.com"
@@ -250,6 +247,7 @@ class TestGuestPaymentsAPI:
             "object": {
                 "id": "guest-yookassa-id",
                 "status": "succeeded",
+                "amount": {"value": str(order.total_price), "currency": "RUB"},
             },
         }
 
@@ -257,9 +255,7 @@ class TestGuestPaymentsAPI:
             "src.app.services.payment_service.YooKassaService.capture_payment",
             AsyncMock(),
         ):
-            resp = await client.post(
-                "/api/v1/payments/yookassa/webhook/", json=webhook_payload
-            )
+            resp = await signed_webhook(client, webhook_payload)
         assert resp.status_code == 200
 
         user_result = await test_session.execute(
@@ -414,7 +410,7 @@ class TestGuestPaymentsAPI:
 
     @pytest.mark.asyncio
     async def test_webhook_links_guest_order_to_existing_user_case_insensitive(
-        self, client, test_product, cdek_delivery_payload, test_session, test_user
+        self, client, test_product, cdek_delivery_payload, test_session, test_user, signed_webhook
     ):
         """Если email гостя отличается регистром от существующего пользователя — заказ привязывается."""
         order = await _create_guest_order(
@@ -432,6 +428,7 @@ class TestGuestPaymentsAPI:
             "object": {
                 "id": "guest-yookassa-id",
                 "status": "succeeded",
+                "amount": {"value": str(order.total_price), "currency": "RUB"},
             },
         }
 
@@ -439,9 +436,7 @@ class TestGuestPaymentsAPI:
             "src.app.services.payment_service.YooKassaService.capture_payment",
             AsyncMock(),
         ):
-            resp = await client.post(
-                "/api/v1/payments/yookassa/webhook/", json=webhook_payload
-            )
+            resp = await signed_webhook(client, webhook_payload)
         assert resp.status_code == 200
 
         result = await test_session.execute(select(Order).where(Order.id == order.id))
@@ -451,7 +446,7 @@ class TestGuestPaymentsAPI:
 
     @pytest.mark.asyncio
     async def test_webhook_guest_payment_canceled_saves_cancellation_details(
-        self, client, test_product, cdek_delivery_payload, test_session
+        self, client, test_product, cdek_delivery_payload, test_session, signed_webhook
     ):
         """Webhook payment.canceled для гостевого заказа сохраняет cancellation_details."""
         guest_email = "canceledguest@example.com"
@@ -474,9 +469,7 @@ class TestGuestPaymentsAPI:
             },
         }
 
-        resp = await client.post(
-            "/api/v1/payments/yookassa/webhook/", json=webhook_payload
-        )
+        resp = await signed_webhook(client, webhook_payload)
         assert resp.status_code == 200
 
         result = await test_session.execute(

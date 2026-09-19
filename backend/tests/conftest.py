@@ -1,5 +1,8 @@
 import asyncio
 import contextlib
+import hashlib
+import hmac
+import json
 import os
 
 import uuid
@@ -41,6 +44,37 @@ def make_settings(**overrides):
     from src.app.core.config import settings
 
     return dataclasses.replace(settings, **overrides)
+
+
+WEBHOOK_TEST_SECRET = "test-secret"
+
+
+@pytest.fixture
+def signed_webhook(monkeypatch):
+    """Вебхук ЮKassa с валидной HMAC-подписью (#210).
+
+    Патчит settings в payment_service на копию с тестовым секретом и возвращает
+    callable ``post(client, payload, secret=..., signature=None)``: подпись
+    считается HMAC-SHA256 ровно по тем байтам, что уходят в запрос (content=,
+    не json=). Передайте ``signature="..."`` для теста невалидной подписи.
+    """
+    patched = make_settings(yookassa_webhook_secret=WEBHOOK_TEST_SECRET)
+    monkeypatch.setattr("src.app.services.payment_service.settings", patched)
+
+    async def _post(client, payload, secret=WEBHOOK_TEST_SECRET, signature=None):
+        raw = json.dumps(payload, ensure_ascii=False).encode()
+        if signature is None:
+            signature = hmac.new(secret.encode(), raw, hashlib.sha256).hexdigest()
+        return await client.post(
+            "/api/v1/payments/yookassa/webhook/",
+            content=raw,
+            headers={
+                "Content-Type": "application/json",
+                "X-YooKassa-Signature": signature,
+            },
+        )
+
+    return _post
 
 
 async def make_product(session, *, price=None, price_type=None, **product_kwargs):

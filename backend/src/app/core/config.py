@@ -118,6 +118,23 @@ def _load_onec_webhook_api_key() -> str:
     return key
 
 
+def _load_yookassa_webhook_secret() -> str | None:
+    """Return YOOKASSA_WEBHOOK_SECRET from env. In production, fail fast if absent.
+
+    Вне production возвращает None — старт и тесты не требуют секрета,
+    но обработчик вебхука при None отклоняет запросы (fail-closed, #210).
+    """
+    secret = os.getenv("YOOKASSA_WEBHOOK_SECRET")
+    if secret:
+        return secret
+    if os.getenv("ENVIRONMENT") == "production":
+        raise RuntimeError(
+            "YOOKASSA_WEBHOOK_SECRET must be set in production. "
+            "Without it every webhook request is rejected, so payments never complete."
+        )
+    return None
+
+
 def _load_seed_secret() -> str | None:
     """Return SEED_SECRET from env.
 
@@ -218,7 +235,7 @@ settings = Settings(
     onec_default_supplier_id=_parse_optional_int_env("ONEC_DEFAULT_SUPPLIER_ID"),
     yookassa_shop_id=os.getenv("YOOKASSA_SHOP_ID", ""),
     yookassa_secret_key=os.getenv("YOOKASSA_SECRET_KEY", ""),
-    yookassa_webhook_secret=os.getenv("YOOKASSA_WEBHOOK_SECRET"),
+    yookassa_webhook_secret=_load_yookassa_webhook_secret(),
     yookassa_test_mode=os.getenv("YOOKASSA_TEST_MODE", "true").lower() == "true",
     yookassa_vat_code=int(os.getenv("YOOKASSA_VAT_CODE", "1")),
     yookassa_tax_system_code=int(os.getenv("YOOKASSA_TAX_SYSTEM_CODE", "1")),

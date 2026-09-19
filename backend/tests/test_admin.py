@@ -500,7 +500,7 @@ class TestAdminOrders:
 
     @pytest.mark.asyncio
     async def test_admin_ship_paid_order(
-        self, client, test_admin, admin_token, test_user, user_token, test_product, cdek_delivery_payload
+        self, client, test_admin, admin_token, test_user, user_token, test_product, cdek_delivery_payload, signed_webhook
     ):
         """Админ переводит оплаченный заказ в статус shipped."""
         await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
@@ -535,10 +535,10 @@ class TestAdminOrders:
             "object": {
                 "id": "test-yookassa-id",
                 "status": "succeeded",
-                "amount": {"value": str(test_product.price), "currency": "RUB"},
+                "amount": {"value": str(order_resp.json()["total_price"]), "currency": "RUB"},
             },
         }
-        await client.post("/api/v1/payments/yookassa/webhook/", json=webhook_payload)
+        await signed_webhook(client, webhook_payload)
 
         response = await client.post(
             f"/api/v1/admin/orders/{order_id}/ship/",
@@ -798,7 +798,7 @@ class TestAdminOrderDetail:
 class TestAdminCancelOrder:
     """Тесты отмены заказа админом (POST /admin/orders/{id}/cancel/)."""
 
-    async def _create_paid_order(self, client, user_token, test_product, cdek_delivery_payload) -> int:
+    async def _create_paid_order(self, client, user_token, test_product, cdek_delivery_payload, signed_webhook) -> int:
         """Создать оплаченный заказ: cart → create → mock payment → webhook succeeded."""
         await client.post("/api/v1/cart/add", json={"product_id": test_product.id, "quantity": 1}, headers={"Authorization": f"Bearer {user_token}"})
         order_resp = await client.post(
@@ -831,10 +831,10 @@ class TestAdminCancelOrder:
             "object": {
                 "id": "test-yookassa-id",
                 "status": "succeeded",
-                "amount": {"value": str(test_product.price), "currency": "RUB"},
+                "amount": {"value": str(order_resp.json()["total_price"]), "currency": "RUB"},
             },
         }
-        await client.post("/api/v1/payments/yookassa/webhook/", json=webhook_payload)
+        await signed_webhook(client, webhook_payload)
         return order_id
 
     @pytest.mark.asyncio
@@ -868,11 +868,11 @@ class TestAdminCancelOrder:
         assert prod_resp.json()["stock"] == test_product.stock
 
     @pytest.mark.asyncio
-    async def test_admin_cancel_paid_order_with_refund(self, client, test_session, test_admin, admin_token, test_user, user_token, test_product, cdek_delivery_payload):
+    async def test_admin_cancel_paid_order_with_refund(self, client, test_session, test_admin, admin_token, test_user, user_token, test_product, cdek_delivery_payload, signed_webhook):
         """Отмена оплаченного заказа админом: refund в ЮKassa, payment → refunded."""
         from src.app.models.payment import Payment
 
-        order_id = await self._create_paid_order(client, user_token, test_product, cdek_delivery_payload)
+        order_id = await self._create_paid_order(client, user_token, test_product, cdek_delivery_payload, signed_webhook)
 
         mock_refund = AsyncMock(return_value={
             "refund_id": "test-refund-id",
@@ -903,12 +903,12 @@ class TestAdminCancelOrder:
         assert prod_resp.json()["stock"] == test_product.stock
 
     @pytest.mark.asyncio
-    async def test_admin_cancel_paid_order_refund_failure(self, client, test_session, test_admin, admin_token, test_user, user_token, test_product, cdek_delivery_payload):
+    async def test_admin_cancel_paid_order_refund_failure(self, client, test_session, test_admin, admin_token, test_user, user_token, test_product, cdek_delivery_payload, signed_webhook):
         """Сбой refund → 502, заказ НЕ отменяется."""
         from src.app.models.order import Order
         from src.app.models.payment import Payment
 
-        order_id = await self._create_paid_order(client, user_token, test_product, cdek_delivery_payload)
+        order_id = await self._create_paid_order(client, user_token, test_product, cdek_delivery_payload, signed_webhook)
 
         mock_refund = AsyncMock(side_effect=Exception("YooKassa unavailable"))
         with patch("src.app.services.order_service.YooKassaService.create_refund", mock_refund):
@@ -929,9 +929,9 @@ class TestAdminCancelOrder:
         assert payment.status != "refunded"
 
     @pytest.mark.asyncio
-    async def test_admin_cancel_shipped_order_fails(self, client, test_admin, admin_token, test_user, user_token, test_product, cdek_delivery_payload):
+    async def test_admin_cancel_shipped_order_fails(self, client, test_admin, admin_token, test_user, user_token, test_product, cdek_delivery_payload, signed_webhook):
         """Отмена отправленного заказа — 400."""
-        order_id = await self._create_paid_order(client, user_token, test_product, cdek_delivery_payload)
+        order_id = await self._create_paid_order(client, user_token, test_product, cdek_delivery_payload, signed_webhook)
         await client.post(
             f"/api/v1/admin/orders/{order_id}/ship/",
             headers={"Authorization": f"Bearer {admin_token}"},

@@ -878,6 +878,25 @@ class TestOAuthHardeningFindings:
         assert key == _DEV_SECRET_PLACEHOLDER
 
     # -------------------------------------------------------------------
+    # #210 — YOOKASSA_WEBHOOK_SECRET fail-fast in production
+    # -------------------------------------------------------------------
+    def test_config_when_production_and_no_yookassa_webhook_secret_should_raise(self, monkeypatch):
+        """#210: RuntimeError при старте, если в prod нет YOOKASSA_WEBHOOK_SECRET."""
+        from src.app.core.config import _load_yookassa_webhook_secret
+        monkeypatch.setenv("ENVIRONMENT", "production")
+        monkeypatch.delenv("YOOKASSA_WEBHOOK_SECRET", raising=False)
+        import pytest
+        with pytest.raises(RuntimeError, match="YOOKASSA_WEBHOOK_SECRET"):
+            _load_yookassa_webhook_secret()
+
+    def test_config_when_development_and_no_yookassa_webhook_secret_returns_none(self, monkeypatch):
+        """#210: вне production секрет не обязателен для старта — возвращается None."""
+        from src.app.core.config import _load_yookassa_webhook_secret
+        monkeypatch.setenv("ENVIRONMENT", "development")
+        monkeypatch.delenv("YOOKASSA_WEBHOOK_SECRET", raising=False)
+        assert _load_yookassa_webhook_secret() is None
+
+    # -------------------------------------------------------------------
     # Finding #3 — change_password guard for OAuth users
     # -------------------------------------------------------------------
     @pytest.mark.asyncio
