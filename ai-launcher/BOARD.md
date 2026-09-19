@@ -1,6 +1,6 @@
 # ▶ Пульт запуска Promelectron
 
-`main = 5263cb5` · **2026-09-17** · бэклог = открытые issue на `AutonomaCo/promelectron`, борд — их витрина.
+`main = 3080ab4` · **2026-09-19** · бэклог = открытые issue на `AutonomaCo/promelectron`, борд — их витрина.
 🟢 можно · 🟡 можно, но сначала твой ответ · 🔵 занято · 🔴 нельзя, причина указана · 💤 припарковано.
 
 Кнопка у всех одна — `make ai PROMPT=…`; чем она запускается (claude, kimi или следующий),
@@ -32,7 +32,7 @@
 
 | ID | Что запускаем | Замок | Статус | Issue |
 |---|---|---|---|---|
-| [#210](#i-210) | вебхук ЮKassa принимает неподписанные запросы и не сверяет сумму | `backend` | 🟢 **берём первым** | [↗](https://github.com/AutonomaCo/promelectron/issues/210) |
+| [#210](#i-210) | вебхук ЮKassa принимает неподписанные запросы и не сверяет сумму | `backend` | 🔵 **в работе** | [↗](https://github.com/AutonomaCo/promelectron/issues/210) |
 | [#213](#i-213) | боевой `ONEC_WEBHOOK_API_KEY` в git и совпадает с тестовым | `infra` | 🟡 ротация требует согласования с 1С | [↗](https://github.com/AutonomaCo/promelectron/issues/213) |
 | #212 | резервного копирования БД нет вообще | `infra` | 🟢 после #213 | [↗](https://github.com/AutonomaCo/promelectron/issues/212) |
 | #215 | на pull request не гоняется ни одна проверка | `infra` | 🟢 в очереди на `infra` | [↗](https://github.com/AutonomaCo/promelectron/issues/215) |
@@ -67,18 +67,18 @@
 
 ## 🔒 Замки
 
-**Занято:** —.
-**Свободны:** `backend`, `frontend`, `e2e`, `infra`, `docs`, `harness`.
+**Занято:** `backend` → #210 (вебхук ЮKassa: подпись обязательна + сверка суммы), ветка `feature/gh-210`.
+**Свободны:** `frontend`, `e2e`, `infra`, `docs`, `harness`.
 
 | Замок | Сколько issue | Кто следующий |
 |---|---|---|
-| `backend` | 8 | **#210** (P0), дальше #211 |
+| `backend` | 8 | занят #210 (P0), дальше **#211** |
 | `infra` | 8 | **#213** (P0, нужен твой ответ), дальше #212 |
 | `e2e` | 3 | **#224**, дальше #186 |
 | `frontend` | 0 | — |
 
 **Волна прямо сейчас — четыре терминала, замки не пересекаются:**
-**#210** (`backend`, P0) · **#213** (`infra`, P0 — но сначала ответь про 1С) ·
+`backend` занят **#210** (P0) до мержа. Свободны: **#213** (`infra`, P0 — но сначала ответь про 1С) ·
 **#224** (`e2e`). `frontend` пуст — бэклога по нему нет.
 
 ⚠️ `make test-backend` и `make test-onec-mock` сериализованы через `flock`: параллельные
@@ -88,7 +88,11 @@
 
 # 🔵 В работе
 
-Пусто. #265 смержен (PR #266, squash `5263cb5`, 2026-09-17): мобильная витрина — GUID/пустые значения атрибута 1С «Бренд» → `brand: null` в `/products/` и поисковом индексе (хелпер `normalize_brand_value`), BottomNav скрыт на `/` + отступ body под нав только вне витрины; pytest 661, vitest 503/503, e2e без новых падений; замки `frontend`+`backend`+`e2e` свободны. **Деплой-хвост: GUID-бренды пропадут из поисковой выдачи после reindex (CI-job seed-test-catalog).**
+| ID | Что делаем | Замок | Ветка | PR |
+|---|---|---|---|---|
+| [#210](https://github.com/AutonomaCo/promelectron/issues/210) | вебхук ЮKassa: подпись обязательна всегда, сверка суммы с БД | `backend` | `feature/gh-210` | — |
+
+#265 смержен (PR #266, squash `5263cb5`, 2026-09-17): мобильная витрина — GUID/пустые значения атрибута 1С «Бренд» → `brand: null` в `/products/` и поисковом индексе (хелпер `normalize_brand_value`), BottomNav скрыт на `/` + отступ body под нав только вне витрины; pytest 661, vitest 503/503, e2e без новых падений; замки `frontend`+`backend`+`e2e` свободны. **Деплой-хвост: GUID-бренды пропадут из поисковой выдачи после reindex (CI-job seed-test-catalog).**
 
 #263 смержен (PR #264, squash `5044c4e`, 2026-09-16): pixel-perfect главной — витрина `/` по утверждённому макету (hero + промо, 4 benefits, 6 категорий, табы Хиты/Новинки/Скидки, B2B, футер), листинг на `/catalog`, шапка §11 + CategoryNav, карточка §13; backend +6 полей (image_url/brand/rating/is_new/is_hit) без миграций; pytest 658, vitest 501/501, e2e без новых падений; замки `frontend`+`backend`+`e2e` свободны. **Деплой-хвост: после выката на test — однократный `POST /api/v1/admin/search/reindex/`.**
 
@@ -152,7 +156,7 @@
 
 ---
 
-> <a id="i-210"></a>🟢 **[#210](https://github.com/AutonomaCo/promelectron/issues/210)** · вебхук ЮKassa: подпись пропускается, сумма не сверяется — `lock: backend` · **P0** · **свободен**
+> <a id="i-210"></a>🔵 **[#210](https://github.com/AutonomaCo/promelectron/issues/210)** · вебхук ЮKassa: подпись пропускается, сумма не сверяется — `lock: backend` · **P0** · **в работе: `feature/gh-210`**
 
 ```bash
 make ai PROMPT=ai-launcher/prompts/backend_210-yookassa-webhook-signature.prompt.txt
