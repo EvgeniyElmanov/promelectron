@@ -32,7 +32,7 @@
 
 | ID | Что запускаем | Замок | Статус | Issue |
 |---|---|---|---|---|
-| [#213](#i-213) | боевой `ONEC_WEBHOOK_API_KEY` в git и совпадает с тестовым | `infra` | 🟡 ротация требует согласования с 1С | [↗](https://github.com/AutonomaCo/promelectron/issues/213) |
+| [#213](#i-213) | боевой `ONEC_WEBHOOK_API_KEY` в git и совпадает с тестовым | `infra` | 🔵 в работе (kimi) | [↗](https://github.com/AutonomaCo/promelectron/issues/213) |
 | #212 | резервного копирования БД нет вообще | `infra` | 🟢 после #213 | [↗](https://github.com/AutonomaCo/promelectron/issues/212) |
 | #215 | на pull request не гоняется ни одна проверка | `infra` | 🟢 в очереди на `infra` | [↗](https://github.com/AutonomaCo/promelectron/issues/215) |
 | #211 | цена доставки берётся из тела запроса без валидации | `backend` | 🟢 **следующий на `backend`** | [↗](https://github.com/AutonomaCo/promelectron/issues/211) |
@@ -66,19 +66,18 @@
 
 ## 🔒 Замки
 
-**Занято:** ничего.
-**Свободны:** `backend`, `frontend`, `e2e`, `infra`, `docs`, `harness`.
+**Занято:** `infra` ([#213](https://github.com/AutonomaCo/promelectron/issues/213), kimi).
+**Свободны:** `backend`, `frontend`, `e2e`, `docs`, `harness`.
 
 | Замок | Сколько issue | Кто следующий |
 |---|---|---|
 | `backend` | 7 | **#211** (P0) |
-| `infra` | 8 | **#213** (P0, нужен твой ответ), дальше #212 |
+| `infra` | 8 | занят **#213**, дальше #212 |
 | `e2e` | 3 | **#224**, дальше #186 |
 | `frontend` | 0 | — |
 
 **Волна прямо сейчас — четыре терминала, замки не пересекаются:**
-все замки свободны. Кандидаты: **#211** (`backend`, P0) · **#213** (`infra`, P0 — но сначала ответь про 1С) ·
-**#224** (`e2e`). `frontend` пуст — бэклога по нему нет.
+`infra` занят #213. Кандидаты: **#211** (`backend`, P0) · **#224** (`e2e`). `frontend` пуст — бэклога по нему нет.
 
 ⚠️ `make test-backend` и `make test-onec-mock` сериализованы через `flock`: параллельные
 сессии не сломаются, но вторая будет **ждать** первую. Это не параллельность, это очередь.
@@ -86,6 +85,8 @@
 ---
 
 # 🔵 В работе
+
+🔵 **#213** (kimi, с 2026-09-19): ротация `ONEC_WEBHOOK_API_KEY` — новые разные ключи для test/prod в GitHub environment secrets, plaintext убран из `secret.yml`; prod-выкат остановлен до согласования смены ключа в 1С с владельцем. Замок `infra` занят.
 
 Пусто. #210 смержен (PR #267, squash `e68e73a`, 2026-09-19): вебхук ЮKassa — подпись обязательна всегда (запрос без `X-YooKassa-Signature` отклоняется), сумма из вебхука сверяется с платежом в БД; замок `backend` свободен, следующий — #211.
 
@@ -161,7 +162,7 @@
 
 ---
 
-> <a id="i-213"></a>🟡 **[#213](https://github.com/AutonomaCo/promelectron/issues/213)** · боевой ключ 1С в git, совпадает с тестовым — `lock: infra` · **P0** · **сначала твой ответ**
+> <a id="i-213"></a>🔵 **[#213](https://github.com/AutonomaCo/promelectron/issues/213)** · боевой ключ 1С в git, совпадает с тестовым — `lock: infra` · **P0** · **в работе (kimi)**
 
 ```bash
 make ai PROMPT=ai-launcher/prompts/infra_213-onec-key-rotation.prompt.txt
