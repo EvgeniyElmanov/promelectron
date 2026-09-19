@@ -630,3 +630,12 @@
 - Мерж одобрен владельцем, squash `e68e73a` в main. Issue #210 закрыт с доказательством (комментарий с PR/SHA). Замок `backend` свободен, следующий — #211.
 - Хозяйство: ветка `feature/gh-210` удалена локально и в origin, промпт `backend_210-...` снят, `check-board.py` зелёный. Worktree `.worktrees/gh-210` не удалён: `frontend/node_modules/.vite/deps` root-owned (docker), `git worktree remove` падает с «Отказано в доступе» — нужен sudo/chown (тот же урок, что 2026-09-14).
 - Деплой-хвост в силе: задать `YOOKASSA_WEBHOOK_SECRET` на test/prod до выката; BLK-010 (URL вебхука в ЛК ЮKassa) остаётся на владельце.
+
+## 2026-09-19 — gh-213 (#213): PR #268 открыт, ротация ONEC_WEBHOOK_API_KEY, test проверен, prod ждёт владельца
+
+- P0 security: боевой ключ 1С `841c3731…` лежал открытым текстом в `stage/prod/secret.yml:25` и совпадал с тестовым. Чинится ротацией, не переносом (значение во всей истории git).
+- Сделано: новые разные ключи в repo-секретах `ONEC_WEBHOOK_API_KEY_TEST`/`_PROD` (repo-секрет `ONEC_WEBHOOK_API_KEY` больше не используется); `deploy.yml` разведён — deploy-test берёт `_TEST`, deploy-prod берёт `_PROD`; plaintext удалён из обоих `secret.yml`; `secrets.TODO.md` обоих окружений приведены в соответствие (ключ в SOPS-базлайн не добавлять; устаревшая заметка D-09 про мапинг ключа в мок исправлена — `onec-mock-deployment.yaml` мапит только `ONEC_MOCK_LOGIN/PASSWORD`).
+- Нюанс доступа: environment-scoped секреты не вышли — создание environment `test` требует admin на репо (токен `push`+`repo`), поэтому разделение сделано суффиксами имён repo-секретов.
+- Проверки: `helm template` test/prod OK; `gitleaks dir` (дефолтные правила, `.gitleaks.toml` в репо нет) — старого ключа в дереве нет, остальные срабатывания pre-existing test-only (#219). Deploy test с ветки (run 35439983632): build/deploy-test/migrate-check/seed/e2e-smoke зелёные. **Ротация на test подтверждена:** intake со старым ключом → 401, с новым → 202 (`intake_id 485ec7d5-…`).
+- Остановка по промпту: prod не выкачен — смена ключа ломает обмен на стороне 1С, вопрос владельцу записан в issue #213 (кто и когда меняет ключ в 1С). `ONEC_WEBHOOK_API_KEY_PROD` заведён и готов; deploy-prod запускается только вручную (`workflow_dispatch prod/all`).
+- PR #268 с `Closes #213`, issue → in-review. Замок `infra` остаётся занятым до мержа. Локальная копия ключей для проверки — `.agent/runs/gh-213/keys.env` (gitignored), удалить после мержа.
