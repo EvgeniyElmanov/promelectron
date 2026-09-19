@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { goToCart, setYooKassaPaymentStatus, getInStockProductCard, goToCatalog } from './helpers.js';
+import { goToCart, setYooKassaPaymentStatus, getInStockProductCard, goToCatalog, mockCdekWidget } from './helpers.js';
 import { FAILED_CARDS } from './yookassa-test-cards.js';
 
 function uniqueEmail() {
@@ -15,33 +15,19 @@ async function fillAddress(page, prefix) {
   await page.fill(`[data-testid="${prefix}apartment"]`, '42');
 }
 
-async function mockCdekWidget(page) {
-  await page.addInitScript(() => {
-    window.__CDEK_MOCK_MODE__ = true;
-    window.CDEKWidget = class MockCDEKWidget {
-      constructor(options) {
-        this.options = options;
-        setTimeout(() => {
-          options.onChoose('PVZ', {
-            tariff_code: 136,
-            tariff_name: 'Экспресс-экспедиция',
-            delivery_sum: 350,
-            period_min: 1,
-            period_max: 3,
-          }, {
-            code: 'TEST_PVZ_1',
-            location: { city_code: 44, city: 'Москва', address: 'ул. Тестовая, 1' },
-          });
-        }, 50);
-      }
-      destroy() {}
-    };
-  });
-}
-
 async function selectCdekDelivery(page) {
   await page.click('[data-testid="cdek-open-selector"]');
-  await page.waitForSelector('[data-testid="cdek-selected-delivery"]', { timeout: 5000 });
+  // Мок делает реальные запросы к backend и песочнице СДЭК — ждём дольше (F101);
+  // при ошибке мока поднимаем читаемую причину (F102).
+  try {
+    await page.waitForSelector('[data-testid="cdek-selected-delivery"]', { timeout: 20000 });
+  } catch (err) {
+    const mockError = await page.evaluate(() => window.__CDEK_MOCK_ERROR__).catch(() => null);
+    if (mockError) {
+      throw new Error(`MockCDEKWidget failed: ${mockError}`);
+    }
+    throw err;
+  }
 }
 
 async function fillRecipientName(page, firstName = 'Иван', lastName = 'Иванов') {

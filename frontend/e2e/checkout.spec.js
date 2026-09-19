@@ -6,6 +6,7 @@ import {
   setYooKassaPaymentStatus,
   getInStockProductCard,
   goToCatalog,
+  mockCdekWidget,
 } from './helpers.js';
 import { SUCCESSFUL_CARDS } from './yookassa-test-cards.js';
 
@@ -22,35 +23,20 @@ async function fillAddress(page, prefix) {
   await page.fill(`[data-testid="${prefix}apartment"]`, '42');
 }
 
-async function mockCdekWidget(page) {
-  await page.addInitScript(() => {
-    window.__CDEK_MOCK_MODE__ = true;
-    window.CDEKWidget = class MockCDEKWidget {
-      constructor(options) {
-        this.options = options;
-        setTimeout(() => {
-          options.onChoose('PVZ', {
-            tariff_code: 136,
-            tariff_name: 'Экспресс-экспедиция',
-            delivery_sum: 350,
-            period_min: 1,
-            period_max: 3,
-          }, {
-            code: 'TEST_PVZ_1',
-            location: { city_code: 44, city: 'Москва', address: 'ул. Тестовая, 1' },
-          });
-        }, 50);
-      }
-      destroy() {}
-    };
-  });
-}
-
 async function selectCdekDelivery(page) {
   // Open CDEK widget modal (mocked via init script)
   await page.click('[data-testid="cdek-open-selector"]');
-  // Wait for the selected delivery summary to appear
-  await page.waitForSelector('[data-testid="cdek-selected-delivery"]', { timeout: 5000 });
+  // Мок делает реальные запросы к backend и песочнице СДЭК — ждём дольше (F101);
+  // при ошибке мока поднимаем читаемую причину (F102).
+  try {
+    await page.waitForSelector('[data-testid="cdek-selected-delivery"]', { timeout: 20000 });
+  } catch (err) {
+    const mockError = await page.evaluate(() => window.__CDEK_MOCK_ERROR__).catch(() => null);
+    if (mockError) {
+      throw new Error(`MockCDEKWidget failed: ${mockError}`);
+    }
+    throw err;
+  }
 }
 
 async function fillRecipientName(page, firstName = 'Иван', lastName = 'Иванов') {
@@ -130,7 +116,9 @@ test.describe('Checkout Flow', () => {
     const requestBody = await request.postDataJSON();
     expect(requestBody).toHaveProperty('recipient_first_name', 'Иван');
     expect(requestBody).toHaveProperty('recipient_last_name', 'Иванов');
-    expect(requestBody.cdek_delivery).toHaveProperty('tariff_code', 136);
+    // Тариф выбирается динамически из реального расчёта backend (mockCdekWidget),
+    // поэтому проверяем тип, а не конкретный код.
+    expect(typeof requestBody.cdek_delivery.tariff_code).toBe('number');
 
     // Verify order response includes recipient names
     const order = await response.json();

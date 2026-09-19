@@ -442,3 +442,68 @@ export async function goToCatalog(page) {
   await page.goto('/catalog');
   await expect(page.locator('[data-testid="product-card"]').first()).toBeVisible();
 }
+
+// gh-211: сервер сверяет цену доставки с реальным расчётом СДЭК
+// (OrderService._resolve_delivery_price), поэтому мок виджета не может
+// хардкодить ПВЗ/цену — берёт реальный ПВЗ и тариф из backend
+// (работает и с песочницей СДЭК, и с test_mode fallback).
+// Допущения: во всех order-e2e сценариях количество каждого товара = 1,
+// а seed-товары принадлежат поставщику 1 («Тестовый поставщик», cdek_shipment_point=44).
+export async function mockCdekWidget(page) {
+  await page.addInitScript(() => {
+    window.__CDEK_MOCK_MODE__ = true;
+    window.CDEKWidget = class MockCDEKWidget {
+      constructor(options) {
+        this.options = options;
+        setTimeout(async () => {
+          try {
+            // 1. Реальный ПВЗ из backend.
+            const pvzRes = await fetch('/api/v1/cdek/pvz/?city_code=44');
+            if (!pvzRes.ok) throw new Error(`pvz fetch failed: ${pvzRes.status}`);
+            const points = await pvzRes.json();
+            const point = points[0];
+            if (!point) throw new Error('no PVZ returned for city_code=44');
+
+            // 2. Серверный расчёт для тех же goods, что виджет получил от фронта.
+            const items = options.goods.map((g) => ({
+              weight_grams: Math.round((g.weight || 1) * 1000),
+              quantity: 1,
+              length_cm: g.length || 10,
+              width_cm: g.width || 10,
+              height_cm: g.height || 10,
+            }));
+            const calcRes = await fetch('/api/v1/cdek/calculate/', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ items, supplier_id: 1, delivery_point: point.code }),
+            });
+            if (!calcRes.ok) throw new Error(`calculate failed: ${calcRes.status}`);
+            const { tariffs } = await calcRes.json();
+            const tariff = tariffs.find((t) => t.tariff_code === 136) || tariffs[0];
+            if (!tariff) throw new Error('no tariffs returned by /cdek/calculate/');
+
+            // CdekDeliveryWidget.normalizeDelivery читает плоскую форму point.
+            options.onChoose('PVZ', {
+              tariff_code: tariff.tariff_code,
+              tariff_name: tariff.tariff_name,
+              delivery_sum: Number(tariff.price),
+              period_min: tariff.period_min,
+              period_max: tariff.period_max,
+            }, {
+              code: point.code,
+              city_code: point.location?.city_code || 44,
+              city: point.location?.city || 'Москва',
+              address: point.location?.address || 'Тестовый ПВЗ',
+            });
+          } catch (err) {
+            // F102: не бросаем из async-setTimeout (unhandled rejection) —
+            // кладём причину на window, selectCdekDelivery поднимет её в тексте падения.
+            window.__CDEK_MOCK_ERROR__ = String((err && err.stack) || err);
+          }
+        }, 50);
+      }
+      destroy() {}
+      open() {}
+    };
+  });
+}

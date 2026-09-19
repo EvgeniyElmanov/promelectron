@@ -337,6 +337,46 @@ def cdek_delivery_payload():
     }
 
 
+class _FakeCdekService:
+    """Стаб CdekService для тестов создания заказа (gh-211, D-08).
+
+    Подменяет module-level binding ``CdekService`` в ``order_service`` — НЕ
+    атрибут класса, чтобы прямые тесты ``test_cdek.py`` (реальный
+    ``calculate_delivery`` с моком ``CdekClient``) продолжали работать.
+    Ответ согласован с фикстурой ``cdek_delivery_payload``.
+    """
+
+    @staticmethod
+    async def calculate_delivery(db, items, supplier_id, to_location, delivery_point):
+        from decimal import Decimal
+
+        return [
+            {
+                "tariff_code": 136,
+                "tariff_name": "Посылка склад-склад",
+                "delivery_mode": "PVZ",
+                "price": Decimal("350.00"),
+                "period_min": 2,
+                "period_max": 4,
+            }
+        ]
+
+    @staticmethod
+    async def cancel_cdek_order(cdek_uuid):
+        return None
+
+
+@pytest.fixture(autouse=True)
+def mock_cdek_calculate(monkeypatch):
+    """Блокирует реальные вызовы СДЭК из order_service во всех тестах (D-08).
+
+    Тесты, которым нужно другое поведение (расхождение цены, CdekAPIError,
+    недоступный tariff_code), переопределяют binding локально — их
+    monkeypatch применяется после этой autouse-фикстуры и побеждает.
+    """
+    monkeypatch.setattr("src.app.services.order_service.CdekService", _FakeCdekService)
+
+
 @pytest.fixture
 async def test_user(test_session):
     from src.app.utils.auth import hash_password

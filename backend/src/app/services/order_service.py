@@ -1,7 +1,8 @@
 import logging
 from datetime import datetime, timezone
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 
+import httpx
 from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,12 +20,14 @@ from src.app.schemas.order import (
     AdminOrderDetailOut,
     AdminOrderItemOut,
     AdminOrderUpdate,
+    CdekDeliveryIn,
     GuestOrderCreate,
     OrderCreate,
     OrderOut,
     OrderUpdateStatus,
 )
 from src.app.services.cart_service import CartService
+from src.app.services.cdek_client import CdekAPIError
 from src.app.services.cdek_service import CdekService
 from src.app.services.email_service import EmailService
 from src.app.services.notification_service import NotificationService
@@ -117,6 +120,104 @@ class OrderService:
             )
 
     @staticmethod
+    async def _resolve_delivery_price(
+        db: AsyncSession,
+        delivery: CdekDeliveryIn,
+        products: list[tuple[Product, int]],
+    ) -> Decimal:
+        """Пересчитать доставку в СДЭК и сверить с присланной клиентом ценой.
+
+        gh-211: клиентская цена доставки никогда не попадает в заказ напрямую.
+        Расхождение с серверным расчётом (или недоступный tariff_code) → 409,
+        недоступность СДЭК → 503 (fail-closed, денежный путь). Возвращает
+        серверную цену. supplier_id — от первого товара, как считает фронт.
+        """
+        items = [
+            {
+                "weight_grams": product.weight_grams,
+                "quantity": quantity,
+                "length_cm": product.length_cm,
+                "width_cm": product.width_cm,
+                "height_cm": product.height_cm,
+            }
+            for product, quantity in products
+        ]
+        supplier_id = products[0][0].supplier_id
+
+        # Дешёвая отбивка мусорной клиентской цены до вызова СДЭК:
+        # не-квантуемый Decimal (например, огромная экспонента) → 409.
+        try:
+            client_price = delivery.price.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        except InvalidOperation as exc:
+            logger.info(
+                "Delivery price not quantizable on order create: tariff_code=%s",
+                delivery.tariff_code,
+            )
+            raise HTTPException(
+                status_code=409,
+                detail="Стоимость доставки устарела. Пересчитайте доставку и повторите заказ.",
+            ) from exc
+
+        try:
+            tariffs = await CdekService.calculate_delivery(
+                db=db,
+                items=items,
+                supplier_id=supplier_id,
+                to_location=delivery.to_location.model_dump() if delivery.to_location else None,
+                delivery_point=delivery.delivery_point,
+            )
+        except HTTPException:
+            raise
+        except (CdekAPIError, httpx.HTTPError) as exc:
+            logger.warning(
+                "CDEK recalculation failed on order create (tariff_code=%s): %s",
+                delivery.tariff_code,
+                type(exc).__name__,
+            )
+            raise HTTPException(
+                status_code=503,
+                detail="Сервис доставки временно недоступен. Попробуйте позже.",
+            ) from exc
+        except Exception as exc:
+            # Fail-closed: любая неожиданная ошибка пересчёта (Redis, KeyError и пр.)
+            # на денежном пути → 503, а не 500.
+            logger.warning(
+                "Delivery recalculation unexpected error on order create (tariff_code=%s): %s",
+                delivery.tariff_code,
+                type(exc).__name__,
+            )
+            raise HTTPException(
+                status_code=503,
+                detail="Сервис доставки временно недоступен. Попробуйте позже.",
+            ) from exc
+
+        tariff = next((t for t in tariffs if t.get("tariff_code") == delivery.tariff_code), None)
+        if tariff is None:
+            logger.info(
+                "Delivery tariff %s unavailable on order create (server returned %s)",
+                delivery.tariff_code,
+                [t.get("tariff_code") for t in tariffs],
+            )
+            raise HTTPException(
+                status_code=409,
+                detail="Стоимость доставки устарела. Пересчитайте доставку и повторите заказ.",
+            )
+
+        server_price = Decimal(str(tariff["price"])).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        if client_price != server_price:
+            logger.info(
+                "Delivery price mismatch on order create: tariff_code=%s client=%s server=%s",
+                delivery.tariff_code,
+                client_price,
+                server_price,
+            )
+            raise HTTPException(
+                status_code=409,
+                detail="Стоимость доставки устарела. Пересчитайте доставку и повторите заказ.",
+            )
+        return server_price
+
+    @staticmethod
     async def create_order(current_user: User, order_data: OrderCreate, db: AsyncSession) -> Order:
         cart_result = await db.execute(
             select(Cart).where(Cart.user_id == current_user.id).options(selectinload(Cart.items))
@@ -129,6 +230,7 @@ class OrderService:
         total_price = Decimal(0)
         order_items: list[OrderItem] = []
         ordered_cart_item_ids: list[int] = []
+        products_for_delivery: list[tuple[Product, int]] = []
         # D-04: заказ оформляется только из выбранных товаров корзины;
         # невыбранные остаются в корзине. Пустой выбор — 400.
         selected_cart_items = [cart_item for cart_item in cart.items if cart_item.selected]
@@ -168,9 +270,10 @@ class OrderService:
             total_price += Decimal(site_price) * cart_item.quantity
             order_items.append(order_item)
             ordered_cart_item_ids.append(cart_item.id)
+            products_for_delivery.append((product, cart_item.quantity))
 
         delivery = order_data.cdek_delivery
-        delivery_price = delivery.price
+        delivery_price = await OrderService._resolve_delivery_price(db, delivery, products_for_delivery)
         shipping_address = delivery.shipping_address or OrderService._format_shipping_address(delivery)
 
         recipient = None
@@ -284,6 +387,7 @@ class OrderService:
 
         total_price = Decimal(0)
         order_items: list[OrderItem] = []
+        products_for_delivery: list[tuple[Product, int]] = []
         for item in order_data.items:
             product_result = await db.execute(
                 select(Product).where(
@@ -316,9 +420,10 @@ class OrderService:
             )
             total_price += Decimal(site_price) * item.quantity
             order_items.append(order_item)
+            products_for_delivery.append((product, item.quantity))
 
         delivery = order_data.cdek_delivery
-        delivery_price = delivery.price
+        delivery_price = await OrderService._resolve_delivery_price(db, delivery, products_for_delivery)
         shipping_address = delivery.shipping_address or OrderService._format_shipping_address(delivery)
 
         recipient = Recipient(

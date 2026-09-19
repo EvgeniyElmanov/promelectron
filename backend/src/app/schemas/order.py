@@ -33,7 +33,7 @@ class CdekDeliveryIn(BaseModel):
     delivery_point: Optional[str] = None
     to_location: Optional[CdekLocation] = None
     from_location: Optional[CdekLocation] = None
-    price: Decimal
+    price: Decimal = Field(..., ge=0, le=Decimal("999999.99"), max_digits=9)
     period_min: Optional[int] = None
     period_max: Optional[int] = None
     shipping_address: Optional[str] = None

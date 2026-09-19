@@ -184,6 +184,13 @@ class TestCdekService:
         payload = CdekService.build_calculate_payload(items, {"code": 44}, {"code": 55, "city": "Екб"}, None)
         assert payload["to_location"]["city"] == "Екб"
 
+    def test_build_calculate_payload_with_both_to_location_and_delivery_point(self):
+        """Payload содержит оба поля, когда заданы оба (tarifflist требует to_location всегда)."""
+        items = [{"product_id": 1, "quantity": 1}]
+        payload = CdekService.build_calculate_payload(items, {"code": 44}, {"code": 2707}, "MSK123")
+        assert payload["to_location"] == {"code": 2707}
+        assert payload["delivery_point"] == "MSK123"
+
     def test_build_calculate_payload_missing_address_raises(self):
         """Отсутствие адреса вызывает HTTPException."""
         with pytest.raises(HTTPException):
@@ -869,6 +876,83 @@ class TestCdekService:
         assert len(calls) == 2
         assert calls[0]["from_location"]["code"] == 44
         assert calls[1]["from_location"]["code"] == 44
+
+    @pytest.mark.asyncio
+    async def test_calculate_delivery_resolves_to_location_from_delivery_point(
+        self, test_supplier, test_session, monkeypatch
+    ):
+        """calculate_delivery без to_location резолвит город из delivery_point и шлёт оба поля."""
+        from src.app.models.supplier import Supplier
+
+        result = await test_session.execute(select(Supplier).where(Supplier.user_id == test_supplier.id))
+        supplier = result.scalars().first()
+        supplier.cdek_shipment_point = "MSK123"
+        await test_session.commit()
+
+        async def fake_get_delivery_point(*args):
+            code = args[-1]
+            if code == "MSK123":
+                return {"code": "MSK123", "location": {"city_code": 44}}
+            if code == "NSK1":
+                return {"code": "NSK1", "location": {"city_code": 2707}}
+            return None
+
+        monkeypatch.setattr("src.app.services.cdek_service.CdekClient.get_delivery_point", fake_get_delivery_point)
+
+        called_payloads = []
+
+        async def fake_calculate_tariffs(self, payload):
+            called_payloads.append(payload)
+            return {"tariff_codes": [{"tariff_code": 136, "delivery_sum": 350.0}]}
+
+        monkeypatch.setattr("src.app.services.cdek_service.CdekClient.calculate_tariffs", fake_calculate_tariffs)
+
+        tariffs = await CdekService.calculate_delivery(
+            db=test_session,
+            items=[{"product_id": 1, "quantity": 1, "weight_grams": 500}],
+            supplier_id=supplier.id,
+            to_location=None,
+            delivery_point="NSK1",
+        )
+        assert len(tariffs) == 1
+        assert len(called_payloads) == 1
+        assert called_payloads[0]["to_location"] == {"code": 2707}
+        assert called_payloads[0]["delivery_point"] == "NSK1"
+
+    @pytest.mark.asyncio
+    async def test_calculate_delivery_unknown_delivery_point_raises_400(
+        self, test_supplier, test_session, monkeypatch
+    ):
+        """calculate_delivery с неизвестным delivery_point возвращает 400."""
+        from src.app.models.supplier import Supplier
+
+        result = await test_session.execute(select(Supplier).where(Supplier.user_id == test_supplier.id))
+        supplier = result.scalars().first()
+        supplier.cdek_shipment_point = "MSK123"
+        await test_session.commit()
+
+        async def fake_get_delivery_point(*args):
+            code = args[-1]
+            if code == "MSK123":
+                return {"code": "MSK123", "location": {"city_code": 44}}
+            return None
+
+        monkeypatch.setattr("src.app.services.cdek_service.CdekClient.get_delivery_point", fake_get_delivery_point)
+
+        async def fake_calculate_tariffs(self, payload):
+            raise AssertionError("calculate_tariffs не должен вызываться для неизвестной точки")
+
+        monkeypatch.setattr("src.app.services.cdek_service.CdekClient.calculate_tariffs", fake_calculate_tariffs)
+
+        with pytest.raises(HTTPException) as exc_info:
+            await CdekService.calculate_delivery(
+                db=test_session,
+                items=[{"product_id": 1, "quantity": 1, "weight_grams": 500}],
+                supplier_id=supplier.id,
+                to_location=None,
+                delivery_point="UNKNOWN_PVZ",
+            )
+        assert exc_info.value.status_code == 400
 
 
 class TestCdekAPI:

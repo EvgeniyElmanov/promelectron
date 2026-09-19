@@ -195,11 +195,13 @@ class CdekService:
             "packages": packages,
         }
 
+        # CDEK /v2/calculator/tarifflist требует to_location всегда,
+        # даже когда задан delivery_point (BLK-009).
+        if to_location:
+            payload["to_location"] = to_location
         if delivery_point:
             payload["delivery_point"] = delivery_point
-        elif to_location:
-            payload["to_location"] = to_location
-        else:
+        if not to_location and not delivery_point:
             raise HTTPException(status_code=400, detail="Either delivery_point or to_location is required")
 
         return payload
@@ -300,6 +302,16 @@ class CdekService:
 
         client = CdekClient()
         try:
+            # tarifflist требует to_location всегда: если пришёл только код ПВЗ,
+            # резолвим город точки через СДЭК и подставляем to_location.
+            if to_location is None and delivery_point:
+                point = await client.get_delivery_point(delivery_point)
+                delivery_city_code = (point or {}).get("location", {}).get("city_code")
+                if delivery_city_code is None:
+                    raise HTTPException(status_code=400, detail="Unknown delivery point")
+                to_location = {"code": delivery_city_code}
+                payload = CdekService.build_calculate_payload(items, from_location, to_location, delivery_point)
+
             result = await client.calculate_tariffs(payload)
         except CdekAPIError as exc:
             # Defensive fallback: if CDEK still rejects the location, retry once
