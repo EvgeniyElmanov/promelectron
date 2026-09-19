@@ -34,7 +34,7 @@
 |---|---|---|---|---|
 | #212 | резервного копирования БД нет вообще | `infra` | 🟢 **следующий на `infra`** | [↗](https://github.com/AutonomaCo/promelectron/issues/212) |
 | #215 | на pull request не гоняется ни одна проверка | `infra` | 🟢 в очереди на `infra` | [↗](https://github.com/AutonomaCo/promelectron/issues/215) |
-| [#211](#i-211) | цена доставки берётся из тела запроса без валидации | `backend` | 🟢 **можно, замок свободен** | [↗](https://github.com/AutonomaCo/promelectron/issues/211) |
+| [#211](#i-211) | цена доставки берётся из тела запроса без валидации | `backend` | 🔵 **в работе (kimi)** | [↗](https://github.com/AutonomaCo/promelectron/issues/211) |
 | #214 | prod в песочнице СДЭК + 2 реплики при локальном хранилище | `infra` | 🟢 в очереди на `infra` | [↗](https://github.com/AutonomaCo/promelectron/issues/214) |
 
 ### 🟠 P1 — ломается молча
@@ -65,8 +65,8 @@
 
 ## 🔒 Замки
 
-**Занято:** ничего.
-**Свободны:** `backend`, `frontend`, `e2e`, `infra`, `docs`, `harness`.
+**Занято:** `backend` — [#211](#i-211) (kimi).
+**Свободны:** `frontend`, `e2e`, `infra`, `docs`, `harness`.
 
 | Замок | Сколько issue | Кто следующий |
 |---|---|---|
@@ -76,7 +76,7 @@
 | `frontend` | 0 | — |
 
 **Волна прямо сейчас — четыре терминала, замки не пересекаются:**
-все замки свободны. Кандидаты: **#211** (`backend`, P0) · **#212** (`infra`, P0) · **#224** (`e2e`). `frontend` пуст — бэклога по нему нет.
+`backend` занят #211 (kimi). Кандидаты: **#212** (`infra`, P0) · **#224** (`e2e`). `frontend` пуст — бэклога по нему нет.
 
 ⚠️ `make test-backend` и `make test-onec-mock` сериализованы через `flock`: параллельные
 сессии не сломаются, но вторая будет **ждать** первую. Это не параллельность, это очередь.
@@ -84,6 +84,8 @@
 ---
 
 # 🔵 В работе
+
+#211 в работе (kimi, 2026-09-19): цена доставки из тела запроса без валидации (P0, security) — схема `price >= 0` + серверный пересчёт/сверка СДЭК на обоих путях создания заказа; замок `backend` занят до PR.
 
 Пусто. #213 смержен (PR #268, squash `2487b93`, 2026-09-19): ротация `ONEC_WEBHOOK_API_KEY` — новые разные ключи test/prod в repo-секретах GitHub (`ONEC_WEBHOOK_API_KEY_TEST`/`_PROD`), plaintext убран из `secret.yml`, `deploy.yml` разведён; test проверен (старый ключ → 401, новый → 202, деплой с ветки зелёный); замок `infra` свободен, следующий — #212. **Деплой-хвост: prod-выкат отдельно — `gh workflow run deploy.yml -f environment=prod` после смены ключа в 1С (прода пока нет, ключи переносит владелец).**
 
@@ -152,7 +154,7 @@
 
 ---
 
-> <a id="i-211"></a>🟢 **[#211](https://github.com/AutonomaCo/promelectron/issues/211)** · цена доставки из тела запроса без валидации — `lock: backend` · **P0** · **можно, замок свободен**
+> <a id="i-211"></a>🔵 **[#211](https://github.com/AutonomaCo/promelectron/issues/211)** · цена доставки из тела запроса без валидации — `lock: backend` · **P0** · **в работе (kimi)**
 
 ```bash
 make ai PROMPT=ai-launcher/prompts/backend_211-delivery-price-validation.prompt.txt
