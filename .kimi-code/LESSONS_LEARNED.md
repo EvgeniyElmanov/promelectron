@@ -516,3 +516,15 @@ Backend-под уходил в CrashLoopBackOff при деплое в `promelec
 **Решение:** брейкпоинт поднят и в `MobileMenuDrawer.vue`; в e2e добавлена проверка «клик по бургеру → drawer виден» на 768px.
 
 **Профилактика:** (1) при сдвиге/введении брейкпоинта обязателен `grep -rn '768px\|767px\|min-width: 768\|innerWidth < 768'` по всему `src/` — список файлов из грепа, а не из памяти; (2) e2e на мобильный режим должен проверять не только видимость триггера, но и то, что он открывает (drawer/меню реально отображается).
+
+---
+
+## 2026-09-19 | новый обязательный env-секрет ломает subprocess-тесты production-конфига (gh-210)
+
+**Ошибка:** добавление fail-fast загрузчика `_load_yookassa_webhook_secret()` (RuntimeError в production при пустом env) прошло зелёным по основному suite, но полный прогон показал падения в `test_rate_limiter.py` — его subprocess-тесты импортируют production-конфиг с явным набором env-переменных, и новый обязательный секрет там отсутствовал.
+
+**Причина:** production fail-fast проверяется не только основным приложением, но и тестами, которые поднимают отдельный процесс с ручным env (`test_auth.py`, `test_rate_limiter.py`); о них легко забыть, потому что точечный прогон платёжных тестов их не затрагивает.
+
+**Решение:** в subprocess-тесты production-конфига добавлен `YOOKASSA_WEBHOOK_SECRET` в env; в `test_auth.py` добавлены unit-тесты самого fail-fast (prod → RuntimeError, dev → None).
+
+**Профилактика:** при добавлении любого fail-fast env в `core/config.py` сразу grep по тестам, собирающим production env вручную: `grep -rn "ENVIRONMENT.*production" backend/tests/` — и полный `make test-backend`, а не точечный прогон.
