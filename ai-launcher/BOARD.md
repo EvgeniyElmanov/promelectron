@@ -86,7 +86,7 @@
 
 # 🔵 В работе
 
-🔵 **#213** (kimi, с 2026-09-19): ротация `ONEC_WEBHOOK_API_KEY` — новые разные ключи для test/prod в GitHub environment secrets, plaintext убран из `secret.yml`; prod-выкат остановлен до согласования смены ключа в 1С с владельцем. Замок `infra` занят.
+🔵 **#213** (kimi, с 2026-09-19): ротация `ONEC_WEBHOOK_API_KEY` — новые разные ключи для test/prod в repo-секретах GitHub (`ONEC_WEBHOOK_API_KEY_TEST`/`_PROD`), plaintext убран из `secret.yml`; prod-выкат остановлен до согласования смены ключа в 1С с владельцем. Замок `infra` занят.
 
 Пусто. #210 смержен (PR #267, squash `e68e73a`, 2026-09-19): вебхук ЮKassa — подпись обязательна всегда (запрос без `X-YooKassa-Signature` отклоняется), сумма из вебхука сверяется с платежом в БД; замок `backend` свободен, следующий — #211.
 
