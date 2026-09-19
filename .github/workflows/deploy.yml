@@ -147,6 +147,9 @@ jobs:
           # Optional GitHub Secrets overrides. Each is applied only when non-empty;
           # otherwise the committed baselines are used: SOPS (stage/test/secrets.yaml),
           # then stage/test/secret.yml (plain-text test-only secrets, e.g. ONEC_*).
+          # Исключение: ONEC_WEBHOOK_API_KEY (#213) берётся ТОЛЬКО из repo-секрета
+          # ONEC_WEBHOOK_API_KEY_TEST — в репозитории (SOPS/secret.yml) его нет,
+          # без него backend упадёт fail-fast валидацией.
           OVR_POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
           OVR_POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           OVR_POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
@@ -156,7 +159,7 @@ jobs:
           OVR_ONEC_API_URL: ${{ secrets.ONEC_API_URL }}
           OVR_ONEC_LOGIN: ${{ secrets.ONEC_LOGIN }}
           OVR_ONEC_PASSWORD: ${{ secrets.ONEC_PASSWORD }}
-          OVR_ONEC_WEBHOOK_API_KEY: ${{ secrets.ONEC_WEBHOOK_API_KEY }}
+          OVR_ONEC_WEBHOOK_API_KEY: ${{ secrets.ONEC_WEBHOOK_API_KEY_TEST }}
           OVR_YOOKASSA_SHOP_ID: ${{ secrets.YOOKASSA_SHOP_ID }}
           OVR_YOOKASSA_SECRET_KEY: ${{ secrets.YOOKASSA_SECRET_KEY }}
           OVR_CDEK_ACCOUNT: ${{ secrets.CDEK_ACCOUNT }}
@@ -355,6 +358,9 @@ jobs:
           KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
           # Optional GitHub Secrets overrides. Each is applied only when non-empty;
           # otherwise the SOPS-encrypted baseline (stage/prod/secrets.yaml) is used.
+          # Исключение: ONEC_WEBHOOK_API_KEY (#213) берётся ТОЛЬКО из repo-секрета
+          # ONEC_WEBHOOK_API_KEY_PROD — в репозитории его нет, без него backend
+          # упадёт fail-fast валидацией. Ключ prod отличается от test.
           OVR_POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
           OVR_POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           OVR_POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
@@ -364,7 +370,7 @@ jobs:
           OVR_ONEC_API_URL: ${{ secrets.ONEC_API_URL }}
           OVR_ONEC_LOGIN: ${{ secrets.ONEC_LOGIN }}
           OVR_ONEC_PASSWORD: ${{ secrets.ONEC_PASSWORD }}
-          OVR_ONEC_WEBHOOK_API_KEY: ${{ secrets.ONEC_WEBHOOK_API_KEY }}
+          OVR_ONEC_WEBHOOK_API_KEY: ${{ secrets.ONEC_WEBHOOK_API_KEY_PROD }}
           OVR_YOOKASSA_SHOP_ID: ${{ secrets.YOOKASSA_SHOP_ID }}
           OVR_YOOKASSA_SECRET_KEY: ${{ secrets.YOOKASSA_SECRET_KEY }}
           OVR_CDEK_ACCOUNT: ${{ secrets.CDEK_ACCOUNT }}
