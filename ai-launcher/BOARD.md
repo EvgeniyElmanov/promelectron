@@ -90,7 +90,7 @@
 
 | ID | Что делаем | Замок | Ветка | PR |
 |---|---|---|---|---|
-| [#210](https://github.com/AutonomaCo/promelectron/issues/210) | вебхук ЮKassa: подпись обязательна всегда, сверка суммы с БД | `backend` | `feature/gh-210` | — |
+| [#210](https://github.com/AutonomaCo/promelectron/issues/210) | вебхук ЮKassa: подпись обязательна всегда, сверка суммы с БД | `backend` | `feature/gh-210` | [#267](https://github.com/AutonomaCo/promelectron/pull/267) |
 
 #265 смержен (PR #266, squash `5263cb5`, 2026-09-17): мобильная витрина — GUID/пустые значения атрибута 1С «Бренд» → `brand: null` в `/products/` и поисковом индексе (хелпер `normalize_brand_value`), BottomNav скрыт на `/` + отступ body под нав только вне витрины; pytest 661, vitest 503/503, e2e без новых падений; замки `frontend`+`backend`+`e2e` свободны. **Деплой-хвост: GUID-бренды пропадут из поисковой выдачи после reindex (CI-job seed-test-catalog).**
 
