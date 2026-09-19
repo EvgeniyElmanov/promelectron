@@ -639,3 +639,11 @@
 - Проверки: `helm template` test/prod OK; `gitleaks dir` (дефолтные правила, `.gitleaks.toml` в репо нет) — старого ключа в дереве нет, остальные срабатывания pre-existing test-only (#219). Deploy test с ветки (run 35439983632): build/deploy-test/migrate-check/seed/e2e-smoke зелёные. **Ротация на test подтверждена:** intake со старым ключом → 401, с новым → 202 (`intake_id 485ec7d5-…`).
 - Остановка по промпту: prod не выкачен — смена ключа ломает обмен на стороне 1С, вопрос владельцу записан в issue #213 (кто и когда меняет ключ в 1С). `ONEC_WEBHOOK_API_KEY_PROD` заведён и готов; deploy-prod запускается только вручную (`workflow_dispatch prod/all`).
 - PR #268 с `Closes #213`, issue → in-review. Замок `infra` остаётся занятым до мержа. Локальная копия ключей для проверки — `.agent/runs/gh-213/keys.env` (gitignored), удалить после мержа.
+
+## 2026-09-19 — хвост #213: PR #268 смержен, ротация ONEC_WEBHOOK_API_KEY завершена на test
+
+- Мерж одобрен владельцем («ключи перенесём сами, прода пока нет — всё на testе»), squash `2487b93` в main. Issue #213 закрыт с доказательством (комментарий с PR/SHA).
+- Факт-чек после мержа: старого ключа `841c3731…` в дереве main нет; на test старый ключ → 401 на `/api/v1/onec/intake/`; test/prod разведены на repo-секреты `ONEC_WEBHOOK_API_KEY_TEST`/`_PROD`.
+- Хозяйство: worktree `.worktrees/gh-213` снят, ветка удалена локально и в origin, `keys.env` удалён, промпт `infra_213-...` снят, `check-board.py` зелёный. Замок `infra` свободен, следующий — #212.
+- Деплой-хвост: prod-выкат отдельно (`gh workflow run deploy.yml -f environment=prod`) — по словам владельца, прода пока нет; перенос ключей делает владелец сам.
+- Заодно закрыт вопрос борда: e2e после мержа #210 — жёстких падений нет (137 passed / 4 flaky), checkout:153 из hard-fail перешёл в flaky → зона #224.
