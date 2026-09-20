@@ -79,7 +79,7 @@ e2e_tests: "116 passed / 4 skipped (2026-08-27)"
 
 | ID | Уровень | Описание | Кто решает | Дедлайн |
 |----|---------|----------|------------|---------|
-| **BLK-009** | P1 | CDEK widget-service `calculate` возвращает 502 на test-окружении при передаче адреса без `code`. Блокирует UI-выбор доставки гостем. **Эскалирован (открыт 2026-06-22, 67 дней).** | backend-dev / devops | ~~2026-06-23~~ просрочен |
+| **BLK-009** | P3 | CDEK widget-service `calculate` маппит клиентскую 400 СДЭК (негеокодируемый адрес без `code`/дома) в 502. Факт-чек 2026-09-20: UI не заблокирован — виджет сам просит уточнить адрес и восстанавливается; ПВЗ-путь работает. Остаток — проксировать 4xx как 4xx. Переформулирован из P1-эскалации. | backend-dev | — |
 | **BLK-010** | P1 | YooKassa webhook `payment.succeeded` не приходит на `/api/v1/payments/yookassa/webhook/` в test-окружении — заказ не переходит в `paid` без ручной синхронизации. Нужно настроить webhook URL в личном кабинете YooKassa. **Эскалирован (открыт 2026-06-22, 67 дней).** | devops / project-manager | ~~2026-06-23~~ просрочен |
 | **BLK-013** | P1 | YooKassa E2E с тестовыми картами flaky в CI (race редиректов, 3DS sandbox). Отложено до получения реальных ключей YooKassa. | e2e-tester / project-manager | ~~2026-07-21~~ просрочен |
 | **BLK-014** | P1 | Нет production-ключей CDEK (подтверждено 2026-08-29). Перед деплоем prod: prod values → `CDEK_API_URL=https://api.cdek.ru` + `CDEK_TEST_MODE=false`; prod SOPS `SDEK_*` → `CDEK_ACCOUNT`/`CDEK_SECURE` (или GitHub Secrets). Детали в `docs/blockers.md`. | devops + пользователь (ключи) | — |
