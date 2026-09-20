@@ -41,7 +41,7 @@
 
 | ID | Что запускаем | Замок | Статус | Issue |
 |---|---|---|---|---|
-| [#224](#i-224) | спека оплаты зеленеет, ничего не проверив | `e2e` | 🔵 **в работе** (kimi, 2026-09-20) | [↗](https://github.com/AutonomaCo/promelectron/issues/224) |
+| [#224](#i-224) | спека оплаты зеленеет, ничего не проверив | `e2e` | 🔵 **в работе** (kimi, PR #272) | [↗](https://github.com/AutonomaCo/promelectron/issues/224) |
 | [#186](#i-186) | флаки `cart-select.spec.js` — протечка состояния корзины | `e2e` | 🟢 в очереди за #224 | [↗](https://github.com/AutonomaCo/promelectron/issues/186) |
 | #216 | смена статуса заказа админом всегда 404 | `backend` | 🟢 **следующий на `backend`** | [↗](https://github.com/AutonomaCo/promelectron/issues/216) |
 | #217 | миграции применяются дважды, падение глушится | `backend` | 🟢 в очереди | [↗](https://github.com/AutonomaCo/promelectron/issues/217) |
@@ -86,7 +86,7 @@
 
 # 🔵 В работе
 
-- [#224](#i-224) — спека оплаты зеленеет, ничего не проверив · `lock: e2e` · kimi · с 2026-09-20 · ветка: появится с worktree.
+- [#224](#i-224) — спека оплаты зеленеет, ничего не проверив · `lock: e2e` · kimi · с 2026-09-20 · PR [#272](https://github.com/AutonomaCo/promelectron/pull/272) открыт, ждёт ревью владельца.
 
 Пусто. #211 смержен (PR #271, squash `de87d96`, 2026-09-20): цена доставки сверяется с серверным расчётом СДЭК — схема `price >= 0` (422), расхождение → 409 «стоимость доставки устарела», недоступность СДЭК → 503 (fail-closed); оба пути создания заказа через общий хелпер `OrderService._resolve_delivery_price`; заодно закрыт корень BLK-009 (`to_location` в tarifflist при заданном `delivery_point`); e2e-мок виджета берёт ПВЗ и цену из реального `/cdek/calculate/`; pytest 686 passed (14 новых), e2e checkout 9/10 (1 — известный flaky #224/BLK-010); замки `backend`+`e2e` свободны, следующие — #216 и #224. Follow-up: #270 (фронт-обработка 409/503), F103 (Redis-кэш города ПВЗ назначения).
 
