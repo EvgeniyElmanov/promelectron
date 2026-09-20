@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import {
   goToCart,
   completeYooKassaPaymentIfNeeded,
-  expectYooKassaPageOrSkip,
+  waitForPaymentRedirect,
   setYooKassaPaymentStatus,
   getInStockProductCard,
   goToCatalog,
@@ -198,21 +198,57 @@ test.describe('Checkout Flow', () => {
       expect(payResponse.status()).toBe(200);
 
       if (card.name === 'Mir no 3DS') {
-        // Mir no-3DS: keep real YooKassa UI flow as the integration smoke test
-        const onYooKassa = await expectYooKassaPageOrSkip(page);
-        if (!onYooKassa) {
-          return;
+        // Mir no-3DS: реальный UI-флоу ЮKassa как интеграционный smoke-тест.
+        // Приложение обязано само увести браузер после создания платежа:
+        // на ЮKassa (песочница) или на /payment/success (mock-режим без ключей).
+        const destination = await waitForPaymentRedirect(page);
+        expect(
+          destination,
+          'после создания платежа приложение не перенаправило браузер: ' +
+            'ни на ЮKassa, ни на /payment/success (mock-режим) — редирект на оплату сломан',
+        ).not.toBe('none');
+
+        if (destination === 'yookassa-pending') {
+          // Переход инициирован приложением, но страница песочницы не
+          // закоммитилась — медленный внешний контур (см. issue #224).
+          test.skip(true, 'страница песочницы ЮKassa не загрузилась за 10с — внешний контур, см. #224');
         }
-        const completed = await completeYooKassaPaymentIfNeeded(page, card);
-        if (!completed) {
-          test.skip();
-          return;
+
+        if (destination === 'yookassa') {
+          // Внешний сегмент (форма песочницы + возврат на return_url) ограничен
+          // бюджетом, чтобы при нестабильной песочнице тест доходил до честного
+          // skip, а не сгорал по общему таймауту (см. issue #224). Общий
+          // таймаут теста (180с) не меняется.
+          const EXTERNAL_BUDGET_MS = 90000;
+          const externalFlow = (async () => {
+            try {
+              const completed = await completeYooKassaPaymentIfNeeded(page, card);
+              if (!completed) {
+                return 'форма/3DS песочницы не завершилась';
+              }
+              // Возврат браузера на return_url выполняет ЮKassa — подменять
+              // переход ручным goto нельзя: проверяется переход, который
+              // делает связка «приложение + платёжный контур».
+              await page.waitForURL(/\/payment\/success/, { timeout: 60000 });
+              return null;
+            } catch (err) {
+              if (err instanceof Error && err.name === 'TimeoutError') {
+                return 'песочница не вернула браузер на /payment/success за 60с';
+              }
+              return `ошибка формы песочницы: ${String(err.message || err).split('\n')[0]}`;
+            }
+          })();
+          const budgetExceeded = page.waitForTimeout(EXTERNAL_BUDGET_MS).then(
+            () => `сценарий оплаты не уложился во внешний бюджет ${EXTERNAL_BUDGET_MS / 1000}с`,
+            () => null,
+          );
+          const skipReason = await Promise.race([externalFlow, budgetExceeded]);
+          if (skipReason) {
+            test.skip(true, `песочница ЮKassa: ${skipReason} — внешний контур, см. #224`);
+          }
         }
-        try {
-          await page.waitForURL(/\/payment\/success/, { timeout: 60000 });
-        } catch {
-          await page.goto(`/payment/success?order_id=${orderId}`);
-        }
+        // destination === 'success': mock-режим — приложение само привело
+        // браузер на страницу результата, внешний контур не участвует.
       } else {
         // Mir 3DS: deterministic debug endpoint to avoid flaky sandbox
         await setYooKassaPaymentStatus({ orderId, status: 'succeeded' });

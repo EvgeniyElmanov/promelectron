@@ -38,15 +38,39 @@ export function isYooKassaPage(page) {
   return url.includes('yoomoney.ru') || url.includes('yookassa.ru');
 }
 
-export async function expectYooKassaPageOrSkip(page) {
-  try {
-    await page.waitForURL(/yoomoney\.ru|yookassa\.ru/, { timeout: 10000 });
-  } catch {
-    // YooKassa is not configured or redirect is blocked in this environment.
-    // Skip the rest of the test gracefully.
-    return false;
+// После клика «Оплатить» приложение обязано увести браузер с /checkout:
+// на yoomoney.ru/yookassa.ru (контур ЮKassa) или на /payment/success
+// (mock-режим: ЮKassa не сконфигурирована, и backend отдаёт confirmation_url
+// на собственную страницу результата оплаты).
+// Возвращает:
+//   'success'          — приложение привело на страницу результата (mock-режим);
+//   'yookassa'         — браузер на странице ЮKassa;
+//   'yookassa-pending' — приложение инициировало переход (запрос на ЮKassa ушёл),
+//                        но внешняя страница не закоммитилась вовремя — медленная
+//                        песочница, а не баг приложения;
+//   'none'             — переход не инициирован вовсе: баг приложения.
+export async function waitForPaymentRedirect(page, { timeout = 10000 } = {}) {
+  const yookassaUrl = /yoomoney\.ru|yookassa\.ru/;
+  const committed = page
+    .waitForURL(/yoomoney\.ru|yookassa\.ru|\/payment\/success/, { timeout })
+    .then(() => (yookassaUrl.test(page.url()) ? 'yookassa' : 'success'))
+    .catch(() => null);
+  const initiated = page
+    .waitForRequest((req) => yookassaUrl.test(req.url()), { timeout })
+    .then(() => 'yookassa-pending')
+    .catch(() => null);
+
+  const first = await Promise.race([committed, initiated]);
+  if (first !== 'yookassa-pending') {
+    return first ?? 'none';
   }
-  return true;
+  // Запрос на ЮKassa ушёл, но страница ещё не закоммитилась — короткая отсрочка:
+  // если коммит всё же случился, это полноценный 'yookassa', а не медленная песочница.
+  const grace = await Promise.race([
+    committed,
+    page.waitForTimeout(3000).then(() => null, () => null),
+  ]);
+  return grace ?? 'yookassa-pending';
 }
 
 export async function setYooKassaPaymentStatus(
@@ -378,7 +402,7 @@ export async function completeYooKassaPaymentIfNeeded(
   page,
   card = SUCCESSFUL_CARDS[1],
 ) {
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 
   if (!isYooKassaPage(page)) {
     return true;
