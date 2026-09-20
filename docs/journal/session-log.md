@@ -665,3 +665,10 @@
 - Мутация: закомментированный `window.location.href = confirmationUrl` (Checkout.vue, main-чекаут, revert после прогона) → тест красный за 17.9s на assert редиректа; revert → 2 passed + 1 видимый skip (44.9s); при стабильной песочнице no-3DS проходит полностью (прогон с retry: flaky→passed).
 - Среда: локальный стек переподнимался (`down/up` — recreate завис), node_modules фронта доставлен из контейнера (root-owned после frontend-test). Прогоны e2e — `docker run --network promelectron_default` (FRONTEND_URL указывает на внутрисетевой `frontend:5173`, с хоста возврат с ЮKassa не резолвится — не баг продукта).
 - PR #272 с `Closes #224`, issue → in-review. Замок `e2e` занят до мержа. Worktree `.worktrees/gh-224` содержит symlink node_modules → ../../frontend/node_modules (для прогонов с хоста); снятие по образцу gh-210.
+
+## 2026-09-20 — хвост #224: PR #272 смержен, спека оплаты больше не зеленит поломку
+
+- Мерж одобрен владельцем («мержи PR224» — имелся в виду PR по issue #224, т.к. PR с номером 224 не существует), squash `f3eaf7c` в main. Issue #224 закрыт автоматически по `Closes #224`; добавлен комментарий с доказательством (PR/SHA), метка `in-review` снята.
+- Хозяйство: ветка `bugfix/gh-224-checkout-spec` удалена локально и в origin, промпт `e2e_224-...` снят, `check-board.py` зелёный. Worktree `.worktrees/gh-224` не удалён: `frontend/{test-results,.npm,.local}` root-owned (docker), `git worktree remove` падает с «Отказано в доступе» — нужен sudo/chown (тот же урок, что gh-210/gh-211).
+- Замок `e2e` свободен, следующий — #186. На борд добавлен #269 (frontend, P1, пересчёт доставки при 409) — пересекается с #270, помечено как возможный дубль.
+- Факт-чек «Ждут условия»: BLK-009 — `/api/v1/cdek/calculate/` на test отвечает 422 на невалидный payload (не 502), корень закрыт #211 (PR #271) — запись в `docs/blockers.md` кандидат на перенос в «Решённые», решение за владельцем. BLK-010 (URL вебхука в ЛК ЮKassa) — по-прежнему на владельце.

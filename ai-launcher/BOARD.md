@@ -1,6 +1,6 @@
 # ▶ Пульт запуска Promelectron
 
-`main = de87d96` · **2026-09-20** · бэклог = открытые issue на `AutonomaCo/promelectron`, борд — их витрина.
+`main = f3eaf7c` · **2026-09-20** · бэклог = открытые issue на `AutonomaCo/promelectron`, борд — их витрина.
 🟢 можно · 🟡 можно, но сначала твой ответ · 🔵 занято · 🔴 нельзя, причина указана · 💤 припарковано.
 
 Кнопка у всех одна — `make ai PROMPT=…`; чем она запускается (claude, kimi или следующий),
@@ -41,19 +41,19 @@
 
 | ID | Что запускаем | Замок | Статус | Issue |
 |---|---|---|---|---|
-| [#224](#i-224) | спека оплаты зеленеет, ничего не проверив | `e2e` | 🔵 **в работе** (kimi, PR #272) | [↗](https://github.com/AutonomaCo/promelectron/issues/224) |
-| [#186](#i-186) | флаки `cart-select.spec.js` — протечка состояния корзины | `e2e` | 🟢 в очереди за #224 | [↗](https://github.com/AutonomaCo/promelectron/issues/186) |
+| [#186](#i-186) | флаки `cart-select.spec.js` — протечка состояния корзины | `e2e` | 🟢 **следующий на `e2e`** | [↗](https://github.com/AutonomaCo/promelectron/issues/186) |
 | #216 | смена статуса заказа админом всегда 404 | `backend` | 🟢 **следующий на `backend`** | [↗](https://github.com/AutonomaCo/promelectron/issues/216) |
 | #217 | миграции применяются дважды, падение глушится | `backend` | 🟢 в очереди | [↗](https://github.com/AutonomaCo/promelectron/issues/217) |
 | #220 | rate limit по IP пода, гостевой заказ без лимита | `backend` | 🟢 в очереди | [↗](https://github.com/AutonomaCo/promelectron/issues/220) |
 | #221 | debug-эндпоинты платежей в продовом роутере | `backend` | 🟢 в очереди | [↗](https://github.com/AutonomaCo/promelectron/issues/221) |
 | #223 | нет индексов на горячих внешних ключах | `backend` | 🟢 в очереди | [↗](https://github.com/AutonomaCo/promelectron/issues/223) |
+| #269 | пересчёт доставки при 409 «Стоимость доставки устарела» | `frontend` | 🟢 **следующий на `frontend`** | [↗](https://github.com/AutonomaCo/promelectron/issues/269) |
 | #218 | поды от root, PostgreSQL через NodePort наружу | `infra` | 🟢 в очереди | [↗](https://github.com/AutonomaCo/promelectron/issues/218) |
 | #219 | боевые секреты: SOPS неполный, OAuth в GitHub Secrets | `infra` | 🟢 в очереди на `infra` | [↗](https://github.com/AutonomaCo/promelectron/issues/219) |
 | #222 | наблюдаемости нет: ни Sentry, ни метрик, ни логов | `infra` | 🟡 выбор приёмника за владельцем | [↗](https://github.com/AutonomaCo/promelectron/issues/222) |
 
 **Заведено, но кнопки нет:** #212 · #214 · #215 · #216 · #217 · #218 · #219 · #220 ·
-#221 · #222 · #223 · #254 · #255 · #256 · #257. Промпт пишется, когда пункт попадает в волну (`CONVENTIONS.md` §7).
+#221 · #222 · #223 · #254 · #255 · #256 · #257 · #269. Промпт пишется, когда пункт попадает в волну (`CONVENTIONS.md` §7).
 Скажи, для какого нужен — напишу.
 
 **P2-долг** (11 пунктов в `docs/backlog.md` «Не заведено: P2-долг» + заведённые P2-issue:
@@ -66,18 +66,18 @@
 
 ## 🔒 Замки
 
-**Занято:** `e2e` — [#224](#i-224) (kimi, с 2026-09-20).
-**Свободны:** `backend`, `frontend`, `infra`, `docs`, `harness`.
+**Занято:** ничего.
+**Свободны:** `backend`, `frontend`, `e2e`, `infra`, `docs`, `harness`.
 
 | Замок | Сколько issue | Кто следующий |
 |---|---|---|
 | `backend` | 6 | **#216** (P1) |
 | `infra` | 6 | **#212** (P0), дальше #215 |
-| `e2e` | 2 | занят: **#224** в работе, дальше #186 |
-| `frontend` | 1 | #270 (P2, без волны) |
+| `e2e` | 2 | **#186** (P1) |
+| `frontend` | 2 | **#269** (P1), дальше #270 (P2) |
 
 **Волна прямо сейчас — четыре терминала, замки не пересекаются:**
-`e2e` занят #224. Свободные кандидаты: **#212** (`infra`, P0) · **#216** (`backend`, P1). `frontend` — только P2 #270.
+все замки свободны. Кандидаты: **#212** (`infra`, P0) · **#216** (`backend`, P1) · **#186** (`e2e`, P1) · **#269** (`frontend`, P1).
 
 ⚠️ `make test-backend` и `make test-onec-mock` сериализованы через `flock`: параллельные
 сессии не сломаются, но вторая будет **ждать** первую. Это не параллельность, это очередь.
@@ -86,7 +86,7 @@
 
 # 🔵 В работе
 
-- [#224](#i-224) — спека оплаты зеленеет, ничего не проверив · `lock: e2e` · kimi · с 2026-09-20 · PR [#272](https://github.com/AutonomaCo/promelectron/pull/272) открыт, ждёт ревью владельца.
+Пусто. #224 смержен (PR #272, squash `f3eaf7c`, 2026-09-20): спека оплаты больше не маскирует поломку — голый `return` заменён на видимый `test.skip(true, …)` при внешних сбоях песочницы ЮKassa, отсутствие редиректа → красный assert, ручной `page.goto('/payment/success')` из catch убран; мутацией проверено: обрыв редиректа краснит тест за 18с; замок `e2e` свободен, следующий — #186.
 
 Пусто. #211 смержен (PR #271, squash `de87d96`, 2026-09-20): цена доставки сверяется с серверным расчётом СДЭК — схема `price >= 0` (422), расхождение → 409 «стоимость доставки устарела», недоступность СДЭК → 503 (fail-closed); оба пути создания заказа через общий хелпер `OrderService._resolve_delivery_price`; заодно закрыт корень BLK-009 (`to_location` в tarifflist при заданном `delivery_point`); e2e-мок виджета берёт ПВЗ и цену из реального `/cdek/calculate/`; pytest 686 passed (14 новых), e2e checkout 9/10 (1 — известный flaky #224/BLK-010); замки `backend`+`e2e` свободны, следующие — #216 и #224. Follow-up: #270 (фронт-обработка 409/503), F103 (Redis-кэш города ПВЗ назначения).
 
@@ -173,24 +173,7 @@
 
 ---
 
-> <a id="i-224"></a>🔵 **[#224](https://github.com/AutonomaCo/promelectron/issues/224)** · спека оплаты зеленеет, ничего не проверив — `lock: e2e` · **P1** · **в работе** (kimi, с 2026-09-20)
-
-```bash
-make ai PROMPT=ai-launcher/prompts/e2e_224-checkout-spec-green-nothing.prompt.txt
-```
-
-`checkout.spec.js:213` — нет редиректа на ЮKassa за 10 секунд, и тест делает голый `return`
-вместо `test.skip()`: прогон засчитывается пройденным. `:225` — упал `waitForURL` на
-success-страницу, и в `catch` тест сам везёт браузер туда ручным `page.goto`.
-
-Худший вид теста: он не просто не ловит поломку, он создаёт уверенность, что поломки нет.
-Сломанный редирект на оплату уедет в прод с зелёным CI.
-
-Берётся до #186: тот чинит флак, этот — ложную зелень.
-
----
-
-> <a id="i-186"></a>🟢 **[#186](https://github.com/AutonomaCo/promelectron/issues/186)** · флаки `cart-select.spec.js` — `lock: e2e` · **P1** · **в очереди за #224**
+> <a id="i-186"></a>🟢 **[#186](https://github.com/AutonomaCo/promelectron/issues/186)** · флаки `cart-select.spec.js` — `lock: e2e` · **P1** · **свободен**
 
 ```bash
 make ai PROMPT=ai-launcher/prompts/e2e_186-cart-select-flaky.prompt.txt
@@ -207,4 +190,4 @@ make ai PROMPT=ai-launcher/prompts/e2e_186-cart-select-flaky.prompt.txt
 
 # 🅕 Фронтенд
 
-Открыто одно P2: [#270](https://github.com/AutonomaCo/promelectron/issues/270) — обработка 409/503 при создании заказа (пересчёт тарифа, retry, читаемый тост на 422), follow-up к #211. Промпта нет, в волну не входит.
+Открыто два follow-up к #211, оба без промпта: [#269](https://github.com/AutonomaCo/promelectron/issues/269) (P1) — пересчёт доставки при 409 «Стоимость доставки устарела» на создании заказа и [#270](https://github.com/AutonomaCo/promelectron/issues/270) (P2) — обработка 409/503 целиком (пересчёт тарифа, retry, читаемый тост на 422). Зона пересекается: #269 выглядит подмножеством #270 — при взятии в волну решить, закрывать ли #269 дублем.
