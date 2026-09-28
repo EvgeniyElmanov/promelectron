@@ -693,3 +693,10 @@
 - **Review:** 2 итерации — F001 HIGH (фильтр stock>0 допускал stock=1 при quantity:2 → потенциальный 400 на merge) и F002 LOW (первая страница каталога), оба VERIFIED.
 - **Follow-up:** #274 — продуктовый UX-баг того же класса (корзина пустая до F5 при медленном merge), frontend, P2.
 - **Метрики:** ~2k токенов coordination plane, 2 итерации ревью, 1 итерация QA. Издержки: два прогона pre-push ушли на EACCES от root-owned `node_modules`/`test-results` в worktree (контейнерная установка от root; лечится chown 1000:1000).
+
+## 2026-09-28 — harness: метрики PR из trace.jsonl + chown всего /app в worktree
+
+- **Итог:** коммит `abb0338` запушен в main напрямую (по решению владельца, без PR). Два замечания из отчёта сессии #186 подтверждены фактами и закрыты.
+- **Метрики (`scripts/agent_metrics.py`):** `REACHED_PR=0` при открытом/смерженном PR — скрипт читал только `pr_url:` из task.md/spec.md (её никто не пишет) и несуществующий `.agent/SESSION_LOG.md`. Теперь `reached_pr`/`github_pr` берутся из события `pr_opened` в `trace.jsonl`; session-log fallback перенацелен на `docs/journal/session-log.md` (заголовки `## `, якорь task-id или `#issue`, в completed-маркеры добавлено «закрыт»). Проверено: pixel-perfect-homepage → PR #264, COMPLETED=1; gh-186 → PR #273; `--all` зелёный, ложных срабатываний нет.
+- **Worktree (`scripts/implement-pipeline.py`):** chown в `_prepare_frontend_deps` расширен с `/app/node_modules` на весь `/app` — root-owned `.npm`/`test-results`/`playwright-report` после контейнерных прогонов ломали pre-push с EACCES (LESSONS_LEARNED 2026-08-24).
+- **Побочная находка:** борд на момент сессии устарел (#186 висел «следующим на e2e» с кнопкой при уже смерженном PR #273); другая сессия тем же днем обновила борд и добавила кнопки #212/#216.
