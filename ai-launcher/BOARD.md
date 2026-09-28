@@ -41,7 +41,7 @@
 
 | ID | Что запускаем | Замок | Статус | Issue |
 |---|---|---|---|---|
-| [#186](#i-186) | флаки `cart-select.spec.js` — протечка состояния корзины | `e2e` | 🟢 **следующий на `e2e`** | [↗](https://github.com/AutonomaCo/promelectron/issues/186) |
+| [#186](#i-186) | флаки `cart-select.spec.js` — протечка состояния корзины | `e2e` | 🔵 в работе | [↗](https://github.com/AutonomaCo/promelectron/issues/186) |
 | #216 | смена статуса заказа админом всегда 404 | `backend` | 🟢 **следующий на `backend`** | [↗](https://github.com/AutonomaCo/promelectron/issues/216) |
 | #217 | миграции применяются дважды, падение глушится | `backend` | 🟢 в очереди | [↗](https://github.com/AutonomaCo/promelectron/issues/217) |
 | #220 | rate limit по IP пода, гостевой заказ без лимита | `backend` | 🟢 в очереди | [↗](https://github.com/AutonomaCo/promelectron/issues/220) |
@@ -66,18 +66,18 @@
 
 ## 🔒 Замки
 
-**Занято:** ничего.
-**Свободны:** `backend`, `frontend`, `e2e`, `infra`, `docs`, `harness`.
+**Занято:** `e2e` — #186 (ветка `feature/fix-cart-select-flaky-186`).
+**Свободны:** `backend`, `frontend`, `infra`, `docs`, `harness`.
 
 | Замок | Сколько issue | Кто следующий |
 |---|---|---|
 | `backend` | 6 | **#216** (P1) |
 | `infra` | 6 | **#212** (P0), дальше #215 |
-| `e2e` | 2 | **#186** (P1) |
+| `e2e` | 2 | занят: **#186** в работе |
 | `frontend` | 2 | **#269** (P1), дальше #270 (P2) |
 
 **Волна прямо сейчас — четыре терминала, замки не пересекаются:**
-все замки свободны. Кандидаты: **#212** (`infra`, P0) · **#216** (`backend`, P1) · **#186** (`e2e`, P1) · **#269** (`frontend`, P1).
+`e2e` занят (#186). Кандидаты: **#212** (`infra`, P0) · **#216** (`backend`, P1) · **#269** (`frontend`, P1).
 
 ⚠️ `make test-backend` и `make test-onec-mock` сериализованы через `flock`: параллельные
 сессии не сломаются, но вторая будет **ждать** первую. Это не параллельность, это очередь.
@@ -85,6 +85,8 @@
 ---
 
 # 🔵 В работе
+
+#186 в работе (kimi, 2026-09-28): флаки `cart-select.spec.js`, ветка `feature/fix-cart-select-flaky-186`, замок `e2e`.
 
 Пусто. #224 смержен (PR #272, squash `f3eaf7c`, 2026-09-20): спека оплаты больше не маскирует поломку — голый `return` заменён на видимый `test.skip(true, …)` при внешних сбоях песочницы ЮKassa, отсутствие редиректа → красный assert, ручной `page.goto('/payment/success')` из catch убран; мутацией проверено: обрыв редиректа краснит тест за 18с; замок `e2e` свободен, следующий — #186.
 
@@ -174,7 +176,7 @@ BLK-009 снят из этого раздела 2026-09-20: браузерный
 
 ---
 
-> <a id="i-186"></a>🟢 **[#186](https://github.com/AutonomaCo/promelectron/issues/186)** · флаки `cart-select.spec.js` — `lock: e2e` · **P1** · **свободен**
+> <a id="i-186"></a>🔵 **[#186](https://github.com/AutonomaCo/promelectron/issues/186)** · флаки `cart-select.spec.js` — `lock: e2e` · **P1** · **в работе** (ветка `feature/fix-cart-select-flaky-186`)
 
 ```bash
 make ai PROMPT=ai-launcher/prompts/e2e_186-cart-select-flaky.prompt.txt
