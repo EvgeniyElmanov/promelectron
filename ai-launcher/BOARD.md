@@ -66,7 +66,7 @@
 
 ## 🔒 Замки
 
-**Занято:** `e2e` — #186 (ветка `feature/fix-cart-select-flaky-186`).
+**Занято:** `e2e` — #186 (ветка `feature/gh-186`).
 **Свободны:** `backend`, `frontend`, `infra`, `docs`, `harness`.
 
 | Замок | Сколько issue | Кто следующий |
@@ -86,7 +86,7 @@
 
 # 🔵 В работе
 
-#186 в работе (kimi, 2026-09-28): флаки `cart-select.spec.js`, ветка `feature/fix-cart-select-flaky-186`, замок `e2e`.
+#186 в работе (kimi, 2026-09-28): флаки `cart-select.spec.js`, ветка `feature/gh-186`, замок `e2e`.
 
 Пусто. #224 смержен (PR #272, squash `f3eaf7c`, 2026-09-20): спека оплаты больше не маскирует поломку — голый `return` заменён на видимый `test.skip(true, …)` при внешних сбоях песочницы ЮKassa, отсутствие редиректа → красный assert, ручной `page.goto('/payment/success')` из catch убран; мутацией проверено: обрыв редиректа краснит тест за 18с; замок `e2e` свободен, следующий — #186.
 
@@ -176,7 +176,7 @@ BLK-009 снят из этого раздела 2026-09-20: браузерный
 
 ---
 
-> <a id="i-186"></a>🔵 **[#186](https://github.com/AutonomaCo/promelectron/issues/186)** · флаки `cart-select.spec.js` — `lock: e2e` · **P1** · **в работе** (ветка `feature/fix-cart-select-flaky-186`)
+> <a id="i-186"></a>🔵 **[#186](https://github.com/AutonomaCo/promelectron/issues/186)** · флаки `cart-select.spec.js` — `lock: e2e` · **P1** · **в работе** (ветка `feature/gh-186`)
 
 ```bash
 make ai PROMPT=ai-launcher/prompts/e2e_186-cart-select-flaky.prompt.txt
