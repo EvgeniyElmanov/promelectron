@@ -231,8 +231,12 @@ def _prepare_frontend_deps(worktree: Path) -> None:
 
     Host `npm ci` misses the optional peer `picomatch` (vite then fails to
     start); the containerised `npm install` in the Playwright image adds it
-    but leaves root-owned files in the bind-mounted node_modules, which
+    but leaves root-owned files in the bind-mounted frontend dir, which
     breaks later `--user` runs and worktree removal — fix with a chown pass.
+    The chown covers all of /app, not just node_modules: container runs also
+    leave root-owned `.npm` (npm cache, HOME=/app), `test-results` and
+    `playwright-report`, and those break playwright under `--user` with
+    EACCES (LESSONS_LEARNED 2026-08-24).
     """
     frontend = worktree / "frontend"
     if not (frontend / "package-lock.json").exists():
@@ -246,7 +250,7 @@ def _prepare_frontend_deps(worktree: Path) -> None:
         (["docker", "run", "--rm", "-v", f"{frontend}:/app", "-w", "/app",
           PLAYWRIGHT_IMAGE, "npm", "install", "--silent"], None),
         (["docker", "run", "--rm", "-v", f"{frontend}:/app",
-          NODE_IMAGE, "chown", "-R", f"{uid}:{gid}", "/app/node_modules"], None),
+          NODE_IMAGE, "chown", "-R", f"{uid}:{gid}", "/app"], None),
     ]
     for cmd, cwd in steps:
         result = run(cmd, cwd=cwd, check=False)

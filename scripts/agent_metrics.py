@@ -28,7 +28,7 @@ from typing import Iterable
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 AGENT_RUNS_DIR = PROJECT_ROOT / ".agent" / "runs"
-SESSION_LOG_FILE = PROJECT_ROOT / ".agent" / "SESSION_LOG.md"
+SESSION_LOG_FILE = PROJECT_ROOT / "docs" / "journal" / "session-log.md"
 
 # Conservative ratio for mixed Latin/Cyrillic text.
 CHARS_PER_TOKEN = 4
@@ -182,26 +182,55 @@ def context_summary_generated(task_dir: Path) -> bool:
     return (task_dir / "CONTEXT_SUMMARY.md").exists()
 
 
-def _scan_session_log_for_task(task_id: str) -> dict[str, bool]:
-    """Scan SESSION_LOG.md for PR/completion markers for this task."""
+def _trace_pr_opened(task_dir: Path) -> str | None:
+    """Scan trace.jsonl for `pr_opened` events.
+
+    Returns the PR url from the latest event's data, "" when an event exists
+    without a url, or None when no `pr_opened` event was recorded.
+    """
+    trace_file = task_dir / "trace.jsonl"
+    if not trace_file.exists():
+        return None
+    found = False
+    url = ""
+    for line in trace_file.read_text(encoding="utf-8", errors="replace").splitlines():
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if event.get("event") == "pr_opened":
+            found = True
+            data = event.get("data")
+            if isinstance(data, dict) and data.get("url"):
+                url = str(data["url"])
+    if not found:
+        return None
+    return url
+
+
+def _scan_session_log_for_task(task_id: str, issue: str | None = None) -> dict[str, bool]:
+    """Scan docs/journal/session-log.md for PR/completion markers for this task."""
     result = {"reached_pr": False, "completed": False}
     if not SESSION_LOG_FILE.exists():
         return result
 
     text = SESSION_LOG_FILE.read_text(encoding="utf-8")
-    # Find the most recent block for this task-id.
-    # Blocks are separated by "=======\n  Следующий шаг:" or by date headers.
-    # We search for the task-id and look for PR/completion keywords nearby.
-    for match in re.finditer(rf"### \d{{4}}-\d{{2}}-\d{{2}}.*{re.escape(task_id)}", text):
+    # Blocks start at "## <date> — <task-id|#issue> ..." headers and end at the
+    # next same-level header. Follow-up entries often reference only the issue
+    # number ("хвост #263"), so match both.
+    anchor = re.escape(task_id)
+    if issue:
+        anchor += rf"|#{issue}\b"
+    for match in re.finditer(rf"## \d{{4}}-\d{{2}}-\d{{2}}.*(?:{anchor})", text):
         start = match.start()
-        end = text.find("=======", start)
+        end = text.find("\n## ", start + 1)
         if end == -1:
             end = len(text)
         block = text[start:end]
 
         if re.search(r"pr_url|Pull Request|PR #|Merged|merged|merge", block, re.IGNORECASE):
             result["reached_pr"] = True
-        if re.search(r"merged|заверш|complete|done|✅ все проверки", block, re.IGNORECASE):
+        if re.search(r"merged|заверш|закрыт|complete|done|✅ все проверки", block, re.IGNORECASE):
             result["completed"] = True
 
     return result
@@ -234,9 +263,12 @@ def collect_task_metrics(task_id: str) -> TaskMetrics:
     issue = task_meta.get("github_issue") or spec_meta.get("github_issue")
     pr = task_meta.get("github_pr") or spec_meta.get("github_pr")
 
-    session_state = _scan_session_log_for_task(task_id)
-    reached_pr = bool(pr) or session_state["reached_pr"]
+    trace_pr_url = _trace_pr_opened(task_dir)
+    session_state = _scan_session_log_for_task(task_id, issue)
+    reached_pr = bool(pr) or trace_pr_url is not None or session_state["reached_pr"]
     completed = session_state["completed"]
+    if not pr and trace_pr_url:
+        pr = trace_pr_url
 
     created_date = task_meta.get("created_date")
     lifetime = _lifetime_days(created_date, completed)
