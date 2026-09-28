@@ -136,8 +136,17 @@ test.describe('Cart item selection (#177)', () => {
     // Checkout as guest redirects to login; merge happens after login.
     await page.locator('[data-testid="checkout-button"]').click();
     await page.waitForURL('/login?redirect=/cart', { timeout: 10000 });
+    // Login.vue запускает merge гостевой корзины фоном (без await), а Cart.vue
+    // читает корзину один раз при монтировании: если GET /cart/ обгонит коммит
+    // merge, страница навсегда останется пустой. Ждём ответ merge и
+    // перезагружаем страницу, чтобы fetchCart выполнился после коммита.
+    const mergeResponse = page.waitForResponse(
+      (response) => response.url().includes('/cart/merge') && response.status() === 200,
+    );
     await loginUser(page, email, password);
     await page.waitForURL('/cart', { timeout: 20000 });
+    await mergeResponse;
+    await page.reload();
 
     // After merge: both items present, selection flags preserved.
     await expect(page.locator('[data-testid="cart-item"]')).toHaveCount(2, { timeout: 20000 });
