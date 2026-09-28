@@ -1,0 +1,75 @@
+Работай в локальном чекауте репозитория (корень проекта). Issue #212, замок `infra`. Приоритет P0.
+
+## Первым делом — займи пункт
+
+ДО создания worktree: пункт → 🔵 в ai-launcher/BOARD.md, строка в «🔵 В работе», метка
+`in-progress` на issue. Пульт правится ТОЛЬКО в корне на `main`, поимённо:
+
+    git add ai-launcher/BOARD.md
+    gh issue edit 212 --repo AutonomaCo/promelectron --add-label in-progress
+
+Перед коммитом борда — `python3 scripts/check-board.py`.
+⚠️ Замок `infra` делят #214, #215, #218, #219, #222. Занят — остановись и скажи владельцу.
+
+## Задача
+
+Резервного копирования БД нет вообще. Единственная копия боевых данных живёт на одном PV,
+который удаляется вместе с релизом. Подробности — `gh issue view 212`.
+
+Решение СОГЛАСОВАНО с владельцем (2026-09-28): pg_dump по CronJob → существующий MinIO
+в кластере. Внешний S3 и вынос копии за пределы кластера — осознанно out of scope
+(нет внешней машины, внешние ключи не заводим); остаточный риск «потеря всей площадки»
+зафиксировать комментарием в issue при закрытии.
+
+## Что уже известно
+
+- MinIO уже в чарте и работает: `infra/helm/templates/minio-deployment.yaml`,
+  `minio-service.yaml`, `minio-pvc.yaml`; `infra/helm/values.yaml:110-115`; endpoint
+  `http://promelectron-minio:9000`, `MINIO_SECURE=false`. Креды `MINIO_ACCESS_KEY` /
+  `MINIO_SECRET_KEY` лежат в `promelectron-secrets` (SOPS: `infra/helm/stage/*/secrets.yaml`),
+  туда же — `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB`.
+- Образец CronJob — `infra/helm/templates/cronjob-cdek-sync-statuses.yaml`: образ API,
+  `python -m src.app.workers.*`, envFrom configMap+secrets, `concurrencyPolicy: Forbid`,
+  history limits, `activeDeadlineSeconds`. Держись этой формы.
+- Backend уже умеет S3: `backend/src/app/services/storage_service.py` (boto3).
+- `pg_dump` в образе backend ОТСУТСТВУЕТ (проверено: в `backend/Dockerfile` postgres-client
+  не ставится). Решение — в spec: либо добавить postgresql-client в образ backend, либо
+  CronJob на образе `postgres:<версия из чарта>` с shell-скриптом и `mc`/boto3. Версия
+  клиента pg_dump должна быть не старше сервера.
+- `infra/helm/templates/postgresql-pvc.yaml` — PVC БЕЗ аннотации
+  `helm.sh/resource-policy: keep`; у `minio-pvc.yaml` её тоже нет. Обе добавить.
+
+## Порядок
+
+1. Отдельный бакет `postgres-backups` — не смешивать с `promelectron-uploads`/`onec-intake`.
+2. CronJob `cronjob-pg-backup.yaml` по образцу cdek: `pg_dump | gzip` → MinIO, имя файла
+   с UTC-датой. Расписание и срок хранения — в values (`cronjobs.pgBackup.*`), дефолт:
+   ежедневно, хранить 14 дней. Ротация — lifecycle-правилом бакета ИЛИ удалением в самой
+   джобе; выбор зафиксируй в spec.
+3. `helm.sh/resource-policy: keep` на PVC постгреса и MinIO.
+4. Отказ снятия копии не должен проходить молча: ненулевой exit code, понятный лог;
+   `failedJobsHistoryLimit` и `activeDeadlineSeconds` как в образце. Полноценного алерта
+   нет и не будет до #222 — это честно записать в PR.
+5. Если нод больше одной (`kubectl get nodes`) — preferred-anti-affinity пода MinIO от
+   пода постгреса, чтобы копия не лежала на той же ноде. Только preferred, не required:
+   на однонодовом кластере required сломает scheduling.
+6. **Проверка восстановления на деле** (критерий issue): свежий дамп развёрнуть в отдельную
+   БД (временный под/postgres в test-namespace), сверить данные (число строк по ключевым
+   таблицам), результат приложить в PR.
+
+## Границы
+
+- `.github/workflows/**` НЕ трогать (CI-проверки на PR — это #215, отдельный пункт).
+- Существующие CronJob и деплойменты не переделывать; SOPS-базлайн целиком — это #219.
+- Секреты только через SOPS; новых внешних сервисов и ключей не заводить.
+- Комментарии и отчёты по-русски.
+
+## Готово, когда
+
+Все пять пунктов «Готово, когда» из issue #212 закрыты (CronJob снимает pg_dump в MinIO;
+ротация; keep-аннотация на PVC; восстановление проверено на деле с приложённым выводом;
+отказ копии виден в логе/статусе джобы); чарт проходит `helm template`/`helm lint`;
+PR открыт с `Closes #212`; issue закрыт с доказательством и комментарием про осознанно
+принятый риск off-site; пункт снят с борда, замок освобождён.
+
+Полный цикл: `/implement 212` (Claude Code) · `/skill:implement 212` (Kimi Code).
