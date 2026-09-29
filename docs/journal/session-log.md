@@ -773,3 +773,10 @@
   - **pre-push:** e2e 136 passed / 5 skipped / 1 failed — единственное падение `search-filter.spec.js:82` = известный baseline #255 (по AC-3 не регрессия); lint+unit прошли до e2e (make дошёл до test-e2e). Тот же baseline был при ship #279.
   - **PR #280:** https://github.com/AutonomaCo/promelectron/pull/280 (`Closes #275`, тело на русском, freeze-доказательство AC-1 приложено, Заметки для тестирования). Карточка → In review (`implement-pipeline.py set-status`), trace `pr_opened` (correlation_id `95effbffc495`). H-items нет. Push feature-ветки — по авто-правилу.
   - **Борд:** #275 → «PR #280, ждёт ревью», замок backend занят до мержа (следующий #217). Правки борда/журнала/хука в корне не закоммичены — коммит на main по-прежнему за владельцем (хук корректно блокирует).
+
+### 2026-09-29 | ship (оркестратор) | gh-275 — PR #280 смержен, issue закрыт, deploy зелёный
+  - **Мерж:** PR #280 смержен squash `921f033` в main по команде владельца; issue #275 закрылся автоматически (`Closes #275`), ветки `feature/gh-275` (local+remote) удалены, добавлен комментарий с доказательствами (comment-5892635134).
+  - **Deploy-run [36583253268](https://github.com/AutonomaCo/promelectron/actions/runs/36583253268) полностью зелёный** (~13 мин): build ✅, deploy-test ✅, migrate-check ✅, seed-test-catalog ✅, smoke ✅, e2e ✅. Образ из `requirements-dev.lock` выкачен на test — lock-сборка работает в CI.
+  - **Пульт:** #275 снят, замок `backend` свободен, следующий — #217 (P1); волна #215/#217/#269, замки не пересекаются.
+  - **Хвост:** worktree `.worktrees/gh-275` не удалён — root-owned файлы от контейнерных e2e-прогонов (известная проблема), чистка за владельцем (`sudo chown -R $USER .worktrees && git worktree prune`).
+  - **Заметка о триггере deploy:** push docs/chore в main НЕ запускает deploy-workflow — у него `paths:`-фильтр (backend/frontend/mocks/infra/helm/scripts/ci/workflows). Поэтому у коммитов борда/журнала прогонов нет и слежение за ними бессмысленно — проверять триггер до обещания прогона.

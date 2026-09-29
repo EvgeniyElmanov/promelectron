@@ -56,26 +56,26 @@
 #255 (sort by price в meilisearch, `backend`),
 #257 (cleanup не проверяет авторство ветки перед удалением, `harness`),
 #270 (checkout: обработка 409/503 — пересчёт тарифа и повтор, `frontend`),
-#274 (гонка merge корзины — пустая корзина до F5 после логина, `frontend`),
-#275 (зависимости без пинов — uv.lock в Dockerfile, `backend`)).
+#274 (гонка merge корзины — пустая корзина до F5 после логина, `frontend`);
+#275 закрыт PR #280).
 Известные падения E2E на main: стабильное — search-filter:82 → #255; flaky: checkout:153 → #224, catalog:24, profile:60. cart-select:115 (#186) и auth:72 (#254) закрыты PR #273.
 
 ---
 
 ## 🔒 Замки
 
-**Занято:** `backend` — #275 (`feature/gh-275`, kimi).
-**Свободны:** `frontend`, `e2e`, `infra`, `docs`, `harness`.
+**Занято:** ничего.
+**Свободны:** `backend`, `frontend`, `e2e`, `infra`, `docs`, `harness`.
 
 | Замок | Сколько issue | Кто следующий |
 |---|---|---|
-| `backend` | 6 | **#217** (P1) |
+| `backend` | 5 | **#217** (P1) |
 | `infra` | 5 | **#215** (P0) |
 | `e2e` | 0 | — |
 | `frontend` | 3 | **#269** (P1), дальше #270 (P2), #274 (P2) |
 
 **Волна прямо сейчас — четыре терминала, замки не пересекаются:**
-Занято: `backend` (#275). Свободны и ждут кандидатов: **#215** (`infra`, P0) · **#269** (`frontend`, P1). На `backend` следующий по очереди — **#217** (P1), ждёт освобождения замка.
+Все замки свободны. Кандидаты: **#215** (`infra`, P0) · **#217** (`backend`, P1) · **#269** (`frontend`, P1).
 
 ⚠️ `make test-backend` и `make test-onec-mock` сериализованы через `flock`: параллельные
 сессии не сломаются, но вторая будет **ждать** первую. Это не параллельность, это очередь.
@@ -84,7 +84,7 @@
 
 # 🔵 В работе
 
-**#275** (зависимости без пинов, `backend`, P2) → ветка `feature/gh-275`, [PR #280](https://github.com/AutonomaCo/promelectron/pull/280) открыт 2026-09-29, ждёт ревью владельца. Lock через `uv pip compile` (вариант A): constraints-бейзлайн 77 пинов, Dockerfile ставит из `requirements-dev.lock`, `make deps-lock`/`deps-upgrade`; воспроизводимость доказана (две --no-cache-сборки → идентичный freeze). Замок `backend` занят до мержа.
+Пусто. #275 смержен (PR #280, squash `921f033`, 2026-09-29): воспроизводимая сборка backend — `constraints.txt` (77 пинов из pip freeze бейзлайна) + `requirements.lock`/`requirements-dev.lock` (uv pip compile, Python 3.12), Dockerfile ставит из lock тем же pip, `make deps-lock`/`deps-upgrade`; версии не обновлялись (sqlalchemy 2.1.1, fastapi 0.104.1); AC-1 доказан — две --no-cache-сборки одного коммита → идентичный freeze (md5 `762cee39…`); pytest 691 passed на образе из lock, pre-push e2e 136/137 (единственное падение search-filter:82 — baseline #255). Попутно починен safety-хук `block-main-git-mutations.py` (ветка из `git -C`/`cd` — Kimi снова может коммитить в worktree). Замок `backend` свободен, следующий — #217. Worktree `.worktrees/gh-275` не удалён: root-owned файлы от контейнерных прогонов, чистка за владельцем (`sudo chown -R $USER .worktrees && git worktree prune`).
 
 Пусто. #212 смержен (PR #279, squash `ef5440c`, 2026-09-29): резервное копирование БД — CronJob `promelectron-cj-pg-backup` (ежедневный pg_dump 03:17 UTC → gzip → MinIO-бакет `postgres-backups`, ротация 14д), keep на PVC postgresql/minio, anti-affinity MinIO↔PostgreSQL; восстановление проверено на test (users/orders/payments/products сошлись). Первый deploy-run упал на усыновлении: CronJob был создан точечным `kubectl apply` до мержа — вылечено Helm-метаданными (`meta.helm.sh/release-*` + `managed-by=Helm`), rerun. Замок `infra` свободен, следующий — #215. **Деплой-хвост: prod-выкат отдельно — `gh workflow run deploy.yml -f environment=prod`, там CronJob создастся Helm'ом с нуля (на prod ручного apply не было).**
 
@@ -164,13 +164,12 @@ BLK-009 снят из этого раздела 2026-09-20: браузерный
 
 ---
 
-Занят до мержа: **#275** (пины зависимостей backend, P2) — [PR #280](https://github.com/AutonomaCo/promelectron/pull/280) открыт, ждёт ревью владельца. Следующий после
-освобождения — **#217** (миграции применяются дважды, падение глушится, P1), промпт
+Свободен. #275 (пины зависимостей backend, P2) закрыт PR #280 (squash `921f033`, 2026-09-29) — lock-файлы через uv pip compile, образ воспроизводим. Следующий на замке: **#217** (миграции применяются дважды, падение глушится, P1), промпт
 пишется при входе в волну. Дальше в очереди: #220, #221, #223 (P1), #255 (P2).
 
 ---
 
-> <a id="i-275"></a>🔵 **[#275](https://github.com/AutonomaCo/promelectron/issues/275)** · зависимости без пинов — сборка образа невоспроизводима — `lock: backend` · **PR #280, ждёт ревью** (`feature/gh-275`, kimi)
+> <a id="i-275"></a>✅ **[#275](https://github.com/AutonomaCo/promelectron/issues/275)** · зависимости без пинов — сборка образа невоспроизводима — `lock: backend` · **закрыт 2026-09-29** (PR #280, squash `921f033`)
 
 ```bash
 make ai PROMPT=ai-launcher/prompts/backend_275-pinned-deps.prompt.txt
