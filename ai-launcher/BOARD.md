@@ -84,7 +84,7 @@
 
 # 🔵 В работе
 
-| #275 | зависимости без пинов — lock через `uv pip compile` | `backend` | `feature/gh-275` | kimi |
+**#275** (зависимости без пинов, `backend`, P2) → ветка `feature/gh-275`, [PR #280](https://github.com/AutonomaCo/promelectron/pull/280) открыт 2026-09-29, ждёт ревью владельца. Lock через `uv pip compile` (вариант A): constraints-бейзлайн 77 пинов, Dockerfile ставит из `requirements-dev.lock`, `make deps-lock`/`deps-upgrade`; воспроизводимость доказана (две --no-cache-сборки → идентичный freeze). Замок `backend` занят до мержа.
 
 Пусто. #212 смержен (PR #279, squash `ef5440c`, 2026-09-29): резервное копирование БД — CronJob `promelectron-cj-pg-backup` (ежедневный pg_dump 03:17 UTC → gzip → MinIO-бакет `postgres-backups`, ротация 14д), keep на PVC postgresql/minio, anti-affinity MinIO↔PostgreSQL; восстановление проверено на test (users/orders/payments/products сошлись). Первый deploy-run упал на усыновлении: CronJob был создан точечным `kubectl apply` до мержа — вылечено Helm-метаданными (`meta.helm.sh/release-*` + `managed-by=Helm`), rerun. Замок `infra` свободен, следующий — #215. **Деплой-хвост: prod-выкат отдельно — `gh workflow run deploy.yml -f environment=prod`, там CronJob создастся Helm'ом с нуля (на prod ручного apply не было).**
 
@@ -164,13 +164,13 @@ BLK-009 снят из этого раздела 2026-09-20: браузерный
 
 ---
 
-Занят: **#275** (пины зависимостей backend, P2) в работе на `feature/gh-275`. Следующий после
+Занят до мержа: **#275** (пины зависимостей backend, P2) — [PR #280](https://github.com/AutonomaCo/promelectron/pull/280) открыт, ждёт ревью владельца. Следующий после
 освобождения — **#217** (миграции применяются дважды, падение глушится, P1), промпт
 пишется при входе в волну. Дальше в очереди: #220, #221, #223 (P1), #255 (P2).
 
 ---
 
-> <a id="i-275"></a>🔵 **[#275](https://github.com/AutonomaCo/promelectron/issues/275)** · зависимости без пинов — сборка образа невоспроизводима — `lock: backend` · **в работе** (`feature/gh-275`, kimi)
+> <a id="i-275"></a>🔵 **[#275](https://github.com/AutonomaCo/promelectron/issues/275)** · зависимости без пинов — сборка образа невоспроизводима — `lock: backend` · **PR #280, ждёт ревью** (`feature/gh-275`, kimi)
 
 ```bash
 make ai PROMPT=ai-launcher/prompts/backend_275-pinned-deps.prompt.txt

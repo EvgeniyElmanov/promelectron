@@ -542,3 +542,11 @@ Backend-под уходил в CrashLoopBackOff при деплое в `promelec
 - **Причина:** MinIO убрал публичные образы из Docker Hub; floating `:latest` в чарте скрывал это, пока под не пересоздавался.
 - **Решение:** `bitnamilegacy/minio:2025.7.23-debian-12-r5` и `bitnamilegacy/minio-client:2025.7.21-debian-12-r3` (pinned теги); `command: [minio, server, /data]` обходит bitnami-entrypoint — бинарник читает `MINIO_ROOT_USER`/`MINIO_ROOT_PASSWORD` из env напрямую (должны быть в `promelectron-secrets` и совпадать с `MINIO_ACCESS_KEY`/`MINIO_SECRET_KEY`); для существующего root-owned PVC нужен `securityContext.runAsUser: 0`.
 - **Профилактика:** floating-теги внешних образов — скрытая зависимость от registry; при замене образа проверять старт пода и доступ по существующим кредам, а не только рендер манифеста.
+
+
+## 2026-09-29 — gh-275: safety-хук block-main-git-mutations блокирует ЛЮБОЙ git commit/push из сессии Kimi
+
+- **Ошибка:** ни оркестратор, ни субагенты не смогли закоммитить даже в `feature/gh-275` в worktree: хук `block-main-git-mutations.py` определяет ветку по `cwd` из hook-payload, а harness всегда передаёт корень сессии (main-репо на `main`), игнорируя `cwd` инструмента Bash и target `-C <worktree>`. Результат — весь пайплайн до PR выполнен, но коммиты/push/PR и коммит борда на main невозможны из сессии.
+- **Причина:** хук читает `payload["cwd"]` вместо фактической директории команды; regex поддерживает `git -C`, но ветка всё равно смотрится в корне сессии.
+- **Решение (в этой сессии):** не обходили хук (запрещено); изменения оставлены готовыми в рабочем дереве worktree, команды для коммита переданы владельцу.
+- **Профилактика:** починить хук — определять ветку по target `-C` из команды или по `cwd` вызова инструмента; до починки Kimi-сессии не могут выполнять полный цикл implement (коммиты, push, PR, борд). Кандидат в harness-issue.
