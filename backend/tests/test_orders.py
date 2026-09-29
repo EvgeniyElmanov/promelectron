@@ -4,6 +4,8 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from sqlalchemy import select
 
+from src.app.models.user import RoleEnum, User
+
 
 class TestOrdersAPI:
     """Тесты заказов."""
@@ -593,3 +595,114 @@ class TestOrdersAPI:
         )
         assert order_resp.status_code == 400
         assert "No items selected" in order_resp.json()["detail"]
+
+
+class TestAdminOrderStatus:
+    """PUT /api/v1/orders/{id}/status/ — смена статуса заказа админом (gh-216)."""
+
+    async def _create_pending_order(self, client, user_token, test_product, cdek_delivery_payload):
+        await client.post(
+            "/api/v1/cart/add",
+            json={"product_id": test_product.id, "quantity": 1},
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        order_resp = await client.post(
+            "/api/v1/orders/create/",
+            json={
+                "cdek_delivery": cdek_delivery_payload,
+                "recipient_first_name": "Тест",
+                "recipient_last_name": "Пользователь",
+                "recipient_phone": "+79990001122",
+            },
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert order_resp.status_code in (200, 201)
+        return order_resp.json()["id"]
+
+    @pytest.mark.asyncio
+    async def test_admin_updates_status_of_other_user_order(
+        self, client, test_user, user_token, admin_token, test_product, cdek_delivery_payload
+    ):
+        """Админ меняет статус чужого заказа — успех (до фикса gh-216 было 404)."""
+        order_id = await self._create_pending_order(client, user_token, test_product, cdek_delivery_payload)
+
+        response = await client.put(
+            f"/api/v1/orders/{order_id}/status/",
+            json={"status": "paid"},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert response.status_code == 200
+        assert response.json()["status"] == "paid"
+
+    @pytest.mark.asyncio
+    async def test_admin_invalid_status_transition_returns_400(
+        self, client, test_user, user_token, admin_token, test_product, cdek_delivery_payload
+    ):
+        """Недопустимый переход статуса (pending → delivered) — 400."""
+        order_id = await self._create_pending_order(client, user_token, test_product, cdek_delivery_payload)
+
+        response = await client.put(
+            f"/api/v1/orders/{order_id}/status/",
+            json={"status": "delivered"},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_admin_cancel_via_status_endpoint_returns_400(
+        self, client, test_user, user_token, admin_token, test_product, cdek_delivery_payload
+    ):
+        """Отмена через PUT status запрещена — 400, только через cancel-эндпоинт."""
+        order_id = await self._create_pending_order(client, user_token, test_product, cdek_delivery_payload)
+
+        response = await client.put(
+            f"/api/v1/orders/{order_id}/status/",
+            json={"status": "cancelled"},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_status_endpoint_requires_admin(
+        self, client, test_user, user_token, test_product, cdek_delivery_payload
+    ):
+        """Обычный пользователь не имеет доступа к админской смене статуса — 403."""
+        order_id = await self._create_pending_order(client, user_token, test_product, cdek_delivery_payload)
+
+        response = await client.put(
+            f"/api/v1/orders/{order_id}/status/",
+            json={"status": "paid"},
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert response.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_user_paths_still_see_only_own_orders(
+        self, client, test_user, user_token, test_product, cdek_delivery_payload, test_session
+    ):
+        """Пользовательский путь видит только свои заказы: чужой заказ — 404."""
+        from src.app.utils.auth import create_access_token, hash_password
+
+        other = User(
+            email="other@example.com",
+            hashed_password=hash_password("password123"),
+            role=RoleEnum.user,
+            is_active=True,
+        )
+        test_session.add(other)
+        await test_session.commit()
+        other_token = create_access_token(data={"sub": str(other.id), "role": other.role.value})
+
+        order_id = await self._create_pending_order(client, user_token, test_product, cdek_delivery_payload)
+
+        get_resp = await client.get(
+            f"/api/v1/orders/{order_id}/",
+            headers={"Authorization": f"Bearer {other_token}"},
+        )
+        assert get_resp.status_code == 404
+
+        cancel_resp = await client.patch(
+            f"/api/v1/orders/{order_id}/cancel/",
+            headers={"Authorization": f"Bearer {other_token}"},
+        )
+        assert cancel_resp.status_code == 404

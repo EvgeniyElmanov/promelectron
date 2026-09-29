@@ -1044,7 +1044,10 @@ class OrderService:
     async def update_order_status(
         order_id: int, status_update: OrderUpdateStatus, current_user: User, db: AsyncSession
     ) -> Order:
-        result = await db.execute(select(Order).where(Order.id == order_id, Order.user_id == current_user.id))
+        # Админский путь: заказ ищется без фильтра по владельцу (gh-216) —
+        # как в cancel_order_by_admin. Владение проверяется только в
+        # пользовательских путях (get_order / cancel_order).
+        result = await db.execute(select(Order).where(Order.id == order_id))
         order = result.scalars().first()
 
         if not order:
@@ -1057,7 +1060,16 @@ class OrderService:
         # Отмена через PUT запрещена; no-op cancelled→cancelled разрешён.
         OrderService._validate_status_transition(order.status, status_update.status)
 
+        old_status = order.status
         order.status = status_update.status
+        # Audit trail: фиксируем актора смены статуса (id, не email)
+        logger.info(
+            "Order %s status changed %s -> %s by admin user_id=%s",
+            order.id,
+            old_status,
+            status_update.status,
+            current_user.id,
+        )
         await db.commit()
         await db.refresh(order)
 
