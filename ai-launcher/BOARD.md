@@ -33,7 +33,7 @@
 
 | ID | Что запускаем | Замок | Статус | Issue |
 |---|---|---|---|---|
-| #212 | резервного копирования БД нет вообще | `infra` | 🟢 **следующий на `infra`** | [↗](https://github.com/AutonomaCo/promelectron/issues/212) |
+| #212 | резервного копирования БД нет вообще | `infra` | 🔵 в работе | [↗](https://github.com/AutonomaCo/promelectron/issues/212) |
 | #215 | на pull request не гоняется ни одна проверка | `infra` | 🟢 в очереди на `infra` | [↗](https://github.com/AutonomaCo/promelectron/issues/215) |
 | #214 | prod в песочнице СДЭК + 2 реплики при локальном хранилище | `infra` | 🟢 в очереди на `infra` | [↗](https://github.com/AutonomaCo/promelectron/issues/214) |
 
@@ -66,18 +66,18 @@
 
 ## 🔒 Замки
 
-**Занято:** ничего.
-**Свободны:** `backend`, `frontend`, `e2e`, `infra`, `docs`, `harness`.
+**Занято:** `infra` — #212 (feature/gh-212, Kimi, с 2026-09-29).
+**Свободны:** `backend`, `frontend`, `e2e`, `docs`, `harness`.
 
 | Замок | Сколько issue | Кто следующий |
 |---|---|---|
 | `backend` | 6 | **#217** (P1) |
-| `infra` | 6 | **#212** (P0), дальше #215 |
+| `infra` | 6 | **#215** (P0), в очереди за #212 |
 | `e2e` | 0 | — |
 | `frontend` | 3 | **#269** (P1), дальше #270 (P2), #274 (P2) |
 
 **Волна прямо сейчас — четыре терминала, замки не пересекаются:**
-все замки свободны. Кандидаты: **#212** (`infra`, P0) · **#217** (`backend`, P1) · **#269** (`frontend`, P1).
+`infra` занят (#212). Кандидаты: **#217** (`backend`, P1) · **#269** (`frontend`, P1).
 
 ⚠️ `make test-backend` и `make test-onec-mock` сериализованы через `flock`: параллельные
 сессии не сломаются, но вторая будет **ждать** первую. Это не параллельность, это очередь.
@@ -85,6 +85,8 @@
 ---
 
 # 🔵 В работе
+
+**#212** (резервное копирование БД, `infra`, P0) → ветка `feature/gh-212`, PR пока нет. Взято Kimi 2026-09-29: CronJob `pg_dump` → MinIO (`postgres-backups`), ротация, keep-аннотации на PVC, проверка восстановления на деле.
 
 Пусто. #216 смержен (PR #278, squash `f688a7d`, 2026-09-29): админская смена статуса заказа — `OrderService.update_order_status` искал заказ с фильтром `Order.user_id == id админа`, на любом заказе покупателя 404, машина `_validate_status_transition` мертва; фильтр убран по образцу `cancel_order_by_admin`, добавлен audit-лог актора; воспроизведение до фикса — 3 новых теста красные с 404, после — pytest 691 passed (+5 новых в `TestAdminOrderStatus`: админ на чужом 200, недопустимый переход 400, отмена через PUT 400, не-админ 403, чужой заказ в пользовательском пути 404); пользовательские пути не тронуты; других админских ручек заказов с фильтром по `user_id` нет; замок `backend` свободен, следующий — #217.
 
@@ -171,7 +173,7 @@ BLK-009 снят из этого раздела 2026-09-20: браузерный
 
 ---
 
-> <a id="i-212"></a>🟢 **[#212](https://github.com/AutonomaCo/promelectron/issues/212)** · резервного копирования БД нет вообще — `lock: infra` · **свободен**
+> <a id="i-212"></a>🔵 **[#212](https://github.com/AutonomaCo/promelectron/issues/212)** · резервного копирования БД нет вообще — `lock: infra` · **занят** (feature/gh-212)
 
 ```bash
 make ai PROMPT=ai-launcher/prompts/infra_212-postgres-backup.prompt.txt
