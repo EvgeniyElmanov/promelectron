@@ -17,10 +17,9 @@
 ## ⚠️ Один P0 по безопасности — не откладывается
 
 Сверка кода 2026-09-03 нашла замкнутую цепочку эксплуатации в приёме платежей (#210 — **закрыт 2026-09-19**, PR #267),
-отсутствие резервного копирования БД как таковое ([#212](https://github.com/AutonomaCo/promelectron/issues/212)), боевой ключ 1С
+отсутствие резервного копирования БД как таковое ([#212](https://github.com/AutonomaCo/promelectron/issues/212) — **закрыт 2026-09-29**, PR #279, CronJob pg_dump → MinIO), боевой ключ 1С
 открытым текстом в git, совпадающий с тестовым (#213 — **закрыт 2026-09-19**, PR #268, ротацией) и цену доставки из тела запроса
-(#211 — **закрыт 2026-09-20**, PR #271, серверная сверка с СДЭК). Оставшийся #212 подтверждён
-файлами и строками, а не предположением.
+(#211 — **закрыт 2026-09-20**, PR #271, серверная сверка с СДЭК). Все четыре пункта закрыты.
 
 Отдельно: **на pull request не гоняется ни одна проверка** ([#215](https://github.com/AutonomaCo/promelectron/issues/215)) — `pull_request`-триггера
 нет ни в одном workflow. Первая обратная связь по PR — выкат в общий test после мержа.
@@ -33,8 +32,7 @@
 
 | ID | Что запускаем | Замок | Статус | Issue |
 |---|---|---|---|---|
-| #212 | резервного копирования БД нет вообще | `infra` | 🔵 в работе | [↗](https://github.com/AutonomaCo/promelectron/issues/212) |
-| #215 | на pull request не гоняется ни одна проверка | `infra` | 🟢 в очереди на `infra` | [↗](https://github.com/AutonomaCo/promelectron/issues/215) |
+| #215 | на pull request не гоняется ни одна проверка | `infra` | 🟢 следующий на `infra` | [↗](https://github.com/AutonomaCo/promelectron/issues/215) |
 | #214 | prod в песочнице СДЭК + 2 реплики при локальном хранилище | `infra` | 🟢 в очереди на `infra` | [↗](https://github.com/AutonomaCo/promelectron/issues/214) |
 
 ### 🟠 P1 — ломается молча
@@ -66,18 +64,18 @@
 
 ## 🔒 Замки
 
-**Занято:** `infra` — #212 (feature/gh-212, Kimi, с 2026-09-29).
-**Свободны:** `backend`, `frontend`, `e2e`, `docs`, `harness`.
+**Занято:** ничего.
+**Свободны:** `backend`, `frontend`, `e2e`, `infra`, `docs`, `harness`.
 
 | Замок | Сколько issue | Кто следующий |
 |---|---|---|
 | `backend` | 6 | **#217** (P1) |
-| `infra` | 6 | **#215** (P0), в очереди за #212 |
+| `infra` | 5 | **#215** (P0) |
 | `e2e` | 0 | — |
 | `frontend` | 3 | **#269** (P1), дальше #270 (P2), #274 (P2) |
 
 **Волна прямо сейчас — четыре терминала, замки не пересекаются:**
-`infra` занят (#212). Кандидаты: **#217** (`backend`, P1) · **#269** (`frontend`, P1).
+Все замки свободны. Кандидаты: **#215** (`infra`, P0) · **#217** (`backend`, P1) · **#269** (`frontend`, P1).
 
 ⚠️ `make test-backend` и `make test-onec-mock` сериализованы через `flock`: параллельные
 сессии не сломаются, но вторая будет **ждать** первую. Это не параллельность, это очередь.
@@ -86,7 +84,7 @@
 
 # 🔵 В работе
 
-**#212** (резервное копирование БД, `infra`, P0) → ветка `feature/gh-212`, [PR #279](https://github.com/AutonomaCo/promelectron/pull/279) открыт 2026-09-29, ждёт ревью владельца. CronJob `pg_dump` → MinIO (`postgres-backups`), ротация 14д, keep на PVC, восстановление проверено на test (users/orders/payments/products сошлись). Замок `infra` занят до мержа.
+Пусто. #212 смержен (PR #279, squash `ef5440c`, 2026-09-29): резервное копирование БД — CronJob `promelectron-cj-pg-backup` (ежедневный pg_dump 03:17 UTC → gzip → MinIO-бакет `postgres-backups`, ротация 14д), keep на PVC postgresql/minio, anti-affinity MinIO↔PostgreSQL; восстановление проверено на test (users/orders/payments/products сошлись). Первый deploy-run упал на усыновлении: CronJob был создан точечным `kubectl apply` до мержа — вылечено Helm-метаданными (`meta.helm.sh/release-*` + `managed-by=Helm`), rerun. Замок `infra` свободен, следующий — #215. **Деплой-хвост: prod-выкат отдельно — `gh workflow run deploy.yml -f environment=prod`, там CronJob создастся Helm'ом с нуля (на prod ручного apply не было).**
 
 Пусто. #216 смержен (PR #278, squash `f688a7d`, 2026-09-29): админская смена статуса заказа — `OrderService.update_order_status` искал заказ с фильтром `Order.user_id == id админа`, на любом заказе покупателя 404, машина `_validate_status_transition` мертва; фильтр убран по образцу `cancel_order_by_admin`, добавлен audit-лог актора; воспроизведение до фикса — 3 новых теста красные с 404, после — pytest 691 passed (+5 новых в `TestAdminOrderStatus`: админ на чужом 200, недопустимый переход 400, отмена через PUT 400, не-админ 403, чужой заказ в пользовательском пути 404); пользовательские пути не тронуты; других админских ручек заказов с фильтром по `user_id` нет; замок `backend` свободен, следующий — #217.
 
@@ -169,24 +167,23 @@ BLK-009 снят из этого раздела 2026-09-20: браузерный
 
 ---
 
-# 🅘 Инфраструктура
+> <a id="i-275"></a>🟢 **[#275](https://github.com/AutonomaCo/promelectron/issues/275)** · зависимости без пинов — сборка образа невоспроизводима — `lock: backend` · в очереди за #217 (P1)
+
+```bash
+make ai PROMPT=ai-launcher/prompts/backend_275-pinned-deps.prompt.txt
+```
+
+Инцидент 28.09: свежий SQLAlchemy 2.1.1 убил deploy-test без изменений кода. Решение
+согласовано 2026-09-29 — вариант A: lock через `uv pip compile` (constraints = текущее
+дерево из `pip freeze` образа, массовый апгрейд не входит), Dockerfile ставит из lock,
+`make deps-upgrade` для осознанных обновлений. Без переезда на pyproject/`uv sync`
+(вариант B — отдельная задача).
 
 ---
 
-> <a id="i-212"></a>🔵 **[#212](https://github.com/AutonomaCo/promelectron/issues/212)** · резервного копирования БД нет вообще — `lock: infra` · **занят** (feature/gh-212)
+# 🅘 Инфраструктура
 
-```bash
-make ai PROMPT=ai-launcher/prompts/infra_212-postgres-backup.prompt.txt
-```
-
-Единственная копия боевых данных — один PV, который `helm uninstall` уносит вместе с релизом
-(PVC без `helm.sh/resource-policy: keep`). Ошибка деплоя — и заказы, платежи и пользователи
-уходят без точки восстановления.
-
-Решение согласовано с владельцем 2026-09-28: CronJob `pg_dump` → существующий MinIO в
-кластере (отдельный бакет `postgres-backups`, ротация, keep-аннотации, проверка
-восстановления на деле). Внешний S3 / вынос копии с площадки — осознанно out of scope:
-внешней машины нет, внешние ключи не заводим; остаточный риск фиксируется в issue.
+Свободен. #212 (резервное копирование БД) закрыт PR #279 (squash `ef5440c`, 2026-09-29) — CronJob pg_dump → MinIO на test живёт, усыновлён Helm'ом после точечного `kubectl apply`. Следующий на замке: **#215** (P0, на pull request не гоняется ни одна проверка — промпта пока нет), дальше #214 (prod в песочнице СДЭК).
 
 ---
 
