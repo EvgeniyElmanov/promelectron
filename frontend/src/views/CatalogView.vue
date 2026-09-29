@@ -157,8 +157,6 @@
         </div>
       </div>
     </div>
-
-    <AppFooter />
   </div>
 </template>
 
@@ -170,7 +168,6 @@ import SearchBar from '@/components/SearchBar.vue';
 import CategoryChips from '@/components/CategoryChips.vue';
 import SkeletonProductCard from '@/components/SkeletonProductCard.vue';
 import FilterPanel from '@/components/FilterPanel.vue';
-import AppFooter from '@/components/AppFooter.vue';
 import AppBreadcrumbs from '@/components/ui/AppBreadcrumbs.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import { useCatalogSearch } from '@/composables/useCatalogSearch';

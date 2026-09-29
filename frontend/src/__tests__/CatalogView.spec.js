@@ -262,13 +262,13 @@ describe('CatalogView.vue (search-режим при включённом фла�
 })
 
 describe('CatalogView.vue (структура каталога, D-02)', () => {
-  it('рендерит листинг и footer без витринных секций главной', async () => {
+  it('рендерит листинг без footer и витринных секций главной', async () => {
     const wrapper = mountWithWebHistory()
 
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('Product 1')
     })
-    expect(wrapper.find('[data-testid="app-footer"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="app-footer"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="hero-banner"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="benefits-strip"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="popular-categories"]').exists()).toBe(false)
