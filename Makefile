@@ -39,7 +39,7 @@ TEST_BACKEND_LOCK ?= /tmp/promelectron-test-backend.lock
         test test-backend test-onec-mock test-frontend test-e2e test-visual test-full \
         migrate migrate-down migrate-generate migrate-history migrate-check seed \
         lint lint-backend lint-onec-mock lint-frontend format format-backend format-frontend \
-        build clean status \
+        build clean status deps-lock deps-upgrade \
         agent-context agent-status agent-audit \
         ai ai-check
 
@@ -171,6 +171,30 @@ build-api: ## Пересобрать только API образ
 
 build-frontend: ## Пересобрать только frontend образ
 	$(COMPOSE_FRONTEND) build --no-cache frontend
+
+# ─── Зависимости (lock) ───────────────────────────────────────────────────────
+# Lock-файлы backend/requirements*.lock генерируются uv pip compile из
+# requirements*.txt под Python 3.12. constraints.txt фиксирует бейзлайн версий
+# (gh-275): deps-lock пересобирает lock БЕЗ обновления версий, deps-upgrade —
+# осознанный апгрейд (после него обновить constraints.txt из нового lock).
+
+deps-lock: ## Пересобрать backend/requirements*.lock по constraints.txt (версии не меняются)
+	@command -v uv >/dev/null || { echo "Ошибка: uv не найден в PATH."; \
+	  echo "Установи: https://docs.astral.sh/uv/getting-started/installation/"; exit 1; }
+	cd backend && uv pip compile requirements.txt -o requirements.lock \
+	  --python-version 3.12 -c constraints.txt
+	cd backend && uv pip compile requirements-dev.txt -o requirements-dev.lock \
+	  --python-version 3.12 -c constraints.txt
+
+deps-upgrade: ## Осознанно обновить версии: compile без constraints с --upgrade (diff в git)
+	@command -v uv >/dev/null || { echo "Ошибка: uv не найден в PATH."; \
+	  echo "Установи: https://docs.astral.sh/uv/getting-started/installation/"; exit 1; }
+	cd backend && uv pip compile requirements.txt -o requirements.lock \
+	  --python-version 3.12 --upgrade
+	cd backend && uv pip compile requirements-dev.txt -o requirements-dev.lock \
+	  --python-version 3.12 --upgrade
+	@echo "Lock пересобран с новыми версиями. Проверь git diff и обнови"
+	@echo "backend/constraints.txt из нового requirements-dev.lock (pip freeze-строки)."
 
 # ─── Утилиты ────────────────────────────────────────────────────────────────
 

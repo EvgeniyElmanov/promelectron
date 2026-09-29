@@ -43,6 +43,29 @@ make test-frontend    # Vitest
 make test-e2e         # Playwright через Docker
 ```
 
+## Зависимости backend (lock-файлы)
+
+Docker-образ и локальный venv ставят зависимости из закоммиченного lock-файла
+`backend/requirements-dev.lock` (генерируется `uv pip compile`, см. заголовок файла).
+Повторная сборка образа из одного коммита даёт идентичный набор пакетов.
+
+```bash
+# Локальный venv из lock (Python 3.12, как в образе):
+python3.12 -m venv venv
+venv/bin/pip install -r backend/requirements-dev.lock
+
+# После правки backend/requirements*.txt — пересобрать lock (версии НЕ меняются,
+# резолв в рамках backend/constraints.txt):
+make deps-lock
+
+# Осознанное обновление версий (видимый diff в git; после него обновить
+# backend/constraints.txt из нового requirements-dev.lock):
+make deps-upgrade
+```
+
+Требуется `uv` (https://docs.astral.sh/uv/getting-started/installation/) — только для
+пересборки lock; установка из lock идёт обычным pip.
+
 ## Структура проекта
 
 ```

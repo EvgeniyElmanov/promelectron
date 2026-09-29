@@ -1,0 +1,85 @@
+# constraints.txt — зафиксированный бейзлайн версий backend-зависимостей (gh-275).
+# Источник: pip freeze из образа promelectron-api (python:3.12-slim), собранного «как есть»
+# с коммита be83244 ветки feature/gh-275, 2026-09-29.
+# Назначение: при пересборке lock-файлов (make deps-lock) версии НЕ обновляются —
+# uv pip compile резолвит в рамках этих constraints. Массовый апгрейд запрещён (D-02):
+# осознанное обновление версий — только через make deps-upgrade с последующей
+# правкой этого файла из нового lock (diff в git = обновление).
+#
+aiobotocore==3.9.1
+aiofiles==25.1.0
+aiohappyeyeballs==2.7.1
+aiohttp==3.14.3
+aioitertools==0.13.0
+aiosignal==1.4.0
+aiosmtplib==5.1.3
+alembic==1.20.0
+annotated-types==0.8.0
+anyio==3.7.1
+argon2-cffi==25.1.0
+argon2-cffi-bindings==26.1.0
+asyncpg==0.31.0
+attrs==26.1.0
+bcrypt==5.0.0
+botocore==1.43.75
+camel-converter==5.1.1
+certifi==2026.7.22
+cffi==2.1.1
+charset-normalizer==3.5.1
+click==8.5.0
+cryptography==50.0.1
+Deprecated==3.0.0
+distro==1.9.0
+ecdsa==0.19.2
+fastapi==0.104.1
+frozenlist==1.8.0
+greenlet==3.5.6
+h11==0.16.0
+httpcore==1.0.9
+httptools==0.8.0
+httpx==0.28.1
+idna==3.20
+iniconfig==2.3.0
+jmespath==1.1.0
+limits==5.8.0
+Mako==1.4.3
+MarkupSafe==3.0.3
+meilisearch==0.42.0
+multidict==6.9.1
+netaddr==1.3.0
+packaging==26.3
+passlib==1.7.4
+pillow==12.3.0
+pluggy==1.6.0
+propcache==0.5.4
+pyasn1==0.6.4
+pycparser==3.0
+pydantic==2.13.5
+pydantic_core==2.46.5
+Pygments==2.21.0
+pytest==9.1.1
+pytest-asyncio==1.4.0
+python-dateutil==2.9.0.post0
+python-dotenv==1.2.3
+python-jose==3.5.0
+python-multipart==0.0.32
+PyYAML==6.0.3
+redis==8.1.0
+requests==2.34.2
+rsa==4.9.1
+ruff==0.15.13
+six==1.17.0
+slowapi==0.1.10
+sniffio==1.3.1
+SQLAlchemy==2.1.1
+starlette==0.27.0
+typing_extensions==4.16.0
+typing-inspection==0.4.4
+urllib3==2.8.0
+uvicorn==0.54.0
+uvloop==0.22.1
+watchfiles==1.3.0
+websockets==17.1
+wrapt==2.5.0
+yarl==1.25.1
+yookassa==3.12.1
