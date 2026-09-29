@@ -718,3 +718,11 @@
 - **Доказательства:** `npx vitest run src/__tests__/CatalogView.spec.js` — 23/23 зелёные; ESLint по изменённым файлам чист.
 - **Фоллоу-ап (не заведено, продуктовое решение владельца):** постраничная пагинация каталога вместо infinite scroll — бэкенд готов в обоих режимах (`skip/limit`+`total` у `/products/`, `page/hits_per_page`+`pages` у `/search/`).
 - **Хозяйство:** root-owned `frontend/node_modules/.vite-temp` (остался от контейнерного прогона) ломал запуск vitest с EACCES — удалён, vite пересоздал.
+
+## 2026-09-29 — #216: админская смена статуса заказа всегда 404
+
+- **Итог:** PR #278 смержен (squash `f688a7d`), issue #216 закрыт с доказательством, замок `backend` свободен, следующий — #217.
+- **Диагноз:** `PUT /api/v1/orders/{id}/status/` закрыт `get_current_active_admin`, но `OrderService.update_order_status` искал заказ с `Order.user_id == current_user.id` — админ находил только свои заказы, на заказе покупателя 404; машина `_validate_status_transition` мертва целиком. Тестов на ручку не было (`grep "status/" test_orders.py` — пусто) — поэтому поломка дожила до сегодня.
+- **Фикс:** фильтр убран по образцу `cancel_order_by_admin` (там же добавлен audit-лог актора — сделано и здесь); пользовательские пути (`get_order`/`get_orders`/`cancel_order`) не тронуты. Других админских ручек заказов с фильтром по `user_id` нет — проверены `update_order_by_admin`, `ship_order_by_admin`, `cancel_order_by_admin`, `get_all_orders`, `get_admin_order_detail`, отдельный issue не нужен.
+- **Доказательства:** воспроизведение до фикса — 3 новых теста красные с 404; после фикса `pytest tests/test_orders.py` — 19 passed, полный `make test-backend` — 691 passed / 2 skipped (+5 новых в `TestAdminOrderStatus`: админ на чужом заказе 200, недопустимый переход pending→delivered 400, отмена через PUT 400, не-админ 403, чужой заказ в пользовательском пути 404); ruff чисто.
+- **Издержки:** первый фоновый прогон `make test-backend` убит по таймауту 300с — его зомби-pytest на teardown удалил template-БД посреди второго прогона (356 errors `InvalidCatalogNameError: promelectron_test_template`). Чистый перезапуск — зелёный. Урок: прогон ~8 мин, таймаут ставить с запасом, убитый прогон оставляет зомби-контейнер, который рушит параллельный.
