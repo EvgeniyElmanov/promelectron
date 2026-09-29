@@ -62,4 +62,8 @@ Foreign keys, unique constraints и SQL syntax отличаются. Тести�
 
 `ProductCard` инициализировал `isFavorite` из `props.product.is_favorite`, но вложенный `product` в `GET /favorites/` — это `ProductOut` без этого поля (оно только в `ProductDetailOut`). Итог: `undefined → false`, клик по сердечку шёл в `POST add` вместо `DELETE` → 400, товар «не удалялся» (#188, PR #189). Профилактика: когда фронтенд зависит от пер-юзерного поля (`is_favorite`, `in_cart`), сверяйся с конкретной response-схемой эндпоинта, а не с «соседней»; признак такого бага — тихая деградация в `false`/`undefined` без ошибок в консоли.
 
+## 14. Точечный `kubectl apply` до мержа ломает первый `helm upgrade`
+
+Ресурс, созданный в обход Helm (`kubectl apply` из рендера чарта для проверки на живом окружении), не имеет ownership-метаданных — первый `helm upgrade` после мержа падает: `cannot be imported into the current release: missing app.kubernetes.io/managed-by / meta.helm.sh/release-*` (#212, run 36566242605). Профилактика: при точечном apply сразу ставь `app.kubernetes.io/managed-by: Helm` + `meta.helm.sh/release-name/release-namespace` (или apply через `helm template | kubectl apply` с этими метаданными). Лечение без передеплоя: `kubectl annotate`/`label` на живом объекте, затем `gh run rerun --failed`.
+
 ---
