@@ -98,6 +98,9 @@ tests/agent/*.png
 # Kept OUT of the committed .agent/ planning dir (BACKLOG.md, DECISIONS.md, …).
 .agent/runs/
 
+# Runtime-логи trace-хуков (scripts/hooks/trace-session-events.py).
+.agent/*.jsonl
+
 # Legacy transient task dirs (old pipeline). New tasks MUST use .agent/runs/<task-id>/.
 .agent/[0-9a-zA-Z_-]*/
 

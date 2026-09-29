@@ -743,3 +743,10 @@
   - **pre-push:** lint ✅, unit ✅; e2e 137/138 — единственное падение `search-filter:82` = известное стабильное на main (#255), к diff отношения нет.
   - **PR:** https://github.com/AutonomaCo/promelectron/pull/279 (`Closes #212`), карточка → In review, метка in-review. Ограничения, честно записанные в PR: алертинга failed Job нет до #222; остаточный риск «копия в том же кластере» — осознанно принят владельцем 2026-09-28, фиксируется комментарием в issue при закрытии.
   - **Метрики:** `.agent/runs/gh-212/metrics.json`; оценка контекста ~6.7k токенов (порог 600k). Итераций ревью: 2. Борд обновлён (коммиты `b3bd7b3`, `f917d7f` на main), замок infra занят до мержа.
+
+## 2026-09-29 — хозяйство (продолжение): trace-хуки, ветки, коммит конфига
+
+- **Trace-хуки подключены:** `scripts/hooks/trace-session-events.py` (скопирован в `~/.kimi-code/hooks/`) на событиях `TaskStarted`/`TurnStarted` пишет `.agent/hook-events.jsonl` (ротация при 5 МБ, no-op вне репо — проверено ручными прогонами из `/tmp`). `SessionHeartbeat` осознанно не подключён. `.agent/*.jsonl` добавлен в `.gitignore`. Документация: `config.example.toml` (закомментированный блок), `.kimi-code/AGENTS.md`.
+- **Ветки:** удалены `feature/gh-211`, `feature/gh-225`, `feature/gh-258` (смержены squash PR #271/#259/#260, worktree сняты ранее). Осталась только активная `feature/gh-212`.
+- **Конфиг:** пользовательский `config.toml` валиден после всех правок (пять `[[hooks]]`: 3 safety + 2 trace); коммит документных правок на main — как принято для docs/chore (см. `baf94c5`).
+- **Уборка `.worktrees/` доведена владельцем:** остался только gh-212.

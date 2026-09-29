@@ -208,7 +208,7 @@
 - `git reset --hard *`
 - `DROP *`, `truncate *`
 
-Safety hooks (PreToolUse, см. `.kimi-code/config.example.toml`, скрипты в `scripts/hooks/`): `block-dangerous-bash.py` — опасные команды; `block-main-git-mutations.py` — git commit/push/merge на ветке `main`; `single-test-run.py` — параллельный `make test-backend`/`test-frontend` при занятом flock.
+Safety hooks (PreToolUse, см. `.kimi-code/config.example.toml`, скрипты в `scripts/hooks/`): `block-dangerous-bash.py` — опасные команды; `block-main-git-mutations.py` — git commit/push/merge на ветке `main`; `single-test-run.py` — параллельный `make test-backend`/`test-frontend` при занятом flock. Trace-хук (не safety): `trace-session-events.py` на событиях `TaskStarted`/`TurnStarted` пишет `.agent/hook-events.jsonl` (no-op вне репо; `SessionHeartbeat` не подключать — слишком частый).
 
 ---
 

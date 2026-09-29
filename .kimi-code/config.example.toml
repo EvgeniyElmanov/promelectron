@@ -141,6 +141,13 @@ decision = "allow"
 pattern = "Bash(alembic *)"
 reason = "Run Alembic migrations"
 
+# ─── Background tasks ───
+# keep_alive_on_exit = true: в `kimi -p` (например `make ai PROMPT=…`) процесс
+# дожидается фоновых субагентов и goal/cron-продолжений вместо обрезки по концу хода.
+
+[background]
+keep_alive_on_exit = true
+
 # ─── Hooks ───
 # NOTE: ~/.kimi-code/config.toml is user-level, so hooks run for EVERY project.
 # Avoid project-specific commands (like "cd backend && ruff check") here.
@@ -181,3 +188,17 @@ timeout = 5
 # event = "Notification"
 # matcher = "task\\.completed"
 # command = "terminal-notifier -title Kimi -message 'Task done'"
+
+# Trace-хуки (Promelectron): события жизненного цикла сессии →
+# .agent/hook-events.jsonl (пишет только в репо с каталогом .agent/, в остальных
+# проектах no-op). Репо: scripts/hooks/trace-session-events.py, копировать в
+# ~/.kimi-code/hooks/. SessionHeartbeat не подключать — слишком частый.
+# [[hooks]]
+# event = "TaskStarted"
+# command = "python3 ~/.kimi-code/hooks/trace-session-events.py"
+# timeout = 5
+#
+# [[hooks]]
+# event = "TurnStarted"
+# command = "python3 ~/.kimi-code/hooks/trace-session-events.py"
+# timeout = 5
