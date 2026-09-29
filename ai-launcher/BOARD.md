@@ -1,6 +1,6 @@
 # ▶ Пульт запуска Promelectron
 
-`main = 3c23c8a` · **2026-09-28** · бэклог = открытые issue на `AutonomaCo/promelectron`, борд — их витрина.
+`main = d497bfd` · **2026-09-29** · бэклог = открытые issue на `AutonomaCo/promelectron`, борд — их витрина.
 🟢 можно · 🟡 можно, но сначала твой ответ · 🔵 занято · 🔴 нельзя, причина указана · 💤 припарковано.
 
 Кнопка у всех одна — `make ai PROMPT=…`; чем она запускается (claude, kimi или следующий),
@@ -41,7 +41,7 @@
 
 | ID | Что запускаем | Замок | Статус | Issue |
 |---|---|---|---|---|
-| #216 | смена статуса заказа админом всегда 404 | `backend` | 🟢 **следующий на `backend`** | [↗](https://github.com/AutonomaCo/promelectron/issues/216) |
+| #216 | смена статуса заказа админом всегда 404 | `backend` | 🔵 в работе | [↗](https://github.com/AutonomaCo/promelectron/issues/216) |
 | #217 | миграции применяются дважды, падение глушится | `backend` | 🟢 в очереди | [↗](https://github.com/AutonomaCo/promelectron/issues/217) |
 | #220 | rate limit по IP пода, гостевой заказ без лимита | `backend` | 🟢 в очереди | [↗](https://github.com/AutonomaCo/promelectron/issues/220) |
 | #221 | debug-эндпоинты платежей в продовом роутере | `backend` | 🟢 в очереди | [↗](https://github.com/AutonomaCo/promelectron/issues/221) |
@@ -67,18 +67,18 @@
 
 ## 🔒 Замки
 
-**Занято:** ничего.
-**Свободны:** `backend`, `frontend`, `e2e`, `infra`, `docs`, `harness`.
+**Занято:** `backend` (#216).
+**Свободны:** `frontend`, `e2e`, `infra`, `docs`, `harness`.
 
 | Замок | Сколько issue | Кто следующий |
 |---|---|---|
-| `backend` | 7 | **#216** (P1) |
+| `backend` | 7 | 🔵 **#216** в работе; дальше **#217** (P1) |
 | `infra` | 6 | **#212** (P0), дальше #215 |
 | `e2e` | 0 | — |
 | `frontend` | 3 | **#269** (P1), дальше #270 (P2), #274 (P2) |
 
 **Волна прямо сейчас — четыре терминала, замки не пересекаются:**
-все замки свободны. Кандидаты: **#212** (`infra`, P0) · **#216** (`backend`, P1) · **#269** (`frontend`, P1).
+занят `backend` (#216). Кандидаты: **#212** (`infra`, P0) · **#269** (`frontend`, P1).
 
 ⚠️ `make test-backend` и `make test-onec-mock` сериализованы через `flock`: параллельные
 сессии не сломаются, но вторая будет **ждать** первую. Это не параллельность, это очередь.
@@ -86,6 +86,8 @@
 ---
 
 # 🔵 В работе
+
+#216 в работе (замок `backend`, взято 2026-09-29): фикс админской смены статуса заказа — фильтр `user_id` в админском пути (`order_service.py:942`), тесты по «готово, когда».
 
 Пусто. #186 смержен (PR #273, squash `7a30a91`, 2026-09-28): флаки cart-select — гипотеза issue (переиспользование seeded-пользователя) опровергнута воспроизведением, реальный механизм — гонка fire-and-forget `POST /cart/merge` (Login.vue) с единственным fetchCart (Cart.vue onMounted): пустая корзина навсегда, доказано детерминированно route-задержкой merge 3с; фикс тестовый — waitForResponse(merge 200) до клика login → await → reload; тот же механизм закрыт в auth.spec.js guest-cart-merge + хардкод product id=1 заменён на первый in-stock (stock>=2, limit=100) — попутно закрыт #254; 5 прогонов зелёные, мутация красная/зелёная; замок `e2e` свободен, открытых e2e-issue нет. Follow-up: #274 (продуктовая гонка merge — пустая корзина до F5, `frontend`, P2).
 
@@ -161,7 +163,7 @@ BLK-009 снят из этого раздела 2026-09-20: браузерный
 
 ---
 
-> <a id="i-216"></a>🟢 **[#216](https://github.com/AutonomaCo/promelectron/issues/216)** · смена статуса заказа админом всегда 404 — `lock: backend` · **свободен**
+> <a id="i-216"></a>🔵 **[#216](https://github.com/AutonomaCo/promelectron/issues/216)** · смена статуса заказа админом всегда 404 — `lock: backend` · **в работе**
 
 ```bash
 make ai PROMPT=ai-launcher/prompts/backend_216-admin-order-status-404.prompt.txt
