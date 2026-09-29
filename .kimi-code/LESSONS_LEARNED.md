@@ -528,3 +528,17 @@ Backend-под уходил в CrashLoopBackOff при деплое в `promelec
 **Решение:** в subprocess-тесты production-конфига добавлен `YOOKASSA_WEBHOOK_SECRET` в env; в `test_auth.py` добавлены unit-тесты самого fail-fast (prod → RuntimeError, dev → None).
 
 **Профилактика:** при добавлении любого fail-fast env в `core/config.py` сразу grep по тестам, собирающим production env вручную: `grep -rn "ENVIRONMENT.*production" backend/tests/` — и полный `make test-backend`, а не точечный прогон.
+
+## 2026-09-29 | `pg_dump | gzip` пайпом в busybox `sh` молча маскирует падение pg_dump (gh-212)
+
+- **Ошибка:** в CronJob бэкапа команда была `pg_dump | gzip > файл`. При недоступном PostgreSQL Job завершался **Complete**, а в бакет улетал 20-байтный gzip-мусор (валидный gzip пустого потока).
+- **Причина:** busybox `sh` (postgres:16-alpine) не поддерживает `set -o pipefail`; exit code пайпа = exit code последней команды (gzip), падение pg_dump проглатывается.
+- **Решение:** раздельные команды с `set -e`: `pg_dump > файл.sql` затем `gzip файл.sql`; перед загрузкой проверка `[ -s файл ]`.
+- **Профилактика:** любые пайпы в shell-скриптах k8s-джоб на alpine/busybox проверять негативным прогоном (заведомо сломанный хост/креды) — «джоба зелёная» не значит «результат валиден». Негативный прогон — обязательная часть AC для джоб.
+
+## 2026-09-29 | `docker.io/minio/minio` удалён из Docker Hub — чарт молча жил на кэше нод (gh-212)
+
+- **Ошибка:** под MinIO в test работал только за счёт 125-дневного image-кэша на нодах; при пересоздании (depоя с anti-affinity) pull `minio/minio:latest` упал — образа нет (404), `quay.io/minio/*` требует авторизацию.
+- **Причина:** MinIO убрал публичные образы из Docker Hub; floating `:latest` в чарте скрывал это, пока под не пересоздавался.
+- **Решение:** `bitnamilegacy/minio:2025.7.23-debian-12-r5` и `bitnamilegacy/minio-client:2025.7.21-debian-12-r3` (pinned теги); `command: [minio, server, /data]` обходит bitnami-entrypoint — бинарник читает `MINIO_ROOT_USER`/`MINIO_ROOT_PASSWORD` из env напрямую (должны быть в `promelectron-secrets` и совпадать с `MINIO_ACCESS_KEY`/`MINIO_SECRET_KEY`); для существующего root-owned PVC нужен `securityContext.runAsUser: 0`.
+- **Профилактика:** floating-теги внешних образов — скрытая зависимость от registry; при замене образа проверять старт пода и доступ по существующим кредам, а не только рендер манифеста.
