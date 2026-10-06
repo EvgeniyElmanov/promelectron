@@ -5,13 +5,14 @@ import os
 from contextlib import asynccontextmanager
 from logging import getLogger
 
-from alembic import command
 from alembic.config import Config
+from alembic.script import ScriptDirectory
 from botocore.exceptions import ClientError
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
-from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 from src.app.api.admin import router as admin_router
 from src.app.api.analytics import router as analytics_router
@@ -47,22 +48,54 @@ logger = getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     engine = create_async_engine(DATABASE_URL)
-
-    # Применяем миграции Alembic при старте
-    alembic_cfg_path = os.path.join(os.path.dirname(__file__), "..", "..", "alembic.ini")
-    if os.path.exists(alembic_cfg_path):
-        try:
-            await asyncio.to_thread(_run_alembic_migrations, alembic_cfg_path)
-        except Exception as e:
-            logger.warning("Alembic migration skipped: %s", e)
+    # Миграции применяются только Helm-хуком (локально — `make migrate`);
+    # на старте лишь проверяем соответствие схемы head-ревизиям. Любое
+    # расхождение или недоступность БД валит старт — не глушить.
+    await _check_schema_version(engine)
 
     yield
     await engine.dispose()
 
 
-def _run_alembic_migrations(cfg_path: str) -> None:
-    alembic_cfg = Config(cfg_path)
-    command.upgrade(alembic_cfg, "head")
+def _alembic_cfg_path() -> str:
+    return os.path.join(os.path.dirname(__file__), "..", "..", "alembic.ini")
+
+
+def _get_applied_revisions(conn) -> set[str] | None:
+    """Вернуть применённые ревизии из alembic_version; None, если таблицы нет."""
+    table = conn.execute(text("SELECT to_regclass('public.alembic_version')")).scalar()
+    if table is None:
+        return None
+    rows = conn.execute(text("SELECT version_num FROM alembic_version")).scalars().all()
+    return set(rows)
+
+
+async def _check_schema_version(engine: AsyncEngine) -> None:
+    def _expected_heads() -> set[str]:
+        cfg = Config(_alembic_cfg_path())
+        return set(ScriptDirectory.from_config(cfg).get_heads())
+
+    heads = await asyncio.to_thread(_expected_heads)
+    async with engine.connect() as conn:
+        current = await conn.run_sync(_get_applied_revisions)
+
+    if current is None:
+        msg = (
+            "Database schema mismatch: table 'alembic_version' is missing — migrations "
+            "were never applied. Run 'make migrate' (local) or let the Helm migrate "
+            "hook run (cluster). Refusing to start."
+        )
+        logger.error(msg)
+        raise RuntimeError(msg)
+    if current != heads:
+        msg = (
+            f"Database schema mismatch: applied revision(s) {sorted(current)} != "
+            f"expected head(s) {sorted(heads)}. Run migrations first: "
+            "'alembic upgrade head' (cluster: Helm pre-upgrade hook; local: "
+            "'make migrate'). Refusing to start."
+        )
+        logger.error(msg)
+        raise RuntimeError(msg)
 
 
 _default_cors = '["http://localhost:5173", "http://127.0.0.1:5173"]'

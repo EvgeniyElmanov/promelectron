@@ -1,84 +1,93 @@
-# PLAN.md — design-header-pr209 (frontend-dev)
+# PLAN: gh-217 — миграции ровно в одном месте (Helm-хук) + отказ старта при расхождении схемы
 
-- **Спека:** `.agent/runs/design-header-pr209/spec.md` — ОДОБРЕНА (включая D-05: responsive.spec.js переписывается под §11 `[Menu][Logo][Cart]`).
-- **Ветка:** `feature/design-header-pr209` · **Замок:** `frontend` · **Issue:** #250.
+## Goal
 
-## 1. Goal
+Убрать автомиграцию из lifespan приложения и заменить её явной проверкой соответствия
+схемы ревизиям Alembic: при расхождении (или отсутствии `alembic_version`) старт падает
+с внятной ошибкой, а единственным местом применения миграций остаётся Helm-хук
+(локально — `make migrate`); успех = Must-haves спеки зелёные, `make test-backend` и
+`make migrate-check` проходят.
 
-Привести Header к §11 дизайн-системы (desktop 72px + мобильная шапка `[Menu][Logo][Cart]` с drawer-меню и строкой поиска) и завершить миграцию оставшихся текстовых кнопок на `AppButton` (§10), не сломав testid-контракт D-04, sticky/toast-поведение и E2E-baseline.
+## Steps
 
-## 2. Шаги (порядок из спеки §Parallelization Plan)
+1. **Backend: `backend/src/app/main.py` — удалить автомиграцию (D-01).**
+   - Удалить `_run_alembic_migrations`, вызов `command.upgrade` и блок
+     `except Exception → logger.warning` (строки 51–57, 63–65).
+   - Убрать ставшие ненужными импорты `alembic.command`, `alembic.config.Config`;
+     `asyncio` и `os` оставить только если используются новой проверкой / остальным кодом
+     (`os` нужен для `serve_upload` и CORS — остаётся; `asyncio` будет нужен для
+     `to_thread`).
+   - Проверка: `grep -rn "_run_alembic_migrations\|command.upgrade" backend/src` пуст;
+     `cd backend && uv run ruff check src/` чисто (нет unused imports).
 
-### Шаг 1. AppButton: prop `type` + variant `danger` (D-07, D-08)
+2. **Backend: `backend/src/app/main.py` — schema-version check в lifespan (D-03, D-04, D-05).**
+   - Добавить приватные функции рядом с lifespan:
+     - `_get_applied_revisions(conn)` — sync: `SELECT version_num FROM alembic_version`
+       → `set[str]`; `ProgrammingError`/`UndefinedTable` (отсутствие таблицы) обрабатывается
+       вызывающей стороной как расхождение.
+     - `_check_schema_version(engine)` — async:
+       1. `ScriptDirectory.from_config(Config(alembic_cfg_path)).get_heads()` через
+          `asyncio.to_thread` (sync-части alembic); путь к `alembic.ini` — тот же, что был
+          (`os.path.join(os.path.dirname(__file__), "..", "..", "alembic.ini")`).
+       2. Чтение таблицы — через `engine.connect()` + `conn.run_sync(...)`; отсутствие
+          таблицы → `logger.error` + `RuntimeError` с текстом D-04 (вариант «missing table»).
+       3. `set(current) != set(heads)` → `logger.error` + `RuntimeError` с текстом D-04
+          (вариант mismatch, с `{current}`/`{heads}`).
+   - Вызов в lifespan **до** `yield`; `engine.dispose()` остаётся после `yield`.
+     Общий `except Exception` вокруг проверки **не добавлять** — любое исключение валит старт.
+   - Никаких env-флагов (D-01).
+   - Проверка: `cd backend && uv run ruff check src/` чисто.
 
-Файлы: `frontend/src/components/ui/AppButton.vue`, `frontend/src/__tests__/AppButton.spec.js` (путь уточнить по факту — рядом с Header.spec.js в `src/__tests__/`).
+3. **Backend: тесты `backend/tests/test_schema_version_check.py` (D-06).**
+   - Новый файл; использовать фикстуру `test_engine` из `conftest.py` (per-test БД из
+     template, схема через `create_all`, таблицы `alembic_version` в ней нет).
+   - Позитив: создать таблицу `alembic_version`, вставить head-ревизию, прочитанную в самом
+     тесте из `ScriptDirectory` → `_check_schema_version(test_engine)` завершается без raise.
+   - Негатив 1: таблица отсутствует → `pytest.raises(RuntimeError)`.
+   - Негатив 2: таблица есть, вставлена несуществующая/старая ревизия → `RuntimeError`.
+   - Проверка: `cd backend && uv run pytest tests/test_schema_version_check.py -x` зелёный;
+     затем полный `make -C <WORKTREE> test-backend` — весь suite зелёный (conftest не трогаем).
 
-- Добавить `type: { type: String, default: 'button' }` и `:type="type"` на корневой `<button>` (сейчас захардкожен `type="button"` — AppButton.vue:3).
-- Добавить variant `danger` в validator + стили `.app-button--danger` (`background: var(--color-danger); color: var(--color-white)`; hover через `color-mix`, паттерн как в Header.vue:426).
-- Unit-тесты: `type="submit"` прокидывается; `danger` добавляет класс.
+4. **Docs: `README.md` (D-07).**
+   - В разделе локального запуска (рядом с существующей строкой `make migrate`, README.md:39)
+     добавить явный пункт: перед первым стартом backend выполнить `make migrate`; без
+     миграций приложение не стартует — это намеренно (проверка версии схемы на старте).
+   - Проверка: визуально, текст по-русски.
 
-**Проверка:** `make -C "$WORKTREE" test-frontend` (AppButton.spec зелёный), `make -C "$WORKTREE" lint-frontend`.
+5. **Docs: `PROJECT_CONTEXT.md` п.9 (D-07).**
+   - Строку «Alembic миграции — при старте приложения (планируется перенос в Helm hook)»
+     заменить на: миграции применяются только Helm-хуком `migrate-job.yaml`
+     (`pre-install,pre-upgrade`, локально — `make migrate`); приложение на старте лишь
+     проверяет соответствие `alembic_version` ↔ head-ревизиям и отказывается стартовать
+     при расхождении.
+   - Проверка: визуально.
 
-### Шаг 2. MobileMenuDrawer.vue + unit-тесты (D-02)
+6. **Финальная верификация.**
+   - `make -C <WORKTREE> test-backend` — зелёный.
+   - `make -C <WORKTREE> lint-backend` — ноль ошибок.
+   - `make -C <WORKTREE> migrate-check` — exit 0 (миграций не добавляем, drift не появится;
+     прогон обязателен по AC).
+   - `grep -rn "_run_alembic_migrations\|command.upgrade" backend/src` — пуст (AC).
+   - Self-review диффа: `git -C <WORKTREE> --no-pager diff origin/main...HEAD`, маппинг
+     каждого Must-have на изменение; убедиться, что `infra/helm/`, `docker-compose`,
+     workflows не тронуты (Out of Scope).
+   - Обновить `docs/journal/session-log.md` (после зелёных прогонов).
 
-Файлы: новый `frontend/src/components/MobileMenuDrawer.vue`, новый `frontend/src/__tests__/MobileMenuDrawer.spec.js`.
+## Risks / Open questions
 
-- Props `open`, emits `close`; `data-testid="mobile-menu-drawer"`, `aria-label`, начальный focus на drawer (focus-trap — out of scope, issue #225).
-- Пункты: Каталог (`/`); по `isAuthenticated` — Заказы (`/orders`), Уведомления (`/notifications`), Профиль; гостю — Войти (`/login`); по `isSupplier` — Дашборд/Мои товары/Мои заказы.
-- Overlay-затемнение слева; закрытие по клику вне, Escape, выбору пункта; z-index 300 (выше header 100 и toast 200, D-10); токены `--color-bg-white`, `--shadow-dropdown`, `--radius-lg`. Новых токенов не вводить.
-- Тесты: пункты по auth/supplier/guest; close по Escape и click-outside.
-
-**Проверка:** vitest MobileMenuDrawer.spec зелёный, lint чистый.
-
-### Шаг 3. Header.vue — мобильный блок + desktop-доработки (D-01, D-03, D-04, D-09)
-
-Файл: `frontend/src/components/Header.vue`.
-
-- Template: добавить `.header__mobile-top` (виден только <768px): `mobile-menu-btn` (burger, aria-label, touch target ≥44px), логотип (существующий `data-testid="header-logo"` — элемент остаётся ОДИН, визуально переносится), `mobile-cart-link` (router-link `/cart` с бейджем `cartCount`, тот же класс `.header__notif-badge`). Ниже `.header__mobile-search` с `SearchBar` и `data-testid="header-search-bar-mobile"`, горизонтальные паддинги 16px. Поведение mobile search overlay (#171) НЕ менять.
-- Подключить `<MobileMenuDrawer :open="mobileMenuOpen" @close="mobileMenuOpen = false" />`; добавить `mobileMenuOpen` ref.
-- Desktop (D-03): добавить ghost nav-link «Каталог» → `/` в `.header__nav`; сверить отступы с §11. Phone/Compare НЕ добавляем.
-- **НЕ удалять и не переименовывать:** классы `.header`, `.header__actions`, `.header__icon`, `.header__toast`, `.header__notif-badge` (Header.spec.js читает исходник строками, `src/__tests__/Header.spec.js:9,79-96`); testid `header-logo`, `header-search-bar`, `cart-link`, `profile-link`, `login-link`, `notifications-btn`; `position: sticky; top: 0` (toast-follow-scroll.spec.js, 4 теста).
-- **testid-контракт D-04 дословно:** сохраняются `header-logo`, `header-search-bar`, `cart-link`, `profile-link`, `login-link`, `notifications-btn`; новые `mobile-menu-btn`, `mobile-cart-link`, `mobile-menu-drawer`, `header-search-bar-mobile`. **НОЛЬ дублей testid** (Playwright strict mode): `cart-link` остаётся ТОЛЬКО в desktop `.header__actions`; мобильная корзина — отдельный `mobile-cart-link`. Desktop search — `header-search-bar`, мобильный — `header-search-bar-mobile`.
-- Style: media 768px — `.header__mobile-top`/`.header__mobile-search` hidden на ≥768px; desktop search/actions hidden <768px (правило `@media (max-width: 767px)` + `.header__actions { display: none; }` сохранить дословно — его проверяет Header.spec.js:79-83). Desktop header 72px остаётся; мобильная высота auto (2 строки).
-- Обновить `src/__tests__/Header.spec.js`: оставить source-string проверки, добавить рендер `mobile-menu-btn`/`mobile-cart-link`, бейдж на mobile cart при `cartCount=2`, открытие/закрытие drawer по клику.
-
-**Проверка:** vitest Header/MobileMenuDrawer зелёные; `grep -o 'data-testid="[^"]*"' src/components/Header.vue | sort | uniq -d` — пусто (ноль дублей); lint чистый.
-
-### Шаг 4. Миграция кнопок views на AppButton (D-06) — 4 логические группы
-
-Механическая замена `<button class="X__btn">` → `<AppButton variant=... :type=...>`, сохраняя `data-testid`, `@click`, `:disabled`; удаление мёртвого CSS кнопок. `danger` — для logout/cancel/delete; `type="submit"` — в `<form>`; `admin__btn--success` → `primary`; CdekDeliveryWidget «Изменить» → `ghost`/`sm`.
-
-- **4a. Auth-страницы:** `Login.vue`, `Register.vue` (submit; OAuth brand-кнопки ОСТАВЛЯЕМ), `ForgotPassword.vue`, `ResetPassword.vue`, `GuestCheckout.vue` (мёртвый код, мигрируем для консистентности).
-- **4b. Профиль/заказы пользователя:** `Profile.vue` (retry + logout→danger; `.action-btn` router-link'и оставляем), `ProfileEdit.vue` (submit), `ProfileRecipients.vue` (add, empty-btn, modal submit), `Orders.vue` (retry + cancel→danger), `OrderDetail.vue` (retry + cancel→danger), `Notifications.vue` (mark-read-all), `PaymentFailed.vue` (2), `PaymentSuccess.vue` (2 `<button>`; `.payment-result__btn` router-link'и — НЕ кнопки, оставляем).
-- **4c. Supplier:** `SupplierOrders.vue` (retry; items-toggle-раскрывашку оставляем), `SupplierProducts.vue` (add ×2, edit/delete карточки), `SupplierDashboard.vue` (1).
-- **4d. Admin + прочее:** `Admin.vue` (add-category, add-delivery, user-action, modal submits), `admin/UserDetailsModal.vue`, `admin/AdminOrderModal.vue` (submit, success/cancel), `ProductFormModal.vue` (submit), `CdekDeliveryWidget.vue` («Изменить» → ghost/sm).
-- **Осознанно оставляем (D-06):** icon-кнопки (back-arrow, `modal__close`, `field-toggle` eye, qty-степперы, `image-thumb__remove`, lightbox close, toast close, header icon-кнопки, SearchBar внутренние), чипы (CategoryChips, CategoryCard, SearchBar-теги, FilterPanel), `admin__icon-btn`, OAuth brand buttons, router-link'и под кнопки.
-- Точечно править spec-файлы, если проверяют CSS-классы мигрированных кнопок.
-
-**Проверка после каждой группы:** `make -C "$WORKTREE" test-frontend` зелёный. После всех групп: `grep -rn '<button' frontend/src/views frontend/src/components` — остались только категории «оставляем» из D-06; lint чистый.
-
-### Шаг 5. E2E responsive.spec.js (D-05)
-
-Файл: `frontend/e2e/responsive.spec.js`.
-
-- Переписать тест «header shows only logo and hides action icons on mobile» (строки 57-66): мобильная шапка показывает `mobile-menu-btn`, `header-logo`, `mobile-cart-link`, `header-search-bar-mobile`; `.header__actions` по-прежнему hidden; desktop `cart-link`/`profile-link`/`login-link` hidden (они в `.header__actions`).
-- Desktop-тест (строки 68-76) без изменений. Остальные блоки (horizontal scroll, bottom-nav badge) не трогаем.
-- helpers.js: `goToCart`/`goToProfile` используют `cart-link`/`profile-link` с fallback на bottom-nav через `isVisible()` — на мобильном desktop-ссылки hidden, fallback работает, helpers НЕ правим.
-
-**Проверка:** `make -C "$WORKTREE" test-e2e` — responsive.spec.js зелёный; baseline 117 passed + известные предсуществующие падения (auth:72, search-filter:82, checkout:152 флаки); toast-follow-scroll 4/4; visual-smoke 11/11.
-
-### Шаг 6. Финальный self-review и отчёт
-
-- `git -C "$WORKTREE" --no-pager diff origin/main...HEAD` — сопоставить каждый Must-have спеки с diff; adversarial audit по ролевому чеклисту (testid, console.log, scope creep).
-- `make -C "$WORKTREE" test-frontend` + `lint-frontend` — зелёные.
-- Коммит в feature-ветку (без push), обновить `docs/journal/session-log.md`.
-
-## 3. Risks / Open questions
-
-- **R-1: Header.spec.js читает исходник строками** (`readFileSync`, Header.spec.js:9) — проверяет `@media (max-width: 767px)`, `.header__actions {`, `display: none;`, `.header__icon {`, `position: relative;`. Эти строки сохранить дословно; новые media-правила добавлять рядом, не переписывая существующие.
-- **R-2: Дубли testid → Playwright strict mode.** Мобильные элементы получают НОВЫЕ testid; `cart-link` только desktop. Проверка `uniq -d` на шаге 3.
-- **R-3: z-index drawer (300) vs toast (200) и модалки** — smoke-проверка вручную на /profile/edit (спека Risks).
-- **R-4: Крупный механический diff (~20 views)** — митигируется группировкой 4a–4d с прогоном тестов после каждой группы и чек-листом D-06 при self-review.
-- **R-5: spec-файлы views могут проверять старые CSS-классы кнопок** — точечные правки в шаге 4, падения всплывут на vitest.
-- **R-6: Drawer при resize до desktop** — скрывается CSS (mobile-блоки hidden ≥768px); состояние `mobileMenuOpen` сбрасывать не обязательно, но проверить визуально.
-- **Open questions:** нет — D-05 подтверждён владельцем, скоуп D-06 исчерпывающий.
+- **Отсутствие таблицы `alembic_version`**: PG бросает `UndefinedTable` (обёрнут в
+  `ProgrammingError`). Надёжнее ловить именно отсутствие таблицы явно
+  (`SELECT to_regclass('public.alembic_version')` или try/except по SQLSTATE `42P01`),
+  чтобы не перепутать с другими ошибками SQL — уточню при реализации, оба варианта
+  соответствуют D-03 («отсутствие таблицы = расхождение»).
+- **Путь к `alembic.ini`**: текущий код вычисляет относительно `__file__`; оставляю тот же
+  подход. Если `alembic.ini` не найден — раньше миграции молча пропускались; теперь отсутствие
+  конфига = исключение → отказ старта (согласуется с «не глушить», D-05).
+- **Тесты**: template-БД в conftest создаётся через `create_all` и не содержит
+  `alembic_version` — негативный тест «нет таблицы» получается бесплатно; позитив требует
+  создания таблицы в тесте. Lifespan через `ASGITransport` не выполняется — существующий
+  suite не затронут (D-06).
+- **Локальный запуск без `make migrate` теперь падает** — принято владельцем; митигация —
+  текст ошибки с подсказкой и пункт в README.
+- **Docker-зависимость `make migrate-check`/Makefile-целей**: требуют поднятого compose;
+  если окружение недоступно в sandbox — зафиксировать в отчёте как непроверенное.

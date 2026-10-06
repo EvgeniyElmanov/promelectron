@@ -104,7 +104,7 @@ e2e_tests: "116 passed / 4 skipped (2026-08-27)"
 6. **Trailing slash обязателен** — `api.get('/categories/')`, не `'/categories'`. Иначе 307 → axios теряет заголовки.
 7. **SQLite ≠ PostgreSQL** — тесты только в Docker (`make test-backend`), никогда на SQLite.
 8. **SELECT FOR UPDATE** — для консистентности stock при параллельных запросах.
-9. **Alembic миграции** — при старте приложения (планируется перенос в Helm hook).
+9. **Alembic миграции** — только Helm-хуком `infra/helm/templates/migrate-job.yaml` (`pre-install,pre-upgrade`); локально — `make migrate`. Приложение на старте миграции не применяет, а лишь проверяет соответствие `alembic_version` head-ревизиям и отказывается стартовать при расхождении (#217).
 10. **MinIO + Local fallback** — для хранения файлов. `GET /uploads/{path}` отдаёт файлы с `Cache-Control: public, max-age` (настройка `UPLOADS_CACHE_MAX_AGE`, default 86400) — endpoint рассчитан только на публичные файлы (фото товаров, аватары). Если когда-либо понадобится отдавать приватные документы — нужен отдельный endpoint с `private`/`no-store`, иначе утечка через shared cache (security F-002, #158).
 11. **Цены в `product_prices`** (PR #168) — колонки `products.price` нет; все виды цен 1С (каналы, себестоимость) хранятся строками `(product_id, price_type)`, чтение сайтовой цены — только через сайтовый вид (`settings.onec_site_price_type`, env `ONEC_SITE_PRICE_TYPE`). Несайтовые виды никогда не отдаются в публичных схемах. Товар без сайтовой цены = `price: null`, заказ → 400. **H-001 решён (#227):** сайтовый вид цен реальной 1С — **«Розница» `3d3bea35-5d6a-11eb-948a-f81a67046005`** (решение владельца 2026-09-08); при первом синке из реальных данных `price_type` сразу пишется реальными GUID, backfill `'site'` не используется.
 
