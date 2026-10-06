@@ -1,6 +1,6 @@
 # ▶ Пульт запуска Promelectron
 
-`main = be83244` · **2026-09-29** · бэклог = открытые issue на `AutonomaCo/promelectron`, борд — их витрина.
+`main = d1c0127` · **2026-10-06** · бэклог = открытые issue на `AutonomaCo/promelectron`, борд — их витрина.
 🟢 можно · 🟡 можно, но сначала твой ответ · 🔵 занято · 🔴 нельзя, причина указана · 💤 припарковано.
 
 Кнопка у всех одна — `make ai PROMPT=…`; чем она запускается (claude, kimi или следующий),
@@ -21,8 +21,8 @@
 открытым текстом в git, совпадающий с тестовым (#213 — **закрыт 2026-09-19**, PR #268, ротацией) и цену доставки из тела запроса
 (#211 — **закрыт 2026-09-20**, PR #271, серверная сверка с СДЭК). Все четыре пункта закрыты.
 
-Отдельно: **на pull request не гоняется ни одна проверка** ([#215](https://github.com/AutonomaCo/promelectron/issues/215)) — `pull_request`-триггера
-нет ни в одном workflow. Первая обратная связь по PR — выкат в общий test после мержа.
+Отдельно: **на pull request не гонялась ни одна проверка** ([#215](https://github.com/AutonomaCo/promelectron/issues/215) — **закрыт 2026-10-06**, PR #281, PR-гейт
+pytest + vitest + линтеры с фильтрацией путей; защита main — команда владельцу в PR #281, у CI-токена нет admin-прав).
 
 ---
 
@@ -32,8 +32,7 @@
 
 | ID | Что запускаем | Замок | Статус | Issue |
 |---|---|---|---|---|
-| #215 | на pull request не гоняется ни одна проверка | `infra` | 🟢 следующий на `infra` | [↗](https://github.com/AutonomaCo/promelectron/issues/215) |
-| #214 | prod в песочнице СДЭК + 2 реплики при локальном хранилище | `infra` | 🟢 в очереди на `infra` | [↗](https://github.com/AutonomaCo/promelectron/issues/214) |
+| #214 | prod в песочнице СДЭК + 2 реплики при локальном хранилище | `infra` | 🟢 **следующий на `infra`** | [↗](https://github.com/AutonomaCo/promelectron/issues/214) |
 
 ### 🟠 P1 — ломается молча
 
@@ -43,7 +42,7 @@
 | #220 | rate limit по IP пода, гостевой заказ без лимита | `backend` | 🟢 в очереди | [↗](https://github.com/AutonomaCo/promelectron/issues/220) |
 | #221 | debug-эндпоинты платежей в продовом роутере | `backend` | 🟢 в очереди | [↗](https://github.com/AutonomaCo/promelectron/issues/221) |
 | #223 | нет индексов на горячих внешних ключах | `backend` | 🟢 в очереди | [↗](https://github.com/AutonomaCo/promelectron/issues/223) |
-| #269 | пересчёт доставки при 409 «Стоимость доставки устарела» | `frontend` | 🟢 **следующий на `frontend`** | [↗](https://github.com/AutonomaCo/promelectron/issues/269) |
+| #269 | пересчёт доставки при 409 «Стоимость доставки устарела» | `frontend` | 🔵 в работе (Kimi, с 2026-10-06) | [↗](https://github.com/AutonomaCo/promelectron/issues/269) |
 | #218 | поды от root, PostgreSQL через NodePort наружу | `infra` | 🟢 в очереди | [↗](https://github.com/AutonomaCo/promelectron/issues/218) |
 | #219 | боевые секреты: SOPS неполный, OAuth в GitHub Secrets | `infra` | 🟢 в очереди на `infra` | [↗](https://github.com/AutonomaCo/promelectron/issues/219) |
 | #222 | наблюдаемости нет: ни Sentry, ни метрик, ни логов | `infra` | 🟡 выбор приёмника за владельцем | [↗](https://github.com/AutonomaCo/promelectron/issues/222) |
@@ -64,18 +63,18 @@
 
 ## 🔒 Замки
 
-**Занято:** ничего.
-**Свободны:** `backend`, `frontend`, `e2e`, `infra`, `docs`, `harness`.
+**Занято:** `frontend` (#269, Kimi Code, с 2026-10-06).
+**Свободны:** `backend`, `e2e`, `infra`, `docs`, `harness`.
 
 | Замок | Сколько issue | Кто следующий |
 |---|---|---|
 | `backend` | 5 | **#217** (P1) |
-| `infra` | 5 | **#215** (P0) |
+| `infra` | 4 | **#214** (P0) |
 | `e2e` | 0 | — |
 | `frontend` | 3 | **#269** (P1), дальше #270 (P2), #274 (P2) |
 
 **Волна прямо сейчас — четыре терминала, замки не пересекаются:**
-Все замки свободны. Кандидаты: **#215** (`infra`, P0) · **#217** (`backend`, P1) · **#269** (`frontend`, P1).
+`frontend` занят (#269). Свободные кандидаты: **#214** (`infra`, P0) · **#217** (`backend`, P1).
 
 ⚠️ `make test-backend` и `make test-onec-mock` сериализованы через `flock`: параллельные
 сессии не сломаются, но вторая будет **ждать** первую. Это не параллельность, это очередь.
@@ -83,6 +82,10 @@
 ---
 
 # 🔵 В работе
+
+🔵 **#269 в работе** (Kimi Code, с 2026-10-06, ветка `feature/gh-269-delivery-409-recalc`, замок `frontend`, **PR #282 открыт, in-review**): пересчёт доставки при 409 «Стоимость доставки устарела» — общий обработчик 409/503 (`useOrderSubmission` + `OrderDeliveryNotice`) для `Cart.vue` и `GuestCheckout.vue`. vitest 515 passed, e2e checkout 4/4 (новый кейс «409 → пересчёт → успешный заказ»), полный e2e 138/139 (падение — baseline #255). После мержа: комментарий об остатке в #270.
+
+Пусто. #215 смержен (PR #281, squash `d1c0127`, 2026-10-06): PR-гейт — новый workflow `pr-checks.yml` на `pull_request` (раньше ни один workflow на PR не срабатывал): job changes (фильтр путей) → backend (alembic drift check #185 перенесён до мержа + pytest через compose, `--no-deps` — `minio/minio` убран из Docker Hub, тесты его мокируют), frontend (oxlint/eslint + vitest), lint (ruff src/ + onec-mock в одноразовом контейнере, `--no-cache` — root-кэш ломал checkout EACCES). Мутации доказаны красными прогонами (backend run 37419814452, frontend run 37420999975), зелёные после отката — 37421583955 и 37422487663 (pytest 691 passed, alembic check чист), полный прогон ~7 мин при бюджете 12. Защита main НЕ включена — у CI-токена нет admin-прав; готовая команда владельцу в PR #281 («Защита main»). Замок `infra` свободен, следующий — #214.
 
 Пусто. #275 смержен (PR #280, squash `921f033`, 2026-09-29): воспроизводимая сборка backend — `constraints.txt` (77 пинов из pip freeze бейзлайна) + `requirements.lock`/`requirements-dev.lock` (uv pip compile, Python 3.12), Dockerfile ставит из lock тем же pip, `make deps-lock`/`deps-upgrade`; версии не обновлялись (sqlalchemy 2.1.1, fastapi 0.104.1); AC-1 доказан — две --no-cache-сборки одного коммита → идентичный freeze (md5 `762cee39…`); pytest 691 passed на образе из lock, pre-push e2e 136/137 (единственное падение search-filter:82 — baseline #255). Попутно починен safety-хук `block-main-git-mutations.py` (ветка из `git -C`/`cd` — Kimi снова может коммитить в worktree). Замок `backend` свободен, следующий — #217. Worktree `.worktrees/gh-275` не удалён: root-owned файлы от контейнерных прогонов, чистка за владельцем (`sudo chown -R $USER .worktrees && git worktree prune`).
 
@@ -169,36 +172,9 @@ BLK-009 снят из этого раздела 2026-09-20: браузерный
 
 ---
 
-> <a id="i-275"></a>✅ **[#275](https://github.com/AutonomaCo/promelectron/issues/275)** · зависимости без пинов — сборка образа невоспроизводима — `lock: backend` · **закрыт 2026-09-29** (PR #280, squash `921f033`)
-
-```bash
-make ai PROMPT=ai-launcher/prompts/backend_275-pinned-deps.prompt.txt
-```
-
-Инцидент 28.09: свежий SQLAlchemy 2.1.1 убил deploy-test без изменений кода. Решение
-согласовано 2026-09-29 — вариант A: lock через `uv pip compile` (constraints = текущее
-дерево из `pip freeze` образа, массовый апгрейд не входит), Dockerfile ставит из lock,
-`make deps-upgrade` для осознанных обновлений. Без переезда на pyproject/`uv sync`
-(вариант B — отдельная задача).
-
----
-
 # 🅘 Инфраструктура
 
-Свободен. #212 (резервное копирование БД) закрыт PR #279 (squash `ef5440c`, 2026-09-29) — CronJob pg_dump → MinIO на test живёт, усыновлён Helm'ом после точечного `kubectl apply`. Следующий на замке: **#215** (P0, кнопка ниже), дальше #214 (prod в песочнице СДЭК).
-
----
-
-> <a id="i-215"></a>🟢 **[#215](https://github.com/AutonomaCo/promelectron/issues/215)** · на pull request не гоняется ни одна проверка — `lock: infra` · **готов** (P0)
-
-```bash
-make ai PROMPT=ai-launcher/prompts/infra_215-pr-checks.prompt.txt
-```
-
-PR мержится без единого машинного прогона — первая проверка после мержа, выкатом в общий
-test. Новый `pr-checks.yml`: pytest + vitest + линтеры на `pull_request` с фильтрацией путей
-и кэшем; краснота доказывается мутацией; защита main — через `gh api`, нет прав — готовая
-команда владельцу. E2E в PR-гейт не входит.
+Свободен. #215 (PR-гейт, P0) закрыт PR #281 (squash `d1c0127`, 2026-10-06) — проверки на pull_request с фильтрацией путей, краснота доказана мутациями; защита main — за владельцем (команда в PR #281). Следующий на замке: **#214** (prod в песочнице СДЭК, P0), промпт пишется при входе в волну. Дальше в очереди: #218, #219.
 
 ---
 
@@ -210,7 +186,7 @@ test. Новый `pr-checks.yml`: pytest + vitest + линтеры на `pull_re
 
 # 🅕 Фронтенд
 
-> <a id="i-269"></a>🟢 **[#269](https://github.com/AutonomaCo/promelectron/issues/269)** · пересчёт доставки при 409 «Стоимость доставки устарела» — `lock: frontend` · **готов** (P1)
+> <a id="i-269"></a>🔵 **[#269](https://github.com/AutonomaCo/promelectron/issues/269)** · пересчёт доставки при 409 «Стоимость доставки устарела» — `lock: frontend` · **в работе** (Kimi Code, с 2026-10-06, P1)
 
 ```bash
 make ai PROMPT=ai-launcher/prompts/frontend_269-delivery-409-recalc.prompt.txt
