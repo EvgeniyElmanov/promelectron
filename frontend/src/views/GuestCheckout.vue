@@ -142,6 +142,13 @@
     </div>
 
     <!-- Submit -->
+    <OrderDeliveryNotice
+      v-if="items.length > 0"
+      :notice="deliveryNotice"
+      class="guest-checkout__delivery-notice"
+      @confirm="confirmDeliveryNotice"
+      @dismiss="dismissDeliveryNotice"
+    />
     <AppButton
       v-if="items.length > 0"
       block
@@ -160,9 +167,11 @@ import { useRouter } from 'vue-router';
 import { useCart } from '@/composables/useCart';
 import { useToast } from '@/composables/useToast';
 import { useGuestCheckout } from '@/composables/useGuestCheckout';
+import { useOrderSubmission } from '@/composables/useOrderSubmission';
 import { getSupplierCityCode } from '@/api/cdek';
 import { formatPrice } from '@/utils/price';
 import CdekDeliveryWidget from '@/components/CdekDeliveryWidget.vue';
+import OrderDeliveryNotice from '@/components/OrderDeliveryNotice.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 
 const GUEST_EMAIL_KEY = 'guest_checkout_email';
@@ -171,6 +180,11 @@ const router = useRouter();
 const { add: toast } = useToast();
 const { getGuestCartItems, clearGuestCart } = useCart();
 const { submitting, submitGuestCheckout, validateGuestForm } = useGuestCheckout();
+const {
+  deliveryNotice,
+  dismissDeliveryNotice,
+  handleOrderCreateError,
+} = useOrderSubmission();
 
 const items = ref([]);
 const selectedDelivery = ref(null);
@@ -245,6 +259,7 @@ watch(supplierId, () => {
 const submitOrder = async () => {
   if (submitting.value) return;
   validationErrors.value = {};
+  dismissDeliveryNotice();
 
   if (items.value.length === 0) {
     toast('Корзина пуста', 'error');
@@ -274,11 +289,26 @@ const submitOrder = async () => {
     if (err.field && err.message) {
       validationErrors.value = { [err.field]: err.message };
       toast(err.message, 'error');
-    } else {
+      return;
+    }
+    // gh-269: 409 (цена доставки устарела) → пересчёт тарифа и подтверждение
+    // по новой цене; 503 → «доставка недоступна» с повтором.
+    const handled = await handleOrderCreateError(err, {
+      items: items.value,
+      supplierId: supplierId.value,
+      selectedDelivery: selectedDelivery.value,
+      onDeliveryChange: (delivery) => { selectedDelivery.value = delivery; },
+    });
+    if (!handled) {
       const detail = err.response?.data?.detail;
       toast(detail || err.message || 'Не удалось создать заказ', 'error');
     }
   }
+};
+
+const confirmDeliveryNotice = async () => {
+  dismissDeliveryNotice();
+  await submitOrder();
 };
 
 onMounted(() => {
@@ -542,5 +572,9 @@ onMounted(() => {
   font-size: 18px;
   font-weight: 700;
   color: var(--color-text);
+}
+
+.guest-checkout__delivery-notice {
+  margin-bottom: 12px;
 }
 </style>

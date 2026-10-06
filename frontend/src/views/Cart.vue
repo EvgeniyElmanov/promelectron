@@ -280,6 +280,12 @@
 
     <!-- Sticky Checkout Bar -->
     <div v-if="cart.items && cart.items.length > 0" class="cart__checkout-bar">
+      <OrderDeliveryNotice
+        :notice="deliveryNotice"
+        class="cart__delivery-notice"
+        @confirm="confirmDeliveryNotice"
+        @dismiss="dismissDeliveryNotice"
+      />
       <div class="cart__checkout-info">
         <span class="cart__checkout-label">Итого</span>
         <span class="cart__checkout-price">{{ formatPrice(orderTotal) }} ₽</span>
@@ -307,11 +313,13 @@ import { useAuth } from '@/composables/useAuth';
 import { useCart } from '@/composables/useCart';
 import { useToast } from '@/composables/useToast';
 import { useRecipients } from '@/composables/useRecipients';
+import { useOrderSubmission } from '@/composables/useOrderSubmission';
 import { getSupplierCityCode } from '@/api/cdek';
 import { selectCartItem, selectAllCartItems, deselectAllCartItems } from '@/api/cart';
 import { normalizePhone } from '@/composables/useGuestCheckout';
 import { formatPrice } from '@/utils/price';
 import CdekDeliveryWidget from '@/components/CdekDeliveryWidget.vue';
+import OrderDeliveryNotice from '@/components/OrderDeliveryNotice.vue';
 import SkeletonCartItem from '@/components/SkeletonCartItem.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 
@@ -336,6 +344,11 @@ const isFallback = ref(false);
 const router = useRouter();
 const { add: toast } = useToast();
 const { isAuthenticated } = useAuth();
+const {
+  deliveryNotice,
+  dismissDeliveryNotice,
+  handleOrderCreateError,
+} = useOrderSubmission();
 const {
   getGuestCartItems,
   selectItem: selectGuestItem,
@@ -647,6 +660,7 @@ const createOrder = async () => {
   }
   creatingOrder.value = true;
   recipientError.value = '';
+  dismissDeliveryNotice();
   try {
     const payload = buildOrderPayload();
     const { data: order } = await api.post('/orders/create/', payload);
@@ -654,12 +668,27 @@ const createOrder = async () => {
     await syncCartCount();
     await router.push(`/checkout/${order.id}`);
   } catch (err) {
-    const detail = err.response?.data?.detail;
-    recipientError.value = detail || 'Не удалось создать заказ';
-    toast(recipientError.value, 'error');
+    // gh-269: 409 (цена доставки устарела) → пересчёт тарифа и подтверждение
+    // по новой цене; 503 → «доставка недоступна» с повтором.
+    const handled = await handleOrderCreateError(err, {
+      items: selectedItems.value,
+      supplierId: supplierId.value,
+      selectedDelivery: selectedDelivery.value,
+      onDeliveryChange: (delivery) => { selectedDelivery.value = delivery; },
+    });
+    if (!handled) {
+      const detail = err.response?.data?.detail;
+      recipientError.value = detail || 'Не удалось создать заказ';
+      toast(recipientError.value, 'error');
+    }
   } finally {
     creatingOrder.value = false;
   }
+};
+
+const confirmDeliveryNotice = async () => {
+  dismissDeliveryNotice();
+  await createOrder();
 };
 
 // Swipe handlers
@@ -1120,6 +1149,7 @@ watch(supplierId, () => {
   width: 100%;
   max-width: 800px;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
@@ -1127,6 +1157,10 @@ watch(supplierId, () => {
   background: var(--color-bg-white);
   border-top: 1px solid var(--color-border);
   z-index: 50;
+}
+
+.cart__delivery-notice {
+  flex-basis: 100%;
 }
 
 @media (min-width: 768px) {

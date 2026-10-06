@@ -47,8 +47,11 @@ vi.mock('@/api/cart', () => ({
   deselectAllCartItems: mockApiDeselectAll,
 }));
 
+const mockCalculateDelivery = vi.hoisted(() => vi.fn());
+
 vi.mock('@/api/cdek', () => ({
   getSupplierCityCode: vi.fn(() => Promise.resolve(44)),
+  calculateDelivery: mockCalculateDelivery,
 }));
 
 const mockRecipients = ref([]);
@@ -359,6 +362,84 @@ describe('Cart.vue', () => {
     await flushPromises();
 
     expect(mockSyncCartCount).toHaveBeenCalled();
+  });
+
+  it('409 при создании заказа: пересчитывает доставку и повторяет заказ только после подтверждения', async () => {
+    mockPost
+      .mockRejectedValueOnce({
+        response: { status: 409, data: { detail: 'Стоимость доставки устарела. Пересчитайте доставку и повторите заказ.' } },
+      })
+      .mockResolvedValueOnce({ data: { id: 42 } });
+    mockCalculateDelivery.mockResolvedValue({
+      tariffs: [{ tariff_code: 136, tariff_name: 'Посылка склад-склад', price: 420, period_min: 3, period_max: 5 }],
+    });
+
+    const wrapper = mount(Cart, { global: { plugins: [router] } });
+    await flushPromises();
+
+    wrapper.vm.selectedDelivery = { tariff_code: 136, price: 350, delivery_mode: 'PVZ', delivery_point: 'MSK123' };
+    wrapper.vm.recipientFirstName = 'Иван';
+    wrapper.vm.recipientLastName = 'Иванов';
+    wrapper.vm.recipientPhone = '+79990001122';
+    await flushPromises();
+
+    await wrapper.find('[data-testid="checkout-button"]').trigger('click');
+    await flushPromises();
+
+    // Пересчёт вызван, но заказ НЕ повторён без подтверждения пользователя.
+    expect(mockCalculateDelivery).toHaveBeenCalledWith(expect.objectContaining({
+      supplier_id: 1,
+      delivery_point: 'MSK123',
+    }));
+    expect(mockPost).toHaveBeenCalledTimes(1);
+
+    const notice = wrapper.find('[data-testid="delivery-price-update-notice"]');
+    expect(notice.exists()).toBe(true);
+    expect(notice.text()).toContain('350');
+    expect(notice.text()).toContain('420');
+    // Выбранная доставка обновлена новой ценой.
+    expect(wrapper.vm.selectedDelivery.price).toBe(420);
+
+    await wrapper.find('[data-testid="delivery-price-update-confirm"]').trigger('click');
+    await flushPromises();
+
+    expect(mockPost).toHaveBeenCalledTimes(2);
+    expect(mockPost).toHaveBeenLastCalledWith('/orders/create/', expect.objectContaining({
+      cdek_delivery: expect.objectContaining({ price: 420 }),
+    }));
+    expect(wrapper.find('[data-testid="delivery-price-update-notice"]').exists()).toBe(false);
+  });
+
+  it('503 при создании заказа: показывает «недоступен» и повторяет по кнопке', async () => {
+    mockPost
+      .mockRejectedValueOnce({
+        response: { status: 503, data: { detail: 'Сервис расчёта доставки временно недоступен' } },
+      })
+      .mockResolvedValueOnce({ data: { id: 42 } });
+
+    const wrapper = mount(Cart, { global: { plugins: [router] } });
+    await flushPromises();
+
+    wrapper.vm.selectedDelivery = { tariff_code: 136, price: 350, delivery_mode: 'PVZ', delivery_point: 'MSK123' };
+    wrapper.vm.recipientFirstName = 'Иван';
+    wrapper.vm.recipientLastName = 'Иванов';
+    wrapper.vm.recipientPhone = '+79990001122';
+    await flushPromises();
+
+    await wrapper.find('[data-testid="checkout-button"]').trigger('click');
+    await flushPromises();
+
+    expect(mockPost).toHaveBeenCalledTimes(1);
+    expect(mockCalculateDelivery).not.toHaveBeenCalled();
+    const notice = wrapper.find('[data-testid="delivery-unavailable-notice"]');
+    expect(notice.exists()).toBe(true);
+    expect(notice.text()).toContain('временно недоступен');
+
+    await wrapper.find('[data-testid="delivery-unavailable-retry"]').trigger('click');
+    await flushPromises();
+
+    expect(mockPost).toHaveBeenCalledTimes(2);
+    expect(wrapper.find('[data-testid="delivery-unavailable-notice"]').exists()).toBe(false);
   });
 
   it('не создаёт заказ без телефона получателя', async () => {

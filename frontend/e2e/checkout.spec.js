@@ -137,6 +137,91 @@ test.describe('Checkout Flow', () => {
     await expect(payButton).toContainText('Оплатить');
   });
 
+  test('409 на создании заказа: пересчёт доставки и успешный заказ после подтверждения', async ({ page }) => {
+    // gh-269: сверка цены доставки (#211) отклоняет заказ с 409 — фронт обязан
+    // пересчитать тариф через /cdek/calculate/, обновить доставку и повторить
+    // заказ только после подтверждения пользователя.
+    const email = uniqueEmail();
+    const password = 'TestPassword123!';
+
+    await mockCdekWidget(page);
+
+    // Register
+    await page.goto('/register');
+    await page.fill('[data-testid="register-name"]', 'Test User');
+    await page.fill('[data-testid="register-email"]', email);
+    await page.fill('[data-testid="register-password"]', password);
+    await page.fill('[data-testid="register-password-confirm"]', password);
+    await page.click('[data-testid="register-submit"]');
+    await expect(page).toHaveURL('/');
+
+    // Set profile data
+    await page.goto('/profile/edit');
+    await page.fill('[data-testid="edit-profile-first-name"]', 'Профиль');
+    await page.fill('[data-testid="edit-profile-last-name"]', 'Тестовый');
+    await page.fill('[data-testid="edit-profile-phone"]', '+79990001122');
+    await fillAddress(page, 'edit-profile-');
+    await page.click('[data-testid="edit-profile-save"]');
+    await page.waitForTimeout(1000);
+
+    await addFirstProductToCart(page);
+
+    await goToCart(page);
+    await expect(page).toHaveURL('/cart');
+    await page.waitForSelector('[data-testid="cart-item"]', { timeout: 5000 });
+
+    await selectCdekDelivery(page);
+    await fillRecipientName(page, 'Иван', 'Иванов');
+    await fillRecipientPhone(page, '+79990001122');
+
+    // Первый сабмит отклоняется 409 (сверка #211), остальные запросы идут в backend.
+    let staleOnce = true;
+    await page.route('**/api/v1/orders/create/', async (route) => {
+      if (staleOnce) {
+        staleOnce = false;
+        await route.fulfill({
+          status: 409,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            detail: 'Стоимость доставки устарела. Пересчитайте доставку и повторите заказ.',
+          }),
+        });
+        return;
+      }
+      await route.continue();
+    });
+
+    await page.locator('[data-testid="checkout-button"]').click();
+
+    // Пересчёт тарифа — реальный /cdek/calculate/ (мок виджета из #211
+    // берёт цену из того же эндпоинта, поэтому повторный сабмит пройдёт сверку).
+    const recalcResponse = await page.waitForResponse(
+      response => response.url().includes('/cdek/calculate/') && response.request().method() === 'POST',
+      { timeout: 30000 }
+    );
+    expect(recalcResponse.status()).toBe(200);
+
+    const notice = page.locator('[data-testid="delivery-price-update-notice"]');
+    await expect(notice).toBeVisible();
+    await expect(notice).toContainText('Стоимость доставки изменилась');
+
+    // Заказ не повторяется без подтверждения: остаёмся на корзине.
+    await page.waitForTimeout(1000);
+    await expect(page).toHaveURL('/cart');
+
+    // Подтверждение → повторный сабмит с актуальной ценой → заказ создан.
+    const createOrderResponse = page.waitForResponse(
+      response => response.url().includes('/orders/create') && response.request().method() === 'POST',
+      { timeout: 30000 }
+    );
+    await page.locator('[data-testid="delivery-price-update-confirm"]').click();
+    const response = await createOrderResponse;
+    expect(response.status()).toBe(200);
+
+    const order = await response.json();
+    await expect(page).toHaveURL(new RegExp(`/checkout/${order.id}`), { timeout: 30000 });
+  });
+
   for (const card of SUCCESSFUL_CARDS) {
     test(`authenticated user can pay with ${card.name} test card`, async ({ page }) => {
       test.setTimeout(180000);
