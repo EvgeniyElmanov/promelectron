@@ -1,0 +1,140 @@
+name: PR Checks
+
+# PR-гейт (issue #215): backend-тесты, frontend-тесты и линтеры на каждый pull request.
+# До этого проверки начинались только после мержа (deploy.yml), и сломанный код
+# обнаруживался выкатом в общий test-контур.
+# E2E сюда намеренно не входит — дорого, остаётся post-deploy (deploy.yml → e2e.yml).
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-checks-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  # Фильтрация по путям: какие job'ы вообще нужны для этого PR.
+  # Job'ы вне фильтра завершаются skipped — для required checks это «зелёный».
+  changes:
+    name: changes
+    runs-on: self-hosted
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - name: Cleanup root-owned caches
+        # Одноразовый ремонт + страховка: ruff в одноразовом контейнере раньше
+        # писал .ruff_cache от root в workspace, и checkout падал с EACCES
+        # (см. run 37420669218). sudo на runner требует пароль, поэтому чистим
+        # root-контейнером с примонтированным workspace.
+        run: |
+          docker run --rm -v "$GITHUB_WORKSPACE:/ws" alpine \
+            sh -c "rm -rf /ws/.ruff_cache /ws/mocks/onec-server/.ruff_cache /ws/backend/.ruff_cache"
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed areas
+        id: filter
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          CHANGED=$(git diff --name-only "$BASE...$HEAD")
+          echo "Changed files:"
+          echo "$CHANGED"
+          BACKEND=false
+          FRONTEND=false
+          if grep -Eq '^(backend/|mocks/onec-server/)' <<<"$CHANGED"; then BACKEND=true; fi
+          # frontend/e2e/ — зона Playwright-спек: vitest и линтеры src они не затрагивают
+          if grep -E '^frontend/' <<<"$CHANGED" | grep -Eqv '^frontend/e2e/'; then FRONTEND=true; fi
+          echo "backend=$BACKEND" >> "$GITHUB_OUTPUT"
+          echo "frontend=$FRONTEND" >> "$GITHUB_OUTPUT"
+
+  # pytest через docker compose — те же команды, что в make test-backend, но с
+  # --no-deps: compose run иначе тянет весь depends_on сервиса api, а образ
+  # minio/minio:latest больше не публикуется в Docker Hub (pull access denied на
+  # свежем runner). Реальные minio/meilisearch тестам не нужны — они мокируются
+  # на уровне сервисов; нужны только postgres и redis.
+  # Сюда же перенесён гейт alembic check (#185): drift схемы ловится до мержа,
+  # а не в deploy.yml после него. pytest работает в отдельных БД (promelectron_test
+  # + template), поэтому migrate-check на БД promelectron ему не мешает.
+  backend:
+    name: backend
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: self-hosted
+    timeout-minutes: 25
+    env:
+      COMPOSE: docker compose -f backend/docker-compose.yml -p promelectron
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: alembic drift check (миграции + alembic check)
+        run: |
+          $COMPOSE up -d postgres
+          $COMPOSE run --rm --no-deps --entrypoint "" \
+            --user "$(id -u):$(id -g)" api alembic upgrade head
+          $COMPOSE run --rm --no-deps --entrypoint "" \
+            --user "$(id -u):$(id -g)" api alembic check
+
+      - name: pytest
+        run: |
+          $COMPOSE up -d postgres redis
+          $COMPOSE run --rm --no-deps --entrypoint "" \
+            --user "$(id -u):$(id -g)" \
+            -e DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/promelectron \
+            -e REDIS_URL=redis://redis:6379/0 \
+            -e SECRET_KEY=test-secret-key-32-chars-minimum \
+            api sh -c "pytest tests/ -v --tb=short"
+
+  # vitest + линтеры Vue/JS (oxlint + eslint) — те же цели, что и локально.
+  frontend:
+    name: frontend
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: self-hosted
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: oxlint + eslint (make lint-frontend)
+        run: make lint-frontend
+
+      - name: vitest (make test-frontend)
+        run: make test-frontend
+
+  # ruff: src/ — внутри api-образа (как make lint-backend),
+  # мок-сервер 1С — в одноразовом python-контейнере с запиненным ruff
+  # (версия = backend/requirements-dev.txt).
+  lint:
+    name: lint
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: self-hosted
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: ruff backend
+        run: |
+          docker compose -f backend/docker-compose.yml -p promelectron \
+            run --rm --no-deps --entrypoint "" \
+            --user "$(id -u):$(id -g)" api ruff check src/
+
+      - name: ruff onec-mock
+        # --no-cache: кэш внутри примонтированного workspace от root ломает
+        # следующий checkout (EACCES на git clean, run 37420669218).
+        run: |
+          docker run --rm -v "$PWD:/repo" -w /repo python:3.12-alpine \
+            sh -c "pip install -q ruff==0.15.13 && ruff check --no-cache mocks/onec-server/"
