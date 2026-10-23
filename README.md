@@ -1,5 +1,12 @@
 # Promelectron
 
+> **Портфолио-снимок рабочего репозитория.** Каталог `infra/` (Helm-чарты, SOPS-секреты,
+> топология кластера) и история с ним намеренно исключены из публикации — остальная история
+> коммитов (850+) сохранена как есть. Живое демо: https://promelectron-test.aidrivencode.ru
+>
+> Проект разработан по **AI-driven workflow**: оркестрация LLM-субагентов (Kimi Code CLI),
+> автоматизированное code review и QA gate — см. `ai-launcher/`, `.kimi-code/`, `.agents/`.
+
 Интернет-магазин электротоваров на **FastAPI + Vue 3** с CI/CD через GitHub Actions → Harbor → Kubernetes.
 
 ## Стек
